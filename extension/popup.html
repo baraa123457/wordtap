@@ -1,0 +1,347 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    :root {
+      --bg:            #f1f3fa;
+      --surface:       #ffffff;
+      --ink:           #14172f;
+      --muted:         #5a6082;
+      --line:          #dde1f0;
+      --focus:         #3a55ff;
+      --screen:        #151833;
+      --bar:           #0a0b1d;
+      --screen-line:   #262a52;
+      --screen-ink:    #ffffff;
+      --screen-muted:  #a9aed3;
+      --subtitle:      #facc3b;
+      --subtitle-edge: #c7980c;
+      --subtitle-ink:  #261d00;
+      --ok:            #0f8f5c;
+      --ok-soft:       #d9f4e8;
+      --bad:           #d4304d;
+      --bad-soft:      #fde4e9;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 340px;
+      background: var(--bg);
+      color: var(--ink);
+      font: 14px/1.5 "Segoe UI", Tahoma, system-ui, sans-serif;
+      padding: 0 0 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      background: var(--screen);
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--screen-line);
+    }
+    .logo-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--screen-ink);
+      letter-spacing: -0.01em;
+    }
+    .logo-name span { color: var(--subtitle); }
+
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin: 12px 12px 0;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    #account p { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
+    #account p strong { color: var(--ink); }
+    #account code {
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 5px; padding: 1px 5px; font-size: 12px; color: var(--ink);
+    }
+
+    .field {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 12px;
+      border-radius: 10px;
+      border: 2px solid var(--line);
+      background: var(--bg);
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+      margin-bottom: 8px;
+      transition: border-color 120ms;
+      display: block;
+    }
+    .field:focus { outline: none; border-color: var(--focus); }
+    .field::placeholder { color: var(--muted); }
+
+    .pw-wrap { position: relative; }
+    .pw-wrap .field { padding-right: 36px; }
+    .pw-eye {
+      position: absolute; right: 9px; top: 50%; transform: translateY(-60%);
+      background: none; border: none; padding: 0; color: var(--muted);
+      cursor: pointer; display: flex; align-items: center;
+    }
+    .pw-eye:hover { color: var(--ink); }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      min-height: 36px; padding: 6px 14px; border-radius: 10px;
+      border: 2px solid var(--line); border-bottom-width: 3px;
+      background: var(--surface); color: var(--ink);
+      font: inherit; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: transform 80ms, background 120ms;
+      text-decoration: none;
+    }
+    .btn:hover { background: color-mix(in srgb, var(--surface) 88%, var(--ink)); }
+    .btn:active { transform: translateY(1px); border-bottom-width: 2px; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .btn-primary {
+      background: var(--subtitle); border-color: var(--subtitle-edge);
+      color: var(--subtitle-ink);
+    }
+    .btn-primary:hover { background: color-mix(in srgb, var(--subtitle) 88%, white); }
+    .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+    #authError {
+      background: var(--bad-soft); border: 1px solid var(--bad);
+      border-radius: 8px; padding: 7px 10px;
+      color: var(--bad); font-size: 12px; margin-bottom: 8px;
+    }
+    #syncError { color: var(--bad); font-size: 12px; margin: 6px 0 0; }
+    [hidden] { display: none !important; }
+
+    .who-email { font-weight: 700; color: var(--ink); font-size: 13px; }
+    .sync-line { font-size: 12px; color: var(--muted); margin: 3px 0 10px; }
+
+    .row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 0; border-bottom: 1px solid var(--line);
+    }
+    .row:last-of-type { border-bottom: none; }
+    .row-label strong { font-size: 13px; font-weight: 600; }
+    .row-label small { display: block; color: var(--muted); font-size: 11px; }
+
+    .sw { position: relative; width: 38px; height: 22px; flex: none; }
+    .sw input { opacity: 0; width: 0; height: 0; }
+    .sw span {
+      position: absolute; inset: 0; background: var(--line);
+      border-radius: 22px; cursor: pointer; transition: background .15s;
+    }
+    .sw span::before {
+      content: ""; position: absolute;
+      width: 16px; height: 16px; left: 3px; top: 3px;
+      background: #fff; border-radius: 50%; transition: transform .15s;
+    }
+    .sw input:checked + span { background: var(--focus); }
+    .sw input:checked + span::before { transform: translateX(16px); }
+
+    select.field {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6082' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 30px;
+      cursor: pointer;
+    }
+
+    .sel-label {
+      display: block; font-size: 12px; font-weight: 700;
+      color: var(--muted); text-transform: uppercase;
+      letter-spacing: .05em; margin: 12px 0 5px;
+    }
+
+    .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .list-head h3 { font-size: 13px; font-weight: 700; }
+    .list-btns button {
+      font: inherit; font-size: 11px; padding: 3px 8px; margin-left: 4px;
+      border: 1px solid var(--line); background: var(--bg); border-radius: 7px;
+      cursor: pointer; color: var(--muted);
+    }
+    .list-btns button:hover { background: var(--line); color: var(--ink); }
+
+    #search {
+      width: 100%; padding: 7px 10px; margin-bottom: 8px;
+      border: 2px solid var(--line); border-radius: 10px;
+      background: var(--bg); color: var(--ink); font: inherit; font-size: 13px;
+    }
+    #search:focus { outline: none; border-color: var(--focus); }
+
+    #list { max-height: 190px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; }
+    .item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+    .item:last-child { border-bottom: 0; }
+    .item .w { flex: 1; min-width: 0; }
+    .item .t { font-weight: 700; font-size: 13px; word-break: break-word; }
+    .item .tr { color: var(--focus); font-size: 12px; word-break: break-word; }
+    .item .tr[dir=rtl] { text-align: right; }
+    .item .c { font-size: 11px; color: var(--muted); }
+    .item .spk { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 2px 4px; display: inline-flex; align-items: center; border-radius: 4px; transition: color 0.15s, transform 0.1s; }
+    .item .spk:hover { color: var(--subtitle-edge); transform: scale(1.15); }
+    .item .spk.speaking { color: var(--ok); }
+    .item .del { border: 0; background: none; color: var(--muted); font-size: 17px; cursor: pointer; line-height: 1; }
+    .lang-pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      color: var(--muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s, color 0.12s;
+    }
+    .lang-pill:hover { color: var(--ink); background: var(--line); }
+    .lang-pill.active { background: var(--subtitle); color: var(--subtitle-ink); border-color: var(--subtitle-edge); }
+
+    .hint { font-size: 11px; color: var(--muted); line-height: 1.5; text-align: center; padding: 10px 14px 0; }
+  </style>
+</head>
+<body>
+
+  <!-- Logo bar -->
+  <div class="topbar">
+    <svg width="28" height="20" viewBox="0 0 30 22" aria-hidden>
+      <rect x="0.5" y="0.5" width="29" height="21" rx="5" fill="#151833" stroke="#262a52"/>
+      <rect x="6"   y="8"   width="18" height="3"   rx="1.5"  fill="#fff"/>
+      <rect x="9"   y="14"  width="12" height="2.5" rx="1.25" fill="#ffd23f"/>
+    </svg>
+    <span class="logo-name">Word<span>Tap</span></span>
+    <button id="openOptionsBtn" title="Options" style="margin-left:auto;background:none;border:none;color:#a9aed3;cursor:pointer;display:flex;align-items:center;padding:2px;" aria-label="Open options">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Account -->
+  <div class="section" id="account" aria-label="Account">
+    <div class="section-title">Account</div>
+
+    <div id="acctLoading"><p>Checking…</p></div>
+
+    <div id="acctUnconfigured" hidden>
+      <p>This copy of the extension is not connected to a WordTap project yet. Fill in <code>config.js</code> and reload the extension.</p>
+      <p>Words are saved on this device in the meantime.</p>
+    </div>
+
+    <form id="signInForm" hidden>
+      <p>Sign in to keep your words and practice them on the website.</p>
+      <input id="email" class="field" type="email" placeholder="Email" autocomplete="email" required />
+      <div class="pw-wrap">
+        <input id="password" class="field" type="password" placeholder="Password" autocomplete="current-password" required />
+        <button type="button" class="pw-eye" id="pwToggle" aria-label="Show password">
+          <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+      <div id="authError" role="alert" hidden></div>
+      <div class="actions">
+        <button class="btn btn-primary" id="signInBtn" type="submit">Sign in</button>
+        <a class="btn" id="signUpLink" target="_blank" rel="noopener">Create account</a>
+      </div>
+    </form>
+
+    <div id="signedIn" hidden>
+      <p class="who-email" id="who"></p>
+      <p class="sync-line" id="syncLine"></p>
+      <div id="syncError" role="alert" hidden></div>
+      <div class="actions">
+        <a class="btn" id="openSite" target="_blank" rel="noopener">Practice words</a>
+        <button class="btn" id="syncBtn" type="button">Sync now</button>
+        <button class="btn" id="signOutBtn" type="button">Sign out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="section">
+    <div class="section-title">Settings</div>
+    <div class="row">
+      <div class="row-label"><strong>Extension on</strong><small>Turn click-to-translate on or off</small></div>
+      <label class="sw"><input type="checkbox" id="enabled" /><span></span></label>
+    </div>
+    <div class="row">
+      <div class="row-label"><strong>Pause video on click</strong><small>Off = video keeps playing</small></div>
+      <label class="sw"><input type="checkbox" id="pauseOnClick" /><span></span></label>
+    </div>
+    <div class="row">
+      <div class="row-label"><strong>Save translated words</strong><small>Keep every word you click</small></div>
+      <label class="sw"><input type="checkbox" id="saveWords" /><span></span></label>
+    </div>
+    <div class="row" style="border-bottom:none">
+      <div class="row-label"><strong>Selection pop-up</strong><small>When you select text on any page</small></div>
+    </div>
+    <select id="selectionMode" class="field" style="margin-bottom:4px">
+      <option value="immediate">Immediately show translation</option>
+      <option value="icon">Show WordTap icon first</option>
+      <option value="off">Don't show pop-up</option>
+    </select>
+    <label class="sel-label" for="hideSeconds">Show translation for</label>
+    <select id="hideSeconds" class="field">
+      <option value="1">1 second</option>
+      <option value="2">2 seconds</option>
+      <option value="3">3 seconds</option>
+      <option value="5">5 seconds</option>
+      <option value="8">8 seconds</option>
+      <option value="10">10 seconds</option>
+      <option value="15">15 seconds</option>
+      <option value="0">Until I close it</option>
+    </select>
+    <label class="sel-label" for="lang">Translate to</label>
+    <select id="lang" class="field">
+      <option value="ar">العربية (Arabic)</option>
+      <option value="en">English</option>
+      <option value="fr">Français</option>
+      <option value="es">Español</option>
+      <option value="de">Deutsch</option>
+      <option value="it">Italiano</option>
+      <option value="pt">Português</option>
+      <option value="tr">Türkçe</option>
+      <option value="ru">Русский</option>
+      <option value="zh-CN">中文 (简体)</option>
+      <option value="ja">日本語</option>
+      <option value="ko">한국어</option>
+      <option value="hi">हिन्दी</option>
+      <option value="ur">اردو</option>
+      <option value="fa">فارسی</option>
+    </select>
+  </div>
+
+  <!-- Saved words -->
+  <div class="section">
+    <div class="list-head">
+      <h3>Saved on this device (<span id="count">0</span>)</h3>
+      <div class="list-btns">
+        <button id="export">Export CSV</button>
+        <button id="clear">Clear</button>
+      </div>
+    </div>
+    <div id="langPills" style="display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px;"></div>
+    <input id="search" type="search" placeholder="Search saved words…" />
+    <div id="list"></div>
+  </div>
+
+  <p class="hint">Click a subtitle word to translate. Shift+click translates the whole line. Esc closes the tooltip.</p>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
