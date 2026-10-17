@@ -36,6 +36,12 @@ type Definition = {
   meanings: string[];
 };
 
+export type SpellCorrection = {
+  correctedText: string;
+  originalText: string;
+  autoCorrected: boolean;
+};
+
 type TranslationResult = {
   text: string;
   translation: string;
@@ -43,6 +49,7 @@ type TranslationResult = {
   sourcePronunciation?: string;
   targetPronunciation?: string;
   definitions?: Definition[];
+  correction?: SpellCorrection | null;
 };
 
 function getInitialTopLangs(
@@ -240,17 +247,31 @@ export function TranslatorCard({
   const isAlreadySaved = Boolean(
     result?.translation &&
       result?.text &&
-      (savedWordsInSession.current.has(result.text.trim().toLowerCase()) ||
-        existingWords.some(
-          (w) =>
-            w.text.trim().toLowerCase() === result.text.trim().toLowerCase() ||
-            w.translation.trim().toLowerCase() === result.translation.trim().toLowerCase(),
-        )),
+      (() => {
+        const checkText = (
+          result.correction?.autoCorrected
+            ? result.correction.correctedText
+            : result.text
+        )
+          .trim()
+          .toLowerCase();
+        return (
+          savedWordsInSession.current.has(checkText) ||
+          existingWords.some(
+            (w) =>
+              w.text.trim().toLowerCase() === checkText ||
+              w.translation.trim().toLowerCase() ===
+                result.translation.trim().toLowerCase(),
+          )
+        );
+      })(),
   );
 
   const performAutoSave = useCallback(
     async (data: TranslationResult, src: string, target: string) => {
-      const cleanWord = data.text?.trim();
+      const cleanWord = (
+        data.correction?.autoCorrected ? data.correction.correctedText : data.text
+      )?.trim();
       const cleanTrans = data.translation?.trim();
       if (!cleanWord || !cleanTrans || cleanWord.length < 2) return;
 
@@ -297,7 +318,7 @@ export function TranslatorCard({
   );
 
   const fetchTranslation = useCallback(
-    async (text: string, src: string, target: string) => {
+    async (text: string, src: string, target: string, forceExact = false) => {
       const q = text.trim();
       if (!q) {
         setResult(null);
@@ -307,15 +328,21 @@ export function TranslatorCard({
 
       setLoading(true);
       try {
-        const res = await fetch(
-          `/api/translate?text=${encodeURIComponent(q)}&src=${encodeURIComponent(src)}&target=${encodeURIComponent(target)}`,
-        );
+        const url = `/api/translate?text=${encodeURIComponent(q)}&src=${encodeURIComponent(
+          src,
+        )}&target=${encodeURIComponent(target)}${
+          forceExact ? "&forceExact=true" : ""
+        }`;
+        const res = await fetch(url);
         if (!res.ok) throw new Error("Translation failed");
         const data: TranslationResult = await res.json();
         setResult(data);
         if (data?.text && data?.translation) {
+          const effectiveText = data.correction?.autoCorrected
+            ? data.correction.correctedText
+            : data.text;
           addHistoryItem({
-            text: data.text,
+            text: effectiveText,
             translation: data.translation,
             src_lang: data.detectedSrcLang || src,
             target_lang: target,
@@ -458,24 +485,30 @@ export function TranslatorCard({
     try {
       const finalSrcLang =
         srcLang === "auto" ? result.detectedSrcLang || "en" : srcLang;
+      const cleanWord = (
+        result.correction?.autoCorrected
+          ? result.correction.correctedText
+          : result.text
+      ).trim();
+      const cleanTrans = result.translation.trim();
 
       await addCustomWord(
-        result.text.trim(),
-        result.translation.trim(),
+        cleanWord,
+        cleanTrans,
         finalSrcLang,
         targetLang,
       );
 
-      savedWordsInSession.current.add(result.text.trim().toLowerCase());
-      markHistoryItemSaved(result.text.trim(), finalSrcLang, targetLang);
+      savedWordsInSession.current.add(cleanWord.toLowerCase());
+      markHistoryItemSaved(cleanWord, finalSrcLang, targetLang);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
 
       if (onWordSaved) {
         onWordSaved({
           id: `temp-${Date.now()}`,
-          text: result.text.trim(),
-          translation: result.translation.trim(),
+          text: cleanWord,
+          translation: cleanTrans,
           src_lang: finalSrcLang,
           target_lang: targetLang,
           box: 1,
@@ -678,6 +711,77 @@ export function TranslatorCard({
               >
                 {result.sourcePronunciation}
               </p>
+            ) : null}
+
+            {/* Google-style Spell Correction Banner */}
+            {result?.correction ? (
+              <div
+                className={`mt-3 p-3 rounded-2xl bg-subtitle/10 border border-subtitle/25 text-xs sm:text-sm space-y-1.5 ${
+                  isRTL ? "text-right" : "text-left"
+                }`}
+              >
+                {result.correction.autoCorrected ? (
+                  <>
+                    <div className="flex items-center gap-1.5 flex-wrap text-ink font-medium">
+                      <span className="text-subtitle font-bold text-sm">✨</span>
+                      <span>Showing translation for</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (result?.correction) {
+                            setInputText(result.correction.correctedText);
+                            void fetchTranslation(result.correction.correctedText, srcLang, targetLang);
+                          }
+                        }}
+                        className="font-bold text-subtitle hover:underline italic cursor-pointer"
+                      >
+                        {result.correction.correctedText}
+                      </button>
+                      <span className="text-muted text-[11px]">
+                        (عرض الترجمة لـ <strong className="text-subtitle font-semibold">{result.correction.correctedText}</strong>)
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted flex items-center gap-1.5 flex-wrap">
+                      <span>Translate</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (result?.correction) {
+                            void fetchTranslation(result.correction.originalText, srcLang, targetLang, true);
+                          }
+                        }}
+                        className="text-subtitle hover:underline font-medium cursor-pointer"
+                      >
+                        {result.correction.originalText}
+                      </button>
+                      <span>instead</span>
+                      <span className="text-muted/70 text-[11px]">
+                        (ترجمة {result.correction.originalText} بدلاً من ذلك)
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-1.5 flex-wrap text-ink font-medium">
+                    <span className="text-subtitle font-bold text-sm">✨</span>
+                    <span>Did you mean:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (result?.correction) {
+                          setInputText(result.correction.correctedText);
+                          void fetchTranslation(result.correction.correctedText, srcLang, targetLang);
+                        }
+                      }}
+                      className="font-bold text-subtitle hover:underline italic cursor-pointer"
+                    >
+                      {result.correction.correctedText}
+                    </button>
+                    <span className="text-muted text-[11px]">
+                      (هل تقصد: <strong className="text-subtitle font-semibold">{result.correction.correctedText}</strong>؟)
+                    </span>
+                  </div>
+                )}
+              </div>
             ) : null}
           </div>
 
