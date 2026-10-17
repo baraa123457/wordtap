@@ -10,6 +10,28 @@
       window.location.hostname === "127.0.0.1" ||
       window.location.host.includes("wordtap"))
   ) {
+    function syncSettingsFromWeb() {
+      try {
+        const raw = localStorage.getItem("wordtap_settings");
+        if (raw && isContextValid() && chrome.storage && chrome.storage.sync) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.translateSaveMode) {
+            const isManual = parsed.translateSaveMode === "manual";
+            chrome.storage.sync.set({
+              translateSaveMode: parsed.translateSaveMode,
+              saveWords: !isManual,
+            });
+          }
+        }
+      } catch (_) {}
+    }
+    syncSettingsFromWeb();
+    window.addEventListener("storage", syncSettingsFromWeb);
+    window.addEventListener("message", (e) => {
+      if (e.data && e.data.type === "wordtap:sync-settings") {
+        syncSettingsFromWeb();
+      }
+    });
     return;
   }
 
@@ -55,7 +77,8 @@
   // ── Settings ─────────────────────────────────────────────────────────────
   const settings = {
     enabled: true,
-    saveWords: true,
+    saveWords: false,
+    translateSaveMode: "manual",
     targetLang: "ar",
     selectionMode: "immediate" // "immediate" | "icon" | "off"
   };
@@ -443,14 +466,18 @@
     // Always record to translation history
     safeSendMessage({ type: "history:add", entry });
 
-    if (settings.saveWords) {
+    const willSave = settings.saveWords === true && settings.translateSaveMode !== "manual";
+
+    if (willSave) {
       saveBtn.hidden = true;
       setStatus("Saving…", false);
       doSave(entry);
     } else {
       saveBtn.hidden = false;
       saveBtn.disabled = false;
-      saveBtn.innerHTML = `⭐ Save`;
+      saveBtn.innerHTML = `⭐ + Save to My Words`;
+      saveBtn.style.background = "#ffd23f";
+      saveBtn.style.color = "#261d00";
       setStatus("", false);
     }
 
@@ -522,10 +549,24 @@
 
   // ── Event Handlers ────────────────────────────────────────────────────────
   saveBtn.addEventListener("click", () => {
-    if (!lastEntry) return;
+    if (!lastEntry || saveBtn.disabled) return;
     saveBtn.disabled = true;
+    saveBtn.innerHTML = `Saving…`;
     setStatus("Saving…", false);
-    doSave(lastEntry, tipToken);
+    safeSendMessage({ type: "save", entry: lastEntry }, (saved) => {
+      if (!isContextValid()) return;
+      if (!saved || !saved.ok) {
+        setStatus("Could not save word", true);
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = `⭐ + Save to My Words`;
+        return;
+      }
+      const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+      setStatus(note.text, note.warn);
+      saveBtn.innerHTML = `✓ In My Words`;
+      saveBtn.style.background = "rgba(52,211,153,.2)";
+      saveBtn.style.color = "#34d399";
+    });
   });
 
   closeBtn.addEventListener("click", hideAll);

@@ -8,7 +8,8 @@ const send = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, r
 const DEFAULTS = {
   enabled: true,
   pauseOnClick: false,
-  saveWords: true,
+  saveWords: false,
+  translateSaveMode: "manual",
   hideSeconds: 3,
   targetLang: "ar",
   selectionMode: "immediate",
@@ -17,14 +18,25 @@ const DEFAULTS = {
 chrome.storage.sync.get(DEFAULTS, (s) => {
   $("enabled").checked = s.enabled;
   $("pauseOnClick").checked = s.pauseOnClick;
-  $("saveWords").checked = s.saveWords;
+  const mode = s.translateSaveMode || (s.saveWords ? "auto" : "manual");
+  if ($("translateSaveMode")) $("translateSaveMode").value = mode;
   $("lang").value = s.targetLang;
   $("hideSeconds").value = String(s.hideSeconds);
   if ($("selectionMode")) $("selectionMode").value = s.selectionMode || "immediate";
 });
 
-for (const id of ["enabled", "pauseOnClick", "saveWords"]) {
+for (const id of ["enabled", "pauseOnClick"]) {
   $(id).addEventListener("change", (e) => chrome.storage.sync.set({ [id]: e.target.checked }));
+}
+
+if ($("translateSaveMode")) {
+  $("translateSaveMode").addEventListener("change", (e) => {
+    const isManual = e.target.value === "manual";
+    chrome.storage.sync.set({
+      translateSaveMode: e.target.value,
+      saveWords: !isManual,
+    });
+  });
 }
 $("lang").addEventListener("change", (e) => chrome.storage.sync.set({ targetLang: e.target.value }));
 $("hideSeconds").addEventListener("change", (e) =>

@@ -283,10 +283,13 @@
       <div class="row-label"><strong>Pause video on click</strong><small>Off = video keeps playing</small></div>
       <label class="sw"><input type="checkbox" id="pauseOnClick" /><span></span></label>
     </div>
-    <div class="row">
-      <div class="row-label"><strong>Save translated words</strong><small>Keep every word you click</small></div>
-      <label class="sw"><input type="checkbox" id="saveWords" /><span></span></label>
+    <div class="row" style="border-bottom:none">
+      <div class="row-label"><strong>Word saving mode</strong><small>Manual (⭐ button) vs Auto-save</small></div>
     </div>
+    <select id="translateSaveMode" class="field" style="margin-bottom:8px">
+      <option value="manual">✍️ Manual save (Show ⭐ Save button)</option>
+      <option value="auto">⚡ Auto-save (Save all words automatically)</option>
+    </select>
     <div class="row" style="border-bottom:none">
       <div class="row-label"><strong>Selection pop-up</strong><small>When you select text on any page</small></div>
     </div>

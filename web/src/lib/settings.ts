@@ -89,6 +89,7 @@ export function saveStoredSettings(partial: Partial<UserSettings>): UserSettings
       applyTheme(partial.theme);
     }
     window.dispatchEvent(new CustomEvent("wordtap_settings_changed", { detail: next }));
+    window.postMessage({ type: "wordtap:sync-settings", settings: next }, "*");
   }
   return next;
 }

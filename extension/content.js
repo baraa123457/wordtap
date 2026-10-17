@@ -43,7 +43,8 @@
   const settings = {
     enabled: true, // master switch
     pauseOnClick: false, // pause the video when a word is clicked
-    saveWords: true, // keep every translated word
+    saveWords: false, // keep every translated word
+    translateSaveMode: "manual",
     hideSeconds: 3, // how long the tooltip stays (0 = until closed)
     targetLang: "ar",
   };
@@ -553,7 +554,7 @@
           currentVideoSubLang = finalSrc;
         }
 
-        const willSave = settings.saveWords;
+        const willSave = settings.saveWords === true && settings.translateSaveMode !== "manual";
         showTip(e.clientX, e.clientY, text, res.text, RTL_LANGS.includes(target), willSave ? "Saving…" : "", false, finalSrc);
 
         const entry = {
