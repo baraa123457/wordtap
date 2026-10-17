@@ -76,6 +76,9 @@
       .tr[dir=rtl]{text-align:right}
       .saved{margin-top:6px;font-size:11px;color:#34d399;display:none}
       .saved[data-warn="true"]{color:#fbbf24}
+      .save-btn{background:#facc3b;color:#000;border:none;cursor:pointer;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:700;display:none;align-items:center;gap:4px;margin-top:8px;transition:background .1s,transform .1s}
+      .save-btn:hover{background:#ffe270;transform:scale(1.03)}
+      .save-btn.saved{background:rgba(52,211,153,.2);color:#34d399;border:1px solid rgba(52,211,153,.3);cursor:default;transform:none}
       .x{position:absolute;top:2px;right:6px;cursor:pointer;opacity:.5;font-size:14px}
       .x:hover{opacity:1}
     </style>
@@ -92,12 +95,14 @@
         </button>
       </div>
       <div class="tr"></div>
+      <button class="save-btn" title="Save word to My Words">⭐ + Save to My Words</button>
       <div class="saved"></div>
     </div>`;
   const tip = shadow.querySelector(".tip");
   const origEl = shadow.querySelector(".orig");
   const spkBtn = shadow.querySelector(".spk-btn");
   const trEl = shadow.querySelector(".tr");
+  const saveBtn = shadow.querySelector(".save-btn");
   const savedEl = shadow.querySelector(".saved");
   shadow.querySelector(".x").addEventListener("click", hideTip);
 
@@ -171,6 +176,26 @@
     }
   }
 
+  let currentPendingEntry = null;
+
+  saveBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!currentPendingEntry || saveBtn.classList.contains("saved")) return;
+    saveBtn.textContent = "Saving…";
+    safeSendMessage({ type: "save", entry: currentPendingEntry }, (saved) => {
+      if (!isContextValid()) return;
+      if (saved && saved.ok) {
+        saveBtn.classList.add("saved");
+        saveBtn.textContent = "✓ In your words";
+        const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+        setNote(note.text, note.warn);
+      } else {
+        saveBtn.textContent = "⭐ + Save to My Words";
+        setNote("Could not save this word", true);
+      }
+    });
+  });
+
   function setNote(note, warn) {
     savedEl.textContent = note;
     savedEl.dataset.warn = String(Boolean(warn));
@@ -185,6 +210,9 @@
     trEl.textContent = translated;
     trEl.dir = rtl ? "rtl" : "ltr";
     setNote(note, warn);
+    saveBtn.style.display = "none";
+    saveBtn.classList.remove("saved");
+    saveBtn.textContent = "⭐ + Save to My Words";
     tip.style.display = "block";
     const r = tip.getBoundingClientRect();
     const left = Math.min(Math.max(8, x - r.width / 2), window.innerWidth - r.width - 8);
@@ -528,7 +556,6 @@
         const willSave = settings.saveWords;
         showTip(e.clientX, e.clientY, text, res.text, RTL_LANGS.includes(target), willSave ? "Saving…" : "", false, finalSrc);
 
-        if (!willSave) return;
         const entry = {
           text,
           translation: res.text,
@@ -536,7 +563,23 @@
           src: finalSrc,
           page: location.href,
           title: document.title,
+          saved: Boolean(willSave),
         };
+        currentPendingEntry = entry;
+
+        // Always record to translation history
+        safeSendMessage({ type: "history:add", entry });
+
+        if (!willSave) {
+          // Manual Save Mode: show the Save button!
+          saveBtn.style.display = "inline-flex";
+          saveBtn.classList.remove("saved");
+          saveBtn.textContent = "⭐ + Save to My Words";
+          return;
+        }
+
+        // Auto Save Mode:
+        saveBtn.style.display = "none";
         safeSendMessage({ type: "save", entry }, (saved) => {
           if (!isContextValid() || token !== tipToken) return;
           if (!saved || !saved.ok) {

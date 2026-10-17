@@ -7,6 +7,7 @@ import { addCustomWord } from "@/lib/api";
 import { getStoredSettings, type UserSettings } from "@/lib/settings";
 import type { Word } from "@/lib/schemas";
 import { SpeakerIcon, CloseIcon } from "@/components/Icons";
+import { addHistoryItem, markHistoryItemSaved } from "@/lib/history";
 
 const POPULAR_LANGS = [
   { code: "en", name: "English", native: "English" },
@@ -264,6 +265,7 @@ export function TranslatorCard({
           target,
         );
         savedWordsInSession.current.add(cleanWord.toLowerCase());
+        markHistoryItemSaved(cleanWord, finalSrcLang, target);
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
 
@@ -311,6 +313,15 @@ export function TranslatorCard({
         if (!res.ok) throw new Error("Translation failed");
         const data: TranslationResult = await res.json();
         setResult(data);
+        if (data?.text && data?.translation) {
+          addHistoryItem({
+            text: data.text,
+            translation: data.translation,
+            src_lang: data.detectedSrcLang || src,
+            target_lang: target,
+            source: "translator",
+          });
+        }
       } catch (err) {
         console.warn("Translation request error:", err);
       } finally {
@@ -456,6 +467,7 @@ export function TranslatorCard({
       );
 
       savedWordsInSession.current.add(result.text.trim().toLowerCase());
+      markHistoryItemSaved(result.text.trim(), finalSrcLang, targetLang);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
 

@@ -356,6 +356,32 @@ chrome.runtime.onStartup.addListener(() => {
 // Immediate run when background script initializes:
 flush(true).catch(() => {});
 
+async function addHistory(entry) {
+  try {
+    const { history = [] } = await chrome.storage.local.get({ history: [] });
+    const cleanText = (entry.text || "").trim();
+    const filtered = history.filter(
+      (h) => !(h.text && h.text.toLowerCase() === cleanText.toLowerCase() && h.lang === entry.lang)
+    );
+    const newItem = {
+      id: "ext-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+      text: cleanText,
+      translation: (entry.translation || "").trim(),
+      src: entry.src || "auto",
+      lang: entry.lang || "ar",
+      title: entry.title || "",
+      page: entry.page || "",
+      timestamp: new Date().toISOString(),
+      saved: Boolean(entry.saved),
+    };
+    const updated = [newItem, ...filtered].slice(0, 300);
+    await chrome.storage.local.set({ history: updated });
+    return { ok: true, item: newItem };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Messages from the page script and the popup
 // ---------------------------------------------------------------------------
@@ -374,6 +400,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return reply(translate(msg.text, msg.target, msg.srcLang, msg.context).then((r) => ({ ok: true, ...r })));
     case "save":
       return reply(saveWord(msg.entry));
+    case "history:add":
+      return reply(addHistory(msg.entry));
+    case "history:get":
+      return reply(chrome.storage.local.get({ history: [] }));
     case "auth:status":
       return reply(status().then((s) => ({ ok: true, ...s })));
     case "auth:signIn":

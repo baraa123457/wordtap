@@ -10,6 +10,7 @@ import { Logo } from "./Logo";
 const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/words", label: "My words" },
+  { href: "/history", label: "History" },
   { href: "/extension", label: "Extension" },
   { href: "/settings", label: "Settings" },
 ] as const;

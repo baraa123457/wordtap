@@ -440,12 +440,17 @@
     trEl.dir = rtl ? "rtl" : "ltr";
     lastEntry = entry;
 
+    // Always record to translation history
+    safeSendMessage({ type: "history:add", entry });
+
     if (settings.saveWords) {
       saveBtn.hidden = true;
       setStatus("Saving…", false);
       doSave(entry);
     } else {
       saveBtn.hidden = false;
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = `⭐ Save`;
       setStatus("", false);
     }
 
