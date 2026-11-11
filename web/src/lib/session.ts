@@ -135,15 +135,36 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
     const choice = (variant: ChoiceVariant, answer: string, pool: string[]): ChoiceQuestion | null => {
       const wrong = distractors(pool, answer, 3, rng);
       if (wrong.length === 0) return null;
+
+      const isToWord = variant === "to-word";
+      const prompt = isToWord ? word.translation : variant === "to-translation" ? word.text : "";
+
+      // Pronounce the word that is actually shown in the prompt:
+      // When the prompt is the translation (e.g. Arabic word), speak the translation in target_lang (or Arabic).
+      // When the prompt is the source word (e.g. English word), speak the text in src_lang.
+      const targetLang =
+        word.target_lang && word.target_lang !== "auto"
+          ? word.target_lang
+          : /[\u0600-\u06FF]/.test(word.translation)
+          ? "ar"
+          : "ar";
+      const srcLang = word.src_lang && word.src_lang !== "auto" ? word.src_lang : "en";
+
+      const speak = isToWord
+        ? { text: word.translation, lang: targetLang }
+        : variant === "listen" || word.src_lang !== "auto"
+        ? { text: word.text, lang: srcLang }
+        : null;
+
       return {
         type: "choice",
         id,
         variant,
         wordId: word.id,
-        prompt: variant === "to-translation" ? word.text : variant === "to-word" ? word.translation : "",
+        prompt,
         options: shuffle([answer, ...wrong], rng),
         answer,
-        speak: variant === "listen" || word.src_lang !== "auto" ? { text: word.text, lang: word.src_lang } : null,
+        speak,
         context,
       };
     };

@@ -67,10 +67,12 @@ export function speak(text: string, lang: string, options?: SpeakOptions | numbe
           ...(options || {}),
         };
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  const prefix = (lang && lang !== "auto" ? lang : "en").toLowerCase().slice(0, 2);
-  const targetLocale = LANG_LOCALES[prefix] || (lang !== "auto" ? lang : "en-US");
+  const hasArabic = /[\u0600-\u06FF]/.test(text);
+  const effectiveLang = lang && lang !== "auto" ? lang : hasArabic ? "ar" : "en";
+  const prefix = effectiveLang.toLowerCase().slice(0, 2);
+  const targetLocale = LANG_LOCALES[prefix] || (effectiveLang !== "auto" ? effectiveLang : "en-US");
 
+  const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = targetLocale;
 
   let rate = opts.rate ?? 0.95;
@@ -115,12 +117,11 @@ export function speak(text: string, lang: string, options?: SpeakOptions | numbe
     chosenVoice = langVoices.find((v) => detectVoiceGender(v) === gender);
   }
 
-  // 3. Fallback: cloud/remote voices generally sound smoother/softer, then first locale voice
-  if (!chosenVoice) {
+  // 3. Fallback: cloud/remote voices for the target language, then first locale voice
+  if (!chosenVoice && langVoices.length > 0) {
     chosenVoice =
       langVoices.find((v) => !v.localService) ||
-      langVoices[0] ||
-      voices.find((v) => !v.localService);
+      langVoices[0];
   }
 
   if (chosenVoice) utterance.voice = chosenVoice;
