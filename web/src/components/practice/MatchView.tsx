@@ -40,6 +40,10 @@ export function MatchView({ q, onComplete }: Props) {
 
   function chooseLeft(id: string) {
     if (matched.has(id) || flash) return;
+    if (pickedLeft === id) {
+      setPickedLeft(null);
+      return;
+    }
     const p = pair(id);
     if (p) speak(p.word, p.lang);
     setPickedLeft(id);
@@ -48,6 +52,10 @@ export function MatchView({ q, onComplete }: Props) {
 
   function chooseRight(id: string) {
     if (matched.has(id) || flash) return;
+    if (pickedRight === id) {
+      setPickedRight(null);
+      return;
+    }
     setPickedRight(id);
     if (pickedLeft) resolve(pickedLeft, id);
   }

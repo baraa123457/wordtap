@@ -39,7 +39,7 @@ type Props = {
   q: ChoiceQuestion;
   selected: string | null;
   phase: Phase;
-  onSelect: (option: string) => void;
+  onSelect: (option: string | null) => void;
   onDeleteWord?: (wordId: string) => void;
 };
 
@@ -68,10 +68,14 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
 
   const handleSelect = useCallback(
     (option: string) => {
+      if (selected === option) {
+        onSelect(null);
+        return;
+      }
       onSelect(option);
       speakOption(option);
     },
-    [onSelect, speakOption],
+    [onSelect, speakOption, selected],
   );
 
   // Keys 1-4 pick an option.
