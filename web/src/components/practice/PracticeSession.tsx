@@ -12,6 +12,7 @@ import { checkTyped } from "@/lib/text";
 import { parseSourceContext } from "@/lib/format";
 import { CloseIcon } from "../Icons";
 import { ChoiceView } from "./ChoiceView";
+import { ScrambleView } from "./ScrambleView";
 import { FeedbackBar } from "./FeedbackBar";
 import { MatchView } from "./MatchView";
 import { Summary, type SaveState } from "./Summary";
@@ -138,6 +139,10 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
     if (!q) return;
     if (q.type === "choice") {
       if (selected !== null) evaluate(selected === q.answer ? "correct" : "wrong");
+    } else if (q.type === "scramble") {
+      if (selected !== null) {
+        evaluate(selected.trim().toLowerCase() === q.answer.trim().toLowerCase() ? "correct" : "wrong");
+      }
     } else if (q.type === "type") {
       evaluate(checkTyped(typed, q.answer));
     }
@@ -201,7 +206,14 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
 
   const q = current.q;
   const progress = total === 0 ? 0 : Math.round((done / total) * 100);
-  const canCheck = q.type === "choice" ? selected !== null : q.type === "type" ? typed.trim() !== "" : false;
+  const canCheck =
+    q.type === "choice"
+      ? selected !== null
+      : q.type === "scramble"
+      ? selected !== null && selected.trim().length > 0
+      : q.type === "type"
+      ? typed.trim() !== ""
+      : false;
   const answer = q.type === "match" ? "" : q.answer;
   const parsedContext = "context" in q ? parseSourceContext(q.context) : { sentence: undefined, sourceTitle: "" };
   const sourceUrl = "sourceUrl" in q ? q.sourceUrl : undefined;
@@ -278,6 +290,16 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
             selected={selected}
             phase={phase}
             onSelect={setSelected}
+            onDeleteWord={(wordId) => setDeleteConfirmId(wordId)}
+          />
+        ) : q.type === "scramble" ? (
+          <ScrambleView
+            key={q.id + String(current.retry)}
+            q={q}
+            value={selected || ""}
+            phase={phase}
+            onChange={setSelected}
+            onSubmit={check}
             onDeleteWord={(wordId) => setDeleteConfirmId(wordId)}
           />
         ) : q.type === "type" ? (

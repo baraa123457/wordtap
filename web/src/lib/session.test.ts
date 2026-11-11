@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Word } from "./schemas";
-import { buildSession, selectWords, shuffle } from "./session";
+import { buildSession, makeClozePrompt, makeScrambleTiles, selectWords, shuffle } from "./session";
 
 function seeded(seed: number) {
   let s = seed;
@@ -134,5 +134,87 @@ describe("buildSession", () => {
 
   it("returns nothing for an empty library", () => {
     expect(buildSession([], { now: NOW })).toEqual([]);
+  });
+
+  describe("Pedagogical Practice Ladder", () => {
+    it("assigns multiple choice (to-translation) for new words in box 0 and 1", () => {
+      const newWords = [
+        makeWord(1, { box: 0, text: "novel", translation: "رواية" }),
+        makeWord(2, { box: 1, text: "story", translation: "قصة" }),
+      ];
+      const qs = buildSession(newWords, { size: 2, now: NOW, rng: seeded(10) });
+      const nonMatch = qs.filter((q) => q.type !== "match");
+      for (const q of nonMatch) {
+        expect(q.type).toBe("choice");
+        if (q.type === "choice") {
+          expect(q.variant).toBe("to-translation");
+        }
+      }
+    });
+
+    it("assigns cloze fill-in-the-blank for learning words in box 2 with sentence", () => {
+      const box2Words = [
+        makeWord(1, {
+          box: 2,
+          text: "wondering",
+          translation: "أتساءل",
+          source_title: '"I was wondering if you could help" — YouTube',
+        }),
+        makeWord(2, {
+          box: 2,
+          text: "helping",
+          translation: "مساعدة",
+          source_title: '"Thank you for helping me" — YouTube',
+        }),
+      ];
+      const qs = buildSession(box2Words, { size: 1, canSpeak: false, now: NOW, rng: seeded(11) });
+      expect(qs[0]?.type).toBe("choice");
+      if (qs[0]?.type === "choice") {
+        expect(qs[0].variant).toBe("cloze");
+        expect(qs[0].prompt).toContain("______");
+      }
+    });
+
+    it("assigns scramble letter tiles for almost-known words in box 3", () => {
+      const box3Words = [
+        makeWord(1, { box: 3, text: "puzzle", translation: "لغز" }),
+      ];
+      const qs = buildSession(box3Words, { size: 1, now: NOW, rng: seeded(12) });
+      expect(qs[0]?.type).toBe("scramble");
+      if (qs[0]?.type === "scramble") {
+        expect(qs[0].answer).toBe("puzzle");
+        expect(qs[0].tiles).toHaveLength(6);
+      }
+    });
+
+    it("assigns production typing for known words in box 4 and 5", () => {
+      const box4Words = [
+        makeWord(1, { box: 4, text: "mastered", translation: "متقن" }),
+        makeWord(2, { box: 5, text: "fluent", translation: "فصيح" }),
+      ];
+      const qs = buildSession(box4Words, { size: 2, now: NOW, rng: seeded(13) });
+      const nonMatch = qs.filter((q) => q.type !== "match");
+      for (const q of nonMatch) {
+        expect(q.type).toBe("type");
+        if (q.type === "type") {
+          expect(q.variant).toBe("to-word");
+        }
+      }
+    });
+  });
+
+  describe("makeClozePrompt and makeScrambleTiles", () => {
+    it("replaces target word with blank in sentence", () => {
+      expect(makeClozePrompt("I was wondering if you could help", "wondering")).toBe(
+        "I was ______ if you could help",
+      );
+    });
+
+    it("creates shuffled letter tiles with unique IDs", () => {
+      const tiles = makeScrambleTiles("word", seeded(14));
+      expect(tiles).toHaveLength(4);
+      expect(tiles.map((t) => t.char).sort()).toEqual(["d", "o", "r", "w"]);
+      expect(new Set(tiles.map((t) => t.id)).size).toBe(4);
+    });
   });
 });

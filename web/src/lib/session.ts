@@ -1,9 +1,10 @@
 import type { Word } from "./schemas";
 import { normalizeAnswer } from "./text";
+import { parseSourceContext } from "./format";
 
 export type Rng = () => number;
 
-export type ChoiceVariant = "to-translation" | "to-word" | "listen";
+export type ChoiceVariant = "to-translation" | "to-word" | "listen" | "cloze";
 export type TypeVariant = "to-translation" | "to-word";
 
 export type ChoiceQuestion = {
@@ -21,6 +22,18 @@ export type ChoiceQuestion = {
   optionsLang?: string;
   context: string;
   sourceUrl?: string;
+};
+
+export type ScrambleQuestion = {
+  type: "scramble";
+  id: string;
+  wordId: string;
+  prompt: string;
+  answer: string;
+  tiles: { id: string; char: string }[];
+  context: string;
+  sourceUrl?: string;
+  speak?: { text: string; lang: string } | null;
 };
 
 export type TypeQuestion = {
@@ -42,7 +55,7 @@ export type MatchQuestion = {
   pairs: MatchPair[];
 };
 
-export type Question = ChoiceQuestion | TypeQuestion | MatchQuestion;
+export type Question = ChoiceQuestion | ScrambleQuestion | TypeQuestion | MatchQuestion;
 
 export type PracticeMode = "mixed" | "typing" | "choice";
 
@@ -128,23 +141,61 @@ function distractors(pool: string[], answer: string, count: number, rng: Rng, is
   return unique;
 }
 
-type Plan = "choice-translation" | "choice-word" | "listen" | "type-translation" | "type-word";
+export function makeClozePrompt(sentence: string, targetWord: string): string {
+  const escaped = targetWord.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`\\b${escaped}\\b`, "i");
+  if (regex.test(sentence)) {
+    return sentence.replace(regex, "______");
+  }
+  const simpleRegex = new RegExp(escaped, "i");
+  if (simpleRegex.test(sentence)) {
+    return sentence.replace(simpleRegex, "______");
+  }
+  return `${sentence} (______)`;
+}
+
+export function makeScrambleTiles(text: string, rng: Rng = Math.random): { id: string; char: string }[] {
+  const chars = text.trim().split("");
+  const tiles = chars.map((char, index) => ({ id: `tile-${index}`, char }));
+  let shuffled = shuffle(tiles, rng);
+  if (shuffled.length > 1 && shuffled.map((t) => t.char).join("") === chars.join("")) {
+    const temp = shuffled[0]!;
+    shuffled[0] = shuffled[1]!;
+    shuffled[1] = temp;
+  }
+  return shuffled;
+}
+
+type Plan = "choice-translation" | "choice-word" | "cloze" | "listen" | "scramble" | "type-word";
 
 /**
- * Pedagogical Spaced Repetition Progression (Leitner Box Ladder):
- * - Box 0 & 1 (New words): 100% Recognition (Multiple Choice). Never force typing a word on first sight!
- * - Box 2 & 3 (Learning words): Recognition & Audio Choice (75%) + Active recall Typing (25%).
- * - Box 4 & 5 (Mastered words): 100% Active Production Typing.
+ * Pedagogical Practice Ladder (Leitner Spaced Repetition Progression):
+ * - New word (box 0–1): Multiple choice. Show real subtitle sentence with word highlighted -> pick translation.
+ * - Learning (box 2): Listen and choose, or fill in the blank in the sentence (cloze).
+ * - Almost known (box 3): Tap shuffled letters to build the word (scramble).
+ * - Known (box 4–5): Type the word, with hint button and typo forgiveness.
  */
-function plansFor(word: Word, canSpeak: boolean): Plan[] {
-  const listen = canSpeak && word.src_lang !== "auto" ? (["listen"] as const) : [];
+function plansFor(word: Word, canSpeak: boolean, canCloze: boolean): Plan[] {
+  // Box 0 & 1: New words -> 100% Recognition choice (to-translation)
   if (word.box <= 1) {
-    return ["choice-word", "choice-word", "choice-translation", ...listen];
+    return ["choice-translation"];
   }
-  if (word.box <= 3) {
-    return ["choice-word", "type-word", ...listen];
+
+  // Box 2: Learning -> Fill in blank in sentence OR Listen & choose
+  if (word.box === 2) {
+    if (canCloze) {
+      return canSpeak && word.src_lang !== "auto" ? ["cloze", "listen"] : ["cloze"];
+    }
+    return canSpeak && word.src_lang !== "auto" ? ["listen"] : ["choice-word"];
   }
-  return ["type-word", "type-word", ...listen];
+
+  // Box 3: Almost known -> Tap shuffled letters to build the word
+  if (word.box === 3) {
+    return ["scramble"];
+  }
+
+  // Box 4 & 5: Known -> Full active recall typing
+  return ["type-word"];
 }
 
 export function buildSession(words: Word[], options: BuildOptions = {}): Question[] {
@@ -164,6 +215,14 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
     const id = `q${n++}-${word.id}`;
     const context = word.source_title;
     const sourceUrl = word.source_url || undefined;
+    const { sentence } = parseSourceContext(word.source_title);
+    const hasSentence = Boolean(sentence && sentence.trim());
+    const targetEscaped = word.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const canCloze =
+      hasSentence &&
+      sentence !== undefined &&
+      (new RegExp(`\\b${targetEscaped}\\b`, "i").test(sentence) ||
+        sentence.toLowerCase().includes(word.text.toLowerCase()));
 
     // Writing Mode: Prompt shows translation (e.g. "كان") and user types the word (e.g. "was")
     if (mode === "typing") {
@@ -180,17 +239,22 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
       continue;
     }
 
-    const choice = (variant: ChoiceVariant, answer: string, pool: string[]): ChoiceQuestion | null => {
+    const choice = (
+      variant: ChoiceVariant,
+      answer: string,
+      pool: string[],
+      customPrompt?: string,
+    ): ChoiceQuestion | null => {
       const isArabic = /[\u0600-\u06FF]/.test(answer);
       const wrong = distractors(pool, answer, 3, rng, isArabic);
       if (wrong.length === 0) return null;
 
-      const isToWord = variant === "to-word";
-      const prompt = isToWord ? word.translation : variant === "to-translation" ? word.text : "";
+      const isToWord = variant === "to-word" || variant === "cloze";
+      const prompt =
+        customPrompt ??
+        (isToWord ? word.translation : variant === "to-translation" ? word.text : "");
 
       // Pronounce the word that is actually shown in the prompt:
-      // When the prompt is the translation (e.g. Arabic word), speak the translation in target_lang (or Arabic).
-      // When the prompt is the source word (e.g. English word), speak the text in src_lang.
       const targetLang =
         word.target_lang && word.target_lang !== "auto"
           ? word.target_lang
@@ -224,19 +288,21 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
 
     if (mode === "choice") {
       const plan = rng() > 0.5 ? "choice-word" : "choice-translation";
-      const q = (plan === "choice-word" ? choice("to-word", word.text, texts) : choice("to-translation", word.translation, translations))
-        || choice("to-translation", word.translation, translations)
-        || choice("to-word", word.text, texts);
+      const q =
+        (plan === "choice-word"
+          ? choice("to-word", word.text, texts)
+          : choice("to-translation", word.translation, translations)) ||
+        choice("to-translation", word.translation, translations) ||
+        choice("to-word", word.text, texts);
       if (q) {
         questions.push(q);
         continue;
       }
     }
 
-    // Mixed mode: respect the Leitner box spaced repetition ladder!
-    // Box 0 & 1: 100% Recognition choice. Box 2 & 3: Choice + Audio + 25% Typing. Box 4+: Production typing.
-    const plans = plansFor(word, canSpeak);
-    const plan = plans[Math.floor(rng() * plans.length)] ?? "choice-word";
+    // Mixed mode: follows the exact Pedagogical Ladder!
+    const plans = plansFor(word, canSpeak, canCloze);
+    const plan = plans[Math.floor(rng() * plans.length)] ?? "choice-translation";
 
     if (plan === "type-word") {
       questions.push({
@@ -250,28 +316,41 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         sourceUrl,
       });
       continue;
-    } else if (plan === "type-translation") {
+    }
+
+    if (plan === "scramble" && word.text.trim().length > 1) {
+      const srcLang = word.src_lang && word.src_lang !== "auto" ? word.src_lang : "en";
       questions.push({
-        type: "type",
+        type: "scramble",
         id,
-        variant: "to-translation",
         wordId: word.id,
-        prompt: word.text,
-        answer: word.translation,
+        prompt: word.translation,
+        answer: word.text,
+        tiles: makeScrambleTiles(word.text, rng),
         context,
         sourceUrl,
+        speak: word.src_lang !== "auto" ? { text: word.text, lang: srcLang } : null,
       });
       continue;
     }
 
     let q: Question | null = null;
-    if (plan === "choice-word") q = choice("to-word", word.text, texts);
-    else if (plan === "choice-translation") q = choice("to-translation", word.translation, translations);
-    else if (plan === "listen") q = choice("listen", word.text, texts);
+    if (plan === "choice-translation") {
+      q = choice("to-translation", word.translation, translations);
+    } else if (plan === "cloze" && sentence) {
+      q = choice("cloze", word.text, texts, makeClozePrompt(sentence, word.text));
+    } else if (plan === "listen") {
+      q = choice("listen", word.text, texts);
+    } else if (plan === "choice-word") {
+      q = choice("to-word", word.text, texts);
+    }
 
     if (!q) {
-      q = choice("to-word", word.text, texts) || choice("to-translation", word.translation, translations);
+      q =
+        choice("to-translation", word.translation, translations) ||
+        choice("to-word", word.text, texts);
     }
+
     if (!q) {
       q = {
         type: "type",

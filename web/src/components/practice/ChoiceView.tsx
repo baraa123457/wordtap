@@ -11,7 +11,29 @@ const INSTRUCTION: Record<ChoiceQuestion["variant"], string> = {
   "to-translation": "Choose the translation",
   "to-word": "Which word means this?",
   listen: "Listen, then choose the word",
+  cloze: "Fill in the blank in the sentence",
 };
+
+function highlightInSentence(sentence: string, targetWord: string) {
+  if (!sentence || !targetWord) return sentence;
+  const escaped = targetWord.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (!escaped) return sentence;
+  const regex = new RegExp(`(${escaped})`, "gi");
+  const parts = sentence.split(regex);
+  if (parts.length === 1) return sentence;
+  return parts.map((part, i) =>
+    regex.test(part) ? (
+      <mark
+        key={i}
+        className="bg-subtitle/30 text-subtitle font-bold px-1 rounded-sm not-italic border-b-2 border-subtitle"
+      >
+        {part}
+      </mark>
+    ) : (
+      part
+    ),
+  );
+}
 
 type Props = {
   q: ChoiceQuestion;
@@ -87,6 +109,33 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
             >
               <SpeakerIcon size={22} /> Play again
             </button>
+          ) : q.variant === "cloze" ? (
+            <div className="space-y-3 px-4 max-w-xl mx-auto text-center">
+              <p className="text-xl sm:text-2xl text-white font-medium leading-relaxed" dir="auto">
+                “
+                {q.prompt.split("______").map((part, idx, arr) => (
+                  <span key={idx}>
+                    {part}
+                    {idx < arr.length - 1 && (
+                      <span className="inline-block border-b-3 border-subtitle text-subtitle px-2 mx-1 font-mono font-bold tracking-wider animate-pulse">
+                        [ ___ ]
+                      </span>
+                    )}
+                  </span>
+                ))}
+                ”
+              </p>
+              {speakable && q.speak ? (
+                <button
+                  type="button"
+                  aria-label="Hear the missing word"
+                  className="btn btn-quiet min-h-8 text-xs text-white/80 hover:text-white inline-flex items-center gap-1.5"
+                  onClick={() => q.speak && speak(q.speak.text, q.speak.lang)}
+                >
+                  <SpeakerIcon size={16} /> Listen to audio hint
+                </button>
+              ) : null}
+            </div>
           ) : (
             <>
               <p
@@ -110,8 +159,8 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
                 ) : null}
               </p>
               {sentence ? (
-                <p className="text-xs sm:text-sm text-white/70 max-w-lg mx-auto text-center font-normal px-4 italic line-clamp-2" dir="auto">
-                  “{sentence}”
+                <p className="text-xs sm:text-sm text-white/80 max-w-lg mx-auto text-center font-normal px-4 italic line-clamp-3 leading-relaxed" dir="auto">
+                  “{highlightInSentence(sentence, q.prompt)}”
                 </p>
               ) : null}
             </>
