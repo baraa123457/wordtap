@@ -21,37 +21,61 @@ export function AppShell({ children }: { children: ReactNode }) {
   const email = state.status === "signed-in" ? state.user.email ?? "" : "";
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-4 sm:px-6">
-      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-4">
-        <Logo href="/dashboard" />
-        <nav aria-label="Main" className="order-3 flex w-full gap-1 sm:order-none sm:w-auto">
-          {LINKS.map((link) => {
-            const active = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                aria-current={active ? "page" : undefined}
-                className={`rounded-xl px-3 py-2 font-medium ${
-                  active ? "bg-subtitle text-subtitle-ink" : "text-muted hover:text-ink"
-                }`}
+    <div className="flex min-h-dvh w-full flex-col">
+      {/* Apple Floating Liquid Glass Header */}
+      <header className="sticky top-0 z-40 w-full apple-glass transition-colors">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-x-4 px-4 py-3 sm:px-6">
+          <Logo href="/dashboard" />
+
+          {/* Apple Segmented Navigation Capsule */}
+          <nav
+            aria-label="Main Navigation"
+            className="order-3 flex w-full overflow-x-auto py-1 sm:order-none sm:w-auto"
+          >
+            <div className="apple-segmented-container mx-auto">
+              {LINKS.map((link) => {
+                const active = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    data-active={active ? "true" : undefined}
+                    className="apple-segmented-item whitespace-nowrap"
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+
+          {/* User Controls */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+            {email ? (
+              <span
+                className="hidden max-w-36 truncate text-xs font-medium text-muted sm:inline"
+                title={email}
               >
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="flex items-center gap-2 sm:gap-3">
-          <ThemeToggle />
-          <span className="hidden max-w-48 truncate text-sm text-muted sm:inline" title={email}>
-            {email}
-          </span>
-          <button type="button" className="btn btn-quiet min-h-10 px-3 py-1.5 text-sm" onClick={() => void signOut()}>
-            Sign out
-          </button>
+                {email}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              className="btn btn-quiet min-h-9 px-3 py-1 text-xs font-medium"
+              onClick={() => void signOut()}
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
-      <main className="min-w-0 flex-1 overflow-x-hidden pb-16 pt-4">{children}</main>
+
+      {/* Main Content Area */}
+      <main className="mx-auto w-full max-w-5xl min-w-0 flex-1 overflow-x-hidden px-4 pb-16 pt-6 sm:px-6">
+        {children}
+      </main>
     </div>
   );
 }

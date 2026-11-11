@@ -1,18 +1,25 @@
 @import "tailwindcss";
 
 /*
- * WordTap look: a cinema screen with subtitles.
- * Light mode is a cool daylight page; dark mode is the dark theatre.
- * The movie "frame" (letterbox bars + subtitle text) is dark in both modes.
- * Subtitle yellow is the only brand accent.
+ * WordTap Apple HIG Design System
+ * Grounded in Apple Human Interface Guidelines:
+ * - Liquid Glass functional layer (translucent floating header/navigation/tab bar)
+ * - Standard materials for content layer (cards, lists, surfaces)
+ * - System font hierarchy with San Francisco metrics
+ * - Semantic system colors (systemGroupedBackground, secondarySystemGroupedBackground)
+ * - Restrained brand accent (Subtitle amber) reserved for primary actions
+ * - Accessible minimum touch targets (≥44x44pt on mobile, ≥28x28pt on desktop)
  */
+
 :root {
-  --bg: #f1f3fa;
-  --surface: #ffffff;
-  --ink: #14172f;
-  --muted: #5a6082;
-  --line: #dde1f0;
-  --focus: #3a55ff;
+  /* Apple iOS Light Mode Tokens */
+  --bg: #f2f2f7;                  /* systemGroupedBackground */
+  --surface: #ffffff;             /* secondarySystemGroupedBackground */
+  --surface-elevated: #f9f9fb;    /* tertiarySystemGroupedBackground */
+  --ink: #1c1c1e;                 /* label */
+  --muted: #6e6e73;               /* secondaryLabel (WCAG AA compliant > 4.5:1) */
+  --line: rgba(60, 60, 67, 0.12); /* separator */
+  --focus: #e5a800;
 
   --screen: #151833;
   --bar: #0a0b1d;
@@ -20,61 +27,73 @@
   --screen-ink: #ffffff;
   --screen-muted: #a9aed3;
 
-  --subtitle: #facc3b;
-  --subtitle-edge: #c7980c;
-  --subtitle-ink: #261d00;
+  --subtitle: #f5a623;            /* Golden amber brand accent */
+  --subtitle-edge: #d48b13;
+  --subtitle-ink: #000000;
 
-  --ok: #0f8f5c;
-  --ok-soft: #d9f4e8;
-  --bad: #d4304d;
-  --bad-soft: #fde4e9;
+  --ok: #34c759;                  /* Apple System Green */
+  --ok-soft: #eaf8ee;
+  --bad: #ff3b30;                 /* Apple System Red */
+  --bad-soft: #feebee;
 }
 
-/* Explicit Dark Theme override (via class or data attribute) */
+/* Explicit Dark Theme override */
 html.dark,
 :root[data-theme="dark"] {
-  --bg: #0c0e20;
-  --surface: #151833;
-  --ink: #eef0fb;
-  --muted: #9ba1c6;
-  --line: #272b52;
-  --focus: #facc3b;
+  /* Apple iOS Dark Mode Tokens */
+  --bg: #000000;                  /* systemBackground (pure OLED black) */
+  --surface: #1c1c1e;             /* secondarySystemGroupedBackground */
+  --surface-elevated: #2c2c2e;    /* tertiarySystemGroupedBackground */
+  --ink: #f2f2f7;                 /* label */
+  --muted: #98989d;               /* secondaryLabel */
+  --line: rgba(255, 255, 255, 0.12); /* separator */
+  --focus: #f5a623;
 
   --screen: #090a1a;
   --bar: #04040d;
   --screen-line: #23274b;
 
-  --ok: #3fd69a;
-  --ok-soft: #0f3326;
-  --bad: #ff6b85;
-  --bad-soft: #3d1420;
+  --subtitle: #f5a623;
+  --subtitle-edge: #e0961b;
+  --subtitle-ink: #000000;
+
+  --ok: #30d158;                  /* Apple Dark System Green */
+  --ok-soft: #0c2c16;
+  --bad: #ff453a;                 /* Apple Dark System Red */
+  --bad-soft: #380d12;
 }
 
 /* System dark preference when not explicitly set to light */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not(.light) {
-    --bg: #0c0e20;
-    --surface: #151833;
-    --ink: #eef0fb;
-    --muted: #9ba1c6;
-    --line: #272b52;
-    --focus: #facc3b;
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-elevated: #2c2c2e;
+    --ink: #f2f2f7;
+    --muted: #98989d;
+    --line: rgba(255, 255, 255, 0.12);
+    --focus: #f5a623;
 
     --screen: #090a1a;
     --bar: #04040d;
     --screen-line: #23274b;
 
-    --ok: #3fd69a;
-    --ok-soft: #0f3326;
-    --bad: #ff6b85;
-    --bad-soft: #3d1420;
+    --subtitle: #f5a623;
+    --subtitle-edge: #e0961b;
+    --subtitle-ink: #000000;
+
+    --ok: #30d158;
+    --ok-soft: #0c2c16;
+    --bad: #ff453a;
+    --bad-soft: #380d12;
   }
 }
 
 @theme {
-  --font-sans: "Readex Pro Variable", "Segoe UI", Tahoma, system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Readex Pro Variable", system-ui, sans-serif;
   --color-bg: var(--bg);
   --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
@@ -98,12 +117,13 @@ body {
   min-height: 100dvh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
 :focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 3px;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
   border-radius: 0.5rem;
 }
 
@@ -116,266 +136,348 @@ body {
   }
 }
 
-/* Component classes live in the components layer so Tailwind utilities can override them. */
+/* Component classes live in the components layer */
 @layer components {
-/* ---------- Buttons: chunky, pressable ---------- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 3rem;
-  padding: 0.6rem 1.4rem;
-  border-radius: 1rem;
-  border: 2px solid var(--line);
-  border-bottom-width: 4px;
-  background: var(--surface);
-  color: var(--ink);
-  font-weight: 600;
-  line-height: 1.2;
-  cursor: pointer;
-  transition: transform 80ms ease, background-color 150ms ease;
-}
-.btn:hover {
-  background: color-mix(in srgb, var(--surface) 90%, var(--ink));
-}
-.btn:active {
-  transform: translateY(2px);
-  border-bottom-width: 2px;
-}
-.btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  transform: none;
-  border-bottom-width: 4px;
-}
-.btn.btn-primary {
-  background: var(--subtitle);
-  border-color: var(--subtitle-edge);
-  color: var(--subtitle-ink);
-}
-.btn.btn-primary:hover {
-  background: color-mix(in srgb, var(--subtitle) 88%, white);
-}
-.btn.btn-quiet {
-  background: transparent;
-  border-color: transparent;
-  border-bottom-width: 2px;
-  color: var(--muted);
-}
-.btn.btn-quiet:hover {
-  color: var(--ink);
-  background: color-mix(in srgb, var(--bg) 85%, var(--ink));
-}
-.btn.btn-ok {
-  background: var(--ok);
-  border-color: color-mix(in srgb, var(--ok) 70%, black);
-  color: #fff;
-}
-.btn.btn-bad {
-  background: var(--bad);
-  border-color: color-mix(in srgb, var(--bad) 70%, black);
-  color: #fff;
-}
+  /* ---------- Apple Liquid Glass (Functional Floating Layer) ---------- */
+  .apple-glass {
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    background: color-mix(in srgb, var(--surface) 80%, transparent);
+    border-bottom: 1px solid var(--line);
+  }
 
-/* ---------- Inputs ---------- */
-.field {
-  width: 100%;
-  min-height: 3rem;
-  padding: 0.65rem 1rem;
-  border-radius: 1rem;
-  border: 2px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
-}
-.field::placeholder {
-  color: var(--muted);
-}
-.field:focus-visible {
-  outline-offset: 0;
-  border-color: var(--focus);
-}
+  /* ---------- Apple Inset Grouped Card (Content Layer) ---------- */
+  .apple-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(0, 0, 0, 0.02);
+  }
 
-/* ---------- The movie frame ---------- */
-.frame {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--screen-line);
-  border-radius: 1.25rem;
-  background: var(--screen);
-  color: var(--screen-ink);
-}
-.frame-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  min-height: 2.5rem;
-  padding: 0.5rem 1.1rem;
-  background: var(--bar);
-  color: var(--screen-muted);
-  font-size: 0.85rem;
-}
-.frame-stage {
-  display: grid;
-  place-items: center;
-  min-height: 11rem;
-  padding: 2rem 1.25rem;
-  text-align: center;
-}
+  /* ---------- Apple Segmented Control ---------- */
+  .apple-segmented-container {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem;
+    border-radius: 9999px;
+    background: rgba(120, 120, 128, 0.12);
+    border: 1px solid var(--line);
+  }
 
-/* Subtitle lettering: white fill, black outline, like burnt-in captions. */
-.sub {
-  color: #fff;
-  font-weight: 700;
-  line-height: 1.3;
-  -webkit-text-stroke: 0.17em #000;
-  paint-order: stroke fill;
-  text-shadow: 0 0.06em 0.2em rgb(0 0 0 / 0.55);
-  overflow-wrap: anywhere;
-}
-/* Yellow underline marks the word that was tapped. */
-.sub-hl {
-  background-image: linear-gradient(var(--subtitle), var(--subtitle));
-  background-repeat: no-repeat;
-  background-position: 0 100%;
-  background-size: 100% 0.14em;
-  padding-bottom: 0.12em;
-}
+  .apple-segmented-item {
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--muted);
+    transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
 
-/* A tappable subtitle word: the underline grows in on hover and stays when picked. */
-.sub-word {
-  cursor: pointer;
-  border-radius: 0.15em;
-  background-image: linear-gradient(var(--subtitle), var(--subtitle));
-  background-repeat: no-repeat;
-  background-position: 0 100%;
-  background-size: 100% 0;
-  padding-bottom: 0.12em;
-  transition: background-size 120ms ease;
-}
-.sub-word:hover,
-.sub-word[aria-pressed="true"] {
-  background-size: 100% 0.14em;
-}
+  .apple-segmented-item:hover {
+    color: var(--ink);
+  }
 
-/* ---------- Answer options ---------- */
-.option {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  min-height: 3.5rem;
-  padding: 0.75rem 1rem;
-  border-radius: 1rem;
-  border: 2px solid var(--line);
-  border-bottom-width: 4px;
-  background: var(--surface);
-  color: var(--ink);
-  font-size: 1.1rem;
-  font-weight: 500;
-  text-align: start;
-  cursor: pointer;
-  transition: transform 80ms ease, border-color 120ms ease, background-color 120ms ease;
-}
-.option:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--subtitle-edge) 70%, var(--line));
-}
-.option[data-state="selected"] {
-  border-color: var(--subtitle-edge);
-  background: color-mix(in srgb, var(--subtitle) 22%, var(--surface));
-}
-.option[data-state="right"] {
-  border-color: var(--ok);
-  background: var(--ok-soft);
-}
-.option[data-state="wrong"] {
-  border-color: var(--bad);
-  background: var(--bad-soft);
-}
-.option[data-state="done"] {
-  opacity: 0.35;
-  border-style: dashed;
-  cursor: default;
-}
-.option:disabled {
-  cursor: default;
-}
-.kbd {
-  display: none;
-  min-width: 1.5rem;
-  height: 1.5rem;
-  place-items: center;
-  border-radius: 0.4rem;
-  border: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 0.75rem;
-}
-@media (hover: hover) and (min-width: 40rem) {
-  .kbd {
+  .apple-segmented-item[data-active="true"] {
+    background: var(--surface);
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  /* ---------- Apple Buttons (HIG Compliant) ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem; /* 44pt touch target */
+    padding: 0.55rem 1.25rem;
+    border-radius: 0.875rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.9375rem;
+    font-weight: 590;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 150ms ease,
+                opacity 150ms ease,
+                box-shadow 150ms ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  .btn:hover {
+    background: color-mix(in srgb, var(--surface) 92%, var(--ink));
+  }
+
+  .btn:active {
+    transform: scale(0.98);
+  }
+
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* Prominent Primary Action Button */
+  .btn.btn-primary {
+    background: var(--subtitle);
+    border-color: var(--subtitle-edge);
+    color: var(--subtitle-ink);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(245, 166, 35, 0.25);
+  }
+
+  .btn.btn-primary:hover {
+    background: color-mix(in srgb, var(--subtitle) 92%, white);
+  }
+
+  .btn.btn-quiet {
+    background: transparent;
+    border-color: transparent;
+    color: var(--muted);
+    box-shadow: none;
+  }
+
+  .btn.btn-quiet:hover {
+    color: var(--ink);
+    background: rgba(120, 120, 128, 0.1);
+  }
+
+  .btn.btn-ok {
+    background: var(--ok);
+    border-color: transparent;
+    color: #ffffff;
+  }
+
+  .btn.btn-ok:hover {
+    background: color-mix(in srgb, var(--ok) 90%, black);
+  }
+
+  .btn.btn-bad {
+    background: var(--bad);
+    border-color: transparent;
+    color: #ffffff;
+  }
+
+  .btn.btn-bad:hover {
+    background: color-mix(in srgb, var(--bad) 90%, black);
+  }
+
+  /* ---------- Apple Inputs ---------- */
+  .field {
+    width: 100%;
+    min-height: 2.75rem; /* 44pt touch target */
+    padding: 0.65rem 1rem;
+    border-radius: 0.875rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.9375rem;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .field::placeholder {
+    color: var(--muted);
+  }
+
+  .field:focus-visible {
+    outline-offset: 0;
+    border-color: var(--subtitle);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--subtitle) 20%, transparent);
+  }
+
+  /* ---------- The movie frame ---------- */
+  .frame {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--screen-line);
+    border-radius: 1.25rem;
+    background: var(--screen);
+    color: var(--screen-ink);
+  }
+  .frame-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 1.1rem;
+    background: var(--bar);
+    color: var(--screen-muted);
+    font-size: 0.85rem;
+  }
+  .frame-stage {
     display: grid;
+    place-items: center;
+    min-height: 11rem;
+    padding: 2rem 1.25rem;
+    text-align: center;
   }
-}
 
-@keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
+  /* Subtitle lettering: white fill, black outline */
+  .sub {
+    color: #fff;
+    font-weight: 700;
+    line-height: 1.3;
+    -webkit-text-stroke: 0.17em #000;
+    paint-order: stroke fill;
+    text-shadow: 0 0.06em 0.2em rgb(0 0 0 / 0.55);
+    overflow-wrap: anywhere;
   }
-  25% {
-    transform: translateX(-5px);
-  }
-  75% {
-    transform: translateX(5px);
-  }
-}
-.option[data-flash="true"] {
-  animation: shake 220ms ease;
-}
 
-/* Mastery dots (Leitner boxes 0-5) */
-.dots {
-  display: inline-flex;
-  gap: 3px;
-}
-.dots i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--line);
-}
-.dots i[data-on="true"] {
-  background: var(--subtitle-edge);
-}
-
-@keyframes feedbackEnter {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
+  .sub-hl {
+    background-image: linear-gradient(var(--subtitle), var(--subtitle));
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    background-size: 100% 0.14em;
+    padding-bottom: 0.12em;
   }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
 
-@keyframes feedbackExit {
-  from {
-    transform: translateY(0);
-    opacity: 1;
+  .sub-word {
+    cursor: pointer;
+    border-radius: 0.15em;
+    background-image: linear-gradient(var(--subtitle), var(--subtitle));
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    background-size: 100% 0;
+    padding-bottom: 0.12em;
+    transition: background-size 120ms ease;
   }
-  to {
-    transform: translateY(100%);
-    opacity: 0;
+  .sub-word:hover,
+  .sub-word[aria-pressed="true"] {
+    background-size: 100% 0.14em;
   }
-}
 
-.feedback-enter {
-  animation: feedbackEnter 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
+  /* ---------- Practice Answer options ---------- */
+  .option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 3.25rem;
+    padding: 0.75rem 1.1rem;
+    border-radius: 1rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 1.05rem;
+    font-weight: 500;
+    text-align: start;
+    cursor: pointer;
+    transition: transform 100ms cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 140ms ease,
+                background-color 140ms ease,
+                box-shadow 140ms ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+  .option:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--subtitle-edge) 70%, var(--line));
+    background: color-mix(in srgb, var(--surface) 96%, var(--subtitle));
+  }
+  .option:active:not(:disabled) {
+    transform: scale(0.99);
+  }
+  .option[data-state="selected"] {
+    border-color: var(--subtitle-edge);
+    background: color-mix(in srgb, var(--subtitle) 15%, var(--surface));
+  }
+  .option[data-state="right"] {
+    border-color: var(--ok);
+    background: var(--ok-soft);
+  }
+  .option[data-state="wrong"] {
+    border-color: var(--bad);
+    background: var(--bad-soft);
+  }
+  .option[data-state="done"] {
+    opacity: 0.35;
+    border-style: dashed;
+    cursor: default;
+  }
+  .option:disabled {
+    cursor: default;
+  }
+  .kbd {
+    display: none;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    place-items: center;
+    border-radius: 0.4rem;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+  @media (hover: hover) and (min-width: 40rem) {
+    .kbd {
+      display: grid;
+    }
+  }
 
-.feedback-exit {
-  animation: feedbackExit 240ms cubic-bezier(0.7, 0, 0.84, 0) forwards;
-}
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-5px);
+    }
+    75% {
+      transform: translateX(5px);
+    }
+  }
+  .option[data-flash="true"] {
+    animation: shake 220ms ease;
+  }
+
+  /* Mastery dots (Leitner boxes 0-5) */
+  .dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .dots i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(120, 120, 128, 0.25);
+    transition: background 150ms ease;
+  }
+  .dots i[data-on="true"] {
+    background: var(--subtitle);
+  }
+
+  @keyframes feedbackEnter {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes feedbackExit {
+    from {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+  }
+
+  .feedback-enter {
+    animation: feedbackEnter 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .feedback-exit {
+    animation: feedbackExit 240ms cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  }
 }

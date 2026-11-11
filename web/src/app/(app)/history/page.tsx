@@ -14,10 +14,10 @@ import { addCustomWord, fetchWords } from "@/lib/api";
 import { canSpeak, speak } from "@/lib/speech";
 import { SpeakerIcon } from "@/components/Icons";
 
-const SOURCE_LABELS: Record<HistorySource, { label: string; icon: string }> = {
-  translator: { label: "Translator", icon: "??" },
-  subtitle: { label: "Subtitles", icon: "??" },
-  selection: { label: "Selected text", icon: "???" },
+const SOURCE_LABELS: Record<HistorySource, { label: string }> = {
+  translator: { label: "Translator" },
+  subtitle: { label: "Subtitles" },
+  selection: { label: "Selected text" },
 };
 
 function formatRelativeTime(dateStr: string): string {
@@ -58,7 +58,6 @@ export default function HistoryPage() {
     }
     load();
 
-    // Check existing words from DB to mark items as saved if they are in words list
     fetchWords()
       .then((words) => {
         const keys = new Set(
@@ -101,30 +100,16 @@ export default function HistoryPage() {
         return next;
       });
       setSavedSuccessIds((prev) => ({ ...prev, [item.id]: true }));
-      setTimeout(() => {
-        setSavedSuccessIds((prev) => {
-          const next = { ...prev };
-          delete next[item.id];
-          return next;
-        });
-      }, 3000);
     } catch (err) {
       console.error("Failed to save from history:", err);
     } finally {
-      setSavingIds((prev) => {
-        const next = { ...prev };
-        delete next[item.id];
-        return next;
-      });
+      setSavingIds((prev) => ({ ...prev, [item.id]: false }));
     }
   }
 
-  function handleCopy(item: HistoryItem) {
-    try {
-      navigator.clipboard.writeText(item.translation);
-      setCopiedId(item.id);
-      setTimeout(() => setCopiedId(null), 1800);
-    } catch (_) {}
+  function handleDelete(id: string) {
+    removeHistoryItem(id);
+    setHistory((prev) => prev.filter((item) => item.id !== id));
   }
 
   function handleClearAll() {
@@ -133,19 +118,27 @@ export default function HistoryPage() {
     setConfirmClear(false);
   }
 
+  async function handleCopy(item: HistoryItem) {
+    try {
+      await navigator.clipboard.writeText(`${item.text} - ${item.translation}`);
+      setCopiedId(item.id);
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch {}
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-line/60">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Translation History</h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-subtitle/20 text-subtitle border border-subtitle/30">
+          <h1 className="text-2xl font-bold tracking-tight text-ink flex items-center gap-2">
+            <span>Translation History</span>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-muted">
               {history.length}
             </span>
-          </div>
-          <p className="mt-1 text-sm text-muted">
-            All words translated, clicked in subtitles, or selected. Save any word to your practice list with one click.
+          </h1>
+          <p className="text-xs sm:text-sm text-muted mt-0.5">
+            All words you translated or tapped in subtitles. Save any word to your practice list with one click.
           </p>
         </div>
 
@@ -157,14 +150,14 @@ export default function HistoryPage() {
                 <button
                   type="button"
                   onClick={handleClearAll}
-                  className="px-3 py-1.5 text-xs font-bold rounded-xl bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30 transition-all"
+                  className="btn btn-bad min-h-8 px-3 py-1 text-xs font-semibold rounded-lg"
                 >
                   Yes, clear
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmClear(false)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-surface border border-line text-muted hover:text-ink transition-all"
+                  className="btn btn-quiet min-h-8 px-3 py-1 text-xs font-medium rounded-lg"
                 >
                   Cancel
                 </button>
@@ -173,10 +166,9 @@ export default function HistoryPage() {
               <button
                 type="button"
                 onClick={() => setConfirmClear(true)}
-                className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-surface border border-line hover:border-red-500/50 hover:text-red-400 text-muted transition-all flex items-center gap-1.5"
+                className="btn btn-quiet min-h-8 px-3 py-1 text-xs font-medium text-muted hover:text-bad rounded-lg"
               >
-                <span>???</span>
-                <span>Clear history</span>
+                Clear history
               </button>
             )}
           </div>
@@ -186,78 +178,89 @@ export default function HistoryPage() {
       {/* Search & Source Filter Tabs */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
+          <svg
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search translated words or definitions..."
-            className="w-full h-10 px-4 rounded-xl bg-surface border border-line text-sm text-ink placeholder:text-muted/60 focus:outline-none focus:border-subtitle"
+            className="field pl-10"
           />
           {query ? (
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="absolute right-3 top-2.5 text-muted hover:text-ink text-sm"
+              className="absolute right-3 top-2.5 text-muted hover:text-ink text-sm p-1"
             >
-              ?
+              ✕
             </button>
           ) : null}
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          {(["all", "translator", "subtitle", "selection"] as const).map((src) => {
-            const active = sourceFilter === src;
-            const count =
-              src === "all"
-                ? history.length
-                : history.filter((h) => h.source === src).length;
-            const label =
-              src === "all"
-                ? "All"
-                : `${SOURCE_LABELS[src]?.icon} ${SOURCE_LABELS[src]?.label}`;
-            return (
-              <button
-                key={src}
-                type="button"
-                onClick={() => setSourceFilter(src)}
-                className={`h-10 px-3.5 text-xs sm:text-sm font-semibold rounded-xl whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                  active
-                    ? "bg-subtitle text-black font-bold shadow-sm"
-                    : "bg-surface border border-line text-muted hover:text-ink hover:border-subtitle/40"
-                }`}
-              >
-                <span>{label}</span>
-                <span className={`text-xs opacity-70`}>({count})</span>
-              </button>
-            );
-          })}
+        <div className="overflow-x-auto py-1">
+          <div className="apple-segmented-container">
+            {(["all", "translator", "subtitle", "selection"] as const).map((src) => {
+              const active = sourceFilter === src;
+              const count =
+                src === "all"
+                  ? history.length
+                  : history.filter((h) => h.source === src).length;
+              const label =
+                src === "all"
+                  ? "All"
+                  : SOURCE_LABELS[src]?.label || src;
+              return (
+                <button
+                  key={src}
+                  type="button"
+                  onClick={() => setSourceFilter(src)}
+                  data-active={active ? "true" : undefined}
+                  className="apple-segmented-item whitespace-nowrap"
+                >
+                  <span>{label}</span>
+                  <span className="ms-1 text-[11px] opacity-70">({count})</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* History Items List */}
       {visible.length === 0 ? (
-        <div className="rounded-3xl border border-line bg-surface p-12 text-center space-y-4">
-          <div className="text-4xl">??</div>
-          <h2 className="text-lg font-bold text-ink">
+        <div className="apple-card p-12 text-center space-y-3">
+          <h2 className="text-base font-semibold text-ink">
             {query ? "No matching words found" : "Your translation history is empty"}
           </h2>
-          <p className="text-sm text-muted max-w-md mx-auto">
+          <p className="text-xs sm:text-sm text-muted max-w-md mx-auto">
             {query
               ? `No words matched "${query}". Try searching for something else.`
               : "Translate words in the dashboard or click subtitle words while watching to build your history."}
           </p>
           {!query ? (
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-subtitle text-black font-bold text-sm hover:bg-[#e6b825] transition-all shadow-sm"
-            >
-              <span>Go to Translator</span>
-              <span>?</span>
-            </Link>
+            <div className="pt-2">
+              <Link
+                href="/dashboard"
+                className="btn btn-primary min-h-9 px-4 py-1.5 text-xs font-semibold"
+              >
+                Go to Translator
+              </Link>
+            </div>
           ) : null}
         </div>
       ) : (
-        <div className="grid gap-3 sm:gap-4">
+        <ul className="apple-card divide-y divide-line/50 overflow-hidden">
           {visible.map((item) => {
             const isSaved =
               item.saved ||
@@ -269,18 +272,17 @@ export default function HistoryPage() {
             const isCopied = copiedId === item.id;
             const sourceInfo = SOURCE_LABELS[item.source] || {
               label: item.source,
-              icon: "??",
             };
 
             return (
-              <div
+              <li
                 key={item.id}
-                className="group relative rounded-2xl border border-line bg-surface p-4 sm:p-5 hover:border-subtitle/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm"
+                className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors"
               >
                 {/* Word & Translation Info */}
-                <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-lg sm:text-xl font-bold text-ink tracking-tight">
+                    <span className="text-base sm:text-lg font-bold text-ink tracking-tight">
                       {item.text}
                     </span>
 
@@ -290,24 +292,23 @@ export default function HistoryPage() {
                         type="button"
                         onClick={() => speak(item.text, item.src_lang)}
                         title="Listen pronunciation"
-                        className="p-1 rounded-lg text-muted hover:text-subtitle hover:bg-white/10 transition-colors"
+                        className="p-1 rounded-md text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                       >
                         <SpeakerIcon size={16} />
                       </button>
                     ) : null}
 
                     {/* Language Badge */}
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-line/60 text-muted uppercase">
-                      {item.src_lang} ? {item.target_lang}
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-black/5 dark:bg-white/10 text-muted uppercase">
+                      {item.src_lang} → {item.target_lang}
                     </span>
 
                     {/* Source Badge */}
                     <span
                       title={`Captured via ${sourceInfo.label}`}
-                      className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-line/40 text-muted/80 flex items-center gap-1"
+                      className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-black/5 dark:bg-white/10 text-muted"
                     >
-                      <span>{sourceInfo.icon}</span>
-                      <span>{sourceInfo.label}</span>
+                      {sourceInfo.label}
                     </span>
 
                     {/* Timestamp */}
@@ -319,7 +320,7 @@ export default function HistoryPage() {
                   {/* Translation Text */}
                   <div
                     dir="auto"
-                    className="text-base sm:text-lg font-semibold text-subtitle leading-snug"
+                    className="text-sm sm:text-base font-medium text-ink"
                   >
                     {item.translation}
                   </div>
@@ -332,10 +333,10 @@ export default function HistoryPage() {
                     type="button"
                     onClick={() => handleCopy(item)}
                     title={isCopied ? "Copied!" : "Copy translation"}
-                    className="p-2 rounded-xl border border-line bg-surface hover:border-subtitle/50 text-muted hover:text-ink transition-all text-xs"
+                    className="p-2 rounded-lg border border-line bg-surface hover:bg-black/5 dark:hover:bg-white/10 text-muted hover:text-ink transition-all text-xs"
                   >
                     {isCopied ? (
-                      <span className="font-bold text-subtitle">?</span>
+                      <span className="font-bold text-subtitle">✓</span>
                     ) : (
                       <svg
                         className="w-4 h-4"
@@ -356,17 +357,20 @@ export default function HistoryPage() {
                   {isSaved ? (
                     <div
                       title="Already saved to your practice list"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-600/20 text-green-500 border border-green-500/30"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20"
                     >
-                      <span>? In My Words</span>
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span>Saved</span>
                     </div>
                   ) : (
                     <button
                       type="button"
                       onClick={() => handleSave(item)}
                       disabled={isSaving}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-subtitle text-black hover:bg-[#e6b825] active:scale-95 transition-all shadow-sm cursor-pointer disabled:opacity-50"
-                      title="Save to My Words list for practice"
+                      title="Save this word to your vocabulary practice list"
+                      className="btn btn-primary min-h-8 px-3 py-1 text-xs rounded-xl"
                     >
                       {isSaving ? (
                         <>
@@ -375,19 +379,21 @@ export default function HistoryPage() {
                         </>
                       ) : (
                         <>
-                          <span>?</span>
-                          <span>+ Save to My Words</span>
+                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                          </svg>
+                          <span>Save word</span>
                         </>
                       )}
                     </button>
                   )}
 
-                  {/* Delete from History */}
+                  {/* Delete Item Button */}
                   <button
                     type="button"
-                    onClick={() => removeHistoryItem(item.id)}
+                    onClick={() => handleDelete(item.id)}
                     title="Remove from history"
-                    className="p-2 rounded-xl text-muted/60 hover:text-red-400 hover:bg-white/10 transition-colors"
+                    className="p-2 rounded-lg text-muted hover:text-bad hover:bg-bad/10 transition-colors"
                   >
                     <svg
                       className="w-4 h-4"
@@ -398,15 +404,15 @@ export default function HistoryPage() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     >
-                      <path d="M18 6 6 18" />
-                      <path d="m6 6 12 12" />
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                     </svg>
                   </button>
                 </div>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </div>
   );

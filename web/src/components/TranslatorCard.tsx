@@ -128,16 +128,16 @@ function LanguageDropdown({
         onClick={() => setOpen((prev) => !prev)}
         title="More languages"
         aria-label="More languages"
-        className={`h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 text-xs font-semibold transition-all cursor-pointer select-none ${
+        className={`h-7 px-2.5 rounded-lg flex items-center justify-center gap-1 text-xs font-medium transition-all cursor-pointer select-none ${
           open
-            ? "bg-subtitle/20 text-subtitle border border-subtitle/40"
-            : "text-muted hover:text-ink hover:bg-line/40"
+            ? "bg-black/10 dark:bg-white/15 text-ink"
+            : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10"
         }`}
       >
-        <span className="text-xs">More</span>
+        <span>More</span>
         <svg
           className={`w-3.5 h-3.5 transition-transform duration-200 ${
-            open ? "rotate-180 text-subtitle" : "opacity-70"
+            open ? "rotate-180" : "opacity-70"
           }`}
           viewBox="0 0 24 24"
           fill="none"
@@ -153,12 +153,12 @@ function LanguageDropdown({
       {open && (
         <div
           role="menu"
-          className={`absolute top-full mt-2 z-50 min-w-[210px] max-h-64 overflow-y-auto rounded-2xl border border-line bg-surface p-1.5 shadow-2xl backdrop-blur-md ${
+          className={`absolute top-full mt-2 z-50 min-w-[220px] max-h-64 overflow-y-auto rounded-2xl border border-line bg-surface/95 p-1.5 shadow-2xl backdrop-blur-xl ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >
-          <div className="px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-muted/70 border-b border-line/40 mb-1">
-            All Languages
+          <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted border-b border-line/40 mb-1">
+            Languages
           </div>
           {ALL_LANGS.map((lang) => {
             const isSelected = current === lang.code;
@@ -171,15 +171,15 @@ function LanguageDropdown({
                   onSelect(lang.code);
                   setOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                   isSelected
-                    ? "bg-subtitle text-black font-bold shadow-sm"
-                    : "text-muted hover:text-ink hover:bg-white/10"
+                    ? "bg-black/5 dark:bg-white/10 text-ink font-semibold"
+                    : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/5"
                 }`}
               >
                 <span>{lang.native}</span>
-                <span className={`text-xs ${isSelected ? "text-black/70" : "text-muted/60"}`}>
-                  {lang.name}
+                <span className={`text-xs ${isSelected ? "text-ink font-semibold" : "text-muted"}`}>
+                  {lang.name} {isSelected && "✓"}
                 </span>
               </button>
             );
@@ -583,56 +583,52 @@ export function TranslatorCard({
   return (
     <section
       aria-label="Google Translate tool"
-      className="rounded-3xl border border-line bg-surface shadow-xl overflow-hidden transition-all min-w-0"
+      className="apple-card rounded-3xl overflow-hidden transition-all min-w-0"
     >
-      {/* Top Header / Language Switcher Bar - Perfectly Centered & Symmetrical */}
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center border-b border-line/70 bg-surface/50 px-4 py-2.5 gap-3 sm:gap-4">
-        {/* Source Language Tabs (Left Column) */}
-        <div className="flex items-center gap-1.5 min-w-0">
-          <button
-            type="button"
-            onClick={() => selectSrcLang("auto")}
-            className={`h-8 px-3.5 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              srcLang === "auto"
-                ? "bg-subtitle text-black font-bold shadow-sm"
-                : "text-muted hover:text-ink hover:bg-line/40"
-            }`}
-          >
-            Detect language {detectedLabel}
-          </button>
-          {topSrcLangs.map((code) => {
-            const lang = ALL_LANGS.find((l) => l.code === code) || { code, native: code };
-            const isActive = srcLang === code;
-            return (
-              <button
-                key={`src-${code}`}
-                type="button"
-                onClick={() => selectSrcLang(code)}
-                className={`h-8 px-3.5 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                  isActive
-                    ? "bg-subtitle text-black font-bold shadow-sm"
-                    : "text-muted hover:text-ink hover:bg-line/40"
-                }`}
-              >
-                {lang.native}
-              </button>
-            );
-          })}
-          <LanguageDropdown
-            current={srcLang}
-            onSelect={selectSrcLang}
-            align="left"
-          />
+      {/* Top Header / Language Switcher Bar */}
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center border-b border-line/60 bg-surface px-4 py-2.5 gap-3">
+        {/* Source Language Segmented Control (Left Column) */}
+        <div className="flex items-center min-w-0">
+          <div className="apple-segmented-container">
+            <button
+              type="button"
+              onClick={() => selectSrcLang("auto")}
+              data-active={srcLang === "auto" ? "true" : undefined}
+              className="apple-segmented-item whitespace-nowrap"
+            >
+              Detect language {detectedLabel}
+            </button>
+            {topSrcLangs.map((code) => {
+              const lang = ALL_LANGS.find((l) => l.code === code) || { code, native: code };
+              const isActive = srcLang === code;
+              return (
+                <button
+                  key={`src-${code}`}
+                  type="button"
+                  onClick={() => selectSrcLang(code)}
+                  data-active={isActive ? "true" : undefined}
+                  className="apple-segmented-item whitespace-nowrap"
+                >
+                  {lang.native}
+                </button>
+              );
+            })}
+            <LanguageDropdown
+              current={srcLang}
+              onSelect={selectSrcLang}
+              align="left"
+            />
+          </div>
         </div>
 
-        {/* Swap Button ⇄ (Center Column - EXACTLY in the middle with ample padding!) */}
+        {/* Swap Button ⇄ (Center Column) */}
         <div className="flex items-center justify-center shrink-0 px-2">
           <button
             type="button"
             onClick={handleSwap}
             title="Swap languages"
             aria-label="Swap languages"
-            className="w-8 h-8 rounded-full border border-line bg-surface hover:border-subtitle hover:bg-subtitle/15 text-muted hover:text-ink hover:scale-110 active:scale-95 transition-all flex items-center justify-center shadow-sm cursor-pointer"
+            className="w-8 h-8 rounded-full border border-line bg-black/[0.03] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] text-muted hover:text-ink active:scale-90 transition-all flex items-center justify-center cursor-pointer"
           >
             <svg
               className="w-4 h-4"
@@ -648,9 +644,9 @@ export function TranslatorCard({
           </button>
         </div>
 
-        {/* Target Language Tabs & Save Mode (Right Column) */}
+        {/* Target Language Segmented Control & Save Mode (Right Column) */}
         <div className="flex items-center justify-between gap-2 min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="apple-segmented-container min-w-0">
             {topTargetLangs.map((code) => {
               const lang = ALL_LANGS.find((l) => l.code === code) || { code, native: code };
               const isActive = targetLang === code;
@@ -659,11 +655,8 @@ export function TranslatorCard({
                   key={`target-${code}`}
                   type="button"
                   onClick={() => selectTargetLang(code)}
-                  className={`h-8 px-3.5 text-xs sm:text-sm font-semibold rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                    isActive
-                      ? "bg-subtitle text-black font-bold shadow-sm"
-                      : "text-muted hover:text-ink hover:bg-line/40"
-                  }`}
+                  data-active={isActive ? "true" : undefined}
+                  className="apple-segmented-item whitespace-nowrap"
                 >
                   {lang.native}
                 </button>
@@ -680,17 +673,15 @@ export function TranslatorCard({
           <Link
             href="/settings"
             title="Configure Word Saving in Settings (Auto-save / Manual)"
-            className="h-8 inline-flex items-center gap-1.5 px-2.5 text-xs font-semibold rounded-xl border border-line bg-surface hover:border-subtitle/50 text-muted hover:text-ink transition-all shrink-0 ms-auto"
+            className="h-7 inline-flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-full bg-black/[0.03] dark:bg-white/[0.06] border border-line text-muted hover:text-ink transition-all shrink-0 ms-auto"
           >
             {(settings.translateSaveMode || "manual") === "auto" ? (
               <>
-                <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="font-semibold text-ink">Auto-save: ON ⚡</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-[11px] font-semibold text-ink">Auto-save</span>
               </>
             ) : (
-              <>
-                <span>✍️ Manual save</span>
-              </>
+              <span className="text-[11px]">Manual save</span>
             )}
           </Link>
         </div>
@@ -912,16 +903,18 @@ export function TranslatorCard({
                       setEditNote(customNote);
                       setIsEditing((prev) => !prev);
                     }}
-                    className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
                       isEditing || customTranslation || customNote
-                        ? "bg-subtitle/20 text-subtitle border-subtitle/40"
-                        : "text-muted hover:text-ink hover:bg-line/40 border-line"
+                        ? "bg-subtitle/15 text-ink border-subtitle/40 font-semibold"
+                        : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 border-line"
                     }`}
                     title="تعديل المعنى أو إضافة ملاحظة / تعليق بالعربي"
                   >
-                    <span>✏️</span>
-                    <span className="text-xs">
-                      {customTranslation || customNote ? "تعديل المعنى" : "تعديل المعنى أو تعليق"}
+                    <svg className="w-3.5 h-3.5 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                    </svg>
+                    <span>
+                      {customTranslation || customNote ? "تعديل المعنى" : "تعديل أو تعليق"}
                     </span>
                   </button>
                 </div>
@@ -930,8 +923,8 @@ export function TranslatorCard({
                 {(customTranslation || customNote) && !isEditing ? (
                   <div className="flex flex-wrap items-center gap-2 pt-0.5">
                     {customTranslation && customTranslation !== result.translation ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-subtitle/15 border border-subtitle/30 text-xs text-ink font-medium">
-                        <span className="text-subtitle font-bold text-[11px]">✏️ معنى مخصص:</span>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-subtitle/15 border border-subtitle/30 text-xs text-ink font-medium">
+                        <span className="text-subtitle font-bold text-[11px]">معنى مخصص:</span>
                         <span className="font-semibold">{customTranslation}</span>
                         <button
                           type="button"
@@ -948,8 +941,11 @@ export function TranslatorCard({
                     ) : null}
 
                     {customNote ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/30 text-xs text-ink font-medium">
-                        <span className="text-blue-400 font-bold text-[11px]">💬 ملاحظة:</span>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/25 text-xs text-ink font-medium">
+                        <svg className="w-3 h-3 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                        <span className="text-blue-500 font-semibold text-[11px]">ملاحظة:</span>
                         <span dir="auto">{customNote}</span>
                         <button
                           type="button"
@@ -966,16 +962,18 @@ export function TranslatorCard({
 
                 {/* Inline Edit Panel when isEditing is true */}
                 {isEditing ? (
-                  <div className="p-3.5 rounded-2xl bg-surface border border-subtitle/40 shadow-lg space-y-3 animate-in fade-in">
-                    <div className="flex items-center justify-between border-b border-line/40 pb-2">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-subtitle">
-                        <span>✏️</span>
+                  <div className="p-4 rounded-2xl bg-surface border border-line shadow-lg space-y-3 animate-in fade-in">
+                    <div className="flex items-center justify-between border-b border-line/50 pb-2">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-ink">
+                        <svg className="w-3.5 h-3.5 text-subtitle" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                        </svg>
                         <span>تخصيص المعنى أو إضافة تعليق بالعربي</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsEditing(false)}
-                        className="text-xs text-muted hover:text-ink cursor-pointer p-1"
+                        className="text-xs text-muted hover:text-ink cursor-pointer p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
                         aria-label="إغلاق"
                       >
                         ✕
@@ -984,7 +982,7 @@ export function TranslatorCard({
 
                     {/* 1. Meaning input */}
                     <div>
-                      <label className="block text-[11px] font-semibold text-muted mb-1">
+                      <label className="block text-[11px] font-medium text-muted mb-1">
                         الترجمة / المعنى المفضل (Preferred Meaning):
                       </label>
                       <input
@@ -999,7 +997,7 @@ export function TranslatorCard({
 
                     {/* 2. Optional Comment/Note input */}
                     <div>
-                      <label className="block text-[11px] font-semibold text-muted mb-1">
+                      <label className="block text-[11px] font-medium text-muted mb-1">
                         تعليق أو ملاحظة بالعربي (Comment / Context - Optional):
                       </label>
                       <input
@@ -1031,7 +1029,7 @@ export function TranslatorCard({
                         <button
                           type="button"
                           onClick={() => setIsEditing(false)}
-                          className="px-3 py-1.5 text-xs font-semibold rounded-xl text-muted hover:text-ink hover:bg-line/40 cursor-pointer"
+                          className="px-3 py-1.5 text-xs font-medium rounded-xl text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
                         >
                           إلغاء
                         </button>
@@ -1042,7 +1040,7 @@ export function TranslatorCard({
                             setCustomNote(editNote.trim());
                             setIsEditing(false);
                           }}
-                          className="px-4 py-1.5 text-xs font-bold rounded-xl bg-subtitle text-black hover:bg-[#e6b825] cursor-pointer shadow-sm transition-all"
+                          className="btn btn-primary min-h-8 px-4 py-1.5 text-xs rounded-xl cursor-pointer"
                         >
                           ✓ تطبيق التعديل
                         </button>
@@ -1051,20 +1049,20 @@ export function TranslatorCard({
                   </div>
                 ) : null}
 
-                {/* Dictionary Definitions (like in user screenshot) with interactive chips! */}
+                {/* Dictionary Definitions with Apple capsule chips */}
                 {result.definitions && result.definitions.length > 0 ? (
                   <div className="mt-3 pt-3 border-t border-line/50 space-y-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-muted flex items-center justify-between">
                       <span>Dictionary / معاني الكلمة:</span>
-                      <span className="text-[11px] font-normal text-muted/80 lowercase">اضغط على أي معنى لاختياره</span>
+                      <span className="text-[11px] font-normal text-muted/70 lowercase">اضغط على أي معنى لاختياره</span>
                     </span>
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       {result.definitions.map((def, idx) => (
                         <div
                           key={`def-${idx}`}
-                          className="flex flex-wrap items-baseline gap-1.5 text-xs sm:text-sm"
+                          className="flex flex-wrap items-baseline gap-2 text-xs sm:text-sm"
                         >
-                          <span className="inline-block px-1.5 py-0.5 rounded bg-subtitle/15 text-subtitle font-bold text-[11px]">
+                          <span className="inline-block px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/10 text-muted font-medium text-[11px]">
                             {def.partOfSpeech}
                           </span>
                           <div className="flex flex-wrap items-center gap-1.5">
@@ -1079,10 +1077,10 @@ export function TranslatorCard({
                                     setEditMeaning(m.trim());
                                   }}
                                   title="اضغط لتغيير المعنى إلى هذا اللفظ"
-                                  className={`px-2 py-0.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
                                     isCurrent
-                                      ? "bg-subtitle text-black font-bold shadow-xs ring-1 ring-subtitle"
-                                      : "bg-line/40 text-muted hover:text-ink hover:bg-line/70"
+                                      ? "bg-subtitle text-black font-semibold shadow-xs"
+                                      : "bg-black/[0.04] dark:bg-white/[0.08] text-ink hover:bg-black/[0.08] dark:hover:bg-white/[0.12]"
                                   }`}
                                 >
                                   {m}
@@ -1146,20 +1144,20 @@ export function TranslatorCard({
             {result?.translation ? (
               (settings.translateSaveMode || "manual") === "auto" ? (
                 <div
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold border transition-all ${
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                     savingWord
-                      ? "bg-subtitle/20 text-subtitle border-subtitle/30"
-                      : "bg-green-600/20 text-green-500 border-green-500/30"
+                      ? "bg-subtitle/15 text-ink border-subtitle/30"
+                      : "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20"
                   }`}
                 >
                   {savingWord ? (
                     <>
-                      <span className="h-3.5 w-3.5 rounded-full border-2 border-subtitle border-t-transparent animate-spin" />
-                      <span>Auto-saving word...</span>
+                      <span className="h-3 w-3 rounded-full border-2 border-subtitle border-t-transparent animate-spin" />
+                      <span>Auto-saving...</span>
                     </>
                   ) : (
                     <>
-                      <span>⚡ Auto-saved to words ✓</span>
+                      <span>✓ Auto-saved to words</span>
                     </>
                   )}
                 </div>
@@ -1168,10 +1166,10 @@ export function TranslatorCard({
                   type="button"
                   onClick={handleSaveWord}
                   disabled={isAlreadySaved || savingWord}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm ${
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                     isAlreadySaved || saveSuccess
-                      ? "bg-green-600/20 text-green-500 border border-green-500/30 cursor-default"
-                      : "bg-subtitle text-black hover:bg-[#e6b825] active:scale-95 cursor-pointer"
+                      ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20 cursor-default"
+                      : "btn btn-primary min-h-9 px-4 py-1.5 text-xs sm:text-sm"
                   }`}
                 >
                   {savingWord ? (
@@ -1181,11 +1179,17 @@ export function TranslatorCard({
                     </>
                   ) : isAlreadySaved || saveSuccess ? (
                     <>
-                      <span>✓ In your words</span>
+                      <svg className="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span>In your words</span>
                     </>
                   ) : (
                     <>
-                      <span>⭐ + Save to My Words</span>
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                      <span>Save to My Words</span>
                     </>
                   )}
                 </button>

@@ -244,57 +244,72 @@ export default function WordsPage() {
       ) : null}
 
       {languageTabs.length > 1 ? (
-        <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-line bg-surface p-2">
-          <span className="px-2 text-xs font-bold uppercase tracking-wider text-muted">Language:</span>
-          <button
-            type="button"
-            aria-pressed={langFilter === "all"}
-            onClick={() => setLangFilter("all")}
-            className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors ${
-              langFilter === "all" ? "bg-subtitle text-subtitle-ink" : "text-muted hover:text-ink"
-            }`}
-          >
-            All ({words?.length || 0})
-          </button>
-          {languageTabs.map((l) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-muted">Language:</span>
+          <div className="apple-segmented-container">
             <button
-              key={l.id}
               type="button"
-              aria-pressed={langFilter === l.id}
-              onClick={() => setLangFilter(l.id)}
-              className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors ${
-                langFilter === l.id ? "bg-subtitle text-subtitle-ink" : "text-muted hover:text-ink"
-              }`}
+              aria-pressed={langFilter === "all"}
+              onClick={() => setLangFilter("all")}
+              data-active={langFilter === "all" ? "true" : undefined}
+              className="apple-segmented-item"
             >
-              {l.label} ({l.count})
+              All ({words?.length || 0})
             </button>
-          ))}
+            {languageTabs.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                aria-pressed={langFilter === l.id}
+                onClick={() => setLangFilter(l.id)}
+                data-active={langFilter === l.id ? "true" : undefined}
+                className="apple-segmented-item"
+              >
+                {l.label} ({l.count})
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-        <input
-          className="field"
-          type="search"
-          placeholder="Search words or translations"
-          aria-label="Search words"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <div role="group" aria-label="Filter" className="flex flex-wrap gap-1">
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              aria-pressed={filter === f.id}
-              onClick={() => setFilter(f.id)}
-              className={`rounded-xl px-3 py-2 text-sm font-medium ${
-                filter === f.id ? "bg-subtitle text-subtitle-ink" : "text-muted hover:text-ink"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="relative">
+          <svg
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            className="field pl-10"
+            type="search"
+            placeholder="Search words or translations..."
+            aria-label="Search words"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <div role="group" aria-label="Filter" className="overflow-x-auto py-1">
+          <div className="apple-segmented-container">
+            {FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                aria-pressed={filter === f.id}
+                onClick={() => setFilter(f.id)}
+                data-active={filter === f.id ? "true" : undefined}
+                className="apple-segmented-item whitespace-nowrap"
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -307,13 +322,13 @@ export default function WordsPage() {
       {visible.length === 0 ? (
         <EmptyState title="No matches">Try a different search or filter.</EmptyState>
       ) : (
-        <ul className="divide-y divide-line rounded-2xl border border-line bg-surface">
+        <ul className="apple-card divide-y divide-line/50 overflow-hidden">
           {visible.map((w) => {
             const status = wordStatus(w.box, w.next_review, now);
             return (
               <li
                 key={w.id}
-                className="grid gap-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_14rem] sm:items-center sm:gap-6"
+                className="grid gap-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_14rem] sm:items-center sm:gap-6 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <div className="relative shrink-0">
@@ -399,10 +414,10 @@ export default function WordsPage() {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
-                        className={`btn min-h-9 px-3 py-1.5 text-sm font-semibold transition-all cursor-pointer ${
+                        className={`btn min-h-8 px-2.5 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
                           editingId === w.id
-                            ? "bg-subtitle text-black font-bold shadow-xs"
-                            : "btn-quiet text-muted hover:text-ink hover:bg-line/40"
+                            ? "bg-subtitle text-black font-semibold shadow-xs"
+                            : "btn-quiet text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10"
                         }`}
                         title={`Edit “${w.text}”`}
                         aria-label={`Edit “${w.text}”`}
@@ -416,11 +431,14 @@ export default function WordsPage() {
                           }
                         }}
                       >
-                        <span>✏️ Edit</span>
+                        <svg className="w-3.5 h-3.5 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                        </svg>
+                        <span>Edit</span>
                       </button>
                       <button
                         type="button"
-                        className="btn btn-quiet min-h-9 px-3 py-1.5 text-sm text-bad hover:bg-bad-soft cursor-pointer"
+                        className="btn btn-quiet min-h-8 px-2.5 py-1 text-xs font-medium text-muted hover:text-bad hover:bg-bad/10 rounded-lg cursor-pointer"
                         aria-label={`Delete “${w.text}”`}
                         onClick={() => setConfirmId(w.id)}
                       >

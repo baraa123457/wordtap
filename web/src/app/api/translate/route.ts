@@ -42,8 +42,8 @@ async function handleTranslate(
     }
 
     const dtParams = forceExact
-      ? "&dt=t&dt=bd&dt=rm"
-      : "&dt=t&dt=bd&dt=rm&dt=qca&dt=sp";
+      ? "&dt=t&dt=bd&dt=rm&dt=at&dt=rw"
+      : "&dt=t&dt=bd&dt=rm&dt=qca&dt=sp&dt=at&dt=rw";
 
     const url = `https://translate.googleapis.com/translate_a/single?client=dict-chrome-ex&sl=${encodeURIComponent(
       src,
@@ -156,6 +156,36 @@ async function handleTranslate(
               partOfSpeech: entry[0],
               meanings: entry[1].filter((m: any) => typeof m === "string").slice(0, 5),
             });
+          }
+        }
+      }
+
+      // Also extract alternative translations from data[5] (synonyms/alternatives)
+      if (Array.isArray(data[5])) {
+        for (const group of data[5]) {
+          if (Array.isArray(group) && Array.isArray(group[2])) {
+            const altMeanings: string[] = [];
+            for (const item of group[2]) {
+              if (Array.isArray(item) && typeof item[0] === "string" && item[0].trim()) {
+                const alt = item[0].trim();
+                if (!altMeanings.includes(alt) && alt.toLowerCase() !== translation.trim().toLowerCase()) {
+                  altMeanings.push(alt);
+                }
+              }
+            }
+            if (altMeanings.length > 0) {
+              const existingAlt = definitions.find((d) => d.partOfSpeech === "alternatives");
+              if (existingAlt) {
+                for (const m of altMeanings) {
+                  if (!existingAlt.meanings.includes(m)) existingAlt.meanings.push(m);
+                }
+              } else {
+                definitions.push({
+                  partOfSpeech: "alternatives",
+                  meanings: altMeanings.slice(0, 6),
+                });
+              }
+            }
           }
         }
       }

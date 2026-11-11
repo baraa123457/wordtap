@@ -265,33 +265,33 @@ export default function DashboardPage() {
         <p className="-mt-6 text-muted">Next review {formatDueIn(nextDue, now)}.</p>
       ) : null}
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-6 border-y border-line py-6 sm:grid-cols-4 min-w-0">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 min-w-0">
         <Stat
           label="Day streak"
           value={eff.streak}
-          icon={eff.streak > 0 ? <FireIcon size={24} className="text-orange-500" /> : undefined}
+          icon={eff.streak > 0 ? <FireIcon size={20} className="text-orange-500" /> : undefined}
         />
         <Stat label="Total XP" value={stats.xp} />
         <Stat label="Words saved" value={words.length} />
         <Stat label="Mastered" value={mastered} />
       </dl>
 
-      <section aria-labelledby="recent" className="grid gap-4 min-w-0">
-        <div className="flex items-baseline justify-between">
-          <h2 id="recent" className="text-xl font-semibold">
+      <section aria-labelledby="recent" className="grid gap-3 min-w-0">
+        <div className="flex items-baseline justify-between px-1">
+          <h2 id="recent" className="text-lg font-semibold text-ink">
             Latest words
           </h2>
-          <Link href="/words" className="font-medium text-muted underline underline-offset-4 hover:text-ink">
-            All {words.length} words
+          <Link href="/words" className="text-xs font-semibold text-muted hover:text-ink transition-colors">
+            View all {words.length} →
           </Link>
         </div>
-        <ul className="divide-y divide-line rounded-2xl border border-line bg-surface overflow-hidden min-w-0">
+        <ul className="apple-card divide-y divide-line/50 overflow-hidden min-w-0">
           {words.slice(0, 5).map((w) => (
-            <li key={w.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 min-w-0">
-              <span dir="auto" className="truncate font-semibold text-ink min-w-0">
+            <li key={w.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3.5 min-w-0 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors">
+              <span dir="auto" className="truncate font-semibold text-ink min-w-0 text-sm sm:text-base">
                 {w.text}
               </span>
-              <span dir="auto" className="truncate text-muted min-w-0 text-sm sm:text-base">
+              <span dir="auto" className="truncate text-muted min-w-0 text-xs sm:text-sm">
                 {w.translation}
               </span>
               <div className="shrink-0">
@@ -315,9 +315,9 @@ function Stat({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-1">
-      <dt className="text-sm text-muted">{label}</dt>
-      <dd className="flex items-center gap-2 text-3xl font-bold tabular-nums">
+    <div className="apple-card p-4 flex flex-col justify-between gap-1 shadow-2xs">
+      <dt className="text-xs font-medium text-muted">{label}</dt>
+      <dd className="flex items-center gap-2 text-2xl font-bold tracking-tight text-ink tabular-nums">
         {icon}
         <span>{value.toLocaleString("en")}</span>
       </dd>

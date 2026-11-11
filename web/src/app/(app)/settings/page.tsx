@@ -160,7 +160,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Appearance & Dark Mode */}
-      <section className="rounded-2xl border border-line bg-surface p-6 grid gap-6">
+      <section className="apple-card p-6 grid gap-6">
         <h2 className="text-xl font-bold border-b border-line pb-3">Appearance / Dark Mode</h2>
 
         <div className="grid gap-3 sm:grid-cols-3">
@@ -188,7 +188,7 @@ export default function SettingsPage() {
       </section>
 
       {/* 1. Practice & Learning */}
-      <section className="rounded-2xl border border-line bg-surface p-6 grid gap-6">
+      <section className="apple-card p-6 grid gap-6">
         <h2 className="text-xl font-bold border-b border-line pb-3">Practice & Review</h2>
 
         {/* Auto-Advance */}
@@ -366,7 +366,7 @@ export default function SettingsPage() {
       </section>
 
       {/* 2. Languages & Translation */}
-      <section className="rounded-2xl border border-line bg-surface p-6 grid gap-6">
+      <section className="apple-card p-6 grid gap-6">
         <h2 className="text-xl font-bold border-b border-line pb-3">Translation & Languages</h2>
 
         {/* Translation Word Saving Mode (Auto vs Manual) */}
@@ -474,7 +474,7 @@ export default function SettingsPage() {
       </section>
 
       {/* 3. Audio & Voice Settings */}
-      <section className="rounded-2xl border border-line bg-surface p-6 grid gap-6">
+      <section className="apple-card p-6 grid gap-6">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-3">
           <div>
             <h2 className="text-xl font-bold">Audio & Speaker Voice</h2>
@@ -616,7 +616,7 @@ export default function SettingsPage() {
       </section>
 
       {/* 4. Account & Security */}
-      <section className="rounded-2xl border border-line bg-surface p-6 grid gap-6">
+      <section className="apple-card p-6 grid gap-6">
         <h2 className="text-xl font-bold border-b border-line pb-3">Account & Security</h2>
 
         <div>
