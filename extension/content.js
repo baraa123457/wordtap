@@ -65,23 +65,26 @@
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
     <style>
-      .tip{position:fixed;display:none;max-width:320px;min-width:130px;padding:10px 12px;
-        background:#111827;color:#fff;border-radius:10px;font:14px/1.4 system-ui,sans-serif;
-        box-shadow:0 6px 24px rgba(0,0,0,.45);border:1px solid #374151;pointer-events:auto}
-      .orig-line{display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-right:16px}
-      .orig{opacity:.75;font-size:12px;word-break:break-word}
-      .spk-btn{background:none;border:none;color:#facc3b;cursor:pointer;padding:2px 4px;border-radius:4px;display:inline-flex;align-items:center;transition:transform .1s,color .1s}
+      .tip{position:fixed;display:none;max-width:320px;min-width:140px;padding:12px 14px;
+        background:rgba(14, 16, 34, 0.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:#ffffff;
+        border-radius:14px;font:13.5px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Readex Pro",system-ui,sans-serif;
+        box-shadow:0 12px 36px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,0.12);pointer-events:auto;
+        animation:tipFadeIn 0.12s ease-out}
+      @keyframes tipFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+      .orig-line{display:flex;align-items:center;gap:6px;margin-bottom:5px;padding-right:16px}
+      .orig{color:#959cc2;font-size:12px;font-weight:600;word-break:break-word}
+      .spk-btn{background:none;border:none;color:#facc3b;cursor:pointer;padding:2px 4px;border-radius:5px;display:inline-flex;align-items:center;transition:transform .1s,color .1s}
       .spk-btn:hover{color:#ffe270;transform:scale(1.15)}
-      .spk-btn.speaking{color:#3fd69a}
-      .tr{font-size:17px;font-weight:600;word-break:break-word}
+      .spk-btn.speaking{color:#34d399}
+      .tr{font-size:18px;font-weight:700;color:#ffffff;word-break:break-word;font-family:"Readex Pro",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;line-height:1.4}
       .tr[dir=rtl]{text-align:right}
-      .saved{margin-top:6px;font-size:11px;color:#34d399;display:none}
+      .saved{margin-top:6px;font-size:11px;font-weight:600;color:#34d399;display:none}
       .saved[data-warn="true"]{color:#fbbf24}
-      .save-btn{background:#facc3b;color:#000;border:none;cursor:pointer;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:700;display:none;align-items:center;gap:4px;margin-top:8px;transition:background .1s,transform .1s}
+      .save-btn{background:#facc3b;color:#12152e;border:1px solid #d4a311;cursor:pointer;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:700;display:none;align-items:center;gap:4px;margin-top:8px;box-shadow:0 1px 3px rgba(0,0,0,0.2), 0 2px 6px rgba(250,204,59,0.3);transition:background .1s,transform .1s}
       .save-btn:hover{background:#ffe270;transform:scale(1.03)}
-      .save-btn.saved{background:rgba(52,211,153,.2);color:#34d399;border:1px solid rgba(52,211,153,.3);cursor:default;transform:none}
-      .x{position:absolute;top:2px;right:6px;cursor:pointer;opacity:.5;font-size:14px}
-      .x:hover{opacity:1}
+      .save-btn.saved{background:rgba(52,211,153,.15);color:#34d399;border:1px solid rgba(52,211,153,.3);cursor:default;transform:none;box-shadow:none}
+      .x{position:absolute;top:4px;right:8px;cursor:pointer;color:#959cc2;font-size:16px;line-height:1;transition:color .12s}
+      .x:hover{color:#ffffff}
     </style>
     <div class="tip">
       <span class="x">×</span>

@@ -136,17 +136,19 @@
       position: fixed;
       display: none;
       flex-direction: column;
-      gap: 7px;
-      min-width: 190px;
-      max-width: 330px;
-      padding: 12px 14px 11px;
-      background: #151833;
+      gap: 8px;
+      min-width: 200px;
+      max-width: 340px;
+      padding: 13px 15px 12px;
+      background: rgba(14, 16, 34, 0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       color: #ffffff;
-      border-radius: 14px;
-      border: 1px solid #262a52;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 12px 36px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3);
       pointer-events: auto;
-      font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+      font: 13.5px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Readex Pro", system-ui, sans-serif;
       animation: fadeIn 0.12s ease-out;
       user-select: text;
     }
@@ -173,7 +175,7 @@
     .orig {
       font-size: 13px;
       font-weight: 600;
-      color: #a9aed3;
+      color: #959cc2;
       word-break: break-word;
       max-height: 38px;
       overflow: hidden;
@@ -187,7 +189,7 @@
       justify-content: center;
       background: none;
       border: none;
-      color: #ffd23f;
+      color: #facc3b;
       cursor: pointer;
       padding: 3px 5px;
       border-radius: 6px;
@@ -196,15 +198,15 @@
     }
     .speak-btn:hover {
       color: #ffe270;
-      background: rgba(255, 210, 63, 0.16);
+      background: rgba(250, 204, 59, 0.16);
       transform: scale(1.12);
     }
     .speak-btn:active {
       transform: scale(0.96);
     }
     .speak-btn.speaking {
-      color: #3fd69a;
-      background: rgba(63, 214, 154, 0.18);
+      color: #34d399;
+      background: rgba(52, 211, 153, 0.18);
     }
     .speak-btn.speaking .wave-1 {
       animation: soundwave 0.5s infinite alternate ease-in-out;
@@ -220,7 +222,7 @@
     .close-btn {
       background: none;
       border: none;
-      color: #a9aed3;
+      color: #959cc2;
       cursor: pointer;
       font-size: 16px;
       line-height: 1;
@@ -232,11 +234,12 @@
 
     /* Translation text */
     .tr {
-      font-size: 18px;
+      font-size: 19px;
       font-weight: 700;
       word-break: break-word;
       color: #ffffff;
-      line-height: 1.35;
+      line-height: 1.4;
+      font-family: "Readex Pro", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     }
     .tr[dir="rtl"] { text-align: right; }
 
@@ -265,20 +268,21 @@
     .save-btn {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      background: #ffd23f;
-      color: #261d00;
-      border: none;
+      gap: 5px;
+      background: #facc3b;
+      color: #12152e;
+      border: 1px solid #d4a311;
       border-radius: 8px;
-      padding: 5px 11px;
-      font: 600 12px/1 inherit;
+      padding: 5px 12px;
+      font: 700 12px/1 inherit;
       cursor: pointer;
       white-space: nowrap;
       flex: none;
-      transition: background 0.12s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2), 0 2px 6px rgba(250,204,59,0.3);
+      transition: background 0.12s, transform 0.1s;
     }
-    .save-btn:hover { background: #ffe270; }
-    .save-btn:disabled { opacity: 0.5; cursor: default; }
+    .save-btn:hover { background: #ffe270; transform: scale(1.02); }
+    .save-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
     .save-btn[hidden] { display: none !important; }
 
     /* Loading animation */
