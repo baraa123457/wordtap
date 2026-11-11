@@ -28,6 +28,18 @@ export function ChoiceView({ q, selected, phase, onSelect }: Props) {
     if (q.variant === "listen" && q.speak) speak(q.speak.text, q.speak.lang);
   }, [q]);
 
+  const speakOption = (option: string) => {
+    if (!canSpeak()) return;
+    const hasArabic = /[\u0600-\u06FF]/.test(option);
+    const optLang = hasArabic ? "ar" : q.optionsLang || (q.variant === "to-translation" ? "ar" : "en");
+    speak(option, optLang);
+  };
+
+  const handleSelect = (option: string) => {
+    onSelect(option);
+    speakOption(option);
+  };
+
   // Keys 1-4 pick an option.
   useEffect(() => {
     if (locked) return;
@@ -35,11 +47,11 @@ export function ChoiceView({ q, selected, phase, onSelect }: Props) {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const index = Number(e.key) - 1;
       const option = q.options[index];
-      if (option !== undefined) onSelect(option);
+      if (option !== undefined) handleSelect(option);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [locked, q, onSelect]);
+  }, [locked, q, handleSelect]);
 
   function stateOf(option: string): string | undefined {
     if (locked) {
@@ -94,18 +106,36 @@ export function ChoiceView({ q, selected, phase, onSelect }: Props) {
             type="button"
             role="radio"
             aria-checked={option === selected}
-            className="option"
+            className="option group relative flex items-center justify-between"
             data-state={stateOf(option)}
             data-flash={locked && option === selected && option !== q.answer}
             disabled={locked}
-            onClick={() => onSelect(option)}
+            onClick={() => handleSelect(option)}
           >
-            <span className="kbd" aria-hidden>
-              {i + 1}
-            </span>
-            <span dir="auto" className="min-w-0 break-words">
-              {option}
-            </span>
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="kbd shrink-0" aria-hidden>
+                {i + 1}
+              </span>
+              <span dir="auto" className="min-w-0 break-words text-start">
+                {option}
+              </span>
+            </div>
+
+            {canSpeak() ? (
+              <span
+                role="button"
+                tabIndex={-1}
+                aria-label={`Hear “${option}”`}
+                title={`Pronounce “${option}”`}
+                className="p-1 rounded-full text-muted hover:text-ink hover:bg-black/10 dark:hover:bg-white/10 shrink-0 transition-opacity opacity-60 group-hover:opacity-100 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  speakOption(option);
+                }}
+              >
+                <SpeakerIcon size={18} />
+              </span>
+            ) : null}
           </button>
         ))}
       </div>

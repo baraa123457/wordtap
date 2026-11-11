@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, type FormEvent } from "react";
 import type { TypeQuestion } from "@/lib/session";
+import { canSpeak, speak } from "@/lib/speech";
+import { SpeakerIcon } from "../Icons";
 import type { Phase } from "./types";
 
 type Props = {
@@ -34,8 +36,23 @@ export function TypeView({ q, value, phase, onChange, onSubmit }: Props) {
           <span>{instruction}</span>
         </div>
         <div className="frame-stage" style={{ minHeight: "12rem" }}>
-          <p className="sub text-4xl sm:text-5xl" dir="auto">
+          <p className="sub flex items-center justify-center gap-3 text-4xl sm:text-5xl" dir="auto">
             <span className="sub-hl">{q.prompt}</span>
+            {canSpeak() ? (
+              <button
+                type="button"
+                aria-label={`Hear “${q.prompt}”`}
+                title={`Hear “${q.prompt}”`}
+                className="rounded-full p-2 text-white/80 hover:text-white cursor-pointer"
+                style={{ WebkitTextStroke: 0 }}
+                onClick={() => {
+                  const hasAr = /[\u0600-\u06FF]/.test(q.prompt);
+                  speak(q.prompt, hasAr ? "ar" : "en");
+                }}
+              >
+                <SpeakerIcon size={24} />
+              </button>
+            ) : null}
           </p>
         </div>
         <div className="frame-bar">

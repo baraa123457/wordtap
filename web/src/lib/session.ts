@@ -17,6 +17,8 @@ export type ChoiceQuestion = {
   answer: string;
   /** Text and language to read aloud, when the question is about sound. */
   speak: { text: string; lang: string } | null;
+  /** Language of the option choices, so any choice can be spoken aloud */
+  optionsLang?: string;
   context: string;
 };
 
@@ -156,6 +158,8 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         ? { text: word.text, lang: srcLang }
         : null;
 
+      const optionsLang = isToWord || variant === "listen" ? srcLang : targetLang;
+
       return {
         type: "choice",
         id,
@@ -165,6 +169,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         options: shuffle([answer, ...wrong], rng),
         answer,
         speak,
+        optionsLang,
         context,
       };
     };

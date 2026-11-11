@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { canSpeak, speak } from "@/lib/speech";
+import { SpeakerIcon } from "../Icons";
 import type { Phase } from "./types";
 
 type Props = {
@@ -123,9 +125,23 @@ export function FeedbackBar({ phase, answer, canCheck, onCheck, onSkip, onContin
               <p className="text-lg font-bold">
                 {phase === "typo" ? "Almost: watch the spelling" : "Not quite"}
               </p>
-              <p className="text-ink">
+              <p className="text-ink flex items-center gap-2">
                 <span className="text-muted">Answer: </span>
                 <strong dir="auto">{answer}</strong>
+                {canSpeak() ? (
+                  <button
+                    type="button"
+                    aria-label={`Hear “${answer}”`}
+                    title={`Pronounce “${answer}”`}
+                    className="p-1 rounded-full text-muted hover:text-ink cursor-pointer"
+                    onClick={() => {
+                      const hasAr = /[\u0600-\u06FF]/.test(answer);
+                      speak(answer, hasAr ? "ar" : "en");
+                    }}
+                  >
+                    <SpeakerIcon size={16} />
+                  </button>
+                ) : null}
               </p>
             </div>
             <button
