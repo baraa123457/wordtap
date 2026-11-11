@@ -239,32 +239,59 @@
         <div class="control-col">
           <div class="section-subtitle">When I select a word or phrase:</div>
 
-          <!-- Option 1: Icon -->
+          <!-- Option 1: Icon (Recommended) -->
           <div class="radio-option">
             <input type="radio" id="mode-icon" name="selectionMode" value="icon" />
             <label class="radio-label-wrap" for="mode-icon">
-              <div class="radio-title">Display icon that I can click to show pop-up.</div>
-            </label>
-          </div>
-
-          <!-- Option 2: Immediate (Default) -->
-          <div class="radio-option">
-            <input type="radio" id="mode-immediate" name="selectionMode" value="immediate" />
-            <label class="radio-label-wrap" for="mode-immediate">
-              <div class="radio-title">Immediately display pop-up.</div>
+              <div class="radio-title">Display small floating icon that I can click (Recommended for chat & reading).</div>
               <div class="radio-desc">
-                Any text selected in your Chrome browser is sent to the translation server to determine if a translation should be displayed.
+                Shows a tiny unobtrusive WordTap icon next to your selection so chat replies, code, and articles are never covered.
               </div>
             </label>
           </div>
 
-          <!-- Option 3: Off -->
+          <!-- Option 2: Immediate -->
+          <div class="radio-option">
+            <input type="radio" id="mode-immediate" name="selectionMode" value="immediate" />
+            <label class="radio-label-wrap" for="mode-immediate">
+              <div class="radio-title">Immediately display pop-up card.</div>
+              <div class="radio-desc">
+                Automatically shows the translation card as soon as text is selected.
+              </div>
+            </label>
+          </div>
+
+          <!-- Option 3: Hold Alt Key -->
+          <div class="radio-option">
+            <input type="radio" id="mode-alt" name="selectionMode" value="alt" />
+            <label class="radio-label-wrap" for="mode-alt">
+              <div class="radio-title">Only show pop-up when holding Alt / Option key while selecting.</div>
+              <div class="radio-desc">
+                Normal highlighting or copying text in chats won't trigger pop-ups unless Alt is pressed.
+              </div>
+            </label>
+          </div>
+
+          <!-- Option 4: Off -->
           <div class="radio-option">
             <input type="radio" id="mode-off" name="selectionMode" value="off" />
             <label class="radio-label-wrap" for="mode-off">
               <div class="radio-title">Don't display icon or pop-up.</div>
               <div class="radio-desc">
                 You can still translate words in video subtitles or by using the WordTap extension popup.
+              </div>
+            </label>
+          </div>
+
+          <!-- AI Chat Protection Checkbox -->
+          <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line);">
+            <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="protectAiChats" checked style="margin-top: 3px; accent-color: var(--focus);" />
+              <div>
+                <div style="font-weight: 600; color: var(--ink);">🤖 Protect AI Chat Assistants (Claude, ChatGPT, Gemini, Copilot)</div>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">
+                  Always use the non-intrusive floating icon on AI chat sites so AI answers are never blocked or covered while reading.
+                </div>
               </div>
             </label>
           </div>

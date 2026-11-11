@@ -43,6 +43,22 @@
     ".vjs-text-track-display"
   ].join(",");
 
+  const AI_CHAT_HOSTS = [
+    "claude.ai",
+    "chatgpt.com",
+    "chat.openai.com",
+    "gemini.google.com",
+    "perplexity.ai",
+    "copilot.microsoft.com",
+    "poe.com",
+    "chat.deepseek.com",
+    "aistudio.google.com",
+    "grok.com"
+  ];
+  const isAiChatSite =
+    typeof window !== "undefined" &&
+    AI_CHAT_HOSTS.some((h) => window.location.hostname.includes(h));
+
   const SAVE_NOTES = {
     synced:       { text: "✓ Saved to your WordTap account", warn: false },
     queued:       { text: "✓ Saved · will sync when online", warn: true },
@@ -80,7 +96,8 @@
     saveWords: false,
     translateSaveMode: "manual",
     targetLang: "ar",
-    selectionMode: "immediate" // "immediate" | "icon" | "off"
+    selectionMode: isAiChatSite ? "icon" : "immediate", // "immediate" | "icon" | "alt" | "off"
+    protectAiChats: true,
   };
 
   if (isContextValid() && chrome.storage && chrome.storage.sync) {
@@ -108,49 +125,52 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* Floating icon for "Show icon" mode */
+    /* Non-intrusive floating icon: discreet 28px bubble that never blocks text */
     .icon-btn {
       position: fixed;
       display: none;
       align-items: center;
       justify-content: center;
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
-      background: #151833;
-      border: 2px solid #262a52;
+      background: #141731;
+      border: 1.5px solid #facc3b;
       cursor: pointer;
       pointer-events: auto;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
       transition: transform 0.12s ease, box-shadow 0.12s ease;
       user-select: none;
+      z-index: 2147483647;
     }
     .icon-btn:hover {
-      transform: scale(1.12);
-      box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+      transform: scale(1.15);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.65);
+      background: #1a1e3f;
     }
     .icon-btn svg { display: block; }
 
-    /* Translation pop-up card */
+    /* Compact translation card (~50% smaller footprint so reading is never obstructed) */
     .card {
       position: fixed;
       display: none;
       flex-direction: column;
-      gap: 8px;
-      min-width: 200px;
-      max-width: 340px;
-      padding: 13px 15px 12px;
+      gap: 6px;
+      min-width: 210px;
+      max-width: 320px;
+      padding: 10px 13px 10px;
       background: rgba(14, 16, 34, 0.95);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       color: #ffffff;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 12px 36px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3);
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.3);
       pointer-events: auto;
-      font: 13.5px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Readex Pro", system-ui, sans-serif;
+      font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Readex Pro", system-ui, sans-serif;
       animation: fadeIn 0.12s ease-out;
       user-select: text;
+      z-index: 2147483647;
     }
 
     @keyframes fadeIn {
@@ -158,31 +178,33 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Header row with word, speaker icon, and close button */
+    /* Draggable header row */
     .card-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 6px;
+      cursor: grab;
+      user-select: none;
     }
     .orig-wrap {
       display: flex;
       align-items: center;
-      gap: 7px;
+      gap: 5px;
       flex: 1;
       min-width: 0;
     }
     .orig {
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       color: #959cc2;
-      word-break: break-word;
-      max-height: 38px;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      max-width: 135px;
     }
 
-    /* Dynamic Speaker Button */
+    /* Compact Dynamic Speaker Button */
     .speak-btn {
       display: inline-flex;
       align-items: center;
@@ -191,18 +213,15 @@
       border: none;
       color: #facc3b;
       cursor: pointer;
-      padding: 3px 5px;
-      border-radius: 6px;
+      padding: 2px 3px;
+      border-radius: 5px;
       flex: none;
       transition: color 0.15s, transform 0.1s, background-color 0.15s;
     }
     .speak-btn:hover {
       color: #ffe270;
       background: rgba(250, 204, 59, 0.16);
-      transform: scale(1.12);
-    }
-    .speak-btn:active {
-      transform: scale(0.96);
+      transform: scale(1.1);
     }
     .speak-btn.speaking {
       color: #34d399;
@@ -219,6 +238,33 @@
       100% { opacity: 1; transform: scale(1.15); }
     }
 
+    .actions-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex: none;
+    }
+
+    .save-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: #facc3b;
+      color: #12152e;
+      border: 1px solid #d4a311;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font: 700 11.5px/1 inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      flex: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      transition: background 0.12s, transform 0.1s;
+    }
+    .save-btn:hover { background: #ffe270; transform: scale(1.03); }
+    .save-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+    .save-btn[hidden] { display: none !important; }
+
     .close-btn {
       background: none;
       border: none;
@@ -226,64 +272,52 @@
       cursor: pointer;
       font-size: 16px;
       line-height: 1;
-      padding: 0 2px;
+      padding: 2px 4px;
+      border-radius: 4px;
       flex: none;
-      transition: color 0.1s;
+      transition: color 0.1s, background-color 0.1s;
     }
-    .close-btn:hover { color: #ffffff; }
+    .close-btn:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.1);
+    }
 
-    /* Translation text */
+    .tr-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
     .tr {
-      font-size: 19px;
+      font-size: 17px;
       font-weight: 700;
       word-break: break-word;
       color: #ffffff;
-      line-height: 1.4;
+      line-height: 1.35;
       font-family: "Readex Pro", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     }
     .tr[dir="rtl"] { text-align: right; }
 
-    .div {
-      height: 1px;
-      background: #262a52;
-      margin: 1px 0;
-    }
-
-    /* Bottom action & status */
-    .card-bottom {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
     .status {
-      font-size: 11px;
+      font-size: 10.5px;
       color: #34d399;
       display: none;
-      flex: 1;
       word-break: break-word;
     }
     .status[data-warn="true"] { color: #fbbf24; }
 
-    .save-btn {
-      display: inline-flex;
+    /* AI Chat footer banner */
+    .ai-badge {
+      display: flex;
       align-items: center;
-      gap: 5px;
-      background: #facc3b;
-      color: #12152e;
-      border: 1px solid #d4a311;
-      border-radius: 8px;
-      padding: 5px 12px;
-      font: 700 12px/1 inherit;
-      cursor: pointer;
-      white-space: nowrap;
-      flex: none;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2), 0 2px 6px rgba(250,204,59,0.3);
-      transition: background 0.12s, transform 0.1s;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #7982a9;
+      padding-top: 4px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      user-select: none;
     }
-    .save-btn:hover { background: #ffe270; transform: scale(1.02); }
-    .save-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
-    .save-btn[hidden] { display: none !important; }
 
     /* Loading animation */
     @keyframes pulse {
@@ -294,12 +328,12 @@
       display: inline-flex;
       gap: 4px;
       align-items: center;
-      padding: 4px 0;
+      padding: 3px 0;
     }
     .dot {
       display: inline-block;
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
       background: #ffd23f;
       animation: pulse 1.1s infinite;
@@ -310,33 +344,38 @@
 
   <!-- Small floating logo icon for click mode -->
   <div class="icon-btn" id="iconBtn" title="Translate with WordTap" aria-label="Translate with WordTap">
-    <svg width="18" height="13" viewBox="0 0 30 22" aria-hidden="true">
+    <svg width="16" height="12" viewBox="0 0 30 22" aria-hidden="true">
       <rect x="0.5" y="0.5" width="29" height="21" rx="5" fill="#151833" stroke="#262a52"/>
       <rect x="6" y="8" width="18" height="3" rx="1.5" fill="#fff"/>
       <rect x="9" y="14" width="12" height="2.5" rx="1.25" fill="#ffd23f"/>
     </svg>
   </div>
 
-  <!-- Translation Card -->
+  <!-- Compact Translation Card -->
   <div class="card" id="card" role="dialog" aria-label="WordTap Translation">
-    <div class="card-top">
+    <div class="card-top" title="Drag to move card">
       <div class="orig-wrap">
         <span class="orig" id="orig"></span>
         <button class="speak-btn" id="speakBtn" title="Pronounce in English" aria-label="Pronounce in English">
-          <svg class="speaker-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="speaker-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
             <path class="wave wave-1" d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
             <path class="wave wave-2" d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
           </svg>
         </button>
       </div>
-      <button class="close-btn" id="closeBtn" title="Close" aria-label="Close">×</button>
+      <div class="actions-wrap">
+        <button class="save-btn" id="saveBtn">⭐ Save</button>
+        <button class="close-btn" id="closeBtn" title="Close (Esc)" aria-label="Close">×</button>
+      </div>
     </div>
-    <div class="tr" id="tr"></div>
-    <div class="div"></div>
-    <div class="card-bottom">
+    <div class="tr-row">
+      <div class="tr" id="tr"></div>
       <span class="status" id="status"></span>
-      <button class="save-btn" id="saveBtn">＋ Save word</button>
+    </div>
+    <div class="ai-badge" id="aiBadge" style="display:none">
+      <span>🤖 AI Chat Protected</span>
+      <span style="opacity:0.75">Drag to move</span>
     </div>
   </div>
   `;
@@ -349,6 +388,7 @@
   const statusEl = shadow.getElementById("status");
   const saveBtn  = shadow.getElementById("saveBtn");
   const closeBtn = shadow.getElementById("closeBtn");
+  const aiBadge  = shadow.getElementById("aiBadge");
 
   let tipToken = 0;
   let lastEntry = null;
@@ -429,40 +469,102 @@
     }
   });
 
-  function positionElement(el, targetX, targetY) {
-    el.style.display = "flex";
-    const r = el.getBoundingClientRect();
+  // ── Position Floating Icon: Sits cleanly at top-right of selection without blocking text ──
+  function positionIcon(rect) {
+    iconBtn.style.display = "flex";
+    const padding = 8;
+    let left = rect.right + 6;
+    let top = rect.top - 12;
+
+    if (left + 32 > window.innerWidth - padding) {
+      left = Math.max(padding, rect.left - 34);
+    }
+    if (top < padding) {
+      top = rect.bottom + 6;
+    }
+    iconBtn.style.left = Math.round(left) + "px";
+    iconBtn.style.top  = Math.round(top)  + "px";
+  }
+
+  // ── Position Translation Card: Prefers above selection so reading is never obstructed ──
+  function positionCard(rect) {
+    card.style.display = "flex";
+    if (isAiChatSite && aiBadge) {
+      aiBadge.style.display = "flex";
+    }
+    const r = card.getBoundingClientRect();
     const padding = 12;
 
-    let left = targetX - r.width / 2;
+    // Horizontal: center on selection, keep within viewport margins
+    let left = rect.left + rect.width / 2 - r.width / 2;
     if (left < padding) left = padding;
     if (left + r.width > window.innerWidth - padding) {
       left = window.innerWidth - padding - r.width;
     }
 
-    let top = targetY - r.height - 12;
+    // Vertical: Prefer ABOVE selection (so reading continuation is not blocked)
+    let top = rect.top - r.height - 10;
+
+    // If not enough room above, place cleanly BELOW selection
     if (top < padding) {
-      top = targetY + 24;
+      top = rect.bottom + 10;
     }
+    // Clamp inside window
     if (top + r.height > window.innerHeight - padding) {
       top = Math.max(padding, window.innerHeight - padding - r.height);
     }
 
-    el.style.left = Math.round(left) + "px";
-    el.style.top  = Math.round(top)  + "px";
+    card.style.left = Math.round(left) + "px";
+    card.style.top  = Math.round(top)  + "px";
   }
 
-  function showLoadingCard(x, y, text) {
+  // ── Make Card Draggable so User can Slide it Anywhere ──────────────────────
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let cardInitialLeft = 0;
+  let cardInitialTop = 0;
+
+  const cardTop = shadow.querySelector(".card-top");
+  if (cardTop) {
+    cardTop.addEventListener("mousedown", (e) => {
+      if (e.target.closest("button")) return;
+      isDragging = true;
+      cardTop.style.cursor = "grabbing";
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      cardInitialLeft = parseInt(card.style.left, 10) || 0;
+      cardInitialTop = parseInt(card.style.top, 10) || 0;
+      e.preventDefault();
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      card.style.left = Math.round(cardInitialLeft + dx) + "px";
+      card.style.top  = Math.round(cardInitialTop + dy)  + "px";
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (isDragging) {
+        isDragging = false;
+        cardTop.style.cursor = "grab";
+      }
+    });
+  }
+
+  function showLoadingCard(rect, text) {
     mount();
     origEl.textContent = text.length > 70 ? text.slice(0, 67) + "…" : text;
     trEl.innerHTML = `<span class="loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
     setStatus("", false);
     saveBtn.hidden   = true;
     saveBtn.disabled = false;
-    positionElement(card, x, y);
+    positionCard(rect);
   }
 
-  function finaliseCard(x, y, translated, rtl, entry) {
+  function finaliseCard(rect, translated, rtl, entry) {
     trEl.textContent = translated;
     trEl.dir = rtl ? "rtl" : "ltr";
     lastEntry = entry;
@@ -479,13 +581,13 @@
     } else {
       saveBtn.hidden = false;
       saveBtn.disabled = false;
-      saveBtn.innerHTML = `⭐ + Save to My Words`;
-      saveBtn.style.background = "#ffd23f";
-      saveBtn.style.color = "#261d00";
+      saveBtn.innerHTML = `⭐ Save`;
+      saveBtn.style.background = "#facc3b";
+      saveBtn.style.color = "#12152e";
       setStatus("", false);
     }
 
-    positionElement(card, x, y);
+    positionCard(rect);
   }
 
   function doSave(entry, token) {
@@ -518,12 +620,12 @@
     return pageLang || "auto";
   }
 
-  function triggerTranslation(x, y, text, context = "") {
+  function triggerTranslation(rect, text, context = "") {
     if (!isContextValid()) return;
     lastText = text;
     const target = settings.targetLang;
     const token = ++tipToken;
-    showLoadingCard(x, y, text);
+    showLoadingCard(rect, text);
 
     const detectedSrc = detectContextLanguage(text, context);
 
@@ -532,7 +634,7 @@
       if (!res || !res.ok) {
         trEl.textContent = "Translation failed";
         saveBtn.hidden   = true;
-        positionElement(card, x, y);
+        positionCard(rect);
         return;
       }
 
@@ -564,7 +666,7 @@
         title: titleContext,
         sentence: surrounding,
       };
-      finaliseCard(x, y, res.text, RTL_LANGS.includes(target), entry);
+      finaliseCard(rect, res.text, RTL_LANGS.includes(target), entry);
     });
   }
 
@@ -579,12 +681,12 @@
       if (!saved || !saved.ok) {
         setStatus("Could not save word", true);
         saveBtn.disabled = false;
-        saveBtn.innerHTML = `⭐ + Save to My Words`;
+        saveBtn.innerHTML = `⭐ Save`;
         return;
       }
       const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
       setStatus(note.text, note.warn);
-      saveBtn.innerHTML = `✓ In My Words`;
+      saveBtn.innerHTML = `✓ Saved`;
       saveBtn.style.background = "rgba(52,211,153,.2)";
       saveBtn.style.color = "#34d399";
     });
@@ -596,8 +698,8 @@
     e.stopPropagation();
     iconBtn.style.display = "none";
     if (!pendingTranslation) return;
-    const { x, y, text, context } = pendingTranslation;
-    triggerTranslation(x, y, text, context);
+    const { rect, text, context } = pendingTranslation;
+    triggerTranslation(rect, text, context);
   });
 
   function isIgnoredElement(target) {
@@ -611,8 +713,19 @@
   function handleSelection(e) {
     if (!isContextValid()) return;
     if (!settings.enabled) return;
-    const mode = settings.selectionMode || "immediate";
+
+    let mode = settings.selectionMode || (isAiChatSite ? "icon" : "immediate");
     if (mode === "off") return;
+
+    // AI Chat sites (Claude, ChatGPT, Gemini): Default to floating icon so answers are never covered
+    if (isAiChatSite && settings.protectAiChats !== false && mode === "immediate") {
+      mode = "icon";
+    }
+
+    // Alt key mode: only trigger if user is holding Alt / Option
+    if (mode === "alt" && !(e && (e.altKey || e.metaKey))) {
+      return;
+    }
 
     if (e && e.composedPath && e.composedPath().includes(host)) return;
     if (e && isIgnoredElement(e.target)) return;
@@ -626,17 +739,20 @@
       return;
     }
 
-    let x = e ? e.clientX : window.innerWidth / 2;
-    let y = e ? e.clientY : window.innerHeight / 2;
-
+    let rect = null;
     try {
       const range = sel.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        x = rect.left + rect.width / 2;
-        y = rect.top;
+      const r = range.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        rect = r;
       }
     } catch (_) {}
+
+    if (!rect) {
+      const x = e ? e.clientX : window.innerWidth / 2;
+      const y = e ? e.clientY : window.innerHeight / 2;
+      rect = { left: x - 10, right: x + 10, top: y - 10, bottom: y + 10, width: 20, height: 20 };
+    }
 
     let context = "";
     try {
@@ -647,13 +763,13 @@
     mount();
 
     if (mode === "icon") {
-      pendingTranslation = { x, y, text, context };
+      pendingTranslation = { rect, text, context };
       card.style.display = "none";
-      positionElement(iconBtn, x, y);
+      positionIcon(rect);
     } else {
       pendingTranslation = null;
       iconBtn.style.display = "none";
-      triggerTranslation(x, y, text, context);
+      triggerTranslation(rect, text, context);
     }
   }
 
@@ -676,6 +792,17 @@
       hideAll();
     }
   });
+
+  // Automatically tuck away floating icon when scrolling chat messages or page
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (iconBtn.style.display === "flex") {
+        hideAll();
+      }
+    },
+    { passive: true },
+  );
 
   document.addEventListener("selectionchange", () => {
     const sel = window.getSelection();
