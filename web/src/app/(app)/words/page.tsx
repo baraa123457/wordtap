@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { addCustomWord, deleteWord, fetchWords, updateWordLanguage } from "@/lib/api";
+import { addCustomWord, deleteWord, fetchWords, updateWordLanguage, updateWordTranslation } from "@/lib/api";
 import { formatDueIn, wordStatus, type WordStatus } from "@/lib/format";
 import type { Word } from "@/lib/schemas";
 import { canSpeak, speak } from "@/lib/speech";
@@ -44,6 +44,9 @@ export default function WordsPage() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newText, setNewText] = useState("");
@@ -124,6 +127,26 @@ export default function WordsPage() {
     } catch (e) {
       setData(prevWords);
       setActionError(e instanceof Error ? e.message : "Could not update word language.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleSaveTranslation(word: Word) {
+    if (!editText.trim() || editText.trim() === word.translation) {
+      setEditingId(null);
+      return;
+    }
+    setBusyId(word.id);
+    setActionError(null);
+    const prevWords = all;
+    setData(all.map((item) => (item.id === word.id ? { ...item, translation: editText.trim() } : item)));
+    try {
+      await updateWordTranslation(word.id, editText.trim(), word);
+      setEditingId(null);
+    } catch (e) {
+      setData(prevWords);
+      setActionError(e instanceof Error ? e.message : "Could not update word translation.");
     } finally {
       setBusyId(null);
     }
@@ -326,9 +349,60 @@ export default function WordsPage() {
                   ) : null}
                 </div>
                 <div className="min-w-0">
-                  <p className="break-words text-lg">
-                    <bdi>{w.translation}</bdi>
-                  </p>
+                  {editingId === w.id ? (
+                    <div className="flex flex-col gap-1.5 py-1">
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          dir="auto"
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="field py-1 px-2.5 text-sm sm:text-base w-full"
+                          placeholder="Edit translation or add note..."
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void handleSaveTranslation(w);
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-primary min-h-8 px-2.5 py-1 text-xs shrink-0"
+                          onClick={() => void handleSaveTranslation(w)}
+                          disabled={busyId === w.id}
+                        >
+                          {busyId === w.id ? "Saving…" : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-quiet min-h-8 px-2 py-1 text-xs shrink-0"
+                          onClick={() => setEditingId(null)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <span className="text-[11px] text-muted">
+                        يمكنك تعديل المعنى أو كتابة ملاحظة مثل: المعنى (ملاحظة...)
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="group flex items-baseline gap-2">
+                      <p className="break-words text-lg">
+                        <bdi>{w.translation}</bdi>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingId(w.id);
+                          setEditText(w.translation);
+                        }}
+                        className="text-xs text-muted hover:text-subtitle opacity-70 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
+                        title="تعديل الترجمة أو إضافة تعليق (Edit / Comment)"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
                   <p className="mt-0.5 truncate text-sm text-muted">
                     {w.source_title ? `From ${w.source_title}` : "No source saved"}
                     {w.times_seen > 1 ? ` · tapped ${w.times_seen} times` : ""}
@@ -364,14 +438,28 @@ export default function WordsPage() {
                       </button>
                     </span>
                   ) : (
-                    <button
-                      type="button"
-                      className="btn btn-quiet min-h-9 px-3 py-1 text-sm"
-                      aria-label={`Delete “${w.text}”`}
-                      onClick={() => setConfirmId(w.id)}
-                    >
-                      Remove
-                    </button>
+                    <span className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        className="btn btn-quiet min-h-9 px-2.5 py-1 text-sm"
+                        title="Edit translation / comment"
+                        aria-label={`Edit translation for “${w.text}”`}
+                        onClick={() => {
+                          setEditingId(w.id);
+                          setEditText(w.translation);
+                        }}
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-quiet min-h-9 px-3 py-1 text-sm"
+                        aria-label={`Delete “${w.text}”`}
+                        onClick={() => setConfirmId(w.id)}
+                      >
+                        Remove
+                      </button>
+                    </span>
                   )}
                 </div>
               </li>

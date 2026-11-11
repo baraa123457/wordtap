@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { speak } from "@/lib/speech";
 import { addCustomWord } from "@/lib/api";
 import { getStoredSettings, type UserSettings } from "@/lib/settings";
@@ -238,10 +238,22 @@ export function TranslatorCard({
   const [savingWord, setSavingWord] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
 
+  // Custom Meaning & Comment States
+  const [customTranslation, setCustomTranslation] = useState<string>("");
+  const [customNote, setCustomNote] = useState<string>("");
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editMeaning, setEditMeaning] = useState<string>("");
+  const [editNote, setEditNote] = useState<string>("");
+
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const autoSaveTimer = useRef<NodeJS.Timeout | null>(null);
   const savedWordsInSession = useRef<Set<string>>(new Set());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const baseTranslation = customTranslation.trim() || result?.translation || "";
+  const effectiveTranslation = customNote.trim()
+    ? `${baseTranslation} (${customNote.trim()})`
+    : baseTranslation;
 
   // Check if current translated pair is already saved
   const isAlreadySaved = Boolean(
@@ -255,24 +267,25 @@ export function TranslatorCard({
         )
           .trim()
           .toLowerCase();
+        const currentTrans = effectiveTranslation.trim().toLowerCase();
+        const sessionKey = `${checkText}:::${currentTrans}`;
         return (
-          savedWordsInSession.current.has(checkText) ||
+          savedWordsInSession.current.has(sessionKey) ||
           existingWords.some(
             (w) =>
-              w.text.trim().toLowerCase() === checkText ||
-              w.translation.trim().toLowerCase() ===
-                result.translation.trim().toLowerCase(),
+              w.text.trim().toLowerCase() === checkText &&
+              w.translation.trim().toLowerCase() === currentTrans,
           )
         );
       })(),
   );
 
   const performAutoSave = useCallback(
-    async (data: TranslationResult, src: string, target: string) => {
+    async (data: TranslationResult, src: string, target: string, overrideTrans?: string) => {
       const cleanWord = (
         data.correction?.autoCorrected ? data.correction.correctedText : data.text
       )?.trim();
-      const cleanTrans = data.translation?.trim();
+      const cleanTrans = (overrideTrans || data.translation)?.trim();
       if (!cleanWord || !cleanTrans || cleanWord.length < 2) return;
 
       setSavingWord(true);
@@ -285,7 +298,7 @@ export function TranslatorCard({
           finalSrcLang,
           target,
         );
-        savedWordsInSession.current.add(cleanWord.toLowerCase());
+        savedWordsInSession.current.add(`${cleanWord.toLowerCase()}:::${cleanTrans.toLowerCase()}`);
         markHistoryItemSaved(cleanWord, finalSrcLang, target);
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
@@ -322,6 +335,9 @@ export function TranslatorCard({
       const q = text.trim();
       if (!q) {
         setResult(null);
+        setCustomTranslation("");
+        setCustomNote("");
+        setIsEditing(false);
         setLoading(false);
         return;
       }
@@ -337,6 +353,9 @@ export function TranslatorCard({
         if (!res.ok) throw new Error("Translation failed");
         const data: TranslationResult = await res.json();
         setResult(data);
+        setCustomTranslation("");
+        setCustomNote("");
+        setIsEditing(false);
         if (data?.text && data?.translation) {
           const effectiveText = data.correction?.autoCorrected
             ? data.correction.correctedText
@@ -364,6 +383,9 @@ export function TranslatorCard({
 
     if (!inputText.trim()) {
       setResult(null);
+      setCustomTranslation("");
+      setCustomNote("");
+      setIsEditing(false);
       setLoading(false);
       return;
     }
@@ -384,17 +406,23 @@ export function TranslatorCard({
     const curSettings = getStoredSettings();
     if (curSettings.translateSaveMode !== "auto") return;
     if (!result || !result.text || !result.translation) return;
+    if (isEditing) return; // Do not auto-save while user is customizing meaning/note
 
-    const cleanText = result.text.trim();
+    const cleanText = (
+      result.correction?.autoCorrected
+        ? result.correction.correctedText
+        : result.text
+    ).trim();
     if (cleanText.length < 2) return; // Don't save 1-letter fragments!
 
-    const cleanLower = cleanText.toLowerCase();
-    if (savedWordsInSession.current.has(cleanLower)) return;
+    const currentTrans = effectiveTranslation.trim();
+    const sessionKey = `${cleanText.toLowerCase()}:::${currentTrans.toLowerCase()}`;
+    if (savedWordsInSession.current.has(sessionKey)) return;
 
     const alreadyInList = existingWords.some(
       (w) =>
-        w.text.trim().toLowerCase() === cleanLower ||
-        w.translation.trim().toLowerCase() === result.translation.trim().toLowerCase(),
+        w.text.trim().toLowerCase() === cleanText.toLowerCase() &&
+        w.translation.trim().toLowerCase() === currentTrans.toLowerCase(),
     );
     if (alreadyInList) return;
 
@@ -403,16 +431,16 @@ export function TranslatorCard({
       // Ensure current text still matches what was translated
       if (
         textareaRef.current &&
-        textareaRef.current.value.trim().toLowerCase() === cleanLower
+        textareaRef.current.value.trim().toLowerCase() === (result.text || "").trim().toLowerCase()
       ) {
-        void performAutoSave(result, srcLang, targetLang);
+        void performAutoSave(result, srcLang, targetLang, currentTrans);
       }
     }, 1800);
 
     return () => {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     };
-  }, [result, srcLang, targetLang, existingWords, performAutoSave]);
+  }, [result, srcLang, targetLang, existingWords, performAutoSave, isEditing, effectiveTranslation]);
 
   // Immediate save on Enter key or textarea blur
   const handleImmediateAutoSave = useCallback(() => {
@@ -421,22 +449,28 @@ export function TranslatorCard({
     const curSettings = getStoredSettings();
     if (curSettings.translateSaveMode !== "auto") return;
     if (!result || !result.text || !result.translation) return;
+    if (isEditing) return;
 
-    const cleanText = result.text.trim();
+    const cleanText = (
+      result.correction?.autoCorrected
+        ? result.correction.correctedText
+        : result.text
+    ).trim();
     if (cleanText.length < 2) return;
 
-    const cleanLower = cleanText.toLowerCase();
-    if (savedWordsInSession.current.has(cleanLower)) return;
+    const currentTrans = effectiveTranslation.trim();
+    const sessionKey = `${cleanText.toLowerCase()}:::${currentTrans.toLowerCase()}`;
+    if (savedWordsInSession.current.has(sessionKey)) return;
 
     const alreadyInList = existingWords.some(
       (w) =>
-        w.text.trim().toLowerCase() === cleanLower ||
-        w.translation.trim().toLowerCase() === result.translation.trim().toLowerCase(),
+        w.text.trim().toLowerCase() === cleanText.toLowerCase() &&
+        w.translation.trim().toLowerCase() === currentTrans.toLowerCase(),
     );
     if (alreadyInList) return;
 
-    void performAutoSave(result, srcLang, targetLang);
-  }, [result, srcLang, targetLang, existingWords, performAutoSave]);
+    void performAutoSave(result, srcLang, targetLang, currentTrans);
+  }, [result, srcLang, targetLang, existingWords, performAutoSave, isEditing, effectiveTranslation]);
 
   // Swap Languages
   function handleSwap() {
@@ -490,7 +524,7 @@ export function TranslatorCard({
           ? result.correction.correctedText
           : result.text
       ).trim();
-      const cleanTrans = result.translation.trim();
+      const cleanTrans = effectiveTranslation.trim();
 
       await addCustomWord(
         cleanWord,
@@ -499,8 +533,16 @@ export function TranslatorCard({
         targetLang,
       );
 
-      savedWordsInSession.current.add(cleanWord.toLowerCase());
+      savedWordsInSession.current.add(`${cleanWord.toLowerCase()}:::${cleanTrans.toLowerCase()}`);
       markHistoryItemSaved(cleanWord, finalSrcLang, targetLang);
+      addHistoryItem({
+        text: cleanWord,
+        translation: cleanTrans,
+        src_lang: finalSrcLang,
+        target_lang: targetLang,
+        source: "translator",
+        saved: true,
+      });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
 
@@ -843,39 +885,212 @@ export function TranslatorCard({
                 <span className="text-sm">Translating...</span>
               </div>
             ) : result?.translation ? (
-              <div className="space-y-2">
-                <div
-                  dir="auto"
-                  className="text-xl sm:text-2xl font-bold text-ink leading-relaxed select-all"
-                >
-                  {result.translation}
+              <div className="space-y-3">
+                {/* Header: Translated text + Edit/Customize button */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div
+                      dir="auto"
+                      className="text-xl sm:text-2xl font-bold text-ink leading-relaxed select-all"
+                    >
+                      {baseTranslation}
+                    </div>
+
+                    {/* Target Pronunciation / Phonetics */}
+                    {!customTranslation && result.targetPronunciation ? (
+                      <p className="text-xs sm:text-sm font-mono text-muted/80 select-all">
+                        {result.targetPronunciation}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {/* Edit/Customize Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditMeaning(baseTranslation);
+                      setEditNote(customNote);
+                      setIsEditing((prev) => !prev);
+                    }}
+                    className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                      isEditing || customTranslation || customNote
+                        ? "bg-subtitle/20 text-subtitle border-subtitle/40"
+                        : "text-muted hover:text-ink hover:bg-line/40 border-line"
+                    }`}
+                    title="تعديل المعنى أو إضافة ملاحظة / تعليق بالعربي"
+                  >
+                    <span>✏️</span>
+                    <span className="text-xs">
+                      {customTranslation || customNote ? "تعديل المعنى" : "تعديل المعنى أو تعليق"}
+                    </span>
+                  </button>
                 </div>
 
-                {/* Target Pronunciation / Phonetics */}
-                {result.targetPronunciation ? (
-                  <p className="text-xs sm:text-sm font-mono text-muted/80 select-all">
-                    {result.targetPronunciation}
-                  </p>
+                {/* Active Custom Meaning & Note Badges (when not editing) */}
+                {(customTranslation || customNote) && !isEditing ? (
+                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                    {customTranslation && customTranslation !== result.translation ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-subtitle/15 border border-subtitle/30 text-xs text-ink font-medium">
+                        <span className="text-subtitle font-bold text-[11px]">✏️ معنى مخصص:</span>
+                        <span className="font-semibold">{customTranslation}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomTranslation("");
+                            setEditMeaning(result.translation);
+                          }}
+                          className="ms-1 text-[11px] text-muted hover:text-bad underline cursor-pointer"
+                          title="استعادة الترجمة الافتراضية"
+                        >
+                          (الأصلية: {result.translation})
+                        </button>
+                      </span>
+                    ) : null}
+
+                    {customNote ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/30 text-xs text-ink font-medium">
+                        <span className="text-blue-400 font-bold text-[11px]">💬 ملاحظة:</span>
+                        <span dir="auto">{customNote}</span>
+                        <button
+                          type="button"
+                          onClick={() => setCustomNote("")}
+                          className="ms-1 text-xs text-muted hover:text-bad cursor-pointer"
+                          title="حذف الملاحظة"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ) : null}
+                  </div>
                 ) : null}
 
-                {/* Dictionary Definitions (like in user screenshot) */}
+                {/* Inline Edit Panel when isEditing is true */}
+                {isEditing ? (
+                  <div className="p-3.5 rounded-2xl bg-surface border border-subtitle/40 shadow-lg space-y-3 animate-in fade-in">
+                    <div className="flex items-center justify-between border-b border-line/40 pb-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-subtitle">
+                        <span>✏️</span>
+                        <span>تخصيص المعنى أو إضافة تعليق بالعربي</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditing(false)}
+                        className="text-xs text-muted hover:text-ink cursor-pointer p-1"
+                        aria-label="إغلاق"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {/* 1. Meaning input */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-muted mb-1">
+                        الترجمة / المعنى المفضل (Preferred Meaning):
+                      </label>
+                      <input
+                        type="text"
+                        dir="auto"
+                        value={editMeaning}
+                        onChange={(e) => setEditMeaning(e.target.value)}
+                        placeholder="اكتب المعنى الذي تفضله (مثال: ترانزيت / على حسابي)..."
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-line bg-surface-elevated text-ink placeholder:text-muted/50 focus:outline-none focus:border-subtitle"
+                      />
+                    </div>
+
+                    {/* 2. Optional Comment/Note input */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-muted mb-1">
+                        تعليق أو ملاحظة بالعربي (Comment / Context - Optional):
+                      </label>
+                      <input
+                        type="text"
+                        dir="auto"
+                        value={editNote}
+                        onChange={(e) => setEditNote(e.target.value)}
+                        placeholder="أضف تعليقاً أو سياقاً بالعربي (مثال: تستخدم في المطارات، أو عامية)..."
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-line bg-surface-elevated text-ink placeholder:text-muted/50 focus:outline-none focus:border-subtitle"
+                      />
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomTranslation("");
+                          setCustomNote("");
+                          setEditMeaning(result.translation);
+                          setEditNote("");
+                          setIsEditing(false);
+                        }}
+                        className="text-xs text-muted hover:text-bad underline cursor-pointer"
+                      >
+                        ↺ استعادة الترجمة الافتراضية
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditing(false)}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-xl text-muted hover:text-ink hover:bg-line/40 cursor-pointer"
+                        >
+                          إلغاء
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomTranslation(editMeaning.trim());
+                            setCustomNote(editNote.trim());
+                            setIsEditing(false);
+                          }}
+                          className="px-4 py-1.5 text-xs font-bold rounded-xl bg-subtitle text-black hover:bg-[#e6b825] cursor-pointer shadow-sm transition-all"
+                        >
+                          ✓ تطبيق التعديل
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Dictionary Definitions (like in user screenshot) with interactive chips! */}
                 {result.definitions && result.definitions.length > 0 ? (
-                  <div className="mt-4 pt-3 border-t border-line/50 space-y-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-                      Dictionary / معاني الكلمة:
+                  <div className="mt-3 pt-3 border-t border-line/50 space-y-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted flex items-center justify-between">
+                      <span>Dictionary / معاني الكلمة:</span>
+                      <span className="text-[11px] font-normal text-muted/80 lowercase">اضغط على أي معنى لاختياره</span>
                     </span>
                     <div className="space-y-1.5">
                       {result.definitions.map((def, idx) => (
                         <div
                           key={`def-${idx}`}
-                          className="flex flex-wrap items-baseline gap-2 text-xs sm:text-sm"
+                          className="flex flex-wrap items-baseline gap-1.5 text-xs sm:text-sm"
                         >
                           <span className="inline-block px-1.5 py-0.5 rounded bg-subtitle/15 text-subtitle font-bold text-[11px]">
                             {def.partOfSpeech}
                           </span>
-                          <span dir="auto" className="text-muted leading-relaxed">
-                            {def.meanings.join(" • ")}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {def.meanings.map((m, mIdx) => {
+                              const isCurrent = baseTranslation.trim() === m.trim();
+                              return (
+                                <button
+                                  key={`m-${idx}-${mIdx}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setCustomTranslation(m.trim());
+                                    setEditMeaning(m.trim());
+                                  }}
+                                  title="اضغط لتغيير المعنى إلى هذا اللفظ"
+                                  className={`px-2 py-0.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                                    isCurrent
+                                      ? "bg-subtitle text-black font-bold shadow-xs ring-1 ring-subtitle"
+                                      : "bg-line/40 text-muted hover:text-ink hover:bg-line/70"
+                                  }`}
+                                >
+                                  {m}
+                                  {isCurrent && <span className="ms-1 text-[10px]">✓</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -894,7 +1109,7 @@ export function TranslatorCard({
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => handleSpeak(result?.translation || "", targetLang)}
+                onClick={() => handleSpeak(baseTranslation, targetLang)}
                 disabled={!result?.translation}
                 title="Listen translation"
                 className="p-2 rounded-xl text-muted hover:text-ink hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
@@ -903,7 +1118,7 @@ export function TranslatorCard({
               </button>
               <button
                 type="button"
-                onClick={() => handleCopy(result?.translation || "", "target")}
+                onClick={() => handleCopy(effectiveTranslation, "target")}
                 disabled={!result?.translation}
                 title={copiedTarget ? "Copied!" : "Copy translation"}
                 className="p-2 rounded-xl text-muted hover:text-ink hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all relative"

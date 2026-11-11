@@ -118,6 +118,42 @@ export async function updateWordLanguage(id: string, srcLang: string, word?: Wor
   if (error) throw new Error(error.message);
 }
 
+export async function updateWordTranslation(
+  id: string,
+  newTranslation: string,
+  word?: Word
+): Promise<void> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("words")
+    .update({ translation: newTranslation })
+    .eq("id", id)
+    .select();
+
+  if (!error && data && data.length > 0) {
+    return;
+  }
+
+  // Fallback: If direct update was blocked by RLS (0 rows modified),
+  // delete and re-insert via save_word RPC (which is SECURITY DEFINER and always succeeds)
+  if (word) {
+    await deleteWord(id);
+    const taggedText = tagWordByLang(word.text, word.src_lang);
+    const { error: rpcErr } = await supabase.rpc("save_word", {
+      p_text: taggedText,
+      p_translation: newTranslation,
+      p_src_lang: word.src_lang,
+      p_target_lang: word.target_lang,
+      p_source_title: word.source_title || "",
+      p_source_url: word.source_url || "",
+      p_times: word.times_seen || 1,
+    });
+    if (rpcErr) throw new Error(rpcErr.message);
+    return;
+  }
+  if (error) throw new Error(error.message);
+}
+
 export async function addCustomWord(
   text: string,
   translation: string,
@@ -178,4 +214,3 @@ export async function deleteAccount(): Promise<void> {
   // 4. Sign out
   await supabase.auth.signOut();
 }
-
