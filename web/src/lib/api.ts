@@ -113,6 +113,9 @@ export async function updateWordLanguage(id: string, srcLang: string, word?: Wor
       p_times: word.times_seen || 1,
     });
     if (rpcErr) throw new Error(rpcErr.message);
+    if (word.box > 0) {
+      await supabase.from("words").update({ box: word.box, next_review: word.next_review }).eq("text", taggedText || word.text);
+    }
     return;
   }
   if (error) throw new Error(error.message);
@@ -158,6 +161,9 @@ export async function updateWordDetails(
       p_times: word.times_seen || 1,
     });
     if (rpcErr) throw new Error(rpcErr.message);
+    if (word.box > 0) {
+      await supabase.from("words").update({ box: word.box, next_review: word.next_review }).eq("text", taggedText);
+    }
     return;
   }
   if (error) throw new Error(error.message);
@@ -194,6 +200,9 @@ export async function updateWordTranslation(
       p_times: word.times_seen || 1,
     });
     if (rpcErr) throw new Error(rpcErr.message);
+    if (word.box > 0) {
+      await supabase.from("words").update({ box: word.box, next_review: word.next_review }).eq("text", taggedText);
+    }
     return;
   }
   if (error) throw new Error(error.message);

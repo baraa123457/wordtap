@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "./ThemeToggle";
 import { Logo } from "./Logo";
 
-const LINKS = [
+const AUTH_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/words", label: "My words" },
   { href: "/history", label: "History" },
@@ -15,25 +15,33 @@ const LINKS = [
   { href: "/settings", label: "Settings" },
 ] as const;
 
+const GUEST_LINKS = [
+  { href: "/", label: "Home" },
+  { href: "/extension", label: "Extension" },
+] as const;
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { state, signOut } = useAuth();
-  const email = state.status === "signed-in" ? state.user.email ?? "" : "";
+  const isSignedIn = state.status === "signed-in";
+  const email = isSignedIn ? state.user.email ?? "" : "";
+  const logoHref = isSignedIn ? "/dashboard" : "/";
+  const navLinks = isSignedIn ? AUTH_LINKS : GUEST_LINKS;
 
   return (
     <div className="flex min-h-dvh w-full flex-col">
       {/* Apple Floating Liquid Glass Header */}
       <header className="sticky top-0 z-40 w-full apple-glass transition-colors">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-x-4 px-4 py-3 sm:px-6">
-          <Logo href="/dashboard" />
+          <Logo href={logoHref} />
 
-          {/* Apple Segmented Navigation Capsule */}
+          {/* Segmented Navigation Capsule */}
           <nav
             aria-label="Main Navigation"
             className="order-3 flex w-full overflow-x-auto py-1 sm:order-none sm:w-auto"
           >
             <div className="apple-segmented-container mx-auto">
-              {LINKS.map((link) => {
+              {navLinks.map((link) => {
                 const active = pathname === link.href;
                 return (
                   <Link
@@ -51,9 +59,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           {/* User Controls */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <ThemeToggle />
-            {email ? (
+            {isSignedIn && email ? (
               <>
                 <span
                   className="hidden max-w-36 truncate text-xs font-medium text-muted sm:inline"
@@ -63,18 +71,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </span>
                 <button
                   type="button"
-                  className="btn btn-quiet min-h-9 px-3 py-1 text-xs font-medium"
+                  className="btn btn-quiet min-h-9 px-3 py-1 text-xs font-medium cursor-pointer"
                   onClick={() => void signOut()}
                 >
                   Sign out
                 </button>
               </>
             ) : (
-              <div className="flex items-center gap-1.5">
-                <Link href="/login" className="btn btn-quiet min-h-9 px-3 py-1 text-xs font-medium">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Link href="/login" className="btn btn-quiet min-h-9 px-3 py-1 text-xs font-medium whitespace-nowrap">
                   Sign in
                 </Link>
-                <Link href="/signup" className="btn btn-primary min-h-9 px-3 py-1 text-xs font-semibold">
+                <Link href="/signup" className="btn btn-primary min-h-9 px-3 py-1 text-xs font-semibold whitespace-nowrap">
                   Sign up
                 </Link>
               </div>

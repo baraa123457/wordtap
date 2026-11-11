@@ -80,27 +80,69 @@ export function selectWords(words: Word[], size: number, now: Date, rng: Rng): W
   return ordered.slice(0, size);
 }
 
-function distractors(pool: string[], answer: string, count: number, rng: Rng): string[] {
+const FALLBACK_ENGLISH_DISTRACTORS = [
+  "important", "different", "possible", "between", "because", "without",
+  "another", "together", "understand", "experience", "remember", "everything",
+  "moment", "question", "consider", "probably", "continue", "decision"
+];
+
+const FALLBACK_ARABIC_DISTRACTORS = [
+  "مهم", "مختلف", "ممكن", "بين", "بسبب", "بدون",
+  "آخر", "معاً", "يفهم", "تجربة", "يتذكر", "كل شيء",
+  "لحظة", "سؤال", "يعتبر", "ربما", "يستمر", "قرار"
+];
+
+function distractors(pool: string[], answer: string, count: number, rng: Rng, isArabic = false): string[] {
   const wanted = normalizeAnswer(answer);
   const seen = new Set<string>([wanted]);
   const unique: string[] = [];
-  for (const candidate of shuffle(pool, rng)) {
+
+  // Filter pool to valid candidates (skip empty or 1-character fragments like "ر" or "†")
+  const cleanPool = pool.filter((c) => {
+    const trimmed = (c || "").trim();
+    return trimmed.length >= 2 && trimmed.toLowerCase() !== answer.toLowerCase();
+  });
+
+  for (const candidate of shuffle(cleanPool, rng)) {
     const key = normalizeAnswer(candidate);
     if (key === "" || seen.has(key)) continue;
     seen.add(key);
     unique.push(candidate);
     if (unique.length === count) break;
   }
+
+  // If user has at least 2 words but fewer words saved than needed, fill remaining slots with clean common vocabulary
+  if (pool.length > 1 && unique.length < count) {
+    const fallbacks = isArabic ? FALLBACK_ARABIC_DISTRACTORS : FALLBACK_ENGLISH_DISTRACTORS;
+    for (const fallback of shuffle(fallbacks, rng)) {
+      const key = normalizeAnswer(fallback);
+      if (key === "" || seen.has(key)) continue;
+      seen.add(key);
+      unique.push(fallback);
+      if (unique.length === count) break;
+    }
+  }
+
   return unique;
 }
 
 type Plan = "choice-translation" | "choice-word" | "listen" | "type-translation" | "type-word";
 
+/**
+ * Pedagogical Spaced Repetition Progression (Leitner Box Ladder):
+ * - Box 0 & 1 (New words): 100% Recognition (Multiple Choice). Never force typing a word on first sight!
+ * - Box 2 & 3 (Learning words): Recognition & Audio Choice (75%) + Active recall Typing (25%).
+ * - Box 4 & 5 (Mastered words): 100% Active Production Typing.
+ */
 function plansFor(word: Word, canSpeak: boolean): Plan[] {
   const listen = canSpeak && word.src_lang !== "auto" ? (["listen"] as const) : [];
-  if (word.box <= 1) return ["choice-translation", "choice-translation", ...listen];
-  if (word.box <= 3) return ["choice-word", "type-translation", ...listen];
-  return ["type-word", "type-translation", ...listen];
+  if (word.box <= 1) {
+    return ["choice-word", "choice-word", "choice-translation", ...listen];
+  }
+  if (word.box <= 3) {
+    return ["choice-word", "type-word", ...listen];
+  }
+  return ["type-word", "type-word", ...listen];
 }
 
 export function buildSession(words: Word[], options: BuildOptions = {}): Question[] {
@@ -135,7 +177,8 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
     }
 
     const choice = (variant: ChoiceVariant, answer: string, pool: string[]): ChoiceQuestion | null => {
-      const wrong = distractors(pool, answer, 3, rng);
+      const isArabic = /[\u0600-\u06FF]/.test(answer);
+      const wrong = distractors(pool, answer, 3, rng, isArabic);
       if (wrong.length === 0) return null;
 
       const isToWord = variant === "to-word";
@@ -149,7 +192,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
           ? word.target_lang
           : /[\u0600-\u06FF]/.test(word.translation)
           ? "ar"
-          : "ar";
+          : "en";
       const srcLang = word.src_lang && word.src_lang !== "auto" ? word.src_lang : "en";
 
       const speak = isToWord
@@ -185,9 +228,12 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
       }
     }
 
-    // Both enabled (mixed mode): generate a balanced mix of typing and multiple choice!
-    const preferTyping = rng() > 0.5;
-    if (preferTyping) {
+    // Mixed mode: respect the Leitner box spaced repetition ladder!
+    // Box 0 & 1: 100% Recognition choice. Box 2 & 3: Choice + Audio + 25% Typing. Box 4+: Production typing.
+    const plans = plansFor(word, canSpeak);
+    const plan = plans[Math.floor(rng() * plans.length)] ?? "choice-word";
+
+    if (plan === "type-word") {
       questions.push({
         type: "type",
         id,
@@ -198,38 +244,39 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         context,
       });
       continue;
-    } else {
-      const plan = rng() > 0.5 ? "choice-word" : "choice-translation";
-      const q = (plan === "choice-word" ? choice("to-word", word.text, texts) : choice("to-translation", word.translation, translations))
-        || choice("to-translation", word.translation, translations)
-        || choice("to-word", word.text, texts);
-      if (q) {
-        questions.push(q);
-        continue;
-      }
-    }
-
-    const plans = plansFor(word, canSpeak);
-    const plan = plans[Math.floor(rng() * plans.length)] ?? "choice-translation";
-
-    let question: Question | null = null;
-    if (plan === "choice-translation") question = choice("to-translation", word.translation, translations);
-    else if (plan === "choice-word") question = choice("to-word", word.text, texts);
-    else if (plan === "listen") question = choice("listen", word.text, texts);
-
-    if (!question) {
-      const toWord = plan === "type-word" || plan === "choice-word";
-      question = {
+    } else if (plan === "type-translation") {
+      questions.push({
         type: "type",
         id,
-        variant: toWord ? "to-word" : "to-translation",
+        variant: "to-translation",
         wordId: word.id,
-        prompt: toWord ? word.translation : word.text,
-        answer: toWord ? word.text : word.translation,
+        prompt: word.text,
+        answer: word.translation,
+        context,
+      });
+      continue;
+    }
+
+    let q: Question | null = null;
+    if (plan === "choice-word") q = choice("to-word", word.text, texts);
+    else if (plan === "choice-translation") q = choice("to-translation", word.translation, translations);
+    else if (plan === "listen") q = choice("listen", word.text, texts);
+
+    if (!q) {
+      q = choice("to-word", word.text, texts) || choice("to-translation", word.translation, translations);
+    }
+    if (!q) {
+      q = {
+        type: "type",
+        id,
+        variant: "to-word",
+        wordId: word.id,
+        prompt: word.translation,
+        answer: word.text,
         context,
       };
     }
-    questions.push(question);
+    questions.push(q);
   }
 
   const shuffled = shuffle(questions, rng);

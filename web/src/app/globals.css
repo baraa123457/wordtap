@@ -91,6 +91,7 @@ html.dark,
 
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Readex Pro Variable", system-ui, sans-serif;
+  --font-arabic: "Readex Pro Variable", "Readex Pro", system-ui, sans-serif;
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
@@ -119,6 +120,14 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* Explicit Readex Pro typography for Arabic glyphs, RTL text, and bi-directional isolations */
+:lang(ar),
+[dir="rtl"],
+bdi {
+  font-family: "Readex Pro Variable", "Readex Pro", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  letter-spacing: normal;
 }
 
 :focus-visible {

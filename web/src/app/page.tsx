@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AuthActions } from "@/components/AuthActions";
 import { Logo } from "@/components/Logo";
 import { SubtitleDemo } from "@/components/SubtitleDemo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const STEPS = [
   {
@@ -23,7 +24,10 @@ export default function LandingPage() {
     <div className="mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-4 sm:px-6">
       <header className="flex items-center justify-between py-5">
         <Logo />
-        <AuthActions size="nav" />
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <AuthActions size="nav" />
+        </div>
       </header>
 
       <main className="flex-1 pb-20">
@@ -57,13 +61,42 @@ export default function LandingPage() {
               </li>
             ))}
           </ol>
-          <p>
-            <Link href="/extension" className="font-semibold underline decoration-subtitle decoration-4 underline-offset-4">
-              Get the extension
+          <div className="pt-2">
+            <Link
+              href="/extension"
+              className="inline-flex items-center gap-2 btn btn-primary px-5 py-2.5 font-bold shadow-sm"
+            >
+              <span>Get the Chrome Extension</span>
+              <span>→</span>
             </Link>
-          </p>
+          </div>
         </section>
       </main>
+
+      {/* Brand Footer */}
+      <footer className="border-t border-line/60 py-10 mt-12 text-sm text-muted">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <Logo href="/" />
+            <span className="text-xs text-muted/80">· Turn your favorite shows into real fluency</span>
+          </div>
+          <div className="flex items-center gap-6 text-xs font-medium">
+            <Link href="/extension" className="hover:text-ink transition-colors">
+              Extension
+            </Link>
+            <Link href="/login" className="hover:text-ink transition-colors">
+              Sign in
+            </Link>
+            <Link href="/signup" className="hover:text-ink transition-colors">
+              Sign up
+            </Link>
+          </div>
+        </div>
+        <div className="mt-6 pt-6 border-t border-line/30 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted/60">
+          <p>© {new Date().getFullYear()} WordTap. Free during beta. Built for film & language lovers.</p>
+          <p>YouTube & Netflix are registered trademarks of their respective owners.</p>
+        </div>
+      </footer>
     </div>
   );
 }

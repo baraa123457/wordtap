@@ -90,8 +90,8 @@ export default function HistoryPage() {
       await addCustomWord(
         item.text,
         item.translation,
-        item.target_lang,
-        item.src_lang
+        item.src_lang || "auto",
+        item.target_lang || "ar"
       );
       markHistoryItemSaved(item.text, item.src_lang, item.target_lang);
       setSavedWordKeys((prev) => {
