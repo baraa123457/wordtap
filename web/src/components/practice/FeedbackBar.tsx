@@ -9,6 +9,9 @@ type Props = {
   phase: Phase;
   /** Correct answer, shown after a wrong or almost-right answer. */
   answer: string;
+  sentence?: string;
+  sourceUrl?: string;
+  sourceTitle?: string;
   canCheck: boolean;
   onCheck: () => void;
   onSkip: () => void;
@@ -22,7 +25,17 @@ const TONE: Record<Phase, string> = {
   wrong: "bg-bad-soft border-bad",
 };
 
-export function FeedbackBar({ phase, answer, canCheck, onCheck, onSkip, onContinue }: Props) {
+export function FeedbackBar({
+  phase,
+  answer,
+  sentence,
+  sourceUrl,
+  sourceTitle,
+  canCheck,
+  onCheck,
+  onSkip,
+  onContinue,
+}: Props) {
   const continueRef = useRef<HTMLButtonElement>(null);
   const checkRef = useRef<HTMLButtonElement>(null);
   const [isExiting, setIsExiting] = useState(false);
@@ -105,23 +118,23 @@ export function FeedbackBar({ phase, answer, canCheck, onCheck, onSkip, onContin
             </button>
           </>
         ) : phase === "correct" ? (
-          /* CORRECT: NO CONTINUE BUTTON AT ALL! Just animated checkmark, "Correct", and 1s exit */
-          <div role="status" aria-live="polite" className="flex items-center gap-3 text-ok w-full justify-between">
+          /* CORRECT: NO CONTINUE BUTTON AT ALL! Just animated checkmark, "Correct", and 0.8s exit */
+          <div role="status" aria-live="polite" className="flex items-center gap-3 text-ok-ink w-full justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ok text-white font-bold text-xl shadow-sm">
                 ✓
               </div>
               <p className="text-2xl font-bold tracking-tight">Correct</p>
             </div>
-            {/* Subtle animated indicator for the 1s auto-advance */}
+            {/* Real animated countdown bar for the 0.8s auto-advance */}
             <div className="h-1.5 w-24 overflow-hidden rounded-full bg-ok/25">
-              <div className="h-full bg-ok animate-pulse" />
+              <div className="h-full bg-ok countdown-bar" />
             </div>
           </div>
         ) : (
           /* WRONG or TYPO: Keep continue button so learner can review mistake */
           <>
-            <div role="status" aria-live="polite" className={phase === "wrong" ? "text-bad" : "text-ok"}>
+            <div role="status" aria-live="polite" className={phase === "wrong" ? "text-bad-ink" : "text-ok-ink"}>
               <p className="text-lg font-bold">
                 {phase === "typo" ? "Almost: watch the spelling" : "Not quite"}
               </p>
@@ -143,6 +156,21 @@ export function FeedbackBar({ phase, answer, canCheck, onCheck, onSkip, onContin
                   </button>
                 ) : null}
               </p>
+              {sentence ? (
+                <p className="text-xs text-muted max-w-lg italic mt-1 line-clamp-2" dir="auto">
+                  “{sentence}”
+                </p>
+              ) : null}
+              {sourceUrl ? (
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:underline inline-flex items-center gap-1 mt-0.5"
+                >
+                  Watch scene from {sourceTitle || "video"} ↗
+                </a>
+              ) : null}
             </div>
             <button
               ref={continueRef}

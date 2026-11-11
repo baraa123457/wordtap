@@ -117,7 +117,39 @@ export default function DashboardPage() {
   const { state, reload, setData } = useLoad(loadDashboard);
   const [goalError, setGoalError] = useState<string | null>(null);
 
-  if (state.status === "loading") return <LoadingState label="Loading your words…" />;
+  if (state.status === "loading") {
+    return (
+      <div className="grid min-w-0 max-w-full gap-6 animate-pulse">
+        {/* Skeleton Today Card */}
+        <div className="apple-card overflow-hidden h-44 bg-surface/50 border border-line flex flex-col justify-between p-5">
+          <div className="flex justify-between items-center">
+            <div className="h-5 w-24 bg-line/60 rounded-md" />
+            <div className="h-4 w-28 bg-line/40 rounded-md" />
+          </div>
+          <div className="space-y-2">
+            <div className="h-7 w-56 bg-line/60 rounded-lg" />
+            <div className="h-4 w-72 bg-line/40 rounded-md" />
+          </div>
+          <div className="h-4 w-40 bg-line/40 rounded-md" />
+        </div>
+        {/* Skeleton Translator Card */}
+        <div className="apple-card overflow-hidden h-56 bg-surface/50 border border-line p-5">
+          <div className="h-6 w-36 bg-line/60 rounded-md mb-4" />
+          <div className="h-32 w-full bg-line/30 rounded-xl" />
+        </div>
+        {/* Skeleton Stats */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="apple-card h-20 bg-surface/50 border border-line p-4 space-y-2">
+              <div className="h-3 w-16 bg-line/40 rounded" />
+              <div className="h-6 w-12 bg-line/60 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (state.status === "error") return <ErrorState message={state.message} onRetry={reload} />;
 
   const { words, stats } = state.data;
@@ -153,10 +185,7 @@ export default function DashboardPage() {
 
   return (
     <div className="grid min-w-0 max-w-full gap-6">
-      {/* 1. Google Translate Component at the very top */}
-      <TranslatorCard existingWords={words} onWordSaved={refreshDataQuietly} />
-
-      {/* 2. Today's Practice Card - Unified with the Apple Card Design */}
+      {/* 1. Today's Practice Card - FIRST for habit reinforcement */}
       <section aria-labelledby="today" className="apple-card overflow-hidden w-full min-w-0 transition-all">
         {/* Top bar */}
         <div className="flex items-center justify-between border-b border-line/60 bg-black/[0.02] dark:bg-white/[0.03] px-5 py-3">
@@ -190,7 +219,7 @@ export default function DashboardPage() {
                 "Start building your vocabulary"
               ) : dueCount > 0 ? (
                 <>
-                  <span className="text-subtitle underline decoration-subtitle decoration-4 underline-offset-4">{dueCount}</span> {dueCount === 1 ? "word is" : "words are"} ready
+                  <span className="text-ink font-black underline decoration-subtitle decoration-4 underline-offset-4">{dueCount}</span> {dueCount === 1 ? "word is" : "words are"} ready
                 </>
               ) : (
                 "You're all caught up"
@@ -198,7 +227,7 @@ export default function DashboardPage() {
             </h3>
             <p className="text-xs sm:text-sm text-muted leading-relaxed">
               {words.length === 0
-                ? "Translate words above or tap subtitles with the extension to start practicing."
+                ? "Translate words below or tap subtitles on YouTube & Netflix to start learning."
                 : dueCount > 0
                 ? "Review your words now to reinforce your memory and maintain your streak."
                 : nextDue
@@ -223,8 +252,8 @@ export default function DashboardPage() {
 
         {/* Bottom Goal Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/60 bg-black/[0.02] dark:bg-white/[0.03] px-5 py-2.5 text-xs sm:text-sm">
-          <span className="flex items-center gap-3">
-            <span className="text-muted font-medium">
+          <span className="flex items-center gap-3 flex-1 min-w-0">
+            <span className="text-muted font-medium whitespace-nowrap">
               <strong className="text-ink font-semibold">{eff.todayXp}</strong> of {stats.daily_goal} XP today
             </span>
             <span
@@ -233,12 +262,12 @@ export default function DashboardPage() {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={goalPct}
-              className="h-2 w-28 overflow-hidden rounded-full bg-black/10 dark:bg-white/10"
+              className="h-2 flex-1 min-w-16 max-w-36 overflow-hidden rounded-full bg-black/10 dark:bg-white/10"
             >
-              <span className="block h-full bg-subtitle rounded-full" style={{ width: `${goalPct}%` }} />
+              <span className="block h-full bg-subtitle rounded-full transition-all duration-300" style={{ width: `${goalPct}%` }} />
             </span>
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <span className="text-xs text-muted">Daily goal</span>
             <GoalDropdown
               value={stats.daily_goal}
@@ -248,26 +277,53 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      {/* 2. Google Translate Component SECOND */}
+      <TranslatorCard existingWords={words} onWordSaved={refreshDataQuietly} />
+
+      {words.length === 0 ? (
+        <section className="apple-card p-6 bg-surface border border-line">
+          <h4 className="text-base font-bold text-ink mb-3">How WordTap works</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs sm:text-sm">
+            <div className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-subtitle/20 font-bold text-ink">1</span>
+              <div>
+                <strong className="text-ink block mb-0.5">Watch videos</strong>
+                <span className="text-muted leading-relaxed">Turn on subtitles on YouTube, Netflix, or web videos.</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-subtitle/20 font-bold text-ink">2</span>
+              <div>
+                <strong className="text-ink block mb-0.5">Tap to translate</strong>
+                <span className="text-muted leading-relaxed">Click any word to get instant translation and hear its native pronunciation.</span>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-subtitle/20 font-bold text-ink">3</span>
+              <div>
+                <strong className="text-ink block mb-0.5">Review in context</strong>
+                <span className="text-muted leading-relaxed">Spaced repetition reviews the exact subtitle sentences until mastered.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {goalError ? (
-        <p role="alert" className="-mt-6 rounded-xl bg-bad-soft px-4 py-3 text-bad">
+        <p role="alert" className="rounded-xl bg-bad-soft px-4 py-3 text-bad">
           {goalError}
         </p>
       ) : null}
-      {dueCount === 0 && nextDue ? (
-        <p className="-mt-6 text-muted">Next review {formatDueIn(nextDue, now)}.</p>
-      ) : null}
 
+      {/* 3. Key Metrics: Replaced duplicate streak tile with Ready to Review */}
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 min-w-0">
-        <Stat
-          label="Day streak"
-          value={eff.streak}
-          icon={eff.streak > 0 ? <FireIcon size={20} className="text-orange-500" /> : undefined}
-        />
-        <Stat label="Total XP" value={stats.xp} />
-        <Stat label="Words saved" value={words.length} />
+        <Stat label="Ready to review" value={dueCount} />
         <Stat label="Mastered" value={mastered} />
+        <Stat label="Words saved" value={words.length} />
+        <Stat label="Total XP" value={stats.xp} />
       </dl>
 
+      {/* 4. Latest Words */}
       <section aria-labelledby="recent" className="grid gap-3 min-w-0">
         <div className="flex items-baseline justify-between px-1">
           <h2 id="recent" className="text-lg font-semibold text-ink">

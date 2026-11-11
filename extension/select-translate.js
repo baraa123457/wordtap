@@ -539,13 +539,30 @@
       lastSrcLang = res.src || (detectedSrc !== "auto" ? detectedSrc : "en");
       speakBtn.title = `Listen pronunciation (${lastSrcLang.toUpperCase()})`;
 
+      let surrounding = "";
+      try {
+        const sel = window.getSelection();
+        if (sel && sel.anchorNode) {
+          const parentText = sel.anchorNode.textContent || "";
+          if (parentText.length > text.length && parentText.length < 200) {
+            surrounding = parentText.trim();
+          }
+        }
+      } catch (_) {}
+
+      const titleContext =
+        surrounding && surrounding.length > text.length
+          ? `"${surrounding}" — ${document.title}`
+          : document.title;
+
       const entry = {
         text,
         translation: res.text,
         lang: target,
         src: res.src,
         page: location.href,
-        title: document.title
+        title: titleContext,
+        sentence: surrounding,
       };
       finaliseCard(x, y, res.text, RTL_LANGS.includes(target), entry);
     });

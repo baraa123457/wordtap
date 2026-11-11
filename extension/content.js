@@ -560,13 +560,19 @@
         const willSave = settings.saveWords === true && settings.translateSaveMode !== "manual";
         showTip(e.clientX, e.clientY, text, res.text, RTL_LANGS.includes(target), willSave ? "Saving…" : "", false, finalSrc);
 
+        const titleContext =
+          fullLine && fullLine.trim() && fullLine.trim().length > text.length
+            ? `"${fullLine.trim()}" — ${document.title}`
+            : document.title;
+
         const entry = {
           text,
           translation: res.text,
           lang: target,
           src: finalSrc,
           page: location.href,
-          title: document.title,
+          title: titleContext,
+          sentence: fullLine ? fullLine.trim() : "",
           saved: Boolean(willSave),
         };
         currentPendingEntry = entry;

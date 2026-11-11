@@ -92,7 +92,7 @@ export default function LandingPage() {
             </Link>
           </div>
         </div>
-        <div className="mt-6 pt-6 border-t border-line/30 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted/60">
+        <div className="mt-6 pt-6 border-t border-line/30 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted">
           <p>© {new Date().getFullYear()} WordTap. Free during beta. Built for film & language lovers.</p>
           <p>YouTube & Netflix are registered trademarks of their respective owners.</p>
         </div>

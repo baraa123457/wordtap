@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import type { ChoiceQuestion } from "@/lib/session";
 import { canSpeak, speak } from "@/lib/speech";
+import { parseSourceContext } from "@/lib/format";
 import { SpeakerIcon, TrashIcon } from "../Icons";
 import type { Phase } from "./types";
 
@@ -23,23 +24,31 @@ type Props = {
 export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props) {
   const locked = phase !== "answering";
   const speakable = q.speak !== null && canSpeak();
+  const { sentence, sourceTitle } = parseSourceContext(q.context);
+  const isPromptArabic = /[\u0600-\u06FF]/.test(q.prompt);
 
   // Listening questions start playing as soon as they appear.
   useEffect(() => {
     if (q.variant === "listen" && q.speak) speak(q.speak.text, q.speak.lang);
   }, [q]);
 
-  const speakOption = (option: string) => {
-    if (!canSpeak()) return;
-    const hasArabic = /[\u0600-\u06FF]/.test(option);
-    const optLang = hasArabic ? "ar" : q.optionsLang || (q.variant === "to-translation" ? "ar" : "en");
-    speak(option, optLang);
-  };
+  const speakOption = useCallback(
+    (option: string) => {
+      if (!canSpeak()) return;
+      const hasArabic = /[\u0600-\u06FF]/.test(option);
+      const optLang = hasArabic ? "ar" : q.optionsLang || (q.variant === "to-translation" ? "ar" : "en");
+      speak(option, optLang);
+    },
+    [q.optionsLang, q.variant],
+  );
 
-  const handleSelect = (option: string) => {
-    onSelect(option);
-    speakOption(option);
-  };
+  const handleSelect = useCallback(
+    (option: string) => {
+      onSelect(option);
+      speakOption(option);
+    },
+    [onSelect, speakOption],
+  );
 
   // Keys 1-4 pick an option.
   useEffect(() => {
@@ -52,7 +61,7 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [locked, q, handleSelect]);
+  }, [locked, q.options, handleSelect]);
 
   function stateOf(option: string): string | undefined {
     if (locked) {
@@ -69,7 +78,7 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
         <div className="frame-bar">
           <span>{INSTRUCTION[q.variant]}</span>
         </div>
-        <div className="frame-stage gap-4" style={{ minHeight: "12rem" }}>
+        <div className="frame-stage gap-3" style={{ minHeight: "12rem" }}>
           {q.variant === "listen" ? (
             <button
               type="button"
@@ -79,24 +88,53 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
               <SpeakerIcon size={22} /> Play again
             </button>
           ) : (
-            <p className="sub flex items-center justify-center gap-3 text-4xl sm:text-5xl" dir="auto">
-              <span className="sub-hl">{q.prompt}</span>
-              {speakable && q.speak ? (
-                <button
-                  type="button"
-                  aria-label="Hear it"
-                  className="rounded-full p-2 text-white/80 hover:text-white"
-                  style={{ WebkitTextStroke: 0 }}
-                  onClick={() => q.speak && speak(q.speak.text, q.speak.lang)}
-                >
-                  <SpeakerIcon size={24} />
-                </button>
+            <>
+              <p
+                className={`sub flex items-center justify-center gap-3 text-4xl sm:text-5xl ${
+                  isPromptArabic ? "sub-ar" : ""
+                }`}
+                dir="auto"
+                lang={isPromptArabic ? "ar" : q.speak?.lang || "en"}
+              >
+                <span className="sub-hl">{q.prompt}</span>
+                {speakable && q.speak ? (
+                  <button
+                    type="button"
+                    aria-label="Hear it"
+                    className="rounded-full p-2 text-white/80 hover:text-white"
+                    style={{ WebkitTextStroke: 0 }}
+                    onClick={() => q.speak && speak(q.speak.text, q.speak.lang)}
+                  >
+                    <SpeakerIcon size={24} />
+                  </button>
+                ) : null}
+              </p>
+              {sentence ? (
+                <p className="text-xs sm:text-sm text-white/70 max-w-lg mx-auto text-center font-normal px-4 italic line-clamp-2" dir="auto">
+                  “{sentence}”
+                </p>
               ) : null}
-            </p>
+            </>
           )}
         </div>
         <div className="frame-bar flex items-center justify-between gap-2">
-          <span className="truncate">{q.context ? `From ${q.context}` : ""}</span>
+          <span className="truncate">
+            {q.sourceUrl ? (
+              <a
+                href={q.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline hover:text-white transition-colors inline-flex items-center gap-1"
+                title="Jump to scene in video"
+              >
+                From {sourceTitle || "video"} ↗
+              </a>
+            ) : sourceTitle ? (
+              `From ${sourceTitle}`
+            ) : (
+              ""
+            )}
+          </span>
           {onDeleteWord ? (
             <button
               type="button"

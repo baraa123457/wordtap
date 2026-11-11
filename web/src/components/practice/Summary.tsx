@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { Word } from "@/lib/schemas";
+import { canSpeak, speak } from "@/lib/speech";
+import { FireIcon, SpeakerIcon } from "../Icons";
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -18,26 +20,43 @@ export function Summary({ xp, asked, right, missed, save, reviewFailed, onRetryS
   const accuracy = asked === 0 ? 100 : Math.round((right / asked) * 100);
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-8 px-4 py-8">
+    <div className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
       <section className="frame" aria-label="Session summary">
         <div className="frame-bar">
-          <span>Practice complete</span>
+          <span className="flex items-center gap-1.5 font-semibold">
+            <FireIcon size={16} className="text-orange-500" />
+            <span>Practice complete</span>
+          </span>
           <span>
             {asked} {asked === 1 ? "question" : "questions"}
           </span>
         </div>
-        <div className="frame-stage" style={{ minHeight: "11rem" }}>
+        <div className="frame-stage gap-2" style={{ minHeight: "11rem" }}>
           <p className="sub text-5xl">
             +<span className="sub-hl">{xp}</span> XP
           </p>
+          <p className="text-xs sm:text-sm text-white/70">
+            {accuracy >= 80 ? "Great memory retention!" : "Good practice session!"}
+          </p>
         </div>
-        <div className="frame-bar">
+        <div className="frame-bar flex items-center justify-between">
           <span>{accuracy}% right on the first try</span>
           <span aria-live="polite">
-            {save === "saving" ? "Saving…" : save === "saved" ? "Progress saved" : save === "error" ? "Not saved" : ""}
+            {save === "saving" ? "Saving…" : save === "saved" ? "Progress saved ✓" : save === "error" ? "Not saved" : ""}
           </span>
         </div>
       </section>
+
+      {/* Spaced repetition schedule preview */}
+      <div className="apple-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm">
+        <div className="space-y-0.5">
+          <p className="font-semibold text-ink">Spaced Repetition Updated</p>
+          <p className="text-muted">Mastered words move to longer intervals. Review words return tomorrow.</p>
+        </div>
+        <div className="shrink-0 flex items-center gap-1.5 text-xs text-subtitle-edge dark:text-subtitle font-bold bg-subtitle/10 px-3 py-1.5 rounded-full">
+          <span>Streak maintained 🔥</span>
+        </div>
+      </div>
 
       {save === "error" ? (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-bad-soft px-4 py-3 text-bad">
@@ -55,16 +74,29 @@ export function Summary({ xp, asked, right, missed, save, reviewFailed, onRetryS
 
       {missed.length > 0 ? (
         <section aria-labelledby="missed" className="grid gap-3">
-          <h2 id="missed" className="text-xl font-semibold">
-            Words to look at again
+          <h2 id="missed" className="text-lg font-semibold text-ink">
+            Words to look at again ({missed.length})
           </h2>
-          <ul className="divide-y divide-line rounded-2xl border border-line bg-surface">
+          <ul className="apple-card divide-y divide-line overflow-hidden">
             {missed.map((w) => (
-              <li key={w.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <span dir="auto" className="font-semibold">
-                  {w.text}
-                </span>
-                <span dir="auto" className="text-muted">
+              <li key={w.id} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-black/[0.015] dark:hover:bg-white/[0.015]">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span dir="auto" className="font-semibold text-ink truncate">
+                    {w.text}
+                  </span>
+                  {canSpeak() ? (
+                    <button
+                      type="button"
+                      aria-label={`Hear “${w.text}”`}
+                      title={`Pronounce “${w.text}”`}
+                      className="p-1 rounded-full text-muted hover:text-ink cursor-pointer"
+                      onClick={() => speak(w.text, w.src_lang)}
+                    >
+                      <SpeakerIcon size={16} />
+                    </button>
+                  ) : null}
+                </div>
+                <span dir="auto" className="text-muted truncate text-sm">
                   {w.translation}
                 </span>
               </li>
@@ -72,7 +104,9 @@ export function Summary({ xp, asked, right, missed, save, reviewFailed, onRetryS
           </ul>
         </section>
       ) : (
-        <p className="text-lg">Every word right on the first try.</p>
+        <div className="apple-card p-4 text-center text-sm font-semibold text-ok-ink">
+          🎉 Every word right on the first try! Excellent work.
+        </div>
       )}
 
       <div className="flex flex-wrap gap-3">

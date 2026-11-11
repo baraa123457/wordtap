@@ -9,6 +9,7 @@ import { buildSession, type MatchQuestion, type Question } from "@/lib/session";
 import { getStoredSettings } from "@/lib/settings";
 import { canSpeak } from "@/lib/speech";
 import { checkTyped } from "@/lib/text";
+import { parseSourceContext } from "@/lib/format";
 import { CloseIcon } from "../Icons";
 import { ChoiceView } from "./ChoiceView";
 import { FeedbackBar } from "./FeedbackBar";
@@ -202,6 +203,8 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
   const progress = total === 0 ? 0 : Math.round((done / total) * 100);
   const canCheck = q.type === "choice" ? selected !== null : q.type === "type" ? typed.trim() !== "" : false;
   const answer = q.type === "match" ? "" : q.answer;
+  const parsedContext = "context" in q ? parseSourceContext(q.context) : { sentence: undefined, sourceTitle: "" };
+  const sourceUrl = "sourceUrl" in q ? q.sourceUrl : undefined;
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-4">
@@ -222,42 +225,47 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
         <span className="min-w-14 text-end text-sm tabular-nums text-muted">{xp} XP</span>
       </header>
 
+      {/* Leave Practice Confirmation Modal */}
       {leaving ? (
-        <div role="alertdialog" aria-label="Leave practice?" className="mb-4 grid gap-3 rounded-2xl border-2 border-line bg-surface p-4">
-          <p className="font-semibold">Leave practice? The answers you gave so far are saved.</p>
-          <div className="flex gap-3">
-            <button type="button" className="btn btn-primary" onClick={() => setLeaving(false)}>
-              Keep practicing
-            </button>
-            <button type="button" className="btn" onClick={() => void leave()}>
-              Leave
-            </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div role="alertdialog" aria-label="Leave practice?" className="w-full max-w-md grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-ink">Leave practice?</h3>
+            <p className="text-sm text-muted">The answers you gave so far are saved.</p>
+            <div className="flex gap-3 justify-end mt-2">
+              <button type="button" className="btn btn-quiet" onClick={() => setLeaving(false)}>
+                Keep practicing
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => void leave()}>
+                Leave
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
 
+      {/* Delete Word Confirmation Modal */}
       {deleteConfirmId ? (
-        <div role="alertdialog" aria-label="Delete word?" className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border-2 border-bad/30 bg-bad-soft/90 p-4 shadow-lg backdrop-blur-md">
-          <div>
-            <p className="font-bold text-ink">Delete this word from My Words?</p>
-            <p className="text-xs text-muted">It will be permanently deleted from your saved words so you won&apos;t practice it again.</p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              disabled={isDeleting}
-              className="btn btn-bad min-h-9 px-4 text-xs font-semibold cursor-pointer"
-              onClick={() => void handleDeleteWord(deleteConfirmId)}
-            >
-              {isDeleting ? "Deleting..." : "Yes, delete"}
-            </button>
-            <button
-              type="button"
-              className="btn btn-quiet min-h-9 px-3 text-xs cursor-pointer"
-              onClick={() => setDeleteConfirmId(null)}
-            >
-              Cancel
-            </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div role="alertdialog" aria-label="Delete word?" className="w-full max-w-md grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-ink">Delete this word?</h3>
+            <p className="text-sm text-muted">It will be permanently deleted from your saved words so you won&apos;t practice it again.</p>
+            <div className="flex gap-3 justify-end mt-2">
+              <button
+                type="button"
+                className="btn btn-quiet"
+                onClick={() => setDeleteConfirmId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                className="btn btn-bad"
+                onClick={() => void handleDeleteWord(deleteConfirmId)}
+              >
+                {isDeleting ? "Deleting..." : "Yes, delete"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -291,6 +299,9 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
         <FeedbackBar
           phase={phase}
           answer={answer}
+          sentence={parsedContext.sentence}
+          sourceUrl={sourceUrl}
+          sourceTitle={parsedContext.sourceTitle}
           canCheck={canCheck}
           onCheck={check}
           onSkip={() => evaluate("wrong")}

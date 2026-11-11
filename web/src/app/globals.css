@@ -35,8 +35,10 @@
 
   --ok: #10b981;
   --ok-soft: #ecfdf5;
+  --ok-ink: #065f46;
   --bad: #ef4444;
   --bad-soft: #fef2f2;
+  --bad-ink: #991b1b;
 }
 
 /* WordTap Dark Mode: Dark Cinema Theater (Deep Midnight Navy, NOT dead black) */
@@ -60,8 +62,10 @@ html.dark,
 
   --ok: #34d399;
   --ok-soft: #064e3b;
+  --ok-ink: #34d399;
   --bad: #f87171;
   --bad-soft: #450a0a;
+  --bad-ink: #fca5a5;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -84,13 +88,15 @@ html.dark,
 
     --ok: #34d399;
     --ok-soft: #064e3b;
+    --ok-ink: #34d399;
     --bad: #f87171;
     --bad-soft: #450a0a;
+    --bad-ink: #fca5a5;
   }
 }
 
 @theme {
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Readex Pro Variable", system-ui, sans-serif;
+  --font-sans: "Readex Pro Variable", "Readex Pro", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
   --font-arabic: "Readex Pro Variable", "Readex Pro", system-ui, sans-serif;
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -104,8 +110,10 @@ html.dark,
   --color-subtitle-ink: var(--subtitle-ink);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
+  --color-ok-ink: var(--ok-ink);
   --color-bad: var(--bad);
   --color-bad-soft: var(--bad-soft);
+  --color-bad-ink: var(--bad-ink);
 }
 
 html {
@@ -271,17 +279,19 @@ bdi {
   .btn.btn-ok {
     background: var(--ok);
     border-color: transparent;
-    color: #ffffff;
+    color: var(--ok-ink);
+    font-weight: 700;
   }
 
   .btn.btn-ok:hover {
-    background: color-mix(in srgb, var(--ok) 90%, black);
+    background: color-mix(in srgb, var(--ok) 92%, black);
   }
 
   .btn.btn-bad {
     background: var(--bad);
     border-color: transparent;
     color: #ffffff;
+    font-weight: 650;
   }
 
   .btn.btn-bad:hover {
@@ -349,6 +359,16 @@ bdi {
     paint-order: stroke fill;
     text-shadow: 0 0.06em 0.2em rgb(0 0 0 / 0.55);
     overflow-wrap: anywhere;
+  }
+
+  /* Arabic cursive letters must NOT have thick text-stroke which clips glyph junctions */
+  :lang(ar) .sub,
+  .sub:lang(ar),
+  [dir="rtl"] .sub,
+  .sub[dir="rtl"],
+  .sub-ar {
+    -webkit-text-stroke: 0 !important;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.95), 0 1px 4px rgba(0, 0, 0, 0.9) !important;
   }
 
   .sub-hl {
@@ -501,5 +521,18 @@ bdi {
 
   .feedback-exit {
     animation: feedbackExit 240ms cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  }
+
+  @keyframes countdownBar {
+    from {
+      width: 100%;
+    }
+    to {
+      width: 0%;
+    }
+  }
+
+  .countdown-bar {
+    animation: countdownBar 800ms linear forwards;
   }
 }

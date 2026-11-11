@@ -248,12 +248,16 @@ function tagWordByLang(text, lang) {
 async function pushEntry(w, times) {
   const srcCode = (w.src || "auto").toLowerCase();
   const taggedText = tagWordByLang(w.text, srcCode);
+  const titleContext =
+    w.sentence && w.title && !w.title.includes(w.sentence)
+      ? `"${w.sentence}" — ${w.title}`
+      : w.title || "";
   const args = {
     p_text: taggedText,
     p_translation: w.translation,
     p_src_lang: srcCode,
     p_target_lang: w.lang,
-    p_source_title: w.title || "",
+    p_source_title: titleContext,
     p_source_url: w.page || "",
     p_times: times,
   };

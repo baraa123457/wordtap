@@ -20,6 +20,7 @@ export type ChoiceQuestion = {
   /** Language of the option choices, so any choice can be spoken aloud */
   optionsLang?: string;
   context: string;
+  sourceUrl?: string;
 };
 
 export type TypeQuestion = {
@@ -30,6 +31,7 @@ export type TypeQuestion = {
   prompt: string;
   answer: string;
   context: string;
+  sourceUrl?: string;
 };
 
 export type MatchPair = { wordId: string; word: string; translation: string; lang: string };
@@ -161,6 +163,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
   for (const word of picked) {
     const id = `q${n++}-${word.id}`;
     const context = word.source_title;
+    const sourceUrl = word.source_url || undefined;
 
     // Writing Mode: Prompt shows translation (e.g. "كان") and user types the word (e.g. "was")
     if (mode === "typing") {
@@ -172,6 +175,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         prompt: word.translation,
         answer: word.text,
         context,
+        sourceUrl,
       });
       continue;
     }
@@ -214,6 +218,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         speak,
         optionsLang,
         context,
+        sourceUrl,
       };
     };
 
@@ -242,6 +247,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         prompt: word.translation,
         answer: word.text,
         context,
+        sourceUrl,
       });
       continue;
     } else if (plan === "type-translation") {
@@ -253,6 +259,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         prompt: word.text,
         answer: word.translation,
         context,
+        sourceUrl,
       });
       continue;
     }
@@ -274,6 +281,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         prompt: word.translation,
         answer: word.text,
         context,
+        sourceUrl,
       };
     }
     questions.push(q);

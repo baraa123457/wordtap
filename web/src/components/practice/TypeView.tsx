@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { TypeQuestion } from "@/lib/session";
 import { canSpeak, speak } from "@/lib/speech";
+import { parseSourceContext } from "@/lib/format";
 import { SpeakerIcon, TrashIcon } from "../Icons";
 import type { Phase } from "./types";
 
@@ -13,19 +14,36 @@ type Props = {
   onChange: (value: string) => void;
   onSubmit: () => void;
   onDeleteWord?: (wordId: string) => void;
+  onHintUsed?: () => void;
 };
 
-export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord }: Props) {
+export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, onHintUsed }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const locked = phase !== "answering";
+  const [hintUsed, setHintUsed] = useState(false);
+  const { sentence, sourceTitle } = parseSourceContext(q.context);
+  const isPromptArabic = /[\u0600-\u06FF]/.test(q.prompt);
+  const cleanAnswer = q.answer.trim();
 
   useEffect(() => {
     input.current?.focus();
+    setHintUsed(false);
   }, [q.id]);
 
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!locked && value.trim() !== "") onSubmit();
+  }
+
+  function revealFirstLetter() {
+    if (hintUsed || locked) return;
+    setHintUsed(true);
+    onHintUsed?.();
+    const firstChar = cleanAnswer[0] || "";
+    if (!value.startsWith(firstChar)) {
+      onChange(firstChar);
+    }
+    input.current?.focus();
   }
 
   const instruction = q.variant === "to-translation" ? "Type the translation" : "Write this word";
@@ -36,8 +54,14 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord }: 
         <div className="frame-bar">
           <span>{instruction}</span>
         </div>
-        <div className="frame-stage" style={{ minHeight: "12rem" }}>
-          <p className="sub flex items-center justify-center gap-3 text-4xl sm:text-5xl" dir="auto">
+        <div className="frame-stage gap-3" style={{ minHeight: "12rem" }}>
+          <p
+            className={`sub flex items-center justify-center gap-3 text-4xl sm:text-5xl ${
+              isPromptArabic ? "sub-ar" : ""
+            }`}
+            dir="auto"
+            lang={isPromptArabic ? "ar" : "en"}
+          >
             <span className="sub-hl">{q.prompt}</span>
             {canSpeak() ? (
               <button
@@ -55,9 +79,30 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord }: 
               </button>
             ) : null}
           </p>
+          {sentence ? (
+            <p className="text-xs sm:text-sm text-white/70 max-w-lg mx-auto text-center font-normal px-4 italic line-clamp-2" dir="auto">
+              “{sentence}”
+            </p>
+          ) : null}
         </div>
         <div className="frame-bar flex items-center justify-between gap-2">
-          <span className="truncate">{q.context ? `From ${q.context}` : ""}</span>
+          <span className="truncate">
+            {q.sourceUrl ? (
+              <a
+                href={q.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline hover:text-white transition-colors inline-flex items-center gap-1"
+                title="Jump to scene in video"
+              >
+                From {sourceTitle || "video"} ↗
+              </a>
+            ) : sourceTitle ? (
+              `From ${sourceTitle}`
+            ) : (
+              ""
+            )}
+          </span>
           {onDeleteWord ? (
             <button
               type="button"
@@ -73,7 +118,7 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord }: 
         </div>
       </div>
 
-      <form onSubmit={submit}>
+      <form onSubmit={submit} className="grid gap-3">
         <label className="sr-only" htmlFor="typed-answer">
           Your answer
         </label>
@@ -92,6 +137,33 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord }: 
           onChange={(e) => onChange(e.target.value)}
           style={{ minHeight: "3.75rem" }}
         />
+
+        {/* Answer length indicator and first-letter hint */}
+        <div className="flex items-center justify-between px-2 text-xs text-muted">
+          <div className="flex items-center gap-1 font-mono tracking-widest select-none">
+            {cleanAnswer.split("").map((ch, idx) => (
+              <span
+                key={idx}
+                className="inline-block border-b-2 border-line w-3.5 text-center font-bold text-ink"
+              >
+                {hintUsed && idx === 0 ? ch : " "}
+              </span>
+            ))}
+            <span className="ms-2 font-sans text-xs text-muted/70 tracking-normal">
+              ({cleanAnswer.length} letters)
+            </span>
+          </div>
+
+          {!hintUsed && !locked ? (
+            <button
+              type="button"
+              className="btn btn-quiet min-h-7 px-2.5 py-0.5 text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:bg-subtitle/10 transition-colors cursor-pointer"
+              onClick={revealFirstLetter}
+            >
+              💡 Show first letter
+            </button>
+          ) : null}
+        </div>
       </form>
     </div>
   );

@@ -25,3 +25,31 @@ export function wordStatus(box: number, nextReview: string, now: Date = new Date
 export function isDue(nextReview: string, now: Date = new Date()): boolean {
   return new Date(nextReview).getTime() <= now.getTime();
 }
+
+/**
+ * Parses raw source context into an optional subtitle sentence and a clean source title.
+ * Handles formats:
+ * - '"What are you doing here?" — Stranger Things'
+ * - 'Sentence ::: Source Title'
+ * - 'Just a title or URL'
+ */
+export function parseSourceContext(raw?: string | null): { sentence?: string; sourceTitle: string } {
+  if (!raw) return { sourceTitle: "" };
+  const str = raw.trim();
+  const quoteMatch = str.match(/^["“](.+?)["”]\s*[-—–:]\s*(.+)$/);
+  if (quoteMatch) {
+    return {
+      sentence: quoteMatch[1].trim(),
+      sourceTitle: quoteMatch[2].trim(),
+    };
+  }
+  if (str.includes(" ::: ")) {
+    const [sentence, ...rest] = str.split(" ::: ");
+    return {
+      sentence: sentence.trim(),
+      sourceTitle: rest.join(" ::: ").trim(),
+    };
+  }
+  return { sourceTitle: str };
+}
+
