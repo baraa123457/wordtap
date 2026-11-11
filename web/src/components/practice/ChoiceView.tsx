@@ -49,10 +49,12 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
   const { sentence, sourceTitle } = parseSourceContext(q.context);
   const isPromptArabic = /[\u0600-\u06FF]/.test(q.prompt);
 
-  // Listening questions start playing as soon as they appear.
+  // Auto-play the English word pronunciation as soon as the card appears!
   useEffect(() => {
-    if (q.variant === "listen" && q.speak) speak(q.speak.text, q.speak.lang);
-  }, [q]);
+    if (q.speak && canSpeak()) {
+      speak(q.speak.text, q.speak.lang);
+    }
+  }, [q.id, q.speak]);
 
   const speakOption = useCallback(
     (option: string) => {

@@ -110,24 +110,22 @@ describe("buildSession", () => {
     }
   });
 
-  it("speaks the translation in target_lang when question variant is to-word", () => {
+  it("always presents English word as prompt and Arabic as choices for recognition questions", () => {
     const arabicWords = [
-      makeWord(1, { text: "humble", translation: "متواضع", src_lang: "en", target_lang: "ar", box: 2 }),
-      makeWord(2, { text: "proud", translation: "فخور", src_lang: "en", target_lang: "ar", box: 2 }),
-      makeWord(3, { text: "polite", translation: "مهذب", src_lang: "en", target_lang: "ar", box: 2 }),
-      makeWord(4, { text: "brave", translation: "شجاع", src_lang: "en", target_lang: "ar", box: 2 }),
+      makeWord(1, { text: "humble", translation: "متواضع", src_lang: "en", target_lang: "ar", box: 0 }),
+      makeWord(2, { text: "proud", translation: "فخور", src_lang: "en", target_lang: "ar", box: 0 }),
+      makeWord(3, { text: "polite", translation: "مهذب", src_lang: "en", target_lang: "ar", box: 0 }),
+      makeWord(4, { text: "brave", translation: "شجاع", src_lang: "en", target_lang: "ar", box: 0 }),
     ];
     const qs = buildSession(arabicWords, { size: 4, canSpeak: true, mode: "choice", now: NOW });
     const choiceQuestions = qs.filter((q) => q.type === "choice");
     for (const q of choiceQuestions) {
       if (q.type === "choice") {
-        if (q.variant === "to-word") {
-          expect(q.speak?.text).toBe(q.prompt);
-          expect(q.speak?.lang).toBe("ar");
-        } else if (q.variant === "to-translation") {
-          expect(q.speak?.text).toBe(q.prompt);
-          expect(q.speak?.lang).toBe("en");
-        }
+        expect(q.variant).toBe("to-translation");
+        expect(q.prompt).not.toMatch(/[\u0600-\u06FF]/); // English prompt
+        expect(q.answer).toMatch(/[\u0600-\u06FF]/); // Arabic answer
+        expect(q.speak?.text).toBe(q.prompt);
+        expect(q.speak?.lang).toBe("en");
       }
     }
   });

@@ -22,10 +22,13 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
   const isPromptArabic = /[\u0600-\u06FF]/.test(q.prompt);
   const [placedTileIds, setPlacedTileIds] = useState<string[]>([]);
 
-  // Reset placed tiles whenever question changes
+  // Reset placed tiles and pronounce the word when card appears
   useEffect(() => {
     setPlacedTileIds([]);
-  }, [q.id]);
+    if (q.speak && canSpeak()) {
+      speak(q.speak.text, q.speak.lang);
+    }
+  }, [q.id, q.speak]);
 
   const tileMap = useMemo(() => new Map(q.tiles.map((t) => [t.id, t])), [q.tiles]);
 

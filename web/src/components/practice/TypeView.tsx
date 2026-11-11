@@ -28,7 +28,10 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
   useEffect(() => {
     input.current?.focus();
     setHintUsed(false);
-  }, [q.id]);
+    if (q.speak && canSpeak()) {
+      speak(q.speak.text, q.speak.lang);
+    }
+  }, [q.id, q.speak]);
 
   function submit(e: FormEvent) {
     e.preventDefault();

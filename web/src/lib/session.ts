@@ -45,6 +45,7 @@ export type TypeQuestion = {
   answer: string;
   context: string;
   sourceUrl?: string;
+  speak?: { text: string; lang: string } | null;
 };
 
 export type MatchPair = { wordId: string; word: string; translation: string; lang: string };
@@ -226,6 +227,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
 
     // Writing Mode: Prompt shows translation (e.g. "كان") and user types the word (e.g. "was")
     if (mode === "typing") {
+      const srcLang = word.src_lang && word.src_lang !== "auto" ? word.src_lang : "en";
       questions.push({
         type: "type",
         id,
@@ -235,6 +237,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         answer: word.text,
         context,
         sourceUrl,
+        speak: { text: word.text, lang: srcLang },
       });
       continue;
     }
@@ -254,22 +257,17 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         customPrompt ??
         (isToWord ? word.translation : variant === "to-translation" ? word.text : "");
 
-      // Pronounce the word that is actually shown in the prompt:
+      const srcLang = word.src_lang && word.src_lang !== "auto" ? word.src_lang : "en";
       const targetLang =
         word.target_lang && word.target_lang !== "auto"
           ? word.target_lang
           : /[\u0600-\u06FF]/.test(word.translation)
           ? "ar"
           : "en";
-      const srcLang = word.src_lang && word.src_lang !== "auto" ? word.src_lang : "en";
 
-      const speak = isToWord
-        ? { text: word.translation, lang: targetLang }
-        : variant === "listen" || word.src_lang !== "auto"
-        ? { text: word.text, lang: srcLang }
-        : null;
-
-      const optionsLang = isToWord || variant === "listen" ? srcLang : targetLang;
+      // Always speak the English word:
+      const speak = { text: word.text, lang: srcLang };
+      const optionsLang = isToWord ? srcLang : targetLang;
 
       return {
         type: "choice",
@@ -287,13 +285,11 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
     };
 
     if (mode === "choice") {
-      const plan = rng() > 0.5 ? "choice-word" : "choice-translation";
       const q =
-        (plan === "choice-word"
-          ? choice("to-word", word.text, texts)
-          : choice("to-translation", word.translation, translations)) ||
         choice("to-translation", word.translation, translations) ||
-        choice("to-word", word.text, texts);
+        (canCloze && sentence
+          ? choice("cloze", word.text, texts, makeClozePrompt(sentence, word.text))
+          : null);
       if (q) {
         questions.push(q);
         continue;
@@ -305,6 +301,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
     const plan = plans[Math.floor(rng() * plans.length)] ?? "choice-translation";
 
     if (plan === "type-word") {
+      const srcLang = word.src_lang && word.src_lang !== "auto" ? word.src_lang : "en";
       questions.push({
         type: "type",
         id,
@@ -314,6 +311,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         answer: word.text,
         context,
         sourceUrl,
+        speak: { text: word.text, lang: srcLang },
       });
       continue;
     }
@@ -329,7 +327,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         tiles: makeScrambleTiles(word.text, rng),
         context,
         sourceUrl,
-        speak: word.src_lang !== "auto" ? { text: word.text, lang: srcLang } : null,
+        speak: { text: word.text, lang: srcLang },
       });
       continue;
     }
@@ -340,18 +338,15 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
     } else if (plan === "cloze" && sentence) {
       q = choice("cloze", word.text, texts, makeClozePrompt(sentence, word.text));
     } else if (plan === "listen") {
-      q = choice("listen", word.text, texts);
-    } else if (plan === "choice-word") {
-      q = choice("to-word", word.text, texts);
+      q = choice("listen", word.translation, translations);
     }
 
     if (!q) {
-      q =
-        choice("to-translation", word.translation, translations) ||
-        choice("to-word", word.text, texts);
+      q = choice("to-translation", word.translation, translations);
     }
 
     if (!q) {
+      const srcLang = word.src_lang && word.src_lang !== "auto" ? word.src_lang : "en";
       q = {
         type: "type",
         id,
@@ -361,6 +356,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         answer: word.text,
         context,
         sourceUrl,
+        speak: { text: word.text, lang: srcLang },
       };
     }
     questions.push(q);
