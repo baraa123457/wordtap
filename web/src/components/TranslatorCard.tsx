@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { speak } from "@/lib/speech";
-import { addCustomWord } from "@/lib/api";
+import { addCustomWord, deleteWord } from "@/lib/api";
 import { getStoredSettings, type UserSettings } from "@/lib/settings";
 import type { Word } from "@/lib/schemas";
-import { SpeakerIcon, CloseIcon } from "@/components/Icons";
+import { SpeakerIcon, CloseIcon, TrashIcon } from "@/components/Icons";
 import { addHistoryItem, markHistoryItemSaved } from "@/lib/history";
 
 const POPULAR_LANGS = [
@@ -256,6 +256,23 @@ export function TranslatorCard({
     : baseTranslation;
 
   // Check if current translated pair is already saved
+  const matchedExistingWord = useMemo(() => {
+    if (!result?.text || !effectiveTranslation) return null;
+    const checkText = (
+      result.correction?.autoCorrected
+        ? result.correction.correctedText
+        : result.text
+    ).trim().toLowerCase();
+    const currentTrans = effectiveTranslation.trim().toLowerCase();
+    return (
+      existingWords.find(
+        (w) =>
+          w.text.trim().toLowerCase() === checkText &&
+          w.translation.trim().toLowerCase() === currentTrans,
+      ) || null
+    );
+  }, [result, effectiveTranslation, existingWords]);
+
   const isAlreadySaved = Boolean(
     result?.translation &&
       result?.text &&
@@ -271,14 +288,33 @@ export function TranslatorCard({
         const sessionKey = `${checkText}:::${currentTrans}`;
         return (
           savedWordsInSession.current.has(sessionKey) ||
-          existingWords.some(
-            (w) =>
-              w.text.trim().toLowerCase() === checkText &&
-              w.translation.trim().toLowerCase() === currentTrans,
-          )
+          Boolean(matchedExistingWord)
         );
       })(),
   );
+
+  const [isDeletingWord, setIsDeletingWord] = useState(false);
+
+  const handleDeleteWordFromTranslator = async () => {
+    if (!matchedExistingWord) return;
+    setIsDeletingWord(true);
+    try {
+      await deleteWord(matchedExistingWord.id);
+      const checkText = (
+        result?.correction?.autoCorrected
+          ? result.correction.correctedText
+          : result?.text || ""
+      ).trim().toLowerCase();
+      const currentTrans = effectiveTranslation.trim().toLowerCase();
+      savedWordsInSession.current.delete(`${checkText}:::${currentTrans}`);
+      setSaveSuccess(false);
+      onWordSaved?.();
+    } catch (e) {
+      console.error("Failed to delete word from translator:", e);
+    } finally {
+      setIsDeletingWord(false);
+    }
+  };
 
   const performAutoSave = useCallback(
     async (data: TranslationResult, src: string, target: string, overrideTrans?: string) => {
@@ -1142,58 +1178,75 @@ export function TranslatorCard({
 
             {/* Save to My Words Button or Auto-Save Status */}
             {result?.translation ? (
-              (settings.translateSaveMode || "manual") === "auto" ? (
-                <div
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                    savingWord
-                      ? "bg-subtitle/15 text-ink border-subtitle/30"
-                      : "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20"
-                  }`}
-                >
-                  {savingWord ? (
-                    <>
-                      <span className="h-3 w-3 rounded-full border-2 border-subtitle border-t-transparent animate-spin" />
-                      <span>Auto-saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>✓ Auto-saved to words</span>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleSaveWord}
-                  disabled={isAlreadySaved || savingWord}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-                    isAlreadySaved || saveSuccess
-                      ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20 cursor-default"
-                      : "btn btn-primary min-h-9 px-4 py-1.5 text-xs sm:text-sm"
-                  }`}
-                >
-                  {savingWord ? (
-                    <>
-                      <span className="h-3.5 w-3.5 rounded-full border-2 border-black border-t-transparent animate-spin" />
-                      <span>Saving...</span>
-                    </>
-                  ) : isAlreadySaved || saveSuccess ? (
-                    <>
-                      <svg className="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      <span>In your words</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                      <span>Save to My Words</span>
-                    </>
-                  )}
-                </button>
-              )
+              <div className="flex items-center gap-2">
+                {(settings.translateSaveMode || "manual") === "auto" ? (
+                  <div
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                      savingWord
+                        ? "bg-subtitle/15 text-ink border-subtitle/30"
+                        : "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20"
+                    }`}
+                  >
+                    {savingWord ? (
+                      <>
+                        <span className="h-3 w-3 rounded-full border-2 border-subtitle border-t-transparent animate-spin" />
+                        <span>Auto-saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>✓ Auto-saved to words</span>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSaveWord}
+                    disabled={isAlreadySaved || savingWord}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                      isAlreadySaved || saveSuccess
+                        ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20 cursor-default"
+                        : "btn btn-primary min-h-9 px-4 py-1.5 text-xs sm:text-sm"
+                    }`}
+                  >
+                    {savingWord ? (
+                      <>
+                        <span className="h-3.5 w-3.5 rounded-full border-2 border-black border-t-transparent animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : isAlreadySaved || saveSuccess ? (
+                      <>
+                        <svg className="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        <span>In your words</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                        <span>Save to My Words</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {/* If word was saved by accident, provide quick Delete button */}
+                {matchedExistingWord ? (
+                  <button
+                    type="button"
+                    onClick={handleDeleteWordFromTranslator}
+                    disabled={isDeletingWord}
+                    title="Delete this word from My Words (saved by accident)"
+                    aria-label="Delete word from My Words"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-muted hover:text-bad hover:bg-bad/10 border border-line transition-colors cursor-pointer"
+                  >
+                    <TrashIcon size={14} />
+                    <span>{isDeletingWord ? "Deleting..." : "Delete"}</span>
+                  </button>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </div>

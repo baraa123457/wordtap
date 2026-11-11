@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { recordPractice, reviewWord } from "@/lib/api";
+import { deleteWord, recordPractice, reviewWord } from "@/lib/api";
 import { localDateString } from "@/lib/dates";
 import type { Word } from "@/lib/schemas";
 import { buildSession, type MatchQuestion, type Question } from "@/lib/session";
@@ -50,6 +50,8 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
   const [reviewFailed, setReviewFailed] = useState(false);
   const [save, setSave] = useState<SaveState>("idle");
   const [leaving, setLeaving] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const reviewed = useRef(new Set<string>());
   const xpSaved = useRef(false);
@@ -57,6 +59,29 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
 
   const current = queue[0];
   const finished = current === undefined;
+
+  const handleDeleteWord = useCallback(
+    async (wordId: string) => {
+      setIsDeleting(true);
+      try {
+        await deleteWord(wordId);
+        // Remove word from queue immediately
+        setQueue((prev) =>
+          prev.filter((item) => ("wordId" in item.q ? item.q.wordId !== wordId : true)),
+        );
+        setMissed((prev) => prev.filter((w) => w.id !== wordId));
+        setPhase("answering");
+        setSelected(null);
+        setTyped("");
+        setDeleteConfirmId(null);
+      } catch (err) {
+        console.error("Failed to delete word:", err);
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [],
+  );
 
   /** Only the first result for a word in a session changes its schedule. */
   const review = useCallback((wordId: string, correct: boolean) => {
@@ -211,11 +236,52 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
         </div>
       ) : null}
 
+      {deleteConfirmId ? (
+        <div role="alertdialog" aria-label="Delete word?" className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border-2 border-bad/30 bg-bad-soft/90 p-4 shadow-lg backdrop-blur-md">
+          <div>
+            <p className="font-bold text-ink">Delete this word from My Words?</p>
+            <p className="text-xs text-muted">It will be permanently deleted from your saved words so you won&apos;t practice it again.</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              disabled={isDeleting}
+              className="btn btn-bad min-h-9 px-4 text-xs font-semibold cursor-pointer"
+              onClick={() => void handleDeleteWord(deleteConfirmId)}
+            >
+              {isDeleting ? "Deleting..." : "Yes, delete"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-quiet min-h-9 px-3 text-xs cursor-pointer"
+              onClick={() => setDeleteConfirmId(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <main className="flex-1 pb-44">
         {q.type === "choice" ? (
-          <ChoiceView key={q.id + String(current.retry)} q={q} selected={selected} phase={phase} onSelect={setSelected} />
+          <ChoiceView
+            key={q.id + String(current.retry)}
+            q={q}
+            selected={selected}
+            phase={phase}
+            onSelect={setSelected}
+            onDeleteWord={(wordId) => setDeleteConfirmId(wordId)}
+          />
         ) : q.type === "type" ? (
-          <TypeView key={q.id + String(current.retry)} q={q} value={typed} phase={phase} onChange={setTyped} onSubmit={check} />
+          <TypeView
+            key={q.id + String(current.retry)}
+            q={q}
+            value={typed}
+            phase={phase}
+            onChange={setTyped}
+            onSubmit={check}
+            onDeleteWord={(wordId) => setDeleteConfirmId(wordId)}
+          />
         ) : (
           <MatchView key={q.id} q={q} onComplete={(mistakes) => completeMatch(q, mistakes)} />
         )}

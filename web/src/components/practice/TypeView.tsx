@@ -3,7 +3,7 @@
 import { useEffect, useRef, type FormEvent } from "react";
 import type { TypeQuestion } from "@/lib/session";
 import { canSpeak, speak } from "@/lib/speech";
-import { SpeakerIcon } from "../Icons";
+import { SpeakerIcon, TrashIcon } from "../Icons";
 import type { Phase } from "./types";
 
 type Props = {
@@ -12,9 +12,10 @@ type Props = {
   phase: Phase;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  onDeleteWord?: (wordId: string) => void;
 };
 
-export function TypeView({ q, value, phase, onChange, onSubmit }: Props) {
+export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const locked = phase !== "answering";
 
@@ -55,8 +56,20 @@ export function TypeView({ q, value, phase, onChange, onSubmit }: Props) {
             ) : null}
           </p>
         </div>
-        <div className="frame-bar">
+        <div className="frame-bar flex items-center justify-between gap-2">
           <span className="truncate">{q.context ? `From ${q.context}` : ""}</span>
+          {onDeleteWord ? (
+            <button
+              type="button"
+              title="Delete this word from My Words (saved by accident)"
+              aria-label="Delete word"
+              className="inline-flex items-center gap-1.5 text-xs text-white/60 hover:text-red-400 py-1 px-2.5 rounded-lg hover:bg-white/10 transition-colors shrink-0 ms-auto cursor-pointer"
+              onClick={() => onDeleteWord(q.wordId)}
+            >
+              <TrashIcon size={14} />
+              <span>Delete word</span>
+            </button>
+          ) : null}
         </div>
       </div>
 
