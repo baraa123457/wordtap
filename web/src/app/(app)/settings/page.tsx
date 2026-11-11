@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { getSupabase } from "@/lib/supabase";
 import { fetchStats, setDailyGoal, deleteAccount } from "@/lib/api";
 import { getStoredSettings, saveStoredSettings, type UserSettings, type PracticeMode } from "@/lib/settings";
 import { canSpeak, speak, detectVoiceGender } from "@/lib/speech";
@@ -98,24 +97,25 @@ export default function SettingsPage() {
     e.preventDefault();
     setPwMessage(null);
     if (!newPassword) return;
-    if (newPassword.length < 6) {
-      setPwMessage({ type: "error", text: "Password must be at least 6 characters." });
-      return;
-    }
     if (newPassword !== confirmPassword) {
       setPwMessage({ type: "error", text: "Passwords do not match." });
       return;
     }
-
+    if (newPassword.length < 6) {
+      setPwMessage({ type: "error", text: "Password must be at least 6 characters." });
+      return;
+    }
     setPwBusy(true);
     try {
-      const { error } = await getSupabase().auth.updateUser({ password: newPassword });
+      const { getSupabase } = await import("@/lib/supabase");
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      setPwMessage({ type: "success", text: "Password updated successfully!" });
+      setPwMessage({ type: "success", text: "Password changed successfully!" });
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
-      setPwMessage({ type: "error", text: err.message || "Could not update password." });
+      setPwMessage({ type: "error", text: err.message || "Could not change password." });
     } finally {
       setPwBusy(false);
     }
@@ -136,7 +136,6 @@ export default function SettingsPage() {
       nextTyping = !isTypingActive;
     }
 
-    // Must keep at least one enabled
     if (!nextChoice && !nextTyping) {
       return;
     }
@@ -153,50 +152,108 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl grid gap-8 pb-12">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="mt-1 text-muted">Customize your practice flow, audio, and account preferences.</p>
+    <div className="mx-auto max-w-4xl grid gap-8 pb-16">
+      {/* Title */}
+      <div className="border-b border-line/60 pb-4">
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink flex items-center gap-2.5">
+          <span>Settings</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-subtitle" />
+        </h1>
+        <p className="mt-1 text-xs sm:text-sm text-muted">
+          Customize your appearance, practice flow, audio speech, and account security.
+        </p>
       </div>
 
-      {/* Appearance & Dark Mode */}
+      {/* Appearance / Theme */}
       <section className="apple-card p-6 grid gap-6">
-        <h2 className="text-xl font-bold border-b border-line pb-3">Appearance / Dark Mode</h2>
+        <div>
+          <h2 className="text-lg font-bold text-ink">Appearance & Theme</h2>
+          <p className="text-xs sm:text-sm text-muted">Choose your preferred visual mode for cinema study.</p>
+        </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
           {[
-            { id: "light", label: "Light", icon: "☀️", desc: "Daylight page" },
-            { id: "dark", label: "Dark", icon: "🌙", desc: "Dark theater cinema" },
-            { id: "system", label: "System", icon: "💻", desc: "Follow OS preference" },
-          ].map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => update({ theme: t.id as any })}
-              className={`flex flex-col items-start gap-1 p-4 rounded-xl border text-start transition-all cursor-pointer ${
-                settings.theme === t.id
-                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle"
-                  : "border-line bg-surface text-muted hover:text-ink hover:border-ink/30"
-              }`}
-            >
-              <span className="text-2xl">{t.icon}</span>
-              <span className="font-bold text-ink mt-1">{t.label}</span>
-              <span className="text-xs text-muted">{t.desc}</span>
-            </button>
-          ))}
+            {
+              id: "light",
+              label: "Light",
+              desc: "Crisp daylight cinema",
+              icon: (
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              ),
+            },
+            {
+              id: "dark",
+              label: "Dark Theater",
+              desc: "Deep midnight cinema",
+              icon: (
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              ),
+            },
+            {
+              id: "system",
+              label: "System",
+              desc: "Follow OS preference",
+              icon: (
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                  <line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
+                </svg>
+              ),
+            },
+          ].map((t) => {
+            const isSelected = settings.theme === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => update({ theme: t.id as any })}
+                className={`flex flex-col items-start gap-2 p-4 rounded-2xl border text-start transition-all cursor-pointer ${
+                  isSelected
+                    ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
+                    : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className={isSelected ? "text-subtitle" : "text-muted"}>{t.icon}</span>
+                  <span
+                    className={`w-4 h-4 rounded-full border flex items-center justify-center text-[10px] font-bold ${
+                      isSelected ? "bg-subtitle text-subtitle-ink border-subtitle" : "border-line"
+                    }`}
+                  >
+                    {isSelected ? "✓" : ""}
+                  </span>
+                </div>
+                <div>
+                  <div className="font-bold text-ink text-sm">{t.label}</div>
+                  <div className="text-xs text-muted mt-0.5">{t.desc}</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 
       {/* 1. Practice & Learning */}
       <section className="apple-card p-6 grid gap-6">
-        <h2 className="text-xl font-bold border-b border-line pb-3">Practice & Review</h2>
+        <div>
+          <h2 className="text-lg font-bold text-ink">Practice & Review</h2>
+          <p className="text-xs sm:text-sm text-muted">Configure question styles, session lengths, and review speed.</p>
+        </div>
 
-        {/* Auto-Advance */}
+        {/* Auto-Advance Switch */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="font-semibold text-ink">Auto-advance on correct answers</div>
-            <div className="text-sm text-muted">
-              Skip the &quot;Continue&quot; button automatically when you answer correctly.
+            <div className="text-xs sm:text-sm text-muted">
+              Automatically advance to the next word when you answer correctly.
             </div>
           </div>
           <label className="relative inline-flex cursor-pointer items-center shrink-0">
@@ -206,16 +263,16 @@ export default function SettingsPage() {
               onChange={(e) => update({ autoAdvance: e.target.checked })}
               className="peer sr-only"
             />
-            <div className="peer h-6 w-11 rounded-full bg-line after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-subtitle peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none" />
+            <div className="peer h-6 w-11 rounded-full bg-line after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-subtitle peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none shadow-2xs" />
           </label>
         </div>
 
         {/* Speed */}
         {settings.autoAdvance ? (
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/60 pt-4">
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/50 pt-4">
             <div>
               <div className="font-semibold text-ink">Auto-advance speed</div>
-              <div className="text-sm text-muted">How long to show the green &quot;Correct&quot; screen before continuing.</div>
+              <div className="text-xs sm:text-sm text-muted">How long to show the green confirmation before advancing.</div>
             </div>
             <select
               value={settings.autoAdvanceDelayMs}
@@ -230,12 +287,12 @@ export default function SettingsPage() {
           </div>
         ) : null}
 
-        {/* Practice Question Types */}
-        <div className="border-t border-line/60 pt-4 grid gap-3">
+        {/* Question Types */}
+        <div className="border-t border-line/50 pt-4 grid gap-3">
           <div>
             <div className="font-semibold text-ink">Question types / Practice style</div>
-            <div className="text-sm text-muted">
-              Choose your practice question types. You can pick either one or both!
+            <div className="text-xs sm:text-sm text-muted">
+              Choose your practice format. You can pick either one or both!
             </div>
           </div>
 
@@ -244,20 +301,25 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => toggleQuestionType("choice")}
-              className={`flex items-start gap-3.5 p-4 rounded-xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
                 isChoiceActive
-                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle"
-                  : "border-line bg-surface text-muted hover:text-ink hover:border-ink/30"
+                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
+                  : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
               }`}
             >
-              <div className="text-2xl pt-0.5">🔘</div>
+              <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-subtitle">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-bold text-ink">Multiple Choice</span>
                   <span
                     className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
                       isChoiceActive
-                        ? "bg-subtitle text-black border-subtitle"
+                        ? "bg-subtitle text-subtitle-ink border-subtitle"
                         : "border-line bg-surface"
                     }`}
                   >
@@ -270,24 +332,28 @@ export default function SettingsPage() {
               </div>
             </button>
 
-            {/* Card 2: Write the words (Typing) */}
+            {/* Card 2: Write the words */}
             <button
               type="button"
               onClick={() => toggleQuestionType("typing")}
-              className={`flex items-start gap-3.5 p-4 rounded-xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
                 isTypingActive
-                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle"
-                  : "border-line bg-surface text-muted hover:text-ink hover:border-ink/30"
+                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
+                  : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
               }`}
             >
-              <div className="text-2xl pt-0.5">✍️</div>
+              <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-subtitle">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-bold text-ink">Write the words (Typing)</span>
                   <span
                     className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
                       isTypingActive
-                        ? "bg-subtitle text-black border-subtitle"
+                        ? "bg-subtitle text-subtitle-ink border-subtitle"
                         : "border-line bg-surface"
                     }`}
                   >
@@ -295,35 +361,18 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-muted mt-1 leading-relaxed">
-                  See the meaning (e.g. &quot;كان&quot;) and type the word yourself (e.g. &quot;was&quot;).
+                  See the translation and type the target word yourself to reinforce active recall.
                 </p>
               </div>
             </button>
           </div>
-
-          {/* Dynamic Status / Feedback */}
-          <div className="rounded-xl bg-surface border border-line p-3 text-xs flex items-center gap-2">
-            {isChoiceActive && isTypingActive ? (
-              <span className="text-ink">
-                ✨ <strong>Both active (Mixed):</strong> Practice sessions will alternate between typing questions and multiple choice quizzes.
-              </span>
-            ) : isTypingActive ? (
-              <span className="text-subtitle font-medium">
-                ✍️ <strong>Writing mode only:</strong> You will type the English words for every single question.
-              </span>
-            ) : (
-              <span className="text-subtitle font-medium">
-                🔘 <strong>Multiple choice only:</strong> Fast 4-option quizzes without typing.
-              </span>
-            )}
-          </div>
         </div>
 
         {/* Session Size */}
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/60 pt-4">
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/50 pt-4">
           <div>
             <div className="font-semibold text-ink">Words per practice session</div>
-            <div className="text-sm text-muted">Number of words to review in each practice round.</div>
+            <div className="text-xs sm:text-sm text-muted">Number of words to review in each study round.</div>
           </div>
           <select
             value={settings.sessionSize}
@@ -339,24 +388,21 @@ export default function SettingsPage() {
         </div>
 
         {/* Daily XP Goal */}
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/60 pt-4">
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/50 pt-4">
           <div>
             <div className="font-semibold text-ink">Daily XP goal</div>
-            <div className="text-sm text-muted">Target XP to complete each day to maintain your streak.</div>
+            <div className="text-xs sm:text-sm text-muted">Target XP to complete each day to maintain your streak.</div>
             {goalMessage ? <div className="text-xs font-semibold text-ok mt-1">{goalMessage}</div> : null}
           </div>
-          <div className="flex gap-1.5 flex-wrap">
+          <div className="apple-segmented-container">
             {GOALS.map((g) => (
               <button
                 key={g}
                 type="button"
                 disabled={goalSaving}
                 onClick={() => void handleGoalChange(g)}
-                className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition-colors border ${
-                  dailyGoalVal === g
-                    ? "bg-subtitle text-subtitle-ink border-subtitle-edge"
-                    : "border-line text-muted hover:text-ink hover:bg-bg"
-                }`}
+                data-active={dailyGoalVal === g ? "true" : undefined}
+                className="apple-segmented-item"
               >
                 {g} XP
               </button>
@@ -367,13 +413,16 @@ export default function SettingsPage() {
 
       {/* 2. Languages & Translation */}
       <section className="apple-card p-6 grid gap-6">
-        <h2 className="text-xl font-bold border-b border-line pb-3">Translation & Languages</h2>
+        <div>
+          <h2 className="text-lg font-bold text-ink">Translation & Languages</h2>
+          <p className="text-xs sm:text-sm text-muted">Configure saving mode and default target language.</p>
+        </div>
 
-        {/* Translation Word Saving Mode (Auto vs Manual) */}
+        {/* Word Saving Mode */}
         <div className="grid gap-3">
           <div>
             <div className="font-semibold text-ink">Word saving in translator</div>
-            <div className="text-sm text-muted">
+            <div className="text-xs sm:text-sm text-muted">
               Choose whether words translated on the dashboard are saved automatically or manually.
             </div>
           </div>
@@ -383,20 +432,26 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => update({ translateSaveMode: "manual" })}
-              className={`flex items-start gap-3.5 p-4 rounded-xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
                 (settings.translateSaveMode || "manual") === "manual"
-                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle"
-                  : "border-line bg-surface text-muted hover:text-ink hover:border-ink/30"
+                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
+                  : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
               }`}
             >
-              <div className="text-2xl pt-0.5">✍️</div>
+              <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-subtitle">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17 21 17 13 7 13 7 21" />
+                  <polyline points="7 3 7 8 15 8" />
+                </svg>
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-ink">Manual save (حفظ يدوي)</span>
+                  <span className="font-bold text-ink">Manual save</span>
                   <span
                     className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
                       (settings.translateSaveMode || "manual") === "manual"
-                        ? "bg-subtitle text-black border-subtitle"
+                        ? "bg-subtitle text-subtitle-ink border-subtitle"
                         : "border-line bg-surface"
                     }`}
                   >
@@ -404,7 +459,7 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-muted mt-1 leading-relaxed">
-                  Words are only saved when you click the <strong>&quot;⭐ + Save to My Words&quot;</strong> button.
+                  Words are saved only when you click the <strong>&quot;Save to My Words&quot;</strong> button.
                 </p>
               </div>
             </button>
@@ -413,20 +468,24 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => update({ translateSaveMode: "auto" })}
-              className={`flex items-start gap-3.5 p-4 rounded-xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
                 settings.translateSaveMode === "auto"
-                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle"
-                  : "border-line bg-surface text-muted hover:text-ink hover:border-ink/30"
+                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
+                  : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
               }`}
             >
-              <div className="text-2xl pt-0.5">⚡</div>
+              <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-subtitle">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-ink">Auto-save (حفظ تلقائي)</span>
+                  <span className="font-bold text-ink">Auto-save</span>
                   <span
                     className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
                       settings.translateSaveMode === "auto"
-                        ? "bg-subtitle text-black border-subtitle"
+                        ? "bg-subtitle text-subtitle-ink border-subtitle"
                         : "border-line bg-surface"
                     }`}
                   >
@@ -434,30 +493,18 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-muted mt-1 leading-relaxed">
-                  Every word or sentence you translate is automatically saved directly to your WordTap vocabulary.
+                  Every translated word is instantly and automatically added to your practice list.
                 </p>
               </div>
             </button>
           </div>
-
-          <div className="rounded-xl bg-surface border border-line p-3 text-xs flex items-center gap-2">
-            {settings.translateSaveMode === "auto" ? (
-              <span className="text-subtitle font-medium">
-                ⚡ <strong>Auto-save active:</strong> Translations will automatically be added to your word list without needing to click the save button.
-              </span>
-            ) : (
-              <span className="text-ink">
-                ✍️ <strong>Manual mode active:</strong> Click <strong>&quot;⭐ + Save to My Words&quot;</strong> whenever you want to add a translated word to your practice list.
-              </span>
-            )}
-          </div>
         </div>
 
         {/* Default Translation Language */}
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/60 pt-4">
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/50 pt-4">
           <div>
             <div className="font-semibold text-ink">Default translation language</div>
-            <div className="text-sm text-muted">The language you want words translated into.</div>
+            <div className="text-xs sm:text-sm text-muted">The language you want words translated into.</div>
           </div>
           <select
             value={settings.targetLang}
@@ -475,10 +522,10 @@ export default function SettingsPage() {
 
       {/* 3. Audio & Voice Settings */}
       <section className="apple-card p-6 grid gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line/50 pb-3">
           <div>
-            <h2 className="text-xl font-bold">Audio & Speaker Voice</h2>
-            <p className="text-sm text-muted">Choose your voice gender (Man/Woman), softness, and voice style.</p>
+            <h2 className="text-lg font-bold text-ink">Audio & Voice Pronunciation</h2>
+            <p className="text-xs sm:text-sm text-muted">Choose your voice gender, tone, and pronunciation pace.</p>
           </div>
           {canSpeak() ? (
             <button
@@ -489,114 +536,86 @@ export default function SettingsPage() {
                   "en-US"
                 )
               }
-              className="btn btn-primary min-h-10 px-4 py-1.5 text-sm"
+              className="btn btn-primary min-h-9 px-4 py-1.5 text-xs font-semibold"
               title="Test current voice"
             >
-              <SpeakerIcon size={18} /> Test voice
+              <SpeakerIcon size={16} /> Test Voice
             </button>
           ) : null}
         </div>
 
-        {/* 1. Voice Gender: Man or Woman */}
+        {/* Voice Gender */}
         <div className="grid gap-2">
           <div className="font-semibold text-ink">Voice gender (Man or Woman)</div>
-          <div className="text-sm text-muted">Choose whether you prefer a female or male speaker.</div>
+          <div className="text-xs sm:text-sm text-muted">Choose whether you prefer a female or male speaker.</div>
           <div className="grid gap-3 sm:grid-cols-3 mt-1">
             {[
-              { id: "female", label: "Woman (Female)", icon: "👩", desc: "Clear, warm female voice" },
-              { id: "male", label: "Man (Male)", icon: "👨", desc: "Deeper, resonant male voice" },
-              { id: "auto", label: "Auto / Default", icon: "🤖", desc: "System recommended voice" },
-            ].map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => {
-                  update({ voiceGender: g.id as any });
-                  speak("Testing " + g.label, "en-US", { gender: g.id as any });
-                }}
-                className={`flex flex-col items-start gap-1 p-3.5 rounded-xl border text-start transition-all cursor-pointer ${
-                  (settings.voiceGender || "female") === g.id
-                    ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle"
-                    : "border-line bg-surface text-muted hover:text-ink hover:border-ink/30"
-                }`}
-              >
-                <span className="text-2xl">{g.icon}</span>
-                <span className="font-bold text-ink mt-0.5">{g.label}</span>
-                <span className="text-xs text-muted">{g.desc}</span>
-              </button>
-            ))}
+              { id: "female", label: "Woman (Female)", desc: "Clear, warm tone" },
+              { id: "male", label: "Man (Male)", desc: "Deeper resonant tone" },
+              { id: "auto", label: "Auto / Default", desc: "System voice" },
+            ].map((g) => {
+              const isSelected = (settings.voiceGender || "female") === g.id;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => {
+                    update({ voiceGender: g.id as any });
+                    speak("Testing " + g.label, "en-US", { gender: g.id as any });
+                  }}
+                  className={`flex flex-col items-start gap-1 p-3.5 rounded-2xl border text-start transition-all cursor-pointer ${
+                    isSelected
+                      ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
+                      : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
+                  }`}
+                >
+                  <span className="font-bold text-ink text-sm">{g.label}</span>
+                  <span className="text-xs text-muted">{g.desc}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* 2. Voice Tone & Softness */}
-        <div className="grid gap-2 border-t border-line/60 pt-4">
+        {/* Voice Tone */}
+        <div className="grid gap-2 border-t border-line/50 pt-4">
           <div className="font-semibold text-ink">Voice tone & softness</div>
-          <div className="text-sm text-muted">Adjust how soft, calm, or deep the pronunciation sounds.</div>
+          <div className="text-xs sm:text-sm text-muted">Adjust how soft, calm, or deep the pronunciation sounds.</div>
           <div className="grid gap-3 sm:grid-cols-4 mt-1">
             {[
-              { id: "soft", label: "Soft & Calm", icon: "🌸", desc: "Gentle, soothing cadence" },
-              { id: "natural", label: "Natural", icon: "🎙️", desc: "Balanced standard tone" },
-              { id: "deep", label: "Deep & Rich", icon: "🔊", desc: "Lower, authoritative tone" },
-              { id: "energetic", label: "Clear & Crisp", icon: "⚡", desc: "High clarity pronunciation" },
-            ].map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => {
-                  update({ voiceTone: t.id as any });
-                  speak("This is the " + t.label + " tone", "en-US", { tone: t.id as any });
-                }}
-                className={`flex flex-col items-start gap-1 p-3 rounded-xl border text-start transition-all cursor-pointer ${
-                  (settings.voiceTone || "soft") === t.id
-                    ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle"
-                    : "border-line bg-surface text-muted hover:text-ink hover:border-ink/30"
-                }`}
-              >
-                <span className="text-xl">{t.icon}</span>
-                <span className="font-bold text-ink text-sm mt-0.5">{t.label}</span>
-                <span className="text-xs text-muted line-clamp-2">{t.desc}</span>
-              </button>
-            ))}
+              { id: "soft", label: "Soft & Calm", desc: "Gentle cadence" },
+              { id: "natural", label: "Natural", desc: "Balanced standard" },
+              { id: "deep", label: "Deep & Rich", desc: "Lower resonance" },
+              { id: "energetic", label: "Clear & Crisp", desc: "High clarity" },
+            ].map((t) => {
+              const isSelected = (settings.voiceTone || "soft") === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    update({ voiceTone: t.id as any });
+                    speak("This is the " + t.label + " tone", "en-US", { tone: t.id as any });
+                  }}
+                  className={`flex flex-col items-start gap-1 p-3 rounded-2xl border text-start transition-all cursor-pointer ${
+                    isSelected
+                      ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
+                      : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
+                  }`}
+                >
+                  <span className="font-bold text-ink text-sm">{t.label}</span>
+                  <span className="text-xs text-muted">{t.desc}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* 3. Specific Voice Choices (From System/Browser) */}
-        {voices.length > 0 ? (
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/60 pt-4">
-            <div>
-              <div className="font-semibold text-ink">Specific voice</div>
-              <div className="text-sm text-muted">Pick a specific voice installed on your device or leave as Auto.</div>
-            </div>
-            <select
-              value={settings.voiceURI || ""}
-              onChange={(e) => {
-                const uri = e.target.value;
-                update({ voiceURI: uri });
-                if (uri) {
-                  speak("Voice selected", "en-US", { voiceURI: uri });
-                }
-              }}
-              className="field w-72 max-w-full"
-            >
-              <option value="">Auto (Matches gender & tone)</option>
-              {voices.map((v) => {
-                const g = detectVoiceGender(v);
-                const tag = g === "female" ? " (Woman)" : g === "male" ? " (Man)" : "";
-                return (
-                  <option key={v.voiceURI} value={v.voiceURI}>
-                    {v.name} [{v.lang}]{tag}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-        ) : null}
-
-        {/* 4. Speech Speed */}
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/60 pt-4">
+        {/* Pronunciation Speed */}
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/50 pt-4">
           <div>
-            <div className="font-semibold text-ink">Speech pronunciation speed</div>
-            <div className="text-sm text-muted">Adjust how fast foreign words are spoken.</div>
+            <div className="font-semibold text-ink">Pronunciation speed</div>
+            <div className="text-xs sm:text-sm text-muted">Adjust the playback rate for spoken words.</div>
           </div>
           <select
             value={settings.speechRate}
@@ -605,7 +624,7 @@ export default function SettingsPage() {
               update({ speechRate: r });
               speak("Pronunciation speed updated", "en-US", { rate: r });
             }}
-            className="field w-40"
+            className="field w-44"
           >
             <option value={0.8}>0.8x (Slow)</option>
             <option value={0.92}>0.92x (Soft & Natural)</option>
@@ -617,19 +636,22 @@ export default function SettingsPage() {
 
       {/* 4. Account & Security */}
       <section className="apple-card p-6 grid gap-6">
-        <h2 className="text-xl font-bold border-b border-line pb-3">Account & Security</h2>
+        <div>
+          <h2 className="text-lg font-bold text-ink">Account & Security</h2>
+          <p className="text-xs sm:text-sm text-muted">Manage your login details and account session.</p>
+        </div>
 
         <div>
-          <div className="text-sm font-semibold text-muted">Logged in as</div>
+          <div className="text-xs font-semibold text-muted">Logged in as</div>
           <div className="text-base font-bold text-ink mt-0.5">{userEmail || "Signed in"}</div>
         </div>
 
-        <form onSubmit={handlePasswordChange} className="grid gap-3 border-t border-line/60 pt-4">
+        <form onSubmit={handlePasswordChange} className="grid gap-3 border-t border-line/50 pt-4">
           <div className="font-semibold text-ink">Change password</div>
 
           {pwMessage ? (
             <div
-              className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+              className={`rounded-xl px-4 py-2 text-xs font-semibold ${
                 pwMessage.type === "success" ? "bg-ok-soft text-ok" : "bg-bad-soft text-bad"
               }`}
             >
@@ -656,19 +678,19 @@ export default function SettingsPage() {
             />
           </div>
 
-          <div className="flex justify-end">
-            <button type="submit" disabled={pwBusy || !newPassword} className="btn btn-primary min-w-36">
-              {pwBusy ? "Updating…" : "Update password"}
+          <div className="flex justify-end pt-1">
+            <button type="submit" disabled={pwBusy || !newPassword} className="btn btn-primary min-w-36 text-xs font-semibold">
+              {pwBusy ? "Updating…" : "Update Password"}
             </button>
           </div>
         </form>
 
-        <div className="flex items-center justify-between border-t border-line/60 pt-4">
+        <div className="flex items-center justify-between border-t border-line/50 pt-4">
           <div>
             <div className="font-semibold text-ink">Sign out</div>
-            <div className="text-sm text-muted">Sign out of your WordTap account on this browser.</div>
+            <div className="text-xs sm:text-sm text-muted">Sign out of your WordTap session on this device.</div>
           </div>
-          <button type="button" onClick={() => void signOut()} className="btn min-w-28">
+          <button type="button" onClick={() => void signOut()} className="btn btn-quiet min-w-28 text-xs font-medium">
             Sign out
           </button>
         </div>
@@ -678,14 +700,14 @@ export default function SettingsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="font-bold text-bad">Delete account</div>
-              <div className="text-sm text-muted">
+              <div className="text-xs sm:text-sm text-muted">
                 Permanently delete your account, all saved vocabulary words, and learning progress.
               </div>
             </div>
             <button
               type="button"
               onClick={() => setShowDeleteModal(true)}
-              className="btn btn-bad min-w-36 shrink-0"
+              className="btn btn-bad min-w-36 shrink-0 text-xs font-semibold"
             >
               Delete account
             </button>
@@ -698,7 +720,7 @@ export default function SettingsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-2xl border-2 border-bad bg-surface p-6 shadow-2xl grid gap-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 text-bad font-bold text-xl">
-              <span className="text-2xl">⚠️</span> Delete Account?
+              <span>Delete Account?</span>
             </div>
             <p className="text-sm text-ink leading-relaxed">
               Are you sure you want to permanently delete your account? This action <strong>cannot be undone</strong>. All your saved vocabulary, Leitner boxes, XP, and streak will be permanently erased.

@@ -54,20 +54,31 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
             {email ? (
-              <span
-                className="hidden max-w-36 truncate text-xs font-medium text-muted sm:inline"
-                title={email}
-              >
-                {email}
-              </span>
-            ) : null}
-            <button
-              type="button"
-              className="btn btn-quiet min-h-9 px-3 py-1 text-xs font-medium"
-              onClick={() => void signOut()}
-            >
-              Sign out
-            </button>
+              <>
+                <span
+                  className="hidden max-w-36 truncate text-xs font-medium text-muted sm:inline"
+                  title={email}
+                >
+                  {email}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-quiet min-h-9 px-3 py-1 text-xs font-medium"
+                  onClick={() => void signOut()}
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <Link href="/login" className="btn btn-quiet min-h-9 px-3 py-1 text-xs font-medium">
+                  Sign in
+                </Link>
+                <Link href="/signup" className="btn btn-primary min-h-9 px-3 py-1 text-xs font-semibold">
+                  Sign up
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </header>

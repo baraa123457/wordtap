@@ -58,11 +58,11 @@ function GoalDropdown({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Change daily goal"
-        className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-[#151833] px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-all hover:border-subtitle hover:bg-[#1c2044] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-subtitle"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-semibold text-white shadow-xs transition-all hover:border-subtitle hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-subtitle"
       >
         <span>{value} XP</span>
         <svg
-          className={`h-4 w-4 text-[#a9aed3] transition-transform duration-200 ${
+          className={`h-3.5 w-3.5 text-white/70 transition-transform duration-200 ${
             open ? "rotate-180 text-subtitle" : ""
           }`}
           viewBox="0 0 24 24"
@@ -80,7 +80,7 @@ function GoalDropdown({
         <div
           role="listbox"
           aria-label="Daily goal options"
-          className="absolute bottom-full right-0 z-50 mb-2 min-w-[130px] rounded-2xl border border-[#262a52] bg-[#151833] p-1.5 shadow-2xl shadow-black/90 backdrop-blur-md"
+          className="absolute bottom-full right-0 z-50 mb-2 min-w-[130px] rounded-2xl border border-line bg-surface p-1.5 shadow-2xl backdrop-blur-xl"
         >
           {GOALS.map((g) => {
             const isSelected = g === value;
@@ -94,25 +94,15 @@ function GoalDropdown({
                   onChange(g);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold transition-all ${
+                className={`flex w-full items-center justify-between rounded-xl px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
                   isSelected
-                    ? "bg-subtitle text-subtitle-ink shadow-sm"
-                    : "text-[#a9aed3] hover:bg-white/10 hover:text-white"
+                    ? "bg-subtitle text-subtitle-ink shadow-xs"
+                    : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10"
                 }`}
               >
                 <span>{g} XP</span>
                 {isSelected && (
-                  <svg
-                    className="h-4 w-4 text-subtitle-ink"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                  <span className="text-subtitle-ink font-bold">✓</span>
                 )}
               </button>
             );

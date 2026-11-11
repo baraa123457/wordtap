@@ -1,25 +1,26 @@
 @import "tailwindcss";
 
 /*
- * WordTap Apple HIG Design System
- * Grounded in Apple Human Interface Guidelines:
- * - Liquid Glass functional layer (translucent floating header/navigation/tab bar)
- * - Standard materials for content layer (cards, lists, surfaces)
- * - System font hierarchy with San Francisco metrics
- * - Semantic system colors (systemGroupedBackground, secondarySystemGroupedBackground)
- * - Restrained brand accent (Subtitle amber) reserved for primary actions
- * - Accessible minimum touch targets (≥44x44pt on mobile, ≥28x28pt on desktop)
+ * WordTap Brand & Apple HIG Design System
+ * 
+ * Signature Brand Identity:
+ * - Cinema screen theme: cool daylight page in light mode, dark theater midnight in dark mode.
+ * - Subtitle Yellow (#facc3b): the signature glowing brand accent, used on active tabs,
+ *   primary buttons, highlights, and status badges.
+ * - Liquid Glass functional layer for floating navigation and toolbars.
+ * - Inset grouped Apple cards for content and settings.
+ * - SF Pro / Apple system typography hierarchy.
  */
 
 :root {
-  /* Apple iOS Light Mode Tokens */
-  --bg: #f2f2f7;                  /* systemGroupedBackground */
-  --surface: #ffffff;             /* secondarySystemGroupedBackground */
-  --surface-elevated: #f9f9fb;    /* tertiarySystemGroupedBackground */
-  --ink: #1c1c1e;                 /* label */
-  --muted: #6e6e73;               /* secondaryLabel (WCAG AA compliant > 4.5:1) */
-  --line: rgba(60, 60, 67, 0.12); /* separator */
-  --focus: #e5a800;
+  /* WordTap Light Mode: Daylight Cinema */
+  --bg: #f2f4fa;
+  --surface: #ffffff;
+  --surface-elevated: #f8f9fe;
+  --ink: #12152e;
+  --muted: #5e658a;
+  --line: rgba(30, 37, 80, 0.1);
+  --focus: #facc3b;
 
   --screen: #151833;
   --bar: #0a0b1d;
@@ -27,65 +28,64 @@
   --screen-ink: #ffffff;
   --screen-muted: #a9aed3;
 
-  --subtitle: #f5a623;            /* Golden amber brand accent */
-  --subtitle-edge: #d48b13;
-  --subtitle-ink: #000000;
+  /* Signature Subtitle Yellow */
+  --subtitle: #facc3b;
+  --subtitle-edge: #d9a714;
+  --subtitle-ink: #1a1400;
 
-  --ok: #34c759;                  /* Apple System Green */
-  --ok-soft: #eaf8ee;
-  --bad: #ff3b30;                 /* Apple System Red */
-  --bad-soft: #feebee;
+  --ok: #10b981;
+  --ok-soft: #ecfdf5;
+  --bad: #ef4444;
+  --bad-soft: #fef2f2;
 }
 
-/* Explicit Dark Theme override */
+/* WordTap Dark Mode: Dark Cinema Theater (Deep Midnight Navy, NOT dead black) */
 html.dark,
 :root[data-theme="dark"] {
-  /* Apple iOS Dark Mode Tokens */
-  --bg: #000000;                  /* systemBackground (pure OLED black) */
-  --surface: #1c1c1e;             /* secondarySystemGroupedBackground */
-  --surface-elevated: #2c2c2e;    /* tertiarySystemGroupedBackground */
-  --ink: #f2f2f7;                 /* label */
-  --muted: #98989d;               /* secondaryLabel */
-  --line: rgba(255, 255, 255, 0.12); /* separator */
-  --focus: #f5a623;
+  --bg: #0b0d1e;
+  --surface: #141731;
+  --surface-elevated: #1b1f42;
+  --ink: #eef1ff;
+  --muted: #959cc2;
+  --line: rgba(230, 235, 255, 0.1);
+  --focus: #facc3b;
 
-  --screen: #090a1a;
-  --bar: #04040d;
-  --screen-line: #23274b;
+  --screen: #0a0c1b;
+  --bar: #050610;
+  --screen-line: #22264a;
 
-  --subtitle: #f5a623;
-  --subtitle-edge: #e0961b;
-  --subtitle-ink: #000000;
+  --subtitle: #facc3b;
+  --subtitle-edge: #e6b823;
+  --subtitle-ink: #1a1400;
 
-  --ok: #30d158;                  /* Apple Dark System Green */
-  --ok-soft: #0c2c16;
-  --bad: #ff453a;                 /* Apple Dark System Red */
-  --bad-soft: #380d12;
+  --ok: #34d399;
+  --ok-soft: #064e3b;
+  --bad: #f87171;
+  --bad-soft: #450a0a;
 }
 
-/* System dark preference when not explicitly set to light */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not(.light) {
-    --bg: #000000;
-    --surface: #1c1c1e;
-    --surface-elevated: #2c2c2e;
-    --ink: #f2f2f7;
-    --muted: #98989d;
-    --line: rgba(255, 255, 255, 0.12);
-    --focus: #f5a623;
+    --bg: #0b0d1e;
+    --surface: #141731;
+    --surface-elevated: #1b1f42;
+    --ink: #eef1ff;
+    --muted: #959cc2;
+    --line: rgba(230, 235, 255, 0.1);
+    --focus: #facc3b;
 
-    --screen: #090a1a;
-    --bar: #04040d;
-    --screen-line: #23274b;
+    --screen: #0a0c1b;
+    --bar: #050610;
+    --screen-line: #22264a;
 
-    --subtitle: #f5a623;
-    --subtitle-edge: #e0961b;
-    --subtitle-ink: #000000;
+    --subtitle: #facc3b;
+    --subtitle-edge: #e6b823;
+    --subtitle-ink: #1a1400;
 
-    --ok: #30d158;
-    --ok-soft: #0c2c16;
-    --bad: #ff453a;
-    --bad-soft: #380d12;
+    --ok: #34d399;
+    --ok-soft: #064e3b;
+    --bad: #f87171;
+    --bad-soft: #450a0a;
   }
 }
 
@@ -122,7 +122,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--subtitle);
   outline-offset: 2px;
   border-radius: 0.5rem;
 }
@@ -136,13 +136,12 @@ body {
   }
 }
 
-/* Component classes live in the components layer */
 @layer components {
   /* ---------- Apple Liquid Glass (Functional Floating Layer) ---------- */
   .apple-glass {
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
-    background: color-mix(in srgb, var(--surface) 80%, transparent);
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
     border-bottom: 1px solid var(--line);
   }
 
@@ -151,16 +150,16 @@ body {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 1.25rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 1px 3px rgba(10, 13, 30, 0.04), 0 4px 14px rgba(10, 13, 30, 0.03);
   }
 
-  /* ---------- Apple Segmented Control ---------- */
+  /* ---------- Apple Segmented Control with Brand Identity ---------- */
   .apple-segmented-container {
     display: inline-flex;
     align-items: center;
     padding: 0.25rem;
     border-radius: 9999px;
-    background: rgba(120, 120, 128, 0.12);
+    background: rgba(90, 100, 145, 0.12);
     border: 1px solid var(--line);
   }
 
@@ -177,20 +176,21 @@ body {
     color: var(--ink);
   }
 
+  /* Active segment lights up with WordTap Subtitle Yellow */
   .apple-segmented-item[data-active="true"] {
-    background: var(--surface);
-    color: var(--ink);
+    background: var(--subtitle);
+    color: var(--subtitle-ink);
     font-weight: 600;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(250, 204, 59, 0.3);
   }
 
-  /* ---------- Apple Buttons (HIG Compliant) ---------- */
+  /* ---------- Apple Buttons with Brand Persona ---------- */
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    min-height: 2.75rem; /* 44pt touch target */
+    min-height: 2.75rem;
     padding: 0.55rem 1.25rem;
     border-radius: 0.875rem;
     border: 1px solid var(--line);
@@ -208,7 +208,7 @@ body {
   }
 
   .btn:hover {
-    background: color-mix(in srgb, var(--surface) 92%, var(--ink));
+    background: color-mix(in srgb, var(--surface) 90%, var(--ink));
   }
 
   .btn:active {
@@ -222,17 +222,18 @@ body {
     box-shadow: none;
   }
 
-  /* Prominent Primary Action Button */
+  /* Prominent Primary Action Button with Glowing Subtitle Yellow */
   .btn.btn-primary {
     background: var(--subtitle);
     border-color: var(--subtitle-edge);
     color: var(--subtitle-ink);
-    font-weight: 600;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(245, 166, 35, 0.25);
+    font-weight: 650;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 3px 10px rgba(250, 204, 59, 0.35);
   }
 
   .btn.btn-primary:hover {
-    background: color-mix(in srgb, var(--subtitle) 92%, white);
+    background: color-mix(in srgb, var(--subtitle) 90%, white);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15), 0 4px 14px rgba(250, 204, 59, 0.45);
   }
 
   .btn.btn-quiet {
@@ -244,7 +245,7 @@ body {
 
   .btn.btn-quiet:hover {
     color: var(--ink);
-    background: rgba(120, 120, 128, 0.1);
+    background: rgba(90, 100, 145, 0.12);
   }
 
   .btn.btn-ok {
@@ -270,7 +271,7 @@ body {
   /* ---------- Apple Inputs ---------- */
   .field {
     width: 100%;
-    min-height: 2.75rem; /* 44pt touch target */
+    min-height: 2.75rem;
     padding: 0.65rem 1rem;
     border-radius: 0.875rem;
     border: 1px solid var(--line);
@@ -287,7 +288,7 @@ body {
   .field:focus-visible {
     outline-offset: 0;
     border-color: var(--subtitle);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--subtitle) 20%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--subtitle) 25%, transparent);
   }
 
   /* ---------- The movie frame ---------- */
@@ -376,15 +377,15 @@ body {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   }
   .option:hover:not(:disabled) {
-    border-color: color-mix(in srgb, var(--subtitle-edge) 70%, var(--line));
-    background: color-mix(in srgb, var(--surface) 96%, var(--subtitle));
+    border-color: var(--subtitle-edge);
+    background: color-mix(in srgb, var(--surface) 94%, var(--subtitle));
   }
   .option:active:not(:disabled) {
     transform: scale(0.99);
   }
   .option[data-state="selected"] {
     border-color: var(--subtitle-edge);
-    background: color-mix(in srgb, var(--subtitle) 15%, var(--surface));
+    background: color-mix(in srgb, var(--subtitle) 18%, var(--surface));
   }
   .option[data-state="right"] {
     border-color: var(--ok);
@@ -444,11 +445,12 @@ body {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: rgba(120, 120, 128, 0.25);
+    background: rgba(90, 100, 145, 0.25);
     transition: background 150ms ease;
   }
   .dots i[data-on="true"] {
     background: var(--subtitle);
+    box-shadow: 0 0 4px rgba(250, 204, 59, 0.5);
   }
 
   @keyframes feedbackEnter {
