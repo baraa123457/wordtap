@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ScrambleQuestion } from "@/lib/session";
-import { canSpeak, speak } from "@/lib/speech";
+import { canSpeak, speak, cancelSpeech } from "@/lib/speech";
 import { parseSourceContext } from "@/lib/format";
 import { SpeakerIcon, TrashIcon } from "../Icons";
 import type { Phase } from "./types";
@@ -21,13 +21,25 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
   const { sentence, sourceTitle } = parseSourceContext(q.context);
   const isPromptArabic = /[\u0600-\u06FF]/.test(q.prompt);
   const [placedTileIds, setPlacedTileIds] = useState<string[]>([]);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [hintUsed, setHintUsed] = useState(false);
 
   // Reset placed tiles and pronounce the word when card appears
   useEffect(() => {
     setPlacedTileIds([]);
-    if (q.speak && canSpeak()) {
-      speak(q.speak.text, q.speak.lang);
-    }
+    setHintUsed(false);
+    if (!q.speak || !canSpeak()) return;
+    const timer = setTimeout(() => {
+      setIsSpeaking(true);
+      speak(q.speak!.text, q.speak!.lang);
+      const stopTimer = setTimeout(() => setIsSpeaking(false), 1400);
+      return () => clearTimeout(stopTimer);
+    }, 70);
+
+    return () => {
+      clearTimeout(timer);
+      cancelSpeech();
+    };
   }, [q.id, q.speak]);
 
   const tileMap = useMemo(() => new Map(q.tiles.map((t) => [t.id, t])), [q.tiles]);
@@ -71,6 +83,21 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
     handlePlacedChange([]);
   }, [locked, placedTileIds, handlePlacedChange]);
 
+  // Hint feature: automatically places first letter tile
+  const useHint = useCallback(() => {
+    if (locked || hintUsed) return;
+    setHintUsed(true);
+    const firstChar = q.answer[0]?.toLowerCase();
+    if (!firstChar) return;
+    // Find unplaced tile matching first character
+    const match = q.tiles.find(
+      (t) => t.char.toLowerCase() === firstChar && !placedTileIds.includes(t.id),
+    );
+    if (match) {
+      handlePlacedChange([match.id]);
+    }
+  }, [locked, hintUsed, q.answer, q.tiles, placedTileIds, handlePlacedChange]);
+
   // Keyboard support: type letters directly or press Backspace/Enter
   useEffect(() => {
     if (locked) return;
@@ -109,14 +136,24 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
 
   const speakPrompt = () => {
     if (!canSpeak()) return;
+    setIsSpeaking(true);
     if (q.speak) speak(q.speak.text, q.speak.lang);
     else {
       const hasAr = /[\u0600-\u06FF]/.test(q.prompt);
       speak(q.prompt, hasAr ? "ar" : "en");
     }
+    setTimeout(() => setIsSpeaking(false), 1400);
   };
 
   const totalTiles = q.tiles.length;
+  const isLongWord = totalTiles > 9;
+  const isExtraLongWord = totalTiles > 12;
+
+  const tileSizeClass = isExtraLongWord
+    ? "h-9 w-8 sm:h-10 sm:w-9 text-base"
+    : isLongWord
+    ? "h-10 w-9 sm:h-12 sm:w-11 text-lg sm:text-xl"
+    : "h-12 w-11 sm:h-13 sm:w-12 text-xl sm:text-2xl";
 
   return (
     <div className="grid gap-6">
@@ -138,7 +175,11 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
                 type="button"
                 aria-label={`Hear “${q.prompt}”`}
                 title={`Hear “${q.prompt}”`}
-                className="rounded-full p-2 text-white/80 hover:text-white cursor-pointer"
+                className={`rounded-full p-2 transition-all cursor-pointer ${
+                  isSpeaking
+                    ? "text-subtitle scale-115 drop-shadow-[0_0_10px_rgba(250,204,59,0.8)]"
+                    : "text-white/80 hover:text-white"
+                }`}
                 style={{ WebkitTextStroke: 0 }}
                 onClick={speakPrompt}
               >
@@ -186,10 +227,19 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
       </div>
 
       {/* Answer Slots Row */}
-      <div className="apple-card p-5 bg-surface border border-line flex flex-col items-center gap-4">
+      <div className="apple-card p-4 sm:p-5 bg-surface border border-line flex flex-col items-center gap-3">
         <div className="w-full flex items-center justify-between text-xs text-muted px-1">
           <span>Formed word ({placedTileIds.length}/{totalTiles}):</span>
           <div className="flex items-center gap-2">
+            {!hintUsed && placedTileIds.length === 0 && !locked ? (
+              <button
+                type="button"
+                onClick={useHint}
+                className="btn btn-quiet min-h-7 px-2.5 py-0.5 text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:bg-subtitle/10 cursor-pointer"
+              >
+                💡 Hint (first letter)
+              </button>
+            ) : null}
             {placedTileIds.length > 0 && !locked ? (
               <>
                 <button
@@ -212,7 +262,7 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
         </div>
 
         {/* Tiles in Answer */}
-        <div className="flex flex-wrap items-center justify-center gap-2 min-h-14 w-full py-1">
+        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 min-h-14 w-full py-1">
           {Array.from({ length: totalTiles }).map((_, idx) => {
             const tileId = placedTileIds[idx];
             const tile = tileId ? tileMap.get(tileId) : undefined;
@@ -224,7 +274,7 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
                   disabled={locked}
                   onClick={() => removeTileAt(idx)}
                   aria-label={`Remove letter ${tile.char}`}
-                  className="flex h-12 w-11 sm:h-13 sm:w-12 items-center justify-center rounded-xl bg-subtitle text-subtitle-ink font-black text-xl shadow-md border border-subtitle-edge active:scale-90 transition-all cursor-pointer"
+                  className={`flex ${tileSizeClass} items-center justify-center rounded-xl bg-subtitle text-subtitle-ink font-black shadow-md border border-subtitle-edge active:scale-90 transition-all cursor-pointer`}
                 >
                   {tile.char}
                 </button>
@@ -233,7 +283,7 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
             return (
               <div
                 key={`empty-${idx}`}
-                className="flex h-12 w-11 sm:h-13 sm:w-12 items-center justify-center rounded-xl border-2 border-dashed border-line/70 bg-black/[0.02] dark:bg-white/[0.02]"
+                className={`flex ${tileSizeClass} items-center justify-center rounded-xl border-2 border-dashed border-line/70 bg-black/[0.02] dark:bg-white/[0.02]`}
               />
             );
           })}
@@ -241,9 +291,9 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
       </div>
 
       {/* Letter Bank */}
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-2.5">
         <p className="text-xs text-muted select-none">Tap letters or type on keyboard:</p>
-        <div className="flex flex-wrap items-center justify-center gap-2 max-w-lg mx-auto">
+        <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 max-w-lg mx-auto">
           {q.tiles.map((tile) => {
             const isPlaced = placedTileIds.includes(tile.id);
             return (
@@ -253,7 +303,7 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
                 disabled={locked || isPlaced}
                 onClick={() => placeTile(tile.id)}
                 aria-label={`Letter ${tile.char}`}
-                className={`flex h-12 w-11 sm:h-13 sm:w-12 items-center justify-center rounded-xl font-bold text-xl transition-all shadow-xs ${
+                className={`flex ${tileSizeClass} items-center justify-center rounded-xl font-bold transition-all shadow-xs ${
                   isPlaced
                     ? "opacity-20 pointer-events-none scale-90 border border-line bg-surface/50 text-muted"
                     : "bg-surface border-2 border-line text-ink hover:border-subtitle hover:scale-105 active:scale-95 cursor-pointer shadow-sm"

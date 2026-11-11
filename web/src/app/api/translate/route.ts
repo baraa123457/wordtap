@@ -52,6 +52,7 @@ async function handleTranslate(
     let data: any = null;
     try {
       const res = await fetch(url, {
+        signal: AbortSignal.timeout(6000),
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -62,7 +63,28 @@ async function handleTranslate(
         data = await res.json();
       }
     } catch (e) {
-      console.warn("Google translate fetch error:", e);
+      console.warn("Google translate primary fetch error, trying gtx fallback:", e);
+    }
+
+    // Resilient fallback to secondary gtx client if primary was throttled or failed
+    if (!data) {
+      try {
+        const fallbackUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(
+          src,
+        )}&tl=${encodeURIComponent(target)}&dt=t&q=${encodeURIComponent(text)}`;
+        const fbRes = await fetch(fallbackUrl, {
+          signal: AbortSignal.timeout(5000),
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          },
+        });
+        if (fbRes.ok) {
+          data = await fbRes.json();
+        }
+      } catch (fbErr) {
+        console.warn("Google translate fallback error:", fbErr);
+      }
     }
 
     // Check for spelling correction in data[7]

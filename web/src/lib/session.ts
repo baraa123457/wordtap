@@ -187,7 +187,7 @@ function plansFor(word: Word, canSpeak: boolean, canCloze: boolean): Plan[] {
     if (canCloze) {
       return canSpeak && word.src_lang !== "auto" ? ["cloze", "listen"] : ["cloze"];
     }
-    return canSpeak && word.src_lang !== "auto" ? ["listen"] : ["choice-word"];
+    return canSpeak && word.src_lang !== "auto" ? ["listen"] : ["choice-translation"];
   }
 
   // Box 3: Almost known -> Tap shuffled letters to build the word

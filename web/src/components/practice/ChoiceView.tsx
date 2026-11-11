@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ChoiceQuestion } from "@/lib/session";
-import { canSpeak, speak } from "@/lib/speech";
+import { canSpeak, speak, cancelSpeech } from "@/lib/speech";
 import { parseSourceContext } from "@/lib/format";
 import { SpeakerIcon, TrashIcon } from "../Icons";
 import type { Phase } from "./types";
@@ -48,12 +48,22 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
   const speakable = q.speak !== null && canSpeak();
   const { sentence, sourceTitle } = parseSourceContext(q.context);
   const isPromptArabic = /[\u0600-\u06FF]/.test(q.prompt);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // Auto-play the English word pronunciation as soon as the card appears!
+  // Auto-play the English word pronunciation with safe delay and speech cleanup
   useEffect(() => {
-    if (q.speak && canSpeak()) {
-      speak(q.speak.text, q.speak.lang);
-    }
+    if (!q.speak || !canSpeak()) return;
+    const timer = setTimeout(() => {
+      setIsSpeaking(true);
+      speak(q.speak!.text, q.speak!.lang);
+      const stopTimer = setTimeout(() => setIsSpeaking(false), 1400);
+      return () => clearTimeout(stopTimer);
+    }, 70);
+
+    return () => {
+      clearTimeout(timer);
+      cancelSpeech();
+    };
   }, [q.id, q.speak]);
 
   const speakOption = useCallback(
@@ -156,9 +166,19 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
                   <button
                     type="button"
                     aria-label="Hear it"
-                    className="rounded-full p-2 text-white/80 hover:text-white"
+                    className={`rounded-full p-2 transition-all cursor-pointer ${
+                      isSpeaking
+                        ? "text-subtitle scale-115 drop-shadow-[0_0_10px_rgba(250,204,59,0.8)]"
+                        : "text-white/80 hover:text-white"
+                    }`}
                     style={{ WebkitTextStroke: 0 }}
-                    onClick={() => q.speak && speak(q.speak.text, q.speak.lang)}
+                    onClick={() => {
+                      if (q.speak) {
+                        setIsSpeaking(true);
+                        speak(q.speak.text, q.speak.lang);
+                        setTimeout(() => setIsSpeaking(false), 1400);
+                      }
+                    }}
                   >
                     <SpeakerIcon size={24} />
                   </button>

@@ -193,3 +193,20 @@ export function speak(text: string, lang: string, options?: SpeakOptions | numbe
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
+
+/** Immediately cancels all active audio and synthetic speech */
+export function cancelSpeech(): void {
+  if (typeof window === "undefined") return;
+  if (activeAudio) {
+    try {
+      activeAudio.pause();
+      activeAudio.currentTime = 0;
+    } catch (_) {}
+    activeAudio = null;
+  }
+  if ("speechSynthesis" in window) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (_) {}
+  }
+}

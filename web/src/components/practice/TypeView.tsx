@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { TypeQuestion } from "@/lib/session";
-import { canSpeak, speak } from "@/lib/speech";
+import { canSpeak, speak, cancelSpeech } from "@/lib/speech";
 import { parseSourceContext } from "@/lib/format";
 import { SpeakerIcon, TrashIcon } from "../Icons";
 import type { Phase } from "./types";
@@ -21,6 +21,7 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
   const input = useRef<HTMLInputElement>(null);
   const locked = phase !== "answering";
   const [hintUsed, setHintUsed] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const { sentence, sourceTitle } = parseSourceContext(q.context);
   const isPromptArabic = /[\u0600-\u06FF]/.test(q.prompt);
   const cleanAnswer = q.answer.trim();
@@ -28,9 +29,18 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
   useEffect(() => {
     input.current?.focus();
     setHintUsed(false);
-    if (q.speak && canSpeak()) {
-      speak(q.speak.text, q.speak.lang);
-    }
+    if (!q.speak || !canSpeak()) return;
+    const timer = setTimeout(() => {
+      setIsSpeaking(true);
+      speak(q.speak!.text, q.speak!.lang);
+      const stopTimer = setTimeout(() => setIsSpeaking(false), 1400);
+      return () => clearTimeout(stopTimer);
+    }, 70);
+
+    return () => {
+      clearTimeout(timer);
+      cancelSpeech();
+    };
   }, [q.id, q.speak]);
 
   function submit(e: FormEvent) {
@@ -71,11 +81,20 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
                 type="button"
                 aria-label={`Hear “${q.prompt}”`}
                 title={`Hear “${q.prompt}”`}
-                className="rounded-full p-2 text-white/80 hover:text-white cursor-pointer"
+                className={`rounded-full p-2 transition-all cursor-pointer ${
+                  isSpeaking
+                    ? "text-subtitle scale-115 drop-shadow-[0_0_10px_rgba(250,204,59,0.8)]"
+                    : "text-white/80 hover:text-white"
+                }`}
                 style={{ WebkitTextStroke: 0 }}
                 onClick={() => {
-                  const hasAr = /[\u0600-\u06FF]/.test(q.prompt);
-                  speak(q.prompt, hasAr ? "ar" : "en");
+                  setIsSpeaking(true);
+                  if (q.speak) speak(q.speak.text, q.speak.lang);
+                  else {
+                    const hasAr = /[\u0600-\u06FF]/.test(q.prompt);
+                    speak(q.prompt, hasAr ? "ar" : "en");
+                  }
+                  setTimeout(() => setIsSpeaking(false), 1400);
                 }}
               >
                 <SpeakerIcon size={24} />
