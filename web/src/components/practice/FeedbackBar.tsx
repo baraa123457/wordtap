@@ -27,7 +27,7 @@ export function FeedbackBar({ phase, answer, canCheck, onCheck, onSkip, onContin
   const checkRef = useRef<HTMLButtonElement>(null);
   const [isExiting, setIsExiting] = useState(false);
 
-  // When correct: NO continue button! Show "Correct" and exit with animation after 1s.
+  // When correct: NO continue button! Show "Correct" and exit with animation after 0.8s (800ms).
   useEffect(() => {
     if (phase !== "correct") {
       setIsExiting(false);
@@ -35,14 +35,14 @@ export function FeedbackBar({ phase, answer, canCheck, onCheck, onSkip, onContin
     }
 
     setIsExiting(false);
-    // At 750ms trigger the slideDown animation (duration 240ms), then at 1000ms advance
+    // At 600ms trigger the slideDown animation (duration 200ms), then at 800ms advance
     const exitTimer = setTimeout(() => {
       setIsExiting(true);
-    }, 750);
+    }, 600);
 
     const advanceTimer = setTimeout(() => {
       onContinue();
-    }, 1000);
+    }, 800);
 
     return () => {
       clearTimeout(exitTimer);

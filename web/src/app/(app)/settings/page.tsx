@@ -267,26 +267,6 @@ export default function SettingsPage() {
           </label>
         </div>
 
-        {/* Speed */}
-        {settings.autoAdvance ? (
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/50 pt-4">
-            <div>
-              <div className="font-semibold text-ink">Auto-advance speed</div>
-              <div className="text-xs sm:text-sm text-muted">How long to show the green confirmation before advancing.</div>
-            </div>
-            <select
-              value={settings.autoAdvanceDelayMs}
-              onChange={(e) => update({ autoAdvanceDelayMs: Number(e.target.value) })}
-              className="field w-44"
-            >
-              <option value={500}>Fast (0.5s)</option>
-              <option value={800}>Normal (0.8s)</option>
-              <option value={1200}>Relaxed (1.2s)</option>
-              <option value={1500}>Slow (1.5s)</option>
-            </select>
-          </div>
-        ) : null}
-
         {/* Question Types */}
         <div className="border-t border-line/50 pt-4 grid gap-3">
           <div>
