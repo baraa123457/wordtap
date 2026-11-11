@@ -58,11 +58,11 @@ function GoalDropdown({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Change daily goal"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-semibold text-white shadow-xs transition-all hover:border-subtitle hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-subtitle"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-ink shadow-2xs transition-all hover:border-subtitle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-subtitle cursor-pointer"
       >
         <span>{value} XP</span>
         <svg
-          className={`h-3.5 w-3.5 text-white/70 transition-transform duration-200 ${
+          className={`h-3.5 w-3.5 text-muted transition-transform duration-200 ${
             open ? "rotate-180 text-subtitle" : ""
           }`}
           viewBox="0 0 24 24"
@@ -156,13 +156,14 @@ export default function DashboardPage() {
       {/* 1. Google Translate Component at the very top */}
       <TranslatorCard existingWords={words} onWordSaved={refreshDataQuietly} />
 
-      {/* 2. Compact Practice Card directly underneath */}
-      <section aria-labelledby="today" className="frame w-full min-w-0 shadow-lg">
-        <div className="frame-bar py-2.5">
-          <div className="flex items-center gap-2">
-            <span id="today" className="font-semibold text-white">Today</span>
+      {/* 2. Today's Practice Card - Unified with the Apple Card Design */}
+      <section aria-labelledby="today" className="apple-card overflow-hidden w-full min-w-0 transition-all">
+        {/* Top bar */}
+        <div className="flex items-center justify-between border-b border-line/60 bg-black/[0.02] dark:bg-white/[0.03] px-5 py-3">
+          <div className="flex items-center gap-2.5">
+            <span id="today" className="font-bold text-ink text-sm sm:text-base">Today</span>
             {dueCount > 0 ? (
-              <span className="rounded-md bg-subtitle/20 px-2 py-0.5 text-xs font-bold text-subtitle">
+              <span className="rounded-full bg-subtitle/20 border border-subtitle/30 px-2.5 py-0.5 text-xs font-extrabold text-ink dark:text-subtitle">
                 {dueCount} due
               </span>
             ) : null}
@@ -171,31 +172,31 @@ export default function DashboardPage() {
             {eff.streak > 0 ? (
               <>
                 <FireIcon size={17} className="text-orange-500 animate-pulse" />
-                <span className="font-semibold text-white">
+                <span className="font-bold text-ink">
                   {eff.streak}-day streak{eff.practicedToday ? "" : ": practice to keep it"}
                 </span>
               </>
             ) : (
-              <span className="text-white/60">No streak yet</span>
+              <span className="text-muted text-xs">No streak yet</span>
             )}
           </span>
         </div>
 
-        {/* Compact stage: sleek responsive row */}
-        <div className="frame-stage !py-5 !px-6 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="text-start space-y-1">
-            <p className="sub !text-2xl sm:!text-3xl font-bold tracking-tight">
+        {/* Content Area */}
+        <div className="p-5 sm:p-6 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="text-start space-y-1 max-w-lg">
+            <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">
               {words.length === 0 ? (
                 "Start building your vocabulary"
               ) : dueCount > 0 ? (
                 <>
-                  <span className="sub-hl">{dueCount}</span> {dueCount === 1 ? "word is" : "words are"} ready
+                  <span className="text-subtitle underline decoration-subtitle decoration-4 underline-offset-4">{dueCount}</span> {dueCount === 1 ? "word is" : "words are"} ready
                 </>
               ) : (
                 "You're all caught up"
               )}
-            </p>
-            <p className="text-xs sm:text-sm text-screen-muted">
+            </h3>
+            <p className="text-xs sm:text-sm text-muted leading-relaxed">
               {words.length === 0
                 ? "Translate words above or tap subtitles with the extension to start practicing."
                 : dueCount > 0
@@ -209,7 +210,7 @@ export default function DashboardPage() {
           <div className="shrink-0 flex items-center justify-start sm:justify-end">
             <Link
               href={words.length === 0 ? "/extension" : "/practice"}
-              className="btn btn-primary !py-2.5 !px-6 text-sm sm:text-base font-bold shadow-md"
+              className="btn btn-primary min-h-11 px-6 text-sm sm:text-base font-bold shadow-md hover:scale-105 active:scale-95 transition-all"
             >
               {words.length === 0
                 ? "Get extension"
@@ -220,10 +221,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="frame-bar flex-wrap py-2 text-xs sm:text-sm">
+        {/* Bottom Goal Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/60 bg-black/[0.02] dark:bg-white/[0.03] px-5 py-2.5 text-xs sm:text-sm">
           <span className="flex items-center gap-3">
-            <span>
-              {eff.todayXp} of {stats.daily_goal} XP today
+            <span className="text-muted font-medium">
+              <strong className="text-ink font-semibold">{eff.todayXp}</strong> of {stats.daily_goal} XP today
             </span>
             <span
               role="progressbar"
@@ -231,13 +233,13 @@ export default function DashboardPage() {
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={goalPct}
-              className="h-2 w-28 overflow-hidden rounded-full bg-white/15"
+              className="h-2 w-28 overflow-hidden rounded-full bg-black/10 dark:bg-white/10"
             >
-              <span className="block h-full bg-subtitle" style={{ width: `${goalPct}%` }} />
+              <span className="block h-full bg-subtitle rounded-full" style={{ width: `${goalPct}%` }} />
             </span>
           </span>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-screen-muted">Daily goal</span>
+            <span className="text-xs text-muted">Daily goal</span>
             <GoalDropdown
               value={stats.daily_goal}
               onChange={(goal) => void changeGoal(goal)}

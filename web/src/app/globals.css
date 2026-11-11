@@ -176,11 +176,22 @@ body {
     color: var(--ink);
   }
 
-  /* Active segment lights up with WordTap Subtitle Yellow */
+  /* Default active segment: sleek, elevated Apple pill */
   .apple-segmented-item[data-active="true"] {
+    background: var(--surface);
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--line);
+  }
+
+  /* In top navigation bar, active page pill is highlighted in signature WordTap Subtitle Yellow */
+  nav .apple-segmented-item[data-active="true"],
+  .apple-segmented-nav .apple-segmented-item[data-active="true"] {
     background: var(--subtitle);
     color: var(--subtitle-ink);
-    font-weight: 600;
+    border-color: var(--subtitle-edge);
+    font-weight: 650;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(250, 204, 59, 0.3);
   }
 

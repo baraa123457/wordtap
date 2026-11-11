@@ -199,6 +199,61 @@ async function handleTranslate(
           ? "en"
           : src;
 
+      // Enrich with human subtitle/idiomatic memory from MyMemory for phrases & idioms (e.g. "My treat" -> "على حسابي")
+      if (text.length <= 120) {
+        try {
+          const effectiveSrc = detectedSrcLang || (src === "auto" ? "autodetect" : src);
+          const memPair = `${effectiveSrc}|${target}`;
+          const memRes = await fetch(
+            `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(memPair)}`,
+            { signal: AbortSignal.timeout(2500) }
+          );
+          if (memRes.ok) {
+            const memData = await memRes.json();
+            const memAlts: string[] = [];
+            if (Array.isArray(memData?.matches)) {
+              for (const m of memData.matches) {
+                if (typeof m.translation === "string") {
+                  const cleaned = m.translation
+                    .replace(/\([^)]*\)/g, "")
+                    .replace(/[?.,!؟"']/g, "")
+                    .trim();
+                  if (
+                    cleaned &&
+                    cleaned.length >= 2 &&
+                    cleaned.length <= 60 &&
+                    !cleaned.includes("http") &&
+                    !cleaned.includes("www") &&
+                    cleaned.toLowerCase() !== (translation || "").trim().toLowerCase() &&
+                    !memAlts.includes(cleaned)
+                  ) {
+                    memAlts.push(cleaned);
+                  }
+                }
+              }
+            }
+
+            if (memAlts.length > 0) {
+              const existingAlt = definitions.find((d) => d.partOfSpeech === "alternatives");
+              if (existingAlt) {
+                for (const m of memAlts) {
+                  if (!existingAlt.meanings.includes(m) && existingAlt.meanings.length < 8) {
+                    existingAlt.meanings.push(m);
+                  }
+                }
+              } else {
+                definitions.push({
+                  partOfSpeech: "alternatives",
+                  meanings: memAlts.slice(0, 6),
+                });
+              }
+            }
+          }
+        } catch {
+          // ignore MyMemory timeout or network error
+        }
+      }
+
       return NextResponse.json({
         text,
         translation: translation || text,
