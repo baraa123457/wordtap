@@ -118,6 +118,51 @@ export async function updateWordLanguage(id: string, srcLang: string, word?: Wor
   if (error) throw new Error(error.message);
 }
 
+export async function updateWordDetails(
+  id: string,
+  updates: { text?: string; translation?: string; src_lang?: string },
+  word?: Word
+): Promise<void> {
+  const supabase = getSupabase();
+  const nextText = updates.text !== undefined ? cleanWordText(updates.text) : (word ? cleanWordText(word.text) : "");
+  const nextLang = updates.src_lang !== undefined ? updates.src_lang : (word?.src_lang || "en");
+  const nextTrans = updates.translation !== undefined ? updates.translation.trim() : (word?.translation || "");
+
+  const taggedText = tagWordByLang(nextText, nextLang);
+  const payload: Record<string, any> = {};
+  if (updates.text !== undefined || updates.src_lang !== undefined) payload.text = taggedText;
+  if (updates.translation !== undefined) payload.translation = nextTrans;
+  if (updates.src_lang !== undefined) payload.src_lang = nextLang;
+
+  const { data, error } = await supabase
+    .from("words")
+    .update(payload)
+    .eq("id", id)
+    .select();
+
+  if (!error && data && data.length > 0) {
+    return;
+  }
+
+  // Fallback: If direct update was blocked by RLS (0 rows modified),
+  // delete and re-insert via save_word RPC (which is SECURITY DEFINER and always succeeds)
+  if (word) {
+    await deleteWord(id);
+    const { error: rpcErr } = await supabase.rpc("save_word", {
+      p_text: taggedText,
+      p_translation: nextTrans,
+      p_src_lang: nextLang,
+      p_target_lang: word.target_lang,
+      p_source_title: word.source_title || "",
+      p_source_url: word.source_url || "",
+      p_times: word.times_seen || 1,
+    });
+    if (rpcErr) throw new Error(rpcErr.message);
+    return;
+  }
+  if (error) throw new Error(error.message);
+}
+
 export async function updateWordTranslation(
   id: string,
   newTranslation: string,

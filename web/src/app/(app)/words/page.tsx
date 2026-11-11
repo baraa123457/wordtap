@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { addCustomWord, deleteWord, fetchWords, updateWordLanguage, updateWordTranslation } from "@/lib/api";
+import { addCustomWord, deleteWord, fetchWords, updateWordDetails, updateWordLanguage, updateWordTranslation } from "@/lib/api";
 import { formatDueIn, wordStatus, type WordStatus } from "@/lib/format";
 import type { Word } from "@/lib/schemas";
 import { canSpeak, speak } from "@/lib/speech";
@@ -47,6 +47,7 @@ export default function WordsPage() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [editTranslation, setEditTranslation] = useState("");
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newText, setNewText] = useState("");
@@ -132,21 +133,29 @@ export default function WordsPage() {
     }
   }
 
-  async function handleSaveTranslation(word: Word) {
-    if (!editText.trim() || editText.trim() === word.translation) {
+  async function handleSaveWordDetails(word: Word) {
+    const cleanT = editText.trim();
+    const cleanTr = editTranslation.trim();
+    if (!cleanT || !cleanTr) return;
+
+    if (cleanT === word.text && cleanTr === word.translation) {
       setEditingId(null);
       return;
     }
     setBusyId(word.id);
     setActionError(null);
     const prevWords = all;
-    setData(all.map((item) => (item.id === word.id ? { ...item, translation: editText.trim() } : item)));
+    setData(
+      all.map((item) =>
+        item.id === word.id ? { ...item, text: cleanT, translation: cleanTr } : item
+      )
+    );
     try {
-      await updateWordTranslation(word.id, editText.trim(), word);
+      await updateWordDetails(word.id, { text: cleanT, translation: cleanTr }, word);
       setEditingId(null);
     } catch (e) {
       setData(prevWords);
-      setActionError(e instanceof Error ? e.message : "Could not update word translation.");
+      setActionError(e instanceof Error ? e.message : "Could not update word.");
     } finally {
       setBusyId(null);
     }
@@ -349,60 +358,9 @@ export default function WordsPage() {
                   ) : null}
                 </div>
                 <div className="min-w-0">
-                  {editingId === w.id ? (
-                    <div className="flex flex-col gap-1.5 py-1">
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="text"
-                          dir="auto"
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          className="field py-1 px-2.5 text-sm sm:text-base w-full"
-                          placeholder="Edit translation or add note..."
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") void handleSaveTranslation(w);
-                            if (e.key === "Escape") setEditingId(null);
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-primary min-h-8 px-2.5 py-1 text-xs shrink-0"
-                          onClick={() => void handleSaveTranslation(w)}
-                          disabled={busyId === w.id}
-                        >
-                          {busyId === w.id ? "Saving…" : "Save"}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-quiet min-h-8 px-2 py-1 text-xs shrink-0"
-                          onClick={() => setEditingId(null)}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      <span className="text-[11px] text-muted">
-                        يمكنك تعديل المعنى أو كتابة ملاحظة مثل: المعنى (ملاحظة...)
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="group flex items-baseline gap-2">
-                      <p className="break-words text-lg">
-                        <bdi>{w.translation}</bdi>
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingId(w.id);
-                          setEditText(w.translation);
-                        }}
-                        className="text-xs text-muted hover:text-subtitle opacity-70 group-hover:opacity-100 transition-opacity p-0.5 cursor-pointer"
-                        title="تعديل الترجمة أو إضافة تعليق (Edit / Comment)"
-                      >
-                        ✏️
-                      </button>
-                    </div>
-                  )}
+                  <p className="break-words text-lg">
+                    <bdi>{w.translation}</bdi>
+                  </p>
                   <p className="mt-0.5 truncate text-sm text-muted">
                     {w.source_title ? `From ${w.source_title}` : "No source saved"}
                     {w.times_seen > 1 ? ` · tapped ${w.times_seen} times` : ""}
@@ -423,7 +381,7 @@ export default function WordsPage() {
                     <span className="flex items-center gap-1">
                       <button
                         type="button"
-                        className="btn btn-bad min-h-9 px-3 py-1 text-sm"
+                        className="btn btn-bad min-h-9 px-3 py-1 text-sm font-semibold cursor-pointer"
                         disabled={busyId === w.id}
                         onClick={() => void remove(w)}
                       >
@@ -431,37 +389,121 @@ export default function WordsPage() {
                       </button>
                       <button
                         type="button"
-                        className="btn btn-quiet min-h-9 px-3 py-1 text-sm"
+                        className="btn btn-quiet min-h-9 px-3 py-1 text-sm cursor-pointer"
                         onClick={() => setConfirmId(null)}
                       >
                         Cancel
                       </button>
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
-                        className="btn btn-quiet min-h-9 px-2.5 py-1 text-sm"
-                        title="Edit translation / comment"
-                        aria-label={`Edit translation for “${w.text}”`}
+                        className={`btn min-h-9 px-3 py-1.5 text-sm font-semibold transition-all cursor-pointer ${
+                          editingId === w.id
+                            ? "bg-subtitle text-black font-bold shadow-xs"
+                            : "btn-quiet text-muted hover:text-ink hover:bg-line/40"
+                        }`}
+                        title={`Edit “${w.text}”`}
+                        aria-label={`Edit “${w.text}”`}
                         onClick={() => {
-                          setEditingId(w.id);
-                          setEditText(w.translation);
+                          if (editingId === w.id) {
+                            setEditingId(null);
+                          } else {
+                            setEditingId(w.id);
+                            setEditText(w.text);
+                            setEditTranslation(w.translation);
+                          }
                         }}
                       >
-                        ✏️
+                        <span>✏️ Edit</span>
                       </button>
                       <button
                         type="button"
-                        className="btn btn-quiet min-h-9 px-3 py-1 text-sm"
+                        className="btn btn-quiet min-h-9 px-3 py-1.5 text-sm text-bad hover:bg-bad-soft cursor-pointer"
                         aria-label={`Delete “${w.text}”`}
                         onClick={() => setConfirmId(w.id)}
                       >
                         Remove
                       </button>
-                    </span>
+                    </div>
                   )}
                 </div>
+
+                {/* Inline Edit Panel when user clicks Edit */}
+                {editingId === w.id ? (
+                  <div className="col-span-full mt-2 p-3.5 rounded-2xl bg-surface-elevated/90 border border-subtitle/40 shadow-md space-y-3 animate-in fade-in">
+                    <div className="flex items-center justify-between text-xs font-bold text-subtitle border-b border-line/30 pb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span>✏️ Edit Word & Translation</span>
+                        <span className="text-muted font-normal">(تعديل الكلمة والترجمة أو الملاحظات)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(null)}
+                        className="text-muted hover:text-ink p-1 cursor-pointer"
+                        title="Close"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-muted mb-1">
+                          Word (الكلمة الأصلية):
+                        </label>
+                        <input
+                          type="text"
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="field py-1.5 px-3 text-sm w-full font-medium"
+                          placeholder="e.g. Humble"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void handleSaveWordDetails(w);
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-muted mb-1">
+                          Translation & Notes (الترجمة والملاحظات):
+                        </label>
+                        <input
+                          type="text"
+                          dir="auto"
+                          value={editTranslation}
+                          onChange={(e) => setEditTranslation(e.target.value)}
+                          className="field py-1.5 px-3 text-sm w-full font-medium"
+                          placeholder="e.g. متواضع (ملاحظة...)"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void handleSaveWordDetails(w);
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        className="btn btn-quiet min-h-8 px-3 py-1 text-xs cursor-pointer"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-primary min-h-8 px-4 py-1 text-xs font-bold cursor-pointer"
+                        disabled={busyId === w.id || !editText.trim() || !editTranslation.trim()}
+                        onClick={() => void handleSaveWordDetails(w)}
+                      >
+                        {busyId === w.id ? "Saving…" : "Save Changes"}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </li>
             );
           })}
