@@ -94,6 +94,28 @@ describe("buildSession", () => {
     expect(qs[0]?.type).toBe("type");
   });
 
+  it("places match round right after the 5 practiced words with the exact same 5 words", () => {
+    const testWords = Array.from({ length: 8 }, (_, i) => makeWord(i));
+    const qs = buildSession(testWords, { size: 8, now: NOW, rng: seeded(42) });
+
+    // The first 5 questions must be single word questions
+    const first5 = qs.slice(0, 5);
+    for (const q of first5) {
+      expect(q.type).not.toBe("match");
+    }
+    const first5WordIds = first5.flatMap((q) => ("wordId" in q ? [q.wordId] : []));
+    expect(first5WordIds).toHaveLength(5);
+
+    // Question index 5 (the 6th item) must be the match round
+    const matchQuestion = qs[5];
+    expect(matchQuestion?.type).toBe("match");
+    if (matchQuestion && matchQuestion.type === "match") {
+      const matchPairIds = matchQuestion.pairs.map((p) => p.wordId);
+      expect(matchPairIds).toHaveLength(5);
+      expect(matchPairIds.sort()).toEqual(first5WordIds.sort());
+    }
+  });
+
   it("skips the matching round for fewer than three words", () => {
     const qs = buildSession([makeWord(1), makeWord(2)], { now: NOW, rng: seeded(7) });
     expect(qs.some((q) => q.type === "match")).toBe(false);

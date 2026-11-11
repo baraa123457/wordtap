@@ -223,11 +223,9 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
   const picked = selectWords(words, size, now, rng);
   const translations = words.map((w) => w.translation);
   const texts = words.map((w) => w.text);
-  const questions: Question[] = [];
-  let n = 0;
 
-  for (const word of picked) {
-    const id = `q${n++}-${word.id}`;
+  const buildQuestion = (word: Word, index: number): Question => {
+    const id = `q${index}-${word.id}`;
     const context = word.source_title;
     const sourceUrl = word.source_url || undefined;
     const { sentence } = parseSourceContext(word.source_title);
@@ -242,7 +240,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
     // Writing Mode: Prompt shows translation (e.g. "كان") and user types the word (e.g. "was")
     if (mode === "typing") {
       const srcLang = word.src_lang && word.src_lang !== "auto" ? word.src_lang : "en";
-      questions.push({
+      return {
         type: "type",
         id,
         variant: "to-word",
@@ -252,8 +250,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         context,
         sourceUrl,
         speak: { text: word.text, lang: srcLang },
-      });
-      continue;
+      };
     }
 
     const choice = (
@@ -304,10 +301,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         (canCloze && sentence
           ? choice("cloze", word.text, texts, makeClozePrompt(sentence, word.text))
           : null);
-      if (q) {
-        questions.push(q);
-        continue;
-      }
+      if (q) return q;
     }
 
     // Mixed mode: follows the exact Pedagogical Ladder!
@@ -316,7 +310,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
 
     if (plan === "type-word") {
       const srcLang = word.src_lang && word.src_lang !== "auto" ? word.src_lang : "en";
-      questions.push({
+      return {
         type: "type",
         id,
         variant: "to-word",
@@ -326,13 +320,12 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         context,
         sourceUrl,
         speak: { text: word.text, lang: srcLang },
-      });
-      continue;
+      };
     }
 
     if (plan === "scramble" && word.text.trim().length > 1) {
       const srcLang = word.src_lang && word.src_lang !== "auto" ? word.src_lang : "en";
-      questions.push({
+      return {
         type: "scramble",
         id,
         wordId: word.id,
@@ -342,8 +335,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         context,
         sourceUrl,
         speak: { text: word.text, lang: srcLang },
-      });
-      continue;
+      };
     }
 
     let q: Question | null = null;
@@ -373,20 +365,33 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         speak: { text: word.text, lang: srcLang },
       };
     }
-    questions.push(q);
+    return q;
+  };
+
+  const firstBatch = picked.slice(0, Math.min(5, picked.length));
+  const secondBatch = picked.slice(5);
+
+  const firstQuestions = firstBatch.map((word, i) => buildQuestion(word, i));
+  const secondQuestions = secondBatch.map((word, i) => buildQuestion(word, firstBatch.length + i));
+
+  if (mode !== "typing" && firstBatch.length >= 3) {
+    const matchQuestion: MatchQuestion = {
+      type: "match",
+      id: "match",
+      pairs: firstBatch.map((w) => ({
+        wordId: w.id,
+        word: w.text,
+        translation: w.translation,
+        lang: w.src_lang,
+      })),
+    };
+
+    return [
+      ...shuffle(firstQuestions, rng),
+      matchQuestion,
+      ...shuffle(secondQuestions, rng),
+    ];
   }
 
-  const shuffled = shuffle(questions, rng);
-
-  if (mode !== "typing" && picked.length >= 3) {
-    const pairs: MatchPair[] = picked.slice(0, 5).map((w) => ({
-      wordId: w.id,
-      word: w.text,
-      translation: w.translation,
-      lang: w.src_lang,
-    }));
-    shuffled.splice(Math.floor(shuffled.length / 2), 0, { type: "match", id: "match", pairs });
-  }
-
-  return shuffled;
+  return shuffle([...firstQuestions, ...secondQuestions], rng);
 }
