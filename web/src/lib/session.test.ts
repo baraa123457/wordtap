@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Word } from "./schemas";
-import { buildSession, makeClozePrompt, makeScrambleTiles, selectWords, shuffle } from "./session";
+import { buildSession, isPracticableWord, makeClozePrompt, makeScrambleTiles, selectWords, shuffle } from "./session";
 
 function seeded(seed: number) {
   let s = seed;
@@ -213,6 +213,30 @@ describe("buildSession", () => {
       expect(tiles).toHaveLength(4);
       expect(tiles.map((t) => t.char).sort()).toEqual(["d", "o", "r", "w"]);
       expect(new Set(tiles.map((t) => t.id)).size).toBe(4);
+    });
+  });
+
+  describe("isPracticableWord", () => {
+    it("rejects single-letter tokens that are not valid 1-letter words like 't'", () => {
+      expect(isPracticableWord(makeWord(1, { text: "t", translation: "ر" }))).toBe(false);
+      expect(isPracticableWord(makeWord(2, { text: "a", translation: "أداة تنكير" }))).toBe(true);
+      expect(isPracticableWord(makeWord(3, { text: "I", translation: "أنا" }))).toBe(true);
+    });
+
+    it("rejects scraped page banners and long paragraphs", () => {
+      expect(
+        isPracticableWord(
+          makeWord(1, {
+            text: "د. هيثم طلعت Dr. Haitham Talaat 1.28M subscribers Join Subscribe 12K",
+            translation: "د. هيثم طلعت د. هيثم طلعت 1.28 مليون مشترك انضم اشترك 12 ك",
+          }),
+        ),
+      ).toBe(false);
+    });
+
+    it("accepts valid vocabulary words and short idioms", () => {
+      expect(isPracticableWord(makeWord(1, { text: "appetizer", translation: "فاتح الشهية" }))).toBe(true);
+      expect(isPracticableWord(makeWord(2, { text: "out of the blue", translation: "فجأة" }))).toBe(true);
     });
   });
 });

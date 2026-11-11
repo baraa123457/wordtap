@@ -281,11 +281,21 @@ function render() {
 
     const del = document.createElement("button");
     del.className = "del";
-    del.title = "Delete from this device";
+    del.title = "Delete word";
     del.textContent = "×";
     del.addEventListener("click", () => {
+      const targetText = w.text;
+      const targetSrc = w.src;
+      const targetLang = w.lang;
       delete words[key];
       chrome.storage.local.set({ words }, render);
+      // Synchronize deletion with backend so it doesn't stay in the user's account
+      chrome.runtime.sendMessage({
+        type: "word:delete",
+        text: targetText,
+        srcLang: targetSrc,
+        targetLang: targetLang,
+      });
     });
 
     item.append(box, spk, del);

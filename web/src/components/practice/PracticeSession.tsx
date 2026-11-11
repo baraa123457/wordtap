@@ -67,9 +67,27 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
       setIsDeleting(true);
       try {
         await deleteWord(wordId);
-        // Remove word from queue immediately
+        // Remove word from queue immediately, including within Match questions!
         setQueue((prev) =>
-          prev.filter((item) => ("wordId" in item.q ? item.q.wordId !== wordId : true)),
+          prev
+            .map((item) => {
+              if (item.q.type === "match") {
+                const remainingPairs = item.q.pairs.filter((p) => p.wordId !== wordId);
+                if (remainingPairs.length < 2) return null;
+                return {
+                  ...item,
+                  q: {
+                    ...item.q,
+                    pairs: remainingPairs,
+                  },
+                };
+              }
+              if ("wordId" in item.q && item.q.wordId === wordId) {
+                return null;
+              }
+              return item;
+            })
+            .filter((item): item is Item => item !== null),
         );
         setMissed((prev) => prev.filter((w) => w.id !== wordId));
         setPhase("answering");
@@ -313,7 +331,12 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
             onDeleteWord={(wordId) => setDeleteConfirmId(wordId)}
           />
         ) : (
-          <MatchView key={q.id} q={q} onComplete={(mistakes) => completeMatch(q, mistakes)} />
+          <MatchView
+            key={q.id}
+            q={q}
+            onComplete={(mistakes) => completeMatch(q, mistakes)}
+            onDeleteWord={(wordId) => setDeleteConfirmId(wordId)}
+          />
         )}
       </main>
 

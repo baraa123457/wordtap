@@ -61,8 +61,30 @@ export async function fetchStats(): Promise<Stats> {
 }
 
 export async function deleteWord(id: string): Promise<void> {
-  const { error } = await getSupabase().from("words").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  const supabase = getSupabase();
+  // Try RPC first for guaranteed security definer deletion
+  const { error: rpcError } = await supabase.rpc("delete_word", { p_word_id: id });
+  if (rpcError) {
+    // Fallback to direct table delete
+    const { error } = await supabase.from("words").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+  }
+}
+
+export async function deleteWordByText(text: string, srcLang = "auto"): Promise<void> {
+  const supabase = getSupabase();
+  const { error: rpcError } = await supabase.rpc("delete_word_by_text", {
+    p_text: text,
+    p_src_lang: srcLang,
+  });
+  if (rpcError) {
+    const query = supabase.from("words").delete().ilike("text", text.trim());
+    if (srcLang && srcLang !== "auto") {
+      query.eq("src_lang", srcLang);
+    }
+    const { error } = await query;
+    if (error) throw new Error(error.message);
+  }
 }
 
 export async function reviewWord(wordId: string, correct: boolean): Promise<void> {

@@ -288,8 +288,19 @@ async function doFlush(forceAll = false) {
   const { session } = await chrome.storage.local.get("session");
   if (!session) return;
 
+  const { deleted = [] } = await chrome.storage.local.get({ deleted: [] });
   const snapshot = await enqueue(readWords);
   for (const [key, w] of Object.entries(snapshot)) {
+    // Never resurrect words marked deleted
+    if (w && w.text && deleted.includes(w.text.trim().toLowerCase())) {
+      await enqueue(async () => {
+        const words = await readWords();
+        delete words[key];
+        await chrome.storage.local.set({ words });
+      });
+      continue;
+    }
+
     const sending = forceAll ? (w.count || 1) : pendingOf(w);
     if (!forceAll && sending <= 0) continue;
 
@@ -386,6 +397,42 @@ async function addHistory(entry) {
   }
 }
 
+async function deleteCloudWord(text, srcLang = "auto", targetLang = "ar") {
+  if (!text) return { ok: true };
+  const clean = text.trim();
+  // 1. Remove from local words cache and record tombstone
+  await enqueue(async () => {
+    const words = await readWords();
+    const srcCode = srcLang && srcLang !== "auto" ? srcLang.toLowerCase() : "auto";
+    const key = srcCode + "|" + (targetLang || "ar") + "|" + clean.toLowerCase();
+    delete words[key];
+    const { deleted = [] } = await chrome.storage.local.get({ deleted: [] });
+    if (!deleted.includes(clean.toLowerCase())) {
+      deleted.push(clean.toLowerCase());
+      if (deleted.length > 500) deleted.shift();
+      await chrome.storage.local.set({ words, deleted });
+    } else {
+      await chrome.storage.local.set({ words });
+    }
+  });
+
+  // 2. Delete from Supabase if configured and user is signed in
+  if (configured()) {
+    try {
+      const token = await getToken();
+      if (token) {
+        await request("/rest/v1/rpc/delete_word_by_text", {
+          body: { p_text: clean, p_src_lang: srcLang || "auto" },
+          token,
+        });
+      }
+    } catch (e) {
+      console.warn("Could not delete word from cloud:", e);
+    }
+  }
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------
 // Messages from the page script and the popup
 // ---------------------------------------------------------------------------
@@ -404,6 +451,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return reply(translate(msg.text, msg.target, msg.srcLang, msg.context).then((r) => ({ ok: true, ...r })));
     case "save":
       return reply(saveWord(msg.entry));
+    case "word:delete":
+      return reply(deleteCloudWord(msg.text, msg.srcLang, msg.targetLang));
     case "history:add":
       return reply(addHistory(msg.entry));
     case "history:get":

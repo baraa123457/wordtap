@@ -82,12 +82,26 @@ export function shuffle<T>(items: readonly T[], rng: Rng = Math.random): T[] {
   return out;
 }
 
+export function isPracticableWord(w: Word): boolean {
+  const clean = (w.text || "").trim();
+  const cleanTrans = (w.translation || "").trim();
+  if (!clean || !cleanTrans) return false;
+  // Skip single non-word characters (allow legitimate 1-letter words like 'a' or 'I')
+  if (clean.length === 1 && !/^[aiAI]$/.test(clean)) return false;
+  // Skip overly long scraped page blocks (e.g. YouTube banner / subscribe text > 60 chars or > 6 words)
+  if (clean.length > 60 || cleanTrans.length > 80) return false;
+  const wordCount = clean.split(/\s+/).length;
+  if (wordCount > 6) return false;
+  return true;
+}
+
 /** Due words first (weakest box first), then the rest with weaker boxes ahead. */
 export function selectWords(words: Word[], size: number, now: Date, rng: Rng): Word[] {
+  const valid = words.filter(isPracticableWord);
   const nowMs = now.getTime();
   const due: Word[] = [];
   const later: Word[] = [];
-  for (const w of words) {
+  for (const w of valid) {
     (new Date(w.next_review).getTime() <= nowMs ? due : later).push(w);
   }
   const byBox = (a: Word, b: Word) => a.box - b.box;
