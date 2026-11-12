@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WordTap: Subtitle Click Translator",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Click any word in video subtitles to translate it and save it to your WordTap account. Shift+click translates the whole line.",
   "permissions": ["storage", "activeTab"],
   "icons": {

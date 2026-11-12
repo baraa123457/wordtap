@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "pack-extension": "powershell -Command \"Compress-Archive -Path ../extension/* -DestinationPath ./public/wordtap-extension.zip -Force\"",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
