@@ -22,6 +22,86 @@ export async function POST(req: Request) {
   }
 }
 
+function levenshtein(a: string, b: string): number {
+  const an = a.length;
+  const bn = b.length;
+  if (an === 0) return bn;
+  if (bn === 0) return an;
+  const matrix: number[][] = Array.from({ length: bn + 1 }, () => Array(an + 1).fill(0));
+  for (let i = 0; i <= an; ++i) matrix[0][i] = i;
+  for (let i = 1; i <= bn; ++i) matrix[i][0] = i;
+  for (let i = 1; i <= bn; ++i) {
+    for (let j = 1; j <= an; ++j) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+        );
+      }
+    }
+  }
+  return matrix[bn][an];
+}
+
+async function findSuggestCorrection(text: string): Promise<string | null> {
+  const clean = text.trim();
+  if (!clean || clean.length < 3 || clean.length > 50) return null;
+  const lowerInput = clean.toLowerCase();
+
+  try {
+    const suggestUrl = `https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(clean)}`;
+    const sRes = await fetch(suggestUrl, {
+      signal: AbortSignal.timeout(2000),
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      },
+    });
+    if (!sRes.ok) return null;
+    const sData = await sRes.json();
+    const suggestions = Array.isArray(sData?.[1]) ? sData[1] : [];
+
+    let bestCandidate: string | null = null;
+    let lowestDist = 999;
+
+    for (const raw of suggestions) {
+      if (typeof raw !== "string") continue;
+      const stripped = raw
+        .replace(/[\u0600-\u06FF]+/g, "")
+        .replace(/\b(meaning|translate|translation|definition|synonyms?|antonyms?|in python|in java|movie|film)\b/gi, "")
+        .replace(/[^a-zA-Z\s'-]/g, "")
+        .trim();
+      if (!stripped) continue;
+
+      const tokens = stripped.split(/\s+/).filter(Boolean);
+      const isSingle = !lowerInput.includes(" ");
+      const candidateList = isSingle ? [tokens[0]].filter(Boolean) : [stripped, tokens[0]];
+
+      for (const cand of candidateList) {
+        const candLower = cand.toLowerCase();
+        if (!candLower || candLower === lowerInput) continue;
+        const dist = levenshtein(lowerInput, candLower);
+        const maxLen = Math.max(lowerInput.length, candLower.length);
+        const similarity = 1 - dist / maxLen;
+
+        const maxAllowedDist = maxLen >= 7 ? 4 : 3;
+        if (dist <= maxAllowedDist && similarity >= 0.55) {
+          if (dist < lowestDist) {
+            lowestDist = dist;
+            bestCandidate = candLower;
+          }
+        }
+      }
+    }
+
+    return bestCandidate;
+  } catch {
+    return null;
+  }
+}
+
 async function handleTranslate(
   text: string,
   src: string,
@@ -94,6 +174,8 @@ async function handleTranslate(
       autoCorrected: boolean;
     } | null = null;
 
+    const isLatinInput = /^[a-zA-Z\s'-]+$/.test(text);
+
     if (
       !forceExact &&
       data &&
@@ -103,7 +185,8 @@ async function handleTranslate(
       data[7][1].trim()
     ) {
       const clean = data[7][1].replace(/<[^>]+>/g, "").trim();
-      if (clean.toLowerCase() !== text.toLowerCase()) {
+      const isLatinCorrection = /^[a-zA-Z\s'-]+$/.test(clean);
+      if ((!isLatinInput || isLatinCorrection) && clean.toLowerCase() !== text.toLowerCase()) {
         correction = {
           correctedText: clean,
           originalText: text,
@@ -112,12 +195,12 @@ async function handleTranslate(
       }
     }
 
-    // If auto-detect misclassified an English typo (e.g. 'reciept' -> 'lus'), retry with sl=en to check for spell correction
+    // If auto-detect misclassified an English typo (e.g. 'reciept' -> 'lus', or 'succesfull' -> Hindi), retry with sl=en to check for spell correction
     if (
       !forceExact &&
       !correction &&
       (src === "auto" || src === "en") &&
-      /^[a-zA-Z\s'-]+$/.test(text)
+      isLatinInput
     ) {
       try {
         const enUrl = `https://translate.googleapis.com/translate_a/single?client=dict-chrome-ex&sl=en&tl=${encodeURIComponent(
@@ -138,7 +221,8 @@ async function handleTranslate(
             enData[7][1].trim()
           ) {
             const clean = enData[7][1].replace(/<[^>]+>/g, "").trim();
-            if (clean.toLowerCase() !== text.toLowerCase()) {
+            const isLatinCorrection = /^[a-zA-Z\s'-]+$/.test(clean);
+            if ((!isLatinInput || isLatinCorrection) && clean.toLowerCase() !== text.toLowerCase()) {
               data = enData;
               correction = {
                 correctedText: clean,
@@ -178,6 +262,63 @@ async function handleTranslate(
               partOfSpeech: entry[0],
               meanings: entry[1].filter((m: any) => typeof m === "string").slice(0, 5),
             });
+          }
+        }
+      }
+
+      const headword = Array.isArray(data[1]) && data[1][0] ? data[1][0][3] : undefined;
+      const hasDict = Array.isArray(data[1]) && data[1].length > 0;
+      const isEcho = translation.trim().toLowerCase() === text.trim().toLowerCase();
+      const headwordDiffers =
+        hasDict &&
+        typeof headword === "string" &&
+        headword.trim().toLowerCase() !== text.trim().toLowerCase();
+
+      // Check if dictionary headword differs (e.g. definitly -> definitely)
+      if (!forceExact && !correction && headwordDiffers && typeof headword === "string") {
+        correction = {
+          correctedText: headword.trim(),
+          originalText: text,
+          autoCorrected: false,
+        };
+      }
+
+      // Check Google Suggest fallback ONLY for likely typos
+      const isLikelyTypo = !hasDict || isEcho || headwordDiffers;
+      if (!forceExact && !correction && isLikelyTypo) {
+        const candidate = await findSuggestCorrection(text);
+        if (candidate) {
+          correction = {
+            correctedText: candidate,
+            originalText: text,
+            autoCorrected: false,
+          };
+
+          // If translation was just echoing the untranslated typo (like inherte -> inherte), fetch candidate's translation!
+          if (isEcho) {
+            try {
+              const candUrl = `https://translate.googleapis.com/translate_a/single?client=dict-chrome-ex&sl=auto&tl=${encodeURIComponent(
+                target,
+              )}&dt=t&dt=bd&dt=rm&q=${encodeURIComponent(candidate)}`;
+              const candRes = await fetch(candUrl, {
+                signal: AbortSignal.timeout(2500),
+                headers: {
+                  "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                },
+              });
+              if (candRes.ok) {
+                const candData = await candRes.json();
+                if (candData && Array.isArray(candData[0]) && candData[0][0]?.[0]) {
+                  translation = candData[0][0][0];
+                  if (candData[0][1]?.[2]) targetPronunciation = candData[0][1][2];
+                  if (candData[0][1]?.[3]) sourcePronunciation = candData[0][1][3];
+                  correction.autoCorrected = true; // Since candidate translation is served!
+                }
+              }
+            } catch {
+              // ignore candidate translation error
+            }
           }
         }
       }
