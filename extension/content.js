@@ -45,7 +45,7 @@
     pauseOnClick: false, // pause the video when a word is clicked
     saveWords: false, // keep every translated word
     translateSaveMode: "manual",
-    hideSeconds: 3, // how long the tooltip stays (0 = until closed)
+    hideSeconds: 1, // stays for 1 second
     targetLang: "ar",
   };
 
@@ -332,10 +332,9 @@
     tip.style.left = left + "px";
     tip.style.top = top + "px";
 
-    // Close the tooltip by itself after the chosen time (0 = stay until closed).
+    // Close the tooltip by itself after 1 second
     clearTimeout(hideTimer);
-    const secs = Number(settings.hideSeconds);
-    if (secs > 0 && translated !== "…") hideTimer = setTimeout(hideTip, secs * 1000);
+    if (translated !== "…") hideTimer = setTimeout(hideTip, 1000);
   }
 
   // ---------- Word under the cursor ----------

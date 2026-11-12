@@ -10,7 +10,7 @@ const DEFAULTS = {
   pauseOnClick: false,
   saveWords: false,
   translateSaveMode: "manual",
-  hideSeconds: 3,
+  hideSeconds: 1,
   targetLang: "ar",
   selectionMode: "immediate",
 };
@@ -20,7 +20,6 @@ chrome.storage.sync.get(DEFAULTS, (s) => {
   const mode = s.translateSaveMode || (s.saveWords ? "auto" : "manual");
   if ($("translateSaveMode")) $("translateSaveMode").value = mode;
   if ($("lang")) $("lang").value = s.targetLang;
-  if ($("hideSeconds")) $("hideSeconds").value = String(s.hideSeconds);
   if ($("selectionMode")) $("selectionMode").value = s.selectionMode || "immediate";
 });
 
@@ -38,9 +37,11 @@ if ($("translateSaveMode")) {
   });
 }
 $("lang").addEventListener("change", (e) => chrome.storage.sync.set({ targetLang: e.target.value }));
-$("hideSeconds").addEventListener("change", (e) =>
-  chrome.storage.sync.set({ hideSeconds: Number(e.target.value) })
-);
+if ($("hideSeconds")) {
+  $("hideSeconds").addEventListener("change", (e) =>
+    chrome.storage.sync.set({ hideSeconds: Number(e.target.value) })
+  );
+}
 if ($("selectionMode")) {
   $("selectionMode").addEventListener("change", (e) =>
     chrome.storage.sync.set({ selectionMode: e.target.value })
