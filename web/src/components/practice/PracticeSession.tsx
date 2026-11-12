@@ -25,15 +25,25 @@ const XP_FIRST_TRY = 10;
 const XP_RETRY = 5;
 const SESSION_WORDS = 8;
 
-export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: () => void }) {
+export function PracticeSession({
+  words,
+  onAgain,
+  modeOverride,
+}: {
+  words: Word[];
+  onAgain: () => void;
+  modeOverride?: "mixed" | "typing" | "choice" | "dictation";
+}) {
   const router = useRouter();
   const [settings] = useState(() => getStoredSettings());
 
   const [queue, setQueue] = useState<Item[]>(() => {
-    let mode = settings.practiceMode || "mixed";
-    if (settings.enableChoice === false && settings.enableTyping) mode = "typing";
-    else if (settings.enableTyping === false && settings.enableChoice) mode = "choice";
-    else if (settings.enableChoice && settings.enableTyping) mode = "mixed";
+    let mode = modeOverride || settings.practiceMode || "mixed";
+    if (!modeOverride && mode !== "dictation") {
+      if (settings.enableChoice === false && settings.enableTyping) mode = "typing";
+      else if (settings.enableTyping === false && settings.enableChoice) mode = "choice";
+      else if (settings.enableChoice && settings.enableTyping) mode = "mixed";
+    }
 
     return buildSession(words, {
       size: settings.sessionSize || SESSION_WORDS,
@@ -56,28 +66,23 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
   const [isDeleting, setIsDeleting] = useState(false);
 
   const reviewed = useRef(new Set<string>());
-  const deletedIds = useRef(new Set<string>());
   const xpSaved = useRef(false);
   const wordsById = useMemo(() => new Map(words.map((w) => [w.id, w])), [words]);
+  const [remainingIds, setRemainingIds] = useState<string[]>(() =>
+    words.filter(isPracticableWord).map((w) => w.id),
+  );
 
   const current = queue[0];
   const finished = current === undefined;
 
-  const validWords = useMemo(
-    () => words.filter((w) => isPracticableWord(w) && !deletedIds.current.has(w.id)),
-    [words],
-  );
-
-  const remainingCount = useMemo(() => {
-    return Math.max(0, validWords.filter((w) => !reviewed.current.has(w.id)).length);
-  }, [validWords, finished]);
+  const remainingCount = remainingIds.length;
 
   const handleDeleteWord = useCallback(
     async (wordId: string) => {
       setIsDeleting(true);
       try {
         await deleteWord(wordId);
-        deletedIds.current.add(wordId);
+        setRemainingIds((prev) => prev.filter((id) => id !== wordId));
         // Remove word from queue immediately, including within Match questions!
         setQueue((prev) =>
           prev
@@ -118,6 +123,7 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
   const review = useCallback((wordId: string, correct: boolean) => {
     if (reviewed.current.has(wordId)) return;
     reviewed.current.add(wordId);
+    setRemainingIds((prev) => prev.filter((id) => id !== wordId));
     reviewWord(wordId, correct).catch(() => setReviewFailed(true));
   }, []);
 
@@ -230,7 +236,6 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
         onRetrySave={retrySave}
         onAgain={onAgain}
         remainingCount={remainingCount}
-        totalWords={validWords.length}
       />
     );
   }
@@ -357,7 +362,7 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
         <FeedbackBar
           phase={phase}
           answer={answer}
-          sentence={parsedContext.sentence}
+          sentence={("sentence" in q && q.sentence) || parsedContext.sentence}
           sourceUrl={sourceUrl}
           sourceTitle={parsedContext.sourceTitle}
           canCheck={canCheck}

@@ -108,14 +108,30 @@ export default function HistoryPage() {
   }
 
   function handleDelete(id: string) {
+    const target = history.find((item) => item.id === id);
     removeHistoryItem(id);
     setHistory((prev) => prev.filter((item) => item.id !== id));
+    if (typeof window !== "undefined") {
+      window.postMessage(
+        {
+          type: "wordtap:history-deleted",
+          id,
+          text: target?.text,
+          srcLang: target?.src_lang,
+          targetLang: target?.target_lang,
+        },
+        "*",
+      );
+    }
   }
 
   function handleClearAll() {
     clearHistory();
     setHistory([]);
     setConfirmClear(false);
+    if (typeof window !== "undefined") {
+      window.postMessage({ type: "wordtap:history-cleared" }, "*");
+    }
   }
 
   async function handleCopy(item: HistoryItem) {

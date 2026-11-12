@@ -15,7 +15,6 @@ type Props = {
   onRetrySave: () => void;
   onAgain: () => void;
   remainingCount?: number;
-  totalWords?: number;
 };
 
 export function Summary({
@@ -28,7 +27,6 @@ export function Summary({
   onRetrySave,
   onAgain,
   remainingCount,
-  totalWords,
 }: Props) {
   const accuracy = asked === 0 ? 100 : Math.round((right / asked) * 100);
 
@@ -98,7 +96,7 @@ export function Summary({
               ) : (
                 <>
                   <p className="font-bold text-ok-ink text-sm sm:text-base">
-                    You're all caught up for today!
+                    You&apos;re all caught up for today!
                   </p>
                   <p className="text-muted text-xs sm:text-sm" dir="rtl">
                     أحسنت! تدربت على جميع كلماتك اليوم 🎉
@@ -176,6 +174,11 @@ export function Summary({
             ? `Practice again (${remainingCount} left)`
             : "Practice again"}
         </button>
+        {missed.length > 0 ? (
+          <Link href="/practice?mode=missed" className="btn">
+            Drill missed words ({missed.length})
+          </Link>
+        ) : null}
         <Link href="/dashboard" className="btn">
           Back to dashboard
         </Link>

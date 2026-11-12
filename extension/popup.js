@@ -1,4 +1,4 @@
-import { CONFIG } from "./config.js";
+import { CONFIG, getWebsiteUrl } from "./config.js";
 
 const RTL = ["ar", "fa", "ur", "he"];
 const $ = (id) => document.getElementById(id);
@@ -7,10 +7,8 @@ const send = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, r
 // ---------- Settings ----------
 const DEFAULTS = {
   enabled: true,
-  pauseOnClick: false,
   saveWords: false,
   translateSaveMode: "manual",
-  hideSeconds: 1,
   targetLang: "ar",
   selectionMode: "immediate",
 };
@@ -37,11 +35,6 @@ if ($("translateSaveMode")) {
   });
 }
 $("lang").addEventListener("change", (e) => chrome.storage.sync.set({ targetLang: e.target.value }));
-if ($("hideSeconds")) {
-  $("hideSeconds").addEventListener("change", (e) =>
-    chrome.storage.sync.set({ hideSeconds: Number(e.target.value) })
-  );
-}
 if ($("selectionMode")) {
   $("selectionMode").addEventListener("change", (e) =>
     chrome.storage.sync.set({ selectionMode: e.target.value })
@@ -75,18 +68,38 @@ function showPanel(name) {
   for (const id of panels) $(id).hidden = id !== name;
 }
 
-function renderAccount(s) {
+async function renderAccount(s) {
+  const webUrl = await getWebsiteUrl().catch(() => CONFIG.WEBSITE_URL);
+  $("signUpLink").href = webUrl + "/signup";
+  $("openSite").href = webUrl + "/practice";
+
   if (!s || !s.ok) {
     showPanel("acctUnconfigured");
     return;
   }
-  $("signUpLink").href = CONFIG.WEBSITE_URL + "/signup";
-  $("openSite").href = CONFIG.WEBSITE_URL + "/dashboard";
 
   if (!s.configured) return showPanel("acctUnconfigured");
-  if (!s.signedIn) return showPanel("signInForm");
+  if (!s.signedIn) {
+    if ($("studyBadge")) $("studyBadge").hidden = true;
+    return showPanel("signInForm");
+  }
 
   $("who").textContent = s.email;
+  send({ type: "stats:get" }).then((st) => {
+    const badge = $("studyBadge");
+    if (!badge) return;
+    if (st && st.ok) {
+      const parts = [
+        `${st.due} due today`,
+        st.streak > 0 ? `${st.streak}-day streak` : null,
+        `${st.xp} XP`,
+      ].filter(Boolean);
+      badge.textContent = parts.join(" · ");
+      badge.hidden = false;
+    } else {
+      badge.hidden = true;
+    }
+  });
   $("syncLine").textContent =
     s.pending === 0
       ? "All saved words are in your account."
@@ -275,23 +288,49 @@ function render() {
     spk.title = `Listen in ${langLabel}`;
     spk.setAttribute("aria-label", `Listen in ${langLabel}`);
     spk.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>`;
-    spk.addEventListener("click", () => {
-      if (!("speechSynthesis" in window)) return;
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(cleanText);
+    spk.addEventListener("click", async () => {
       const code = (w.src && w.src !== "auto" ? w.src : "en").toLowerCase().slice(0, 2);
-      u.lang = LANG_VOICES[code] || "en-US";
-      u.rate = 0.92;
-
-      const voices = window.speechSynthesis.getVoices();
-      const voice = voices.find(v => v.lang.toLowerCase().startsWith(code) && !v.localService) ||
-                    voices.find(v => v.lang.toLowerCase().startsWith(code));
-      if (voice) u.voice = voice;
+      const fallbackRemote = async () => {
+        try {
+          const res = await send({ type: "tts:speak", text: cleanText, lang: code });
+          if (res && res.ok && res.dataUrl) {
+            const audio = new Audio(res.dataUrl);
+            audio.onended = () => spk.classList.remove("speaking");
+            audio.onerror = () => spk.classList.remove("speaking");
+            await audio.play();
+            return;
+          }
+        } catch (_) {}
+        spk.classList.remove("speaking");
+      };
 
       spk.classList.add("speaking");
-      u.onend = () => spk.classList.remove("speaking");
-      u.onerror = () => spk.classList.remove("speaking");
-      window.speechSynthesis.speak(u);
+      if (!("speechSynthesis" in window)) {
+        void fallbackRemote();
+        return;
+      }
+      try {
+        window.speechSynthesis.cancel();
+        const voices = window.speechSynthesis.getVoices();
+        const voice = voices.find((v) => v.lang.toLowerCase().startsWith(code) && !v.localService) ||
+                      voices.find((v) => v.lang.toLowerCase().startsWith(code));
+
+        if (!voice && voices.length > 0) {
+          void fallbackRemote();
+          return;
+        }
+
+        const u = new SpeechSynthesisUtterance(cleanText);
+        u.lang = LANG_VOICES[code] || "en-US";
+        u.rate = 0.92;
+        if (voice) u.voice = voice;
+
+        u.onend = () => spk.classList.remove("speaking");
+        u.onerror = () => { void fallbackRemote(); };
+        window.speechSynthesis.speak(u);
+      } catch (_) {
+        void fallbackRemote();
+      }
     });
 
     const del = document.createElement("button");

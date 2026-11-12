@@ -1,10 +1,18 @@
 (() => {
-  // Containers that hold subtitles on supported sites.
+  // Containers that hold subtitles on supported streaming & learning platforms.
   const SUBTITLE_SELECTOR = [
     ".ytp-caption-window-container", // YouTube
     ".caption-window", // YouTube
     ".player-timedtext", // Netflix
-    ".vjs-text-track-display", // generic video.js
+    ".atvwebplayersdk-captions-text", // Amazon Prime Video
+    ".atvwebplayersdk-captions-overlay", // Amazon Prime Video
+    ".dss-subtitle-renderer-wrapper", // Disney+
+    ".dss-subtitle-renderer-cue", // Disney+
+    '[data-purpose="captions-cue-text"]', // Udemy
+    ".captions-display--captions-container--P9o-a", // Udemy container
+    ".c-video-captions-container", // Coursera
+    ".Transcript__cue", // TED
+    ".vjs-text-track-display", // generic video.js / HTML5
   ].join(",");
 
   const WORD_CHAR = /[\p{L}\p{M}\p{N}'’-]/u;
@@ -42,10 +50,8 @@
   // ---------- Settings ----------
   const settings = {
     enabled: true, // master switch
-    pauseOnClick: false, // pause the video when a word is clicked
     saveWords: false, // keep every translated word
     translateSaveMode: "manual",
-    hideSeconds: 1, // stays for 1 second
     targetLang: "ar",
   };
 
@@ -214,27 +220,54 @@
   let currentOrigText = "";
   let currentSrcLang = "en";
 
+  function playRemoteTts(text, code) {
+    safeSendMessage({ type: "tts:speak", text, lang: code }, (res) => {
+      if (!res || !res.ok || !res.dataUrl) {
+        spkBtn.classList.remove("speaking");
+        return;
+      }
+      try {
+        const audio = new Audio(res.dataUrl);
+        audio.onended = () => spkBtn.classList.remove("speaking");
+        audio.onerror = () => spkBtn.classList.remove("speaking");
+        audio.play().catch(() => spkBtn.classList.remove("speaking"));
+      } catch (_) {
+        spkBtn.classList.remove("speaking");
+      }
+    });
+  }
+
   spkBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (!currentOrigText || !("speechSynthesis" in window)) return;
+    if (!currentOrigText) return;
+    const code = (currentSrcLang && currentSrcLang !== "auto" ? currentSrcLang : "en").toLowerCase().slice(0, 2);
+    spkBtn.classList.add("speaking");
+
+    if (!("speechSynthesis" in window)) {
+      playRemoteTts(currentOrigText, code);
+      return;
+    }
     try {
       window.speechSynthesis.cancel();
+      const voices = window.speechSynthesis.getVoices();
+      const voice = voices.find((v) => v.lang.toLowerCase().startsWith(code) && !v.localService) ||
+                    voices.find((v) => v.lang.toLowerCase().startsWith(code));
+
+      if (!voice && voices.length > 0) {
+        playRemoteTts(currentOrigText, code);
+        return;
+      }
+
       const u = new SpeechSynthesisUtterance(currentOrigText);
-      const code = (currentSrcLang && currentSrcLang !== "auto" ? currentSrcLang : "en").toLowerCase().slice(0, 2);
       u.lang = LANG_VOICES[code] || "en-US";
       u.rate = 0.92;
-
-      const voices = window.speechSynthesis.getVoices();
-      const voice = voices.find(v => v.lang.toLowerCase().startsWith(code) && !v.localService) ||
-                    voices.find(v => v.lang.toLowerCase().startsWith(code));
       if (voice) u.voice = voice;
 
-      spkBtn.classList.add("speaking");
       u.onend = () => spkBtn.classList.remove("speaking");
-      u.onerror = () => spkBtn.classList.remove("speaking");
+      u.onerror = () => playRemoteTts(currentOrigText, code);
       window.speechSynthesis.speak(u);
     } catch (_) {
-      spkBtn.classList.remove("speaking");
+      playRemoteTts(currentOrigText, code);
     }
   });
 
@@ -245,25 +278,13 @@
   }
   document.addEventListener("fullscreenchange", () => host.isConnected && mount());
 
-  let pausedByUs = null;
   let hideTimer = null;
   let tipToken = 0; // lets late replies know the tooltip has moved on
-
-  function pauseVideo() {
-    const v = document.querySelector("video");
-    if (v && !v.paused) {
-      v.pause();
-      pausedByUs = v;
-    }
-  }
 
   function hideTip() {
     clearTimeout(hideTimer);
     tip.style.display = "none";
-    if (pausedByUs) {
-      pausedByUs.play().catch(() => {});
-      pausedByUs = null;
-    }
+    delete tip.dataset.hovered;
   }
 
   let currentPendingEntry = null;
@@ -332,9 +353,22 @@
     tip.style.left = left + "px";
     tip.style.top = top + "px";
 
-    // Close the tooltip by itself after 1 second
+    if (!tip.dataset.hoverWired) {
+      tip.dataset.hoverWired = "1";
+      tip.addEventListener("mouseenter", () => {
+        tip.dataset.hovered = "1";
+        clearTimeout(hideTimer);
+      });
+      tip.addEventListener("mouseleave", () => {
+        delete tip.dataset.hovered;
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(hideTip, 1000);
+      });
+    }
+
+    // Close the tooltip by itself after 1 second (unless cursor is hovering the tooltip)
     clearTimeout(hideTimer);
-    if (translated !== "…") hideTimer = setTimeout(hideTip, 1000);
+    if (translated !== "…" && !tip.dataset.hovered) hideTimer = setTimeout(hideTip, 1000);
   }
 
   // ---------- Word under the cursor ----------
@@ -378,7 +412,7 @@
   );
 
   function resumeIfNeeded() {
-    if (settings.pauseOnClick || !wasPlaying) return;
+    if (!wasPlaying) return;
     const v = document.querySelector("video");
     const resume = () => v && v.paused && v.play().catch(() => {});
     setTimeout(resume, 0);
@@ -640,8 +674,7 @@
         return;
       }
 
-      if (settings.pauseOnClick) pauseVideo();
-      else resumeIfNeeded();
+      resumeIfNeeded();
 
       const target = settings.targetLang;
       const token = ++tipToken;
@@ -683,6 +716,7 @@
           page: location.href,
           title: titleContext,
           sentence: fullLine ? fullLine.trim() : "",
+          source: "subtitle",
           saved: Boolean(willSave),
         };
         currentPendingEntry = entry;

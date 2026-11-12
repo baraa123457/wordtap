@@ -1,8 +1,25 @@
-// Fill these in with your own Supabase project (Project settings -> API),
-// and set WEBSITE_URL to where the WordTap website is hosted.
-// The anon key is meant to be public: row level security protects the data.
+// WordTap Extension Configuration
+// Keeps Supabase credentials centralized for extension scripts and adds a live website URL helper.
+
 export const CONFIG = {
   SUPABASE_URL: "https://vjjilwbhvoxfigrokqch.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_YzMg6sNWjpwwfP2T-apa-Q_c3EHVBNa",
   WEBSITE_URL: "http://localhost:3000",
 };
+
+/**
+ * Returns the configured WordTap Web App base URL (allows overriding localhost for production deploys
+ * via Extension Options -> WordTap Web App URL).
+ */
+export async function getWebsiteUrl() {
+  try {
+    if (typeof chrome !== "undefined" && chrome.storage?.sync) {
+      const data = await chrome.storage.sync.get(["websiteUrl"]);
+      const custom = typeof data.websiteUrl === "string" ? data.websiteUrl.trim().replace(/\/+$/, "") : "";
+      if (custom && /^https?:\/\//i.test(custom)) {
+        return custom;
+      }
+    }
+  } catch {}
+  return CONFIG.WEBSITE_URL;
+}

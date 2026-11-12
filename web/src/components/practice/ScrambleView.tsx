@@ -18,7 +18,9 @@ type Props = {
 
 export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord }: Props) {
   const locked = phase !== "answering";
-  const { sentence, sourceTitle } = parseSourceContext(q.context);
+  const parsed = parseSourceContext(q.context);
+  const sentence = q.sentence || parsed.sentence;
+  const sourceTitle = parsed.sourceTitle;
   const isPromptArabic = /[\u0600-\u06FF]/.test(q.prompt);
   const [placedTileIds, setPlacedTileIds] = useState<string[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);

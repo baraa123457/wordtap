@@ -49,7 +49,7 @@ export function SubtitleDemo() {
 
     // If auto save mode, save immediately
     if (isAuto && !savedWords.has(item.word.toLowerCase())) {
-      addCustomWord(item.word, item.translation, "ar", "en").catch(() => {});
+      addCustomWord(item.word, item.translation, "en", "ar").catch(() => {});
       setSavedWords((prev) => new Set(prev).add(item.word.toLowerCase()));
       markHistoryItemSaved(item.word, "en", "ar");
     }
@@ -59,10 +59,10 @@ export function SubtitleDemo() {
     if (!current || savingWord || isCurrentSaved) return;
     setSavingWord(true);
     try {
-      await addCustomWord(current.word, current.translation, "ar", "en");
+      await addCustomWord(current.word, current.translation, "en", "ar");
       setSavedWords((prev) => new Set(prev).add(current.word.toLowerCase()));
       markHistoryItemSaved(current.word, "en", "ar");
-    } catch (_) {
+    } catch {
       // Even if network/signed-out, treat as saved locally in demo
       setSavedWords((prev) => new Set(prev).add(current.word.toLowerCase()));
       markHistoryItemSaved(current.word, "en", "ar");

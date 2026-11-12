@@ -3,21 +3,14 @@ import {
   EMPTY_STATS,
   STATS_COLUMNS,
   WORD_COLUMNS,
+  WORD_COLUMNS_LEGACY,
   statsSchema,
   wordsSchema,
   type Stats,
   type Word,
 } from "./schemas";
 
-const LANG_SUFFIXES: Record<string, string> = {
-  de: "\u200B",
-  fr: "\u200C",
-  es: "\u200D",
-  it: "\u200E",
-  pt: "\u200F",
-  tr: "\uFEFF",
-  ru: "\u2060",
-};
+export type ReviewGrade = 0 | 1 | 2 | 3;
 
 export function tagWordByLang(text: string, lang: string): string {
   const clean = cleanWordText(text);
@@ -34,12 +27,27 @@ export function cleanWordText(text: string): string {
 }
 
 export async function fetchWords(): Promise<Word[]> {
-  const { data, error } = await getSupabase()
+  const supabase = getSupabase();
+  const primary = await supabase
     .from("words")
     .select(WORD_COLUMNS)
     .order("created_at", { ascending: false });
+
+  let rows: unknown = primary.data;
+  let error = primary.error;
+
+  // Fallback gracefully if migration 004/006 hasn't added `sentence` yet
+  if (error && error.message.toLowerCase().includes("sentence")) {
+    const legacy = await supabase
+      .from("words")
+      .select(WORD_COLUMNS_LEGACY)
+      .order("created_at", { ascending: false });
+    rows = legacy.data;
+    error = legacy.error;
+  }
+
   if (error) throw new Error(error.message);
-  const words = wordsSchema.parse(data);
+  const words = wordsSchema.parse(rows);
   return words.map((w) => {
     const match = (w.text || "").match(/::([a-z]{2,5})$/i);
     const inferredLang = match ? match[1].toLowerCase() : w.src_lang;
@@ -65,9 +73,20 @@ export async function deleteWord(id: string): Promise<void> {
   // Try RPC first for guaranteed security definer deletion
   const { error: rpcError } = await supabase.rpc("delete_word", { p_word_id: id });
   if (rpcError) {
-    // Fallback to direct table delete
     const { error } = await supabase.from("words").delete().eq("id", id);
     if (error) throw new Error(error.message);
+  }
+}
+
+export async function bulkDeleteWords(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const supabase = getSupabase();
+  const { error } = await supabase.from("words").delete().in("id", ids);
+  if (error) {
+    // Fall back to sequential RPC deletes if RLS blocks batch delete
+    for (const id of ids) {
+      await deleteWord(id);
+    }
   }
 }
 
@@ -87,8 +106,22 @@ export async function deleteWordByText(text: string, srcLang = "auto"): Promise<
   }
 }
 
-export async function reviewWord(wordId: string, correct: boolean): Promise<void> {
-  const { error } = await getSupabase().rpc("review_word", {
+export async function reviewWord(
+  wordId: string,
+  correct: boolean,
+  grade?: ReviewGrade,
+): Promise<void> {
+  const supabase = getSupabase();
+  if (grade !== undefined) {
+    const res = await supabase.rpc("review_word", {
+      p_word_id: wordId,
+      p_correct: correct,
+      p_grade: grade,
+    });
+    if (!res.error) return;
+  }
+
+  const { error } = await supabase.rpc("review_word", {
     p_word_id: wordId,
     p_correct: correct,
   });
@@ -106,71 +139,51 @@ export async function setDailyGoal(goal: number): Promise<void> {
 }
 
 export async function updateWordLanguage(id: string, srcLang: string, word?: Word): Promise<void> {
-  const supabase = getSupabase();
-  const taggedText = word ? tagWordByLang(word.text, srcLang) : undefined;
-  const updatePayload: Record<string, any> = { src_lang: srcLang };
-  if (taggedText) updatePayload.text = taggedText;
-
-  const { data, error } = await supabase
-    .from("words")
-    .update(updatePayload)
-    .eq("id", id)
-    .select();
-
-  if (!error && data && data.length > 0) {
-    return;
-  }
-
-  // Fallback: If direct update was blocked by RLS (0 rows modified),
-  // delete and re-insert via save_word RPC (which is SECURITY DEFINER and always succeeds)
-  if (word) {
-    await deleteWord(id);
-    const { error: rpcErr } = await supabase.rpc("save_word", {
-      p_text: taggedText || word.text,
-      p_translation: word.translation,
-      p_src_lang: srcLang,
-      p_target_lang: word.target_lang,
-      p_source_title: word.source_title || "",
-      p_source_url: word.source_url || "",
-      p_times: word.times_seen || 1,
-    });
-    if (rpcErr) throw new Error(rpcErr.message);
-    if (word.box > 0) {
-      await supabase.from("words").update({ box: word.box, next_review: word.next_review }).eq("text", taggedText || word.text);
-    }
-    return;
-  }
-  if (error) throw new Error(error.message);
+  return updateWordDetails(id, { src_lang: srcLang }, word);
 }
 
 export async function updateWordDetails(
   id: string,
   updates: { text?: string; translation?: string; src_lang?: string },
-  word?: Word
+  word?: Word,
 ): Promise<void> {
   const supabase = getSupabase();
-  const nextText = updates.text !== undefined ? cleanWordText(updates.text) : (word ? cleanWordText(word.text) : "");
-  const nextLang = updates.src_lang !== undefined ? updates.src_lang : (word?.src_lang || "en");
-  const nextTrans = updates.translation !== undefined ? updates.translation.trim() : (word?.translation || "");
+  const nextText =
+    updates.text !== undefined
+      ? cleanWordText(updates.text)
+      : word
+      ? cleanWordText(word.text)
+      : "";
+  const nextLang =
+    updates.src_lang !== undefined ? updates.src_lang : word?.src_lang || "en";
+  const nextTrans =
+    updates.translation !== undefined ? updates.translation.trim() : word?.translation || "";
 
   const taggedText = tagWordByLang(nextText, nextLang);
-  const payload: Record<string, any> = {};
+
+  // 1. Prefer atomic SECURITY DEFINER update RPC (migration 006) — preserves SRS stats
+  const rpcRes = await supabase.rpc("update_word_details", {
+    p_word_id: id,
+    p_text: taggedText || null,
+    p_translation: updates.translation !== undefined ? nextTrans : null,
+    p_src_lang: updates.src_lang !== undefined ? nextLang : null,
+  });
+  if (!rpcRes.error && rpcRes.data) {
+    return;
+  }
+
+  // 2. Fallback to direct table update (when RLS update policy permits)
+  const payload: { text?: string; translation?: string; src_lang?: string } = {};
   if (updates.text !== undefined || updates.src_lang !== undefined) payload.text = taggedText;
   if (updates.translation !== undefined) payload.translation = nextTrans;
   if (updates.src_lang !== undefined) payload.src_lang = nextLang;
 
-  const { data, error } = await supabase
-    .from("words")
-    .update(payload)
-    .eq("id", id)
-    .select();
-
+  const { data, error } = await supabase.from("words").update(payload).eq("id", id).select("id");
   if (!error && data && data.length > 0) {
     return;
   }
 
-  // Fallback: If direct update was blocked by RLS (0 rows modified),
-  // delete and re-insert via save_word RPC (which is SECURITY DEFINER and always succeeds)
+  // 3. Last resort for legacy DB schemas without update policy/RPC
   if (word) {
     await deleteWord(id);
     const { error: rpcErr } = await supabase.rpc("save_word", {
@@ -184,7 +197,10 @@ export async function updateWordDetails(
     });
     if (rpcErr) throw new Error(rpcErr.message);
     if (word.box > 0) {
-      await supabase.from("words").update({ box: word.box, next_review: word.next_review }).eq("text", taggedText);
+      await supabase
+        .from("words")
+        .update({ box: word.box, next_review: word.next_review })
+        .eq("text", taggedText);
     }
     return;
   }
@@ -194,61 +210,50 @@ export async function updateWordDetails(
 export async function updateWordTranslation(
   id: string,
   newTranslation: string,
-  word?: Word
+  word?: Word,
 ): Promise<void> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from("words")
-    .update({ translation: newTranslation })
-    .eq("id", id)
-    .select();
-
-  if (!error && data && data.length > 0) {
-    return;
-  }
-
-  // Fallback: If direct update was blocked by RLS (0 rows modified),
-  // delete and re-insert via save_word RPC (which is SECURITY DEFINER and always succeeds)
-  if (word) {
-    await deleteWord(id);
-    const taggedText = tagWordByLang(word.text, word.src_lang);
-    const { error: rpcErr } = await supabase.rpc("save_word", {
-      p_text: taggedText,
-      p_translation: newTranslation,
-      p_src_lang: word.src_lang,
-      p_target_lang: word.target_lang,
-      p_source_title: word.source_title || "",
-      p_source_url: word.source_url || "",
-      p_times: word.times_seen || 1,
-    });
-    if (rpcErr) throw new Error(rpcErr.message);
-    if (word.box > 0) {
-      await supabase.from("words").update({ box: word.box, next_review: word.next_review }).eq("text", taggedText);
-    }
-    return;
-  }
-  if (error) throw new Error(error.message);
+  return updateWordDetails(id, { translation: newTranslation }, word);
 }
 
 export async function addCustomWord(
   text: string,
   translation: string,
   srcLang: string,
-  targetLang = "ar"
+  targetLang = "ar",
+  sourceTitle = "",
+  sourceUrl = "",
+  sentence = "",
 ): Promise<string> {
   const tagged = tagWordByLang(text, srcLang);
   const supabase = getSupabase();
 
-  // 1. Try save_word with p_src_lang
+  // 1. Try full save_word signature including p_sentence (migration 006)
+  if (sentence) {
+    const res0 = await supabase.rpc("save_word", {
+      p_text: tagged,
+      p_translation: translation,
+      p_src_lang: srcLang,
+      p_target_lang: targetLang,
+      p_source_title: sourceTitle,
+      p_source_url: sourceUrl,
+      p_times: 1,
+      p_sentence: sentence,
+    });
+    if (!res0.error) return res0.data as string;
+  }
+
+  // 2. Try save_word with p_src_lang (migration 001/002)
   const res1 = await supabase.rpc("save_word", {
     p_text: tagged,
     p_translation: translation,
     p_src_lang: srcLang,
     p_target_lang: targetLang,
+    p_source_title: sourceTitle,
+    p_source_url: sourceUrl,
   });
   if (!res1.error) return res1.data as string;
 
-  // 2. Try save_word without p_src_lang (for legacy database schema)
+  // 3. Try save_word without p_src_lang (legacy database schema)
   const res2 = await supabase.rpc("save_word", {
     p_text: tagged,
     p_translation: translation,
@@ -256,37 +261,43 @@ export async function addCustomWord(
   });
   if (!res2.error) return res2.data as string;
 
-  // 3. Try direct table insert
-  const res3 = await supabase.from("words").insert({
-    text: tagged,
-    translation,
-    src_lang: srcLang,
-    target_lang: targetLang,
-  }).select("id").maybeSingle();
-  if (!res3.error && res3.data) return (res3.data as any).id;
+  // 4. Try direct table insert
+  const res3 = await supabase
+    .from("words")
+    .insert({
+      text: tagged,
+      translation,
+      src_lang: srcLang,
+      target_lang: targetLang,
+      source_title: sourceTitle,
+      source_url: sourceUrl,
+    })
+    .select("id")
+    .maybeSingle<{ id: string }>();
+  if (!res3.error && res3.data) return res3.data.id;
 
   throw new Error(res1.error.message || res2.error?.message || "Failed to save word");
 }
 
 export async function deleteAccount(): Promise<void> {
   const supabase = getSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // 1. Try server RPC
   await supabase.rpc("delete_user_account");
 
-  // 2. Fallback: clear data tables directly
   if (user) {
     await supabase.from("words").delete().eq("user_id", user.id);
     await supabase.from("user_stats").delete().eq("user_id", user.id);
   }
 
-  // 3. Clear local storage
   if (typeof window !== "undefined") {
     localStorage.removeItem("wordtap_settings");
     localStorage.removeItem("wordtap_theme");
+    localStorage.removeItem("wordtap_history");
+    localStorage.removeItem("wordtap_cached_words");
   }
 
-  // 4. Sign out
   await supabase.auth.signOut();
 }

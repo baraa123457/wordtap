@@ -7,7 +7,7 @@ import { effectiveStats, localDateString } from "@/lib/dates";
 import { formatDueIn, isDue } from "@/lib/format";
 import type { Stats, Word } from "@/lib/schemas";
 import { useLoad } from "@/hooks/useLoad";
-import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
+import { ErrorState } from "@/components/StateViews";
 import { MasteryDots } from "@/components/MasteryDots";
 import { FireIcon } from "@/components/Icons";
 import { TranslatorCard } from "@/components/TranslatorCard";
@@ -158,6 +158,16 @@ export default function DashboardPage() {
   const eff = effectiveStats(stats, localDateString(now));
   const dueCount = words.filter((w) => isDue(w.next_review, now)).length;
   const mastered = words.filter((w) => w.box >= 4).length;
+  const learningCount = words.filter((w) => w.box >= 2 && w.box < 4).length;
+  const newCount = words.filter((w) => w.box <= 1).length;
+  const totalCorrect = words.reduce((sum, w) => sum + (w.correct_count || 0), 0);
+  const totalWrong = words.reduce((sum, w) => sum + (w.wrong_count || 0), 0);
+  const totalReviews = totalCorrect + totalWrong;
+  const accuracyPct = totalReviews > 0 ? Math.round((totalCorrect / totalReviews) * 100) : null;
+  const troubleWords = [...words]
+    .filter((w) => w.wrong_count > 0)
+    .sort((a, b) => b.wrong_count - a.wrong_count)
+    .slice(0, 5);
   const nextDue = words
     .map((w) => w.next_review)
     .filter((t) => !isDue(t, now))
@@ -315,13 +325,112 @@ export default function DashboardPage() {
         </p>
       ) : null}
 
-      {/* 3. Key Metrics: Replaced duplicate streak tile with Ready to Review */}
+      {/* 3. Key Metrics */}
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 min-w-0">
         <Stat label="Ready to review" value={dueCount} />
         <Stat label="Mastered" value={mastered} />
         <Stat label="Words saved" value={words.length} />
         <Stat label="Total XP" value={stats.xp} />
       </dl>
+
+      {/* Mastery Breakdown & Accuracy Analytics */}
+      {words.length > 0 ? (
+        <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr] min-w-0">
+          <section aria-label="Mastery breakdown" className="apple-card p-5 grid gap-3 min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-bold text-ink">Mastery &amp; Retention</h2>
+                <p className="text-xs text-muted">
+                  {accuracyPct !== null
+                    ? `${accuracyPct}% recall accuracy across ${totalReviews} reviews`
+                    : "Review words to unlock accuracy stats"}
+                </p>
+              </div>
+              <Link
+                href="/practice?practice=dictation"
+                className="btn min-h-8 px-3 py-1 text-xs font-semibold"
+              >
+                Dictation practice
+              </Link>
+            </div>
+
+            <div className="h-2.5 w-full rounded-full overflow-hidden bg-black/5 dark:bg-white/10 flex">
+              {mastered > 0 ? (
+                <div
+                  className="bg-ok h-full transition-all"
+                  style={{ width: `${Math.round((mastered / words.length) * 100)}%` }}
+                  title={`${mastered} mastered`}
+                />
+              ) : null}
+              {learningCount > 0 ? (
+                <div
+                  className="bg-subtitle h-full transition-all"
+                  style={{ width: `${Math.round((learningCount / words.length) * 100)}%` }}
+                  title={`${learningCount} learning`}
+                />
+              ) : null}
+              {newCount > 0 ? (
+                <div
+                  className="bg-muted/35 h-full transition-all"
+                  style={{ width: `${Math.round((newCount / words.length) * 100)}%` }}
+                  title={`${newCount} new`}
+                />
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-ok" />
+                <span>Mastered ({mastered})</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-subtitle" />
+                <span>Learning ({learningCount})</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-muted/40" />
+                <span>New ({newCount})</span>
+              </span>
+            </div>
+          </section>
+
+          <section aria-label="Tricky words" className="apple-card p-5 grid gap-3 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-bold text-ink">Tricky words</h2>
+                <p className="text-xs text-muted">Most missed during review</p>
+              </div>
+              {troubleWords.length > 0 ? (
+                <Link
+                  href="/practice?mode=missed"
+                  className="btn btn-primary min-h-8 px-3 py-1 text-xs font-semibold shrink-0"
+                >
+                  Drill ({troubleWords.length})
+                </Link>
+              ) : null}
+            </div>
+
+            {troubleWords.length === 0 ? (
+              <p className="text-xs text-muted py-2">
+                No missed words yet. Tricky words you miss during sessions will appear here for focused drills.
+              </p>
+            ) : (
+              <ul className="divide-y divide-line/40 text-xs">
+                {troubleWords.map((tw) => (
+                  <li key={tw.id} className="flex items-center justify-between gap-3 py-1.5 min-w-0">
+                    <span dir="auto" className="font-semibold text-ink truncate">
+                      {tw.text}
+                    </span>
+                    <span className="shrink-0 text-bad font-semibold tabular-nums">
+                      {tw.wrong_count} {tw.wrong_count === 1 ? "miss" : "misses"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      ) : null}
 
       {/* 4. Latest Words */}
       <section aria-labelledby="recent" className="grid gap-3 min-w-0">

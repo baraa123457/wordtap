@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "WordTap: Subtitle Click Translator",
-  "version": "2.1.9",
-  "description": "Click any word in video subtitles to translate it and save it to your WordTap account. Shift+click translates the whole line.",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "version": "2.2.0",
+  "description": "Click any word in video subtitles, select text on any site, or capture screen OCR to translate and save to WordTap.",
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
   "icons": {
     "16":  "icon16.png",
     "32":  "icon32.png",
@@ -24,7 +24,13 @@
     {
       "matches": [
         "https://www.youtube.com/*",
-        "https://www.netflix.com/*"
+        "https://www.netflix.com/*",
+        "*://*.primevideo.com/*",
+        "*://www.amazon.com/gp/video/*",
+        "*://www.disneyplus.com/*",
+        "*://www.udemy.com/*",
+        "*://www.coursera.org/*",
+        "*://www.ted.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle",

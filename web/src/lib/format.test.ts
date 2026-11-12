@@ -49,4 +49,10 @@ describe("wordStatus and isDue", () => {
     expect(wordStatus(2, "2026-11-11T14:00:00Z", now)).toBe("learning");
     expect(isDue("2026-11-11T14:00:00Z", now)).toBe(false);
   });
+
+  it("formats due-in durations clearly", () => {
+    expect(formatDueIn("2026-11-11T11:00:00Z", now)).toBe("now");
+    expect(formatDueIn("2026-11-11T15:00:00Z", now)).toBe("in 3 hours");
+    expect(formatDueIn("2026-11-13T12:00:00Z", now)).toBe("in 2 days");
+  });
 });

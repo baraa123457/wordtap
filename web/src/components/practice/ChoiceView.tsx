@@ -46,7 +46,9 @@ type Props = {
 export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props) {
   const locked = phase !== "answering";
   const speakable = q.speak !== null && canSpeak();
-  const { sentence, sourceTitle } = parseSourceContext(q.context);
+  const parsed = parseSourceContext(q.context);
+  const sentence = q.sentence || parsed.sentence;
+  const sourceTitle = parsed.sourceTitle;
   const isPromptArabic = /[\u0600-\u06FF]/.test(q.prompt);
   const [isSpeaking, setIsSpeaking] = useState(false);
 

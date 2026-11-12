@@ -1,9 +1,9 @@
-export type PracticeMode = "mixed" | "typing" | "choice";
+export type PracticeMode = "mixed" | "typing" | "choice" | "dictation";
 export type ThemeMode = "light" | "dark" | "system";
 export type VoiceGender = "female" | "male" | "auto";
 export type VoiceTone = "soft" | "natural" | "deep" | "energetic";
 export type TranslateSaveMode = "auto" | "manual" | "subtitles_only";
-export type SelectionMode = "immediate" | "icon" | "off";
+export type SelectionMode = "immediate" | "icon" | "alt" | "off";
 
 export type UserSettings = {
   theme: ThemeMode;

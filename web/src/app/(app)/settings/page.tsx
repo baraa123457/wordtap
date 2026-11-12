@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { fetchStats, setDailyGoal, deleteAccount } from "@/lib/api";
 import { getStoredSettings, saveStoredSettings, type UserSettings, type PracticeMode } from "@/lib/settings";
-import { canSpeak, speak, detectVoiceGender } from "@/lib/speech";
+import { canSpeak, speak } from "@/lib/speech";
 import { SpeakerIcon } from "@/components/Icons";
 
 const GOALS = [10, 20, 50, 100] as const;
@@ -47,13 +47,11 @@ export default function SettingsPage() {
     try {
       await deleteAccount();
       router.push("/signup");
-    } catch (e: any) {
-      setDeleteError(e.message || "Failed to delete account");
+    } catch (e: unknown) {
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete account");
       setDeleteBusy(false);
     }
   }
-
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
     fetchStats()
@@ -61,15 +59,7 @@ export default function SettingsPage() {
       .catch(() => {});
 
     if (canSpeak()) {
-      const load = () => {
-        const v = window.speechSynthesis.getVoices();
-        if (v.length > 0) setVoices(v);
-      };
-      load();
-      window.speechSynthesis.onvoiceschanged = load;
-      return () => {
-        if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null;
-      };
+      window.speechSynthesis.getVoices();
     }
   }, []);
 
@@ -114,8 +104,8 @@ export default function SettingsPage() {
       setPwMessage({ type: "success", text: "Password changed successfully!" });
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
-      setPwMessage({ type: "error", text: err.message || "Could not change password." });
+    } catch (err: unknown) {
+      setPwMessage({ type: "error", text: err instanceof Error ? err.message : "Could not change password." });
     } finally {
       setPwBusy(false);
     }
@@ -123,10 +113,20 @@ export default function SettingsPage() {
 
   const userEmail = authState.status === "signed-in" ? authState.user.email : "";
 
-  const isChoiceActive = settings.enableChoice ?? (settings.practiceMode !== "typing");
-  const isTypingActive = settings.enableTyping ?? (settings.practiceMode !== "choice");
+  const isDictationMode = settings.practiceMode === "dictation";
+  const isChoiceActive = !isDictationMode && (settings.enableChoice ?? (settings.practiceMode !== "typing"));
+  const isTypingActive = !isDictationMode && (settings.enableTyping ?? (settings.practiceMode !== "choice"));
 
-  function toggleQuestionType(type: "choice" | "typing") {
+  function toggleQuestionType(type: "choice" | "typing" | "dictation") {
+    if (type === "dictation") {
+      update({
+        practiceMode: "dictation",
+        enableChoice: false,
+        enableTyping: false,
+      });
+      return;
+    }
+
     let nextChoice = isChoiceActive;
     let nextTyping = isTypingActive;
 
@@ -214,7 +214,7 @@ export default function SettingsPage() {
               <button
                 key={t.id}
                 type="button"
-                onClick={() => update({ theme: t.id as any })}
+                onClick={() => update({ theme: t.id as UserSettings["theme"] })}
                 className={`flex flex-col items-start gap-2 p-4 rounded-2xl border text-start transition-all cursor-pointer ${
                   isSelected
                     ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
@@ -272,11 +272,11 @@ export default function SettingsPage() {
           <div>
             <div className="font-semibold text-ink">Question types / Practice style</div>
             <div className="text-xs sm:text-sm text-muted">
-              Choose your practice format. You can pick either one or both!
+              Choose Multiple Choice, Typing, both (Mixed), or Dictation (listen &amp; type).
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 pt-1">
+          <div className="grid gap-3 sm:grid-cols-3 pt-1">
             {/* Card 1: Multiple Choice */}
             <button
               type="button"
@@ -307,7 +307,7 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-muted mt-1 leading-relaxed">
-                  Choose the correct translation or English word from 4 quick options.
+                  Choose the correct translation or word from 4 quick options.
                 </p>
               </div>
             </button>
@@ -329,7 +329,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-ink">Write the words (Typing)</span>
+                  <span className="font-bold text-ink">Write the words</span>
                   <span
                     className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
                       isTypingActive
@@ -341,7 +341,43 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-muted mt-1 leading-relaxed">
-                  See the translation and type the target word yourself to reinforce active recall.
+                  See the translation and type the target word for strong active recall.
+                </p>
+              </div>
+            </button>
+
+            {/* Card 3: Dictation (Listen & Type) */}
+            <button
+              type="button"
+              onClick={() => toggleQuestionType("dictation")}
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+                isDictationMode
+                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
+                  : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
+              }`}
+            >
+              <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-subtitle">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-ink">Dictation</span>
+                  <span
+                    className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
+                      isDictationMode
+                        ? "bg-subtitle text-subtitle-ink border-subtitle"
+                        : "border-line bg-surface"
+                    }`}
+                  >
+                    {isDictationMode ? "✓" : ""}
+                  </span>
+                </div>
+                <p className="text-xs text-muted mt-1 leading-relaxed">
+                  Hear the word spoken aloud and spell it cleanly without seeing hints.
                 </p>
               </div>
             </button>
@@ -525,7 +561,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Pop-up Card */}
             <button
               type="button"
@@ -543,7 +579,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-ink text-sm">💬 Pop-up card</span>
+                  <span className="font-bold text-ink text-sm">Pop-up card</span>
                   <span
                     className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
                       (settings.selectionMode || "immediate") === "immediate"
@@ -579,7 +615,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-ink text-sm">🔘 Floating icon</span>
+                  <span className="font-bold text-ink text-sm">Floating icon</span>
                   <span
                     className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
                       settings.selectionMode === "icon"
@@ -592,6 +628,38 @@ export default function SettingsPage() {
                 </div>
                 <p className="text-xs text-muted mt-1 leading-relaxed">
                   Shows a small floating WordTap icon. Click it whenever you want to open the card.
+                </p>
+              </div>
+            </button>
+
+            {/* Hold Alt + Select */}
+            <button
+              type="button"
+              onClick={() => update({ selectionMode: "alt" })}
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+                settings.selectionMode === "alt"
+                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
+                  : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
+              }`}
+            >
+              <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-subtitle">
+                <span className="text-xs font-extrabold tracking-tight">Alt</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-ink text-sm">Hold Alt + Select</span>
+                  <span
+                    className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
+                      settings.selectionMode === "alt"
+                        ? "bg-subtitle text-subtitle-ink border-subtitle"
+                        : "border-line bg-surface"
+                    }`}
+                  >
+                    {settings.selectionMode === "alt" ? "✓" : ""}
+                  </span>
+                </div>
+                <p className="text-xs text-muted mt-1 leading-relaxed">
+                  Only translate selected text when you hold the Alt (Option) key.
                 </p>
               </div>
             </button>
@@ -658,8 +726,8 @@ export default function SettingsPage() {
                   key={g.id}
                   type="button"
                   onClick={() => {
-                    update({ voiceGender: g.id as any });
-                    speak("Testing " + g.label, "en-US", { gender: g.id as any });
+                    update({ voiceGender: g.id as UserSettings["voiceGender"] });
+                    speak("Testing " + g.label, "en-US", { gender: g.id as UserSettings["voiceGender"] });
                   }}
                   className={`flex flex-col items-start gap-1 p-3.5 rounded-2xl border text-start transition-all cursor-pointer ${
                     isSelected
@@ -692,8 +760,8 @@ export default function SettingsPage() {
                   key={t.id}
                   type="button"
                   onClick={() => {
-                    update({ voiceTone: t.id as any });
-                    speak("This is the " + t.label + " tone", "en-US", { tone: t.id as any });
+                    update({ voiceTone: t.id as UserSettings["voiceTone"] });
+                    speak("This is the " + t.label + " tone", "en-US", { tone: t.id as UserSettings["voiceTone"] });
                   }}
                   className={`flex flex-col items-start gap-1 p-3 rounded-2xl border text-start transition-all cursor-pointer ${
                     isSelected

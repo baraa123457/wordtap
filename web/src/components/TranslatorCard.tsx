@@ -214,7 +214,7 @@ export function TranslatorCard({
 }) {
   const [settings] = useState<UserSettings>(() => getStoredSettings());
   const [srcLang, setSrcLang] = useState<string>("auto");
-  const [targetLang, setTargetLang] = useState<string>("ar");
+  const [targetLang, setTargetLang] = useState<string>(() => settings.targetLang || "ar");
   const [topSrcLangs, setTopSrcLangs] = useState<string[]>(() =>
     getInitialTopLangs(existingWords, "src", ["en", "ar"]),
   );
@@ -370,6 +370,7 @@ export function TranslatorCard({
             created_at: new Date().toISOString(),
             source_title: "Translator",
             source_url: "",
+            sentence: "",
           });
         }
       } catch (err) {
@@ -613,9 +614,10 @@ export function TranslatorCard({
           created_at: new Date().toISOString(),
           source_title: "Translator",
           source_url: "",
+          sentence: "",
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to save word:", err);
     } finally {
       setSavingWord(false);

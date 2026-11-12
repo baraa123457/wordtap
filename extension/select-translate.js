@@ -4,28 +4,78 @@
  * is selected on any webpage, with dynamic English speech pronunciation.
  */
 (() => {
-  if (
+  const IS_WORDTAP_WEB =
     typeof window !== "undefined" &&
     (window.location.hostname === "localhost" ||
       window.location.hostname === "127.0.0.1" ||
-      window.location.host.includes("wordtap"))
-  ) {
+      window.location.host.includes("wordtap"));
+
+  if (IS_WORDTAP_WEB) {
     function syncSettingsFromWeb() {
       try {
         const raw = localStorage.getItem("wordtap_settings");
         if (raw && isContextValid() && chrome.storage && chrome.storage.sync) {
           const parsed = JSON.parse(raw);
-          if (parsed && parsed.translateSaveMode) {
-            const isManual = parsed.translateSaveMode === "manual";
-            chrome.storage.sync.set({
-              translateSaveMode: parsed.translateSaveMode,
-              saveWords: !isManual,
-            });
+          if (parsed && typeof parsed === "object") {
+            const updates = {};
+            if (parsed.translateSaveMode) {
+              updates.translateSaveMode = parsed.translateSaveMode;
+              updates.saveWords = parsed.translateSaveMode !== "manual";
+            }
+            if (parsed.selectionMode) {
+              updates.selectionMode = parsed.selectionMode;
+            }
+            if (parsed.targetLang) {
+              updates.targetLang = parsed.targetLang;
+            }
+            if (Object.keys(updates).length > 0) {
+              chrome.storage.sync.set(updates);
+            }
           }
         }
       } catch (_) {}
     }
     syncSettingsFromWeb();
+
+    function syncHistoryToWeb() {
+      try {
+        safeSendMessage({ type: "history:get" }, (res) => {
+          if (!res || !Array.isArray(res.history) || res.history.length === 0) return;
+          const existingRaw = localStorage.getItem("wordtap_history");
+          const existing = existingRaw ? JSON.parse(existingRaw) : [];
+          if (!Array.isArray(existing)) return;
+          const seen = new Set(
+            existing.map((h) => `${(h.text || "").toLowerCase()}|${h.target_lang || ""}`),
+          );
+          let changed = false;
+          const merged = [...existing];
+          for (const item of res.history) {
+            if (!item || !item.text) continue;
+            const key = `${item.text.toLowerCase()}|${item.lang || "ar"}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            merged.push({
+              id: item.id || "ext-" + Date.now(),
+              text: item.text,
+              translation: item.translation || "",
+              src_lang: item.src || "auto",
+              target_lang: item.lang || "ar",
+              source: item.source === "subtitle" ? "subtitle" : "selection",
+              timestamp: item.timestamp || new Date().toISOString(),
+              saved: Boolean(item.saved),
+            });
+            changed = true;
+          }
+          if (changed) {
+            merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            localStorage.setItem("wordtap_history", JSON.stringify(merged.slice(0, 300)));
+            window.dispatchEvent(new CustomEvent("wordtap_history_updated"));
+          }
+        });
+      } catch (_) {}
+    }
+    syncHistoryToWeb();
+
     function syncDeletedWordsFromWeb() {
       try {
         const raw = localStorage.getItem("wordtap_deleted_words");
@@ -42,6 +92,7 @@
       } catch (_) {}
     }
     syncDeletedWordsFromWeb();
+    window.addEventListener("wordtap_settings_changed", syncSettingsFromWeb);
     window.addEventListener("storage", (e) => {
       if (e.key === "wordtap_settings") syncSettingsFromWeb();
       if (e.key === "wordtap_deleted_words") syncDeletedWordsFromWeb();
@@ -57,6 +108,17 @@
           srcLang: e.data.srcLang || "auto",
         });
       }
+      if (e.data && e.data.type === "wordtap:history-deleted") {
+        safeSendMessage({
+          type: "history:delete",
+          id: e.data.id,
+          text: e.data.text,
+          lang: e.data.targetLang,
+        });
+      }
+      if (e.data && e.data.type === "wordtap:history-cleared") {
+        safeSendMessage({ type: "history:clear" });
+      }
     });
   }
 
@@ -65,6 +127,14 @@
     ".ytp-caption-window-container",
     ".caption-window",
     ".player-timedtext",
+    ".atvwebplayersdk-captions-text",
+    ".atvwebplayersdk-captions-overlay",
+    ".dss-subtitle-renderer-wrapper",
+    ".dss-subtitle-renderer-cue",
+    '[data-purpose="captions-cue-text"]',
+    ".captions-display--captions-container--P9o-a",
+    ".c-video-captions-container",
+    ".Transcript__cue",
     ".vjs-text-track-display"
   ].join(",");
 
@@ -241,12 +311,38 @@
       });
       chrome.storage.onChanged.addListener((changes, area) => {
         if (area === "sync") {
-          for (const k in changes) settings[k] = changes[k].newValue;
+          let webChanged = false;
+          for (const k in changes) {
+            settings[k] = changes[k].newValue;
+            if (k === "selectionMode" || k === "targetLang" || k === "translateSaveMode") {
+              webChanged = true;
+            }
+          }
           if (!settings.enabled || settings.selectionMode === "off") {
             hideAll();
           }
-        } else if (area === "local" && (changes.words || changes.deleted)) {
-          updateSavedWordsFromStorage();
+          if (IS_WORDTAP_WEB && webChanged) {
+            try {
+              const raw = localStorage.getItem("wordtap_settings");
+              const curr = raw ? JSON.parse(raw) : {};
+              let dirty = false;
+              for (const k of ["selectionMode", "targetLang", "translateSaveMode"]) {
+                if (changes[k] && curr[k] !== changes[k].newValue) {
+                  curr[k] = changes[k].newValue;
+                  dirty = true;
+                }
+              }
+              if (dirty) {
+                localStorage.setItem("wordtap_settings", JSON.stringify(curr));
+                window.dispatchEvent(new CustomEvent("wordtap_settings_synced_from_ext"));
+              }
+            } catch (_) {}
+          }
+        } else if (area === "local") {
+          if (changes.words || changes.deleted) updateSavedWordsFromStorage();
+          if (IS_WORDTAP_WEB && changes.history && typeof syncHistoryToWeb === "function") {
+            syncHistoryToWeb();
+          }
         }
       });
     } catch (_) {}
@@ -478,6 +574,46 @@
     }
     .status[data-warn="true"] { color: #fbbf24; }
 
+    .corr-row {
+      display: none;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #959cc2;
+    }
+    .corr-link {
+      background: none;
+      border: none;
+      padding: 0;
+      color: #ffd23f;
+      font: inherit;
+      font-weight: 700;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .alts-row {
+      display: none;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding-top: 2px;
+    }
+    .alt-chip {
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.06);
+      color: #d1d5f0;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .alt-chip:hover {
+      border-color: #facc3b;
+      color: #ffffff;
+      background: rgba(250, 204, 59, 0.15);
+    }
+
     /* Loading animation */
     @keyframes pulse {
       0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
@@ -591,6 +727,8 @@
       <div class="tr" id="tr"></div>
       <span class="status" id="status"></span>
     </div>
+    <div class="corr-row" id="corrRow"></div>
+    <div class="alts-row" id="altsRow"></div>
   </div>
   `;
 
@@ -603,6 +741,8 @@
   const saveBtn  = shadow.getElementById("saveBtn");
   const closeBtn = shadow.getElementById("closeBtn");
   const posBadge = shadow.getElementById("posBadge");
+  const corrEl   = shadow.getElementById("corrRow");
+  const altsEl   = shadow.getElementById("altsRow");
 
   const POS_LABELS = {
     noun: "noun · اسم",
@@ -663,29 +803,58 @@
 
   let lastSrcLang = "en";
 
-  // ── Dynamic Text-to-Speech (Speaks German in German, English in English, etc.) ──
+  // ── Dynamic Text-to-Speech with Remote Audio Fallback ──────────────────────
+  function playRemoteTts(text, code) {
+    safeSendMessage({ type: "tts:speak", text, lang: code }, (res) => {
+      if (!res || !res.ok || !res.dataUrl) {
+        speakBtn.classList.remove("speaking");
+        return;
+      }
+      try {
+        const audio = new Audio(res.dataUrl);
+        audio.onended = () => speakBtn.classList.remove("speaking");
+        audio.onerror = () => speakBtn.classList.remove("speaking");
+        audio.play().catch(() => speakBtn.classList.remove("speaking"));
+      } catch (_) {
+        speakBtn.classList.remove("speaking");
+      }
+    });
+  }
+
   function speakWord(text, lang) {
-    if (!("speechSynthesis" in window) || !text) return;
+    if (!text) return;
+    const clean = text.replace(/<[^>]+>/g, "").trim();
+    if (!clean) return;
+    const code = (lang && lang !== "auto" ? lang : lastSrcLang || "en").toLowerCase().slice(0, 2);
+    speakBtn.classList.add("speaking");
+
+    if (!("speechSynthesis" in window)) {
+      playRemoteTts(clean, code);
+      return;
+    }
+
     try {
       window.speechSynthesis.cancel();
-      const clean = text.replace(/<[^>]+>/g, "").trim();
+      const voices = window.speechSynthesis.getVoices();
+      const voice = voices.find((v) => v.lang.toLowerCase().startsWith(code) && !v.localService) ||
+                    voices.find((v) => v.lang.toLowerCase().startsWith(code));
+
+      if (!voice && voices.length > 0) {
+        playRemoteTts(clean, code);
+        return;
+      }
+
       const utterance = new SpeechSynthesisUtterance(clean);
-      const code = (lang && lang !== "auto" ? lang : lastSrcLang || "en").toLowerCase().slice(0, 2);
       utterance.lang = LANG_VOICES[code] || "en-US";
       utterance.rate = 0.92;
-
-      const voices = window.speechSynthesis.getVoices();
-      const voice = voices.find(v => v.lang.toLowerCase().startsWith(code) && !v.localService) ||
-                    voices.find(v => v.lang.toLowerCase().startsWith(code));
       if (voice) utterance.voice = voice;
 
-      speakBtn.classList.add("speaking");
       utterance.onend = () => speakBtn.classList.remove("speaking");
-      utterance.onerror = () => speakBtn.classList.remove("speaking");
+      utterance.onerror = () => playRemoteTts(clean, code);
 
       window.speechSynthesis.speak(utterance);
     } catch (_) {
-      speakBtn.classList.remove("speaking");
+      playRemoteTts(clean, code);
     }
   }
 
@@ -806,6 +975,10 @@
     mount();
     origEl.textContent = text.length > 70 ? text.slice(0, 67) + "…" : text;
     posBadge.style.display = "none";
+    corrEl.style.display = "none";
+    corrEl.innerHTML = "";
+    altsEl.style.display = "none";
+    altsEl.innerHTML = "";
     trEl.innerHTML = `<span class="loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
     setStatus("", false);
     saveBtn.hidden   = true;
@@ -813,10 +986,60 @@
     positionCard(rect);
   }
 
-  function finaliseCard(rect, translated, rtl, entry) {
+  function renderTranslationExtras(rect, extras = {}) {
+    corrEl.innerHTML = "";
+    if (extras.correction && extras.correction.toLowerCase() !== lastText.trim().toLowerCase()) {
+      corrEl.style.display = "flex";
+      const label = document.createElement("span");
+      label.textContent = "Did you mean:";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "corr-link";
+      btn.textContent = extras.correction;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        triggerTranslation(rect, extras.correction, "");
+      });
+      corrEl.append(label, btn);
+    } else {
+      corrEl.style.display = "none";
+    }
+
+    altsEl.innerHTML = "";
+    const alts = Array.isArray(extras.alternatives) ? extras.alternatives : [];
+    if (alts.length > 0) {
+      altsEl.style.display = "flex";
+      for (const alt of alts) {
+        if (!alt || alt === trEl.textContent) continue;
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "alt-chip";
+        chip.textContent = alt;
+        chip.title = "Use this translation";
+        chip.addEventListener("click", (e) => {
+          e.stopPropagation();
+          trEl.textContent = alt;
+          if (lastEntry) {
+            lastEntry.translation = alt;
+            if (saveBtn.hidden || saveBtn.classList.contains("saved")) {
+              setSaveBtnState(false);
+              saveBtn.hidden = false;
+            }
+          }
+        });
+        altsEl.appendChild(chip);
+      }
+      if (!altsEl.children.length) altsEl.style.display = "none";
+    } else {
+      altsEl.style.display = "none";
+    }
+  }
+
+  function finaliseCard(rect, translated, rtl, entry, extras = {}) {
     trEl.textContent = translated;
     trEl.dir = rtl ? "rtl" : "ltr";
     lastEntry = entry;
+    renderTranslationExtras(rect, extras);
 
     // Always record to translation history
     safeSendMessage({ type: "history:add", entry });
@@ -943,8 +1166,12 @@
         page: location.href,
         title: titleContext,
         sentence: surrounding,
+        source: "selection",
       };
-      finaliseCard(rect, res.text, RTL_LANGS.includes(target), entry);
+      finaliseCard(rect, res.text, RTL_LANGS.includes(target), entry, {
+        alternatives: res.alternatives,
+        correction: res.correction,
+      });
     });
   }
 
@@ -1281,6 +1508,7 @@
                     page: location.href,
                     title: `[OCR] ${document.title}`,
                     sentence: cleanText,
+                    source: "selection",
                   };
 
                   finaliseCard(
@@ -1288,6 +1516,10 @@
                     ocrRes.translation,
                     RTL_LANGS.includes(settings.targetLang),
                     entry,
+                    {
+                      alternatives: ocrRes.alternatives,
+                      correction: ocrRes.correction,
+                    },
                   );
                 },
               );
@@ -1315,12 +1547,30 @@
     window.addEventListener("keydown", onKeyDown, true);
   }
 
-  // Listen for OCR trigger messages from background script or popup
+  // Listen for OCR or right-click translate messages from background script or popup
   if (isContextValid() && chrome.runtime && chrome.runtime.onMessage) {
     try {
       chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         if (msg && msg.type === "ocr:start-snip") {
           startOcrSnip();
+          if (sendResponse) sendResponse({ ok: true });
+          return true;
+        }
+        if (msg && msg.type === "wordtap:translate-context" && msg.text) {
+          let rect = {
+            left: Math.max(16, window.innerWidth / 2 - 110),
+            right: Math.min(window.innerWidth - 16, window.innerWidth / 2 + 110),
+            top: 84,
+            bottom: 112,
+          };
+          try {
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+              const r = sel.getRangeAt(0).getBoundingClientRect();
+              if (r && (r.width > 0 || r.height > 0)) rect = r;
+            }
+          } catch (_) {}
+          triggerTranslation(rect, msg.text, "");
           if (sendResponse) sendResponse({ ok: true });
           return true;
         }

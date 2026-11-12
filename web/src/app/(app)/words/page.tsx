@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   addCustomWord,
+  bulkDeleteWords,
   deleteWord,
   deleteWordByText,
   fetchWords,
   updateWordDetails,
   updateWordLanguage,
-  updateWordTranslation,
 } from "@/lib/api";
+import { getStoredSettings } from "@/lib/settings";
 import { formatDueIn, wordStatus, type WordStatus } from "@/lib/format";
 import type { Word } from "@/lib/schemas";
 import { canSpeak, speak } from "@/lib/speech";
@@ -21,6 +22,87 @@ import { SpeakerIcon } from "@/components/Icons";
 import { POS_BADGES } from "@/components/TranslatorCard";
 
 type Filter = "all" | WordStatus;
+type SourceFilter = "all" | "subtitles" | "ocr" | "translator" | "web";
+
+const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
+  { id: "all", label: "All sources" },
+  { id: "subtitles", label: "Subtitles" },
+  { id: "web", label: "Webpages" },
+  { id: "ocr", label: "Screen OCR" },
+  { id: "translator", label: "Translator" },
+];
+
+function inferWordSource(w: Word): Exclude<SourceFilter, "all"> {
+  const title = (w.source_title || "").toLowerCase();
+  const url = (w.source_url || "").toLowerCase();
+  if (title.includes("ocr") || title.includes("screen capture")) return "ocr";
+  if (title === "translator") return "translator";
+  if (
+    url.includes("youtube.com") ||
+    url.includes("netflix.com") ||
+    url.includes("primevideo.com") ||
+    url.includes("disneyplus.com") ||
+    url.includes("udemy.com") ||
+    url.includes("coursera.org") ||
+    url.includes("ted.com") ||
+    title.includes("youtube") ||
+    title.includes("netflix") ||
+    Boolean(w.sentence && w.sentence.trim())
+  ) {
+    return "subtitles";
+  }
+  return url ? "web" : "translator";
+}
+
+function downloadTextFile(filename: string, content: string, mime: string) {
+  const blob = new Blob(["\uFEFF" + content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function escapeCsvCell(val: string): string {
+  return `"${(val || "").replace(/"/g, '""')}"`;
+}
+
+function exportWordsCsv(list: Word[]) {
+  const header = "Word,Translation,SourceLang,TargetLang,Box,Sentence,SourceTitle,SourceURL";
+  const rows = list.map((w) =>
+    [
+      w.text,
+      w.translation,
+      w.src_lang,
+      w.target_lang,
+      String(w.box),
+      w.sentence || "",
+      w.source_title || "",
+      w.source_url || "",
+    ]
+      .map(escapeCsvCell)
+      .join(","),
+  );
+  downloadTextFile(
+    `wordtap-words-${new Date().toISOString().slice(0, 10)}.csv`,
+    [header, ...rows].join("\n"),
+    "text/csv;charset=utf-8",
+  );
+}
+
+function exportWordsAnkiTsv(list: Word[]) {
+  const rows = list.map((w) => {
+    const clean = (s: string) => (s || "").replace(/[\t\r\n]+/g, " ").trim();
+    const note = clean(w.sentence || w.source_title || "");
+    return `${clean(w.text)}\t${clean(w.translation)}\t${note}`;
+  });
+  downloadTextFile(
+    `wordtap-anki-${new Date().toISOString().slice(0, 10)}.tsv`,
+    rows.join("\n"),
+    "text/tab-separated-values;charset=utf-8",
+  );
+}
 
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "All" },
@@ -50,9 +132,14 @@ export default function WordsPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [langFilter, setLangFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [visibleLimit, setVisibleLimit] = useState(50);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
@@ -73,8 +160,9 @@ export default function WordsPage() {
     }
     const timer = setTimeout(async () => {
       try {
+        const target = getStoredSettings().targetLang || "ar";
         const res = await fetch(
-          `/api/translate?text=${encodeURIComponent(newText.trim())}&src=${newLang}&target=ar`,
+          `/api/translate?text=${encodeURIComponent(newText.trim())}&src=${newLang}&target=${encodeURIComponent(target)}`,
         );
         if (res.ok) {
           const data = await res.json();
@@ -105,7 +193,7 @@ export default function WordsPage() {
       }));
       try {
         localStorage.setItem("wordtap_cached_words", JSON.stringify(payload));
-      } catch (_) {}
+      } catch {}
       if (typeof window !== "undefined") {
         window.postMessage({ type: "wordtap:words-synced", words: payload }, "*");
         window.dispatchEvent(new CustomEvent("wordtap_words_synced", { detail: { words: payload } }));
@@ -127,16 +215,34 @@ export default function WordsPage() {
     }));
   }, [words]);
 
+  const sourceCounts = useMemo(() => {
+    const counts = new Map<SourceFilter, number>();
+    if (!words) return counts;
+    for (const w of words) {
+      const s = inferWordSource(w);
+      counts.set(s, (counts.get(s) || 0) + 1);
+    }
+    return counts;
+  }, [words]);
+
   const visible = useMemo(() => {
     if (!words) return [];
     const q = query.trim().toLowerCase();
     const now = new Date();
     return words.filter((w) => {
       if (langFilter !== "all" && (w.src_lang || "auto").toLowerCase() !== langFilter) return false;
+      if (sourceFilter !== "all" && inferWordSource(w) !== sourceFilter) return false;
       if (filter !== "all" && wordStatus(w.box, w.next_review, now) !== filter) return false;
-      return q === "" || w.text.toLowerCase().includes(q) || w.translation.toLowerCase().includes(q);
+      return (
+        q === "" ||
+        w.text.toLowerCase().includes(q) ||
+        w.translation.toLowerCase().includes(q) ||
+        (w.sentence && w.sentence.toLowerCase().includes(q))
+      );
     });
-  }, [words, query, filter, langFilter]);
+  }, [words, query, filter, langFilter, sourceFilter]);
+
+  const visibleSlice = useMemo(() => visible.slice(0, visibleLimit), [visible, visibleLimit]);
 
   if (state.status === "loading") return <LoadingState label="Loading your words…" />;
   if (state.status === "error") return <ErrorState message={state.message} onRetry={reload} />;
@@ -176,7 +282,7 @@ export default function WordsPage() {
           if (list.length > 200) list.shift();
           localStorage.setItem("wordtap_deleted_words", JSON.stringify(list));
         }
-      } catch (_) {}
+      } catch {}
 
       // Broadcast to any active extension scripts
       if (typeof window !== "undefined") {
@@ -252,7 +358,8 @@ export default function WordsPage() {
     setAddBusy(true);
     setActionError(null);
     try {
-      await addCustomWord(newText.trim(), newTranslation.trim(), newLang);
+      const target = getStoredSettings().targetLang || "ar";
+      await addCustomWord(newText.trim(), newTranslation.trim(), newLang, target);
       setNewText("");
       setNewTranslation("");
       setShowAddForm(false);
@@ -264,7 +371,45 @@ export default function WordsPage() {
     }
   }
 
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    setActionError(null);
+    const removing = all.filter((w) => selectedIds.has(w.id));
+    try {
+      await bulkDeleteWords(ids);
+      setData(all.filter((w) => !selectedIds.has(w.id)));
+      setSelectedIds(new Set());
+      setSelectMode(false);
+      try {
+        const raw = localStorage.getItem("wordtap_deleted_words");
+        const list = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(list)) {
+          for (const w of removing) {
+            list.push({ text: w.text, srcLang: w.src_lang });
+          }
+          localStorage.setItem("wordtap_deleted_words", JSON.stringify(list.slice(-200)));
+        }
+      } catch {}
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Could not delete selected words.");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   const now = new Date();
+  const exportSource = visible.length > 0 ? visible : all;
 
   return (
     <div className="grid gap-6">
@@ -274,6 +419,32 @@ export default function WordsPage() {
           {langFilter !== "all" ? ` · ${LANG_LABELS[langFilter] || langFilter}` : ""})
         </h1>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => exportWordsCsv(exportSource)}
+            className="btn min-h-9 px-3 py-1.5 text-xs font-semibold"
+            title="Download visible words as CSV"
+          >
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => exportWordsAnkiTsv(exportSource)}
+            className="btn min-h-9 px-3 py-1.5 text-xs font-semibold"
+            title="Download visible words as Anki-compatible TSV"
+          >
+            Anki (.tsv)
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectMode((v) => !v);
+              setSelectedIds(new Set());
+            }}
+            className={`btn min-h-9 px-3 py-1.5 text-xs font-semibold ${selectMode ? "bg-subtitle/15 border-subtitle text-ink" : ""}`}
+          >
+            {selectMode ? "Done selecting" : "Select"}
+          </button>
           <button
             type="button"
             onClick={() => setShowAddForm(!showAddForm)}
@@ -289,6 +460,49 @@ export default function WordsPage() {
           </Link>
         </div>
       </div>
+
+      {selectMode ? (
+        <div className="apple-card px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-subtitle/10 border-subtitle/30">
+          <div className="flex items-center gap-3 text-xs sm:text-sm font-semibold text-ink">
+            <span>{selectedIds.size} selected</span>
+            <button
+              type="button"
+              className="text-xs underline underline-offset-2 text-muted hover:text-ink cursor-pointer"
+              onClick={() =>
+                setSelectedIds(
+                  selectedIds.size === visible.length
+                    ? new Set()
+                    : new Set(visible.map((w) => w.id)),
+                )
+              }
+            >
+              {selectedIds.size === visible.length && visible.length > 0 ? "Clear selection" : `Select all (${visible.length})`}
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedIds.size > 0 ? (
+              <>
+                <Link
+                  href={`/practice?ids=${encodeURIComponent(Array.from(selectedIds).join(","))}`}
+                  className="btn btn-primary min-h-8 px-3 py-1 text-xs font-semibold"
+                >
+                  Practice selected ({selectedIds.size})
+                </Link>
+                <button
+                  type="button"
+                  disabled={bulkBusy}
+                  onClick={() => void handleBulkDelete()}
+                  className="btn btn-bad min-h-8 px-3 py-1 text-xs font-semibold"
+                >
+                  {bulkBusy ? "Deleting…" : `Delete selected (${selectedIds.size})`}
+                </button>
+              </>
+            ) : (
+              <span className="text-xs text-muted">Tap words below to select them.</span>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {showAddForm ? (
         <form onSubmit={handleAddWord} className="grid gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm animate-in fade-in">
@@ -346,32 +560,56 @@ export default function WordsPage() {
         </form>
       ) : null}
 
-      {languageTabs.length > 1 ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-muted">Language:</span>
-          <div className="apple-segmented-container">
-            <button
-              type="button"
-              aria-pressed={langFilter === "all"}
-              onClick={() => setLangFilter("all")}
-              data-active={langFilter === "all" ? "true" : undefined}
-              className="apple-segmented-item"
-            >
-              All ({words?.length || 0})
-            </button>
-            {languageTabs.map((l) => (
-              <button
-                key={l.id}
-                type="button"
-                aria-pressed={langFilter === l.id}
-                onClick={() => setLangFilter(l.id)}
-                data-active={langFilter === l.id ? "true" : undefined}
-                className="apple-segmented-item"
-              >
-                {l.label} ({l.count})
-              </button>
-            ))}
-          </div>
+      {languageTabs.length > 1 || sourceCounts.size > 1 ? (
+        <div className="flex flex-wrap items-center gap-4">
+          {languageTabs.length > 1 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-muted">Language:</span>
+              <div className="apple-segmented-container">
+                <button
+                  type="button"
+                  aria-pressed={langFilter === "all"}
+                  onClick={() => setLangFilter("all")}
+                  data-active={langFilter === "all" ? "true" : undefined}
+                  className="apple-segmented-item"
+                >
+                  All ({words?.length || 0})
+                </button>
+                {languageTabs.map((l) => (
+                  <button
+                    key={l.id}
+                    type="button"
+                    aria-pressed={langFilter === l.id}
+                    onClick={() => setLangFilter(l.id)}
+                    data-active={langFilter === l.id ? "true" : undefined}
+                    className="apple-segmented-item"
+                  >
+                    {l.label} ({l.count})
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {sourceCounts.size > 1 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-muted">Source:</span>
+              <div className="apple-segmented-container">
+                {SOURCE_FILTERS.filter((sf) => sf.id === "all" || (sourceCounts.get(sf.id) || 0) > 0).map((sf) => (
+                  <button
+                    key={sf.id}
+                    type="button"
+                    aria-pressed={sourceFilter === sf.id}
+                    onClick={() => setSourceFilter(sf.id)}
+                    data-active={sourceFilter === sf.id ? "true" : undefined}
+                    className="apple-segmented-item"
+                  >
+                    {sf.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -425,16 +663,29 @@ export default function WordsPage() {
       {visible.length === 0 ? (
         <EmptyState title="No matches">Try a different search or filter.</EmptyState>
       ) : (
-        <ul className="apple-card divide-y divide-line/50 overflow-hidden">
-          {visible.map((w) => {
-            const status = wordStatus(w.box, w.next_review, now);
-            return (
-              <li
-                key={w.id}
-                className="grid gap-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_14rem] sm:items-center sm:gap-6 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <div className="relative shrink-0">
+        <>
+          <ul className="apple-card divide-y divide-line/50 overflow-hidden">
+            {visibleSlice.map((w) => {
+              const status = wordStatus(w.box, w.next_review, now);
+              const isChecked = selectedIds.has(w.id);
+              return (
+                <li
+                  key={w.id}
+                  className={`grid gap-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_14rem] sm:items-center sm:gap-6 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors ${
+                    isChecked ? "bg-subtitle/10" : ""
+                  }`}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    {selectMode ? (
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSelected(w.id)}
+                        aria-label={`Select ${w.text}`}
+                        className="h-4 w-4 rounded border-line accent-subtitle cursor-pointer shrink-0"
+                      />
+                    ) : null}
+                    <div className="relative shrink-0">
                     <select
                       value={(w.src_lang || "auto").toLowerCase()}
                       title="Click to change language"
@@ -480,7 +731,8 @@ export default function WordsPage() {
                     <bdi>{w.translation}</bdi>
                   </p>
                   <p className="mt-0.5 truncate text-sm text-muted">
-                    {w.source_title ? `From ${w.source_title}` : "No source saved"}
+                    {w.sentence ? `“${w.sentence}” · ` : ""}
+                    {w.source_title ? `From ${w.source_title}` : w.sentence ? "" : "No source saved"}
                     {w.times_seen > 1 ? ` · tapped ${w.times_seen} times` : ""}
                   </p>
                 </div>
@@ -628,7 +880,19 @@ export default function WordsPage() {
               </li>
             );
           })}
-        </ul>
+          </ul>
+          {visible.length > visibleLimit ? (
+            <div className="flex items-center justify-center pt-2">
+              <button
+                type="button"
+                onClick={() => setVisibleLimit((n) => n + 50)}
+                className="btn min-h-10 px-6 text-sm font-semibold"
+              >
+                Show 50 more ({visible.length - visibleLimit} remaining)
+              </button>
+            </div>
+          ) : null}
+        </>
       )}
     </div>
   );

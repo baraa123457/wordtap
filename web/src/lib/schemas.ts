@@ -8,6 +8,7 @@ export const wordSchema = z.object({
   target_lang: z.string(),
   source_title: z.string(),
   source_url: z.string(),
+  sentence: z.string().optional().default(""),
   times_seen: z.number(),
   box: z.number(),
   next_review: z.string(),
@@ -41,8 +42,10 @@ export const EMPTY_STATS: Stats = {
   daily_goal: 20,
 };
 
-export const WORD_COLUMNS =
+export const WORD_COLUMNS_LEGACY =
   "id,text,translation,src_lang,target_lang,source_title,source_url,times_seen,box,next_review,correct_count,wrong_count,last_practiced,created_at";
+
+export const WORD_COLUMNS = `${WORD_COLUMNS_LEGACY},sentence`;
 
 export const STATS_COLUMNS =
   "xp,streak,best_streak,last_practice_date,today_xp,daily_goal";

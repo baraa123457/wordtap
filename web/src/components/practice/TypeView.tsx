@@ -22,7 +22,10 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
   const locked = phase !== "answering";
   const [hintUsed, setHintUsed] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const { sentence, sourceTitle } = parseSourceContext(q.context);
+  const parsed = parseSourceContext(q.context);
+  const sentence = q.sentence || parsed.sentence;
+  const sourceTitle = parsed.sourceTitle;
+  const isDictation = q.variant === "dictation";
   const isPromptArabic = /[\u0600-\u06FF]/.test(q.prompt);
   const cleanAnswer = q.answer.trim();
 
@@ -59,7 +62,11 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
     input.current?.focus();
   }
 
-  const instruction = q.variant === "to-translation" ? "Type the translation" : "Write this word";
+  const instruction = isDictation
+    ? "Listen and type what you hear"
+    : q.variant === "to-translation"
+    ? "Type the translation"
+    : "Write this word";
 
   return (
     <div className="grid gap-6">
@@ -68,40 +75,66 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
           <span>{instruction}</span>
         </div>
         <div className="frame-stage gap-3" style={{ minHeight: "12rem" }}>
-          <p
-            className={`sub flex items-center justify-center gap-3 text-4xl sm:text-5xl ${
-              isPromptArabic ? "sub-ar" : ""
-            }`}
-            dir="auto"
-            lang={isPromptArabic ? "ar" : "en"}
-          >
-            <span className="sub-hl">{q.prompt}</span>
-            {canSpeak() ? (
+          {isDictation && phase === "answering" ? (
+            <div className="flex flex-col items-center gap-3">
               <button
                 type="button"
-                aria-label={`Hear “${q.prompt}”`}
-                title={`Hear “${q.prompt}”`}
-                className={`rounded-full p-2 transition-all cursor-pointer ${
+                aria-label={`Hear “${q.answer}”`}
+                title="Replay pronunciation"
+                className={`rounded-full p-5 bg-white/10 hover:bg-white/20 transition-all cursor-pointer ${
                   isSpeaking
-                    ? "text-subtitle scale-115 drop-shadow-[0_0_10px_rgba(250,204,59,0.8)]"
-                    : "text-white/80 hover:text-white"
+                    ? "text-subtitle scale-110 ring-2 ring-subtitle drop-shadow-[0_0_12px_rgba(250,204,59,0.8)]"
+                    : "text-white"
                 }`}
-                style={{ WebkitTextStroke: 0 }}
                 onClick={() => {
                   setIsSpeaking(true);
                   if (q.speak) speak(q.speak.text, q.speak.lang);
-                  else {
-                    const hasAr = /[\u0600-\u06FF]/.test(q.prompt);
-                    speak(q.prompt, hasAr ? "ar" : "en");
-                  }
+                  else speak(q.answer, "en");
                   setTimeout(() => setIsSpeaking(false), 1400);
                 }}
               >
-                <SpeakerIcon size={24} />
+                <SpeakerIcon size={36} />
               </button>
-            ) : null}
-          </p>
-          {sentence ? (
+              <span className="text-xs text-white/60">
+                Click the speaker to hear again ({q.speak?.lang?.toUpperCase() || "AUDIO"})
+              </span>
+            </div>
+          ) : (
+            <p
+              className={`sub flex items-center justify-center gap-3 text-4xl sm:text-5xl ${
+                isPromptArabic ? "sub-ar" : ""
+              }`}
+              dir="auto"
+              lang={isPromptArabic ? "ar" : "en"}
+            >
+              <span className="sub-hl">{q.prompt}</span>
+              {canSpeak() ? (
+                <button
+                  type="button"
+                  aria-label={`Hear “${q.prompt}”`}
+                  title={`Hear “${q.prompt}”`}
+                  className={`rounded-full p-2 transition-all cursor-pointer ${
+                    isSpeaking
+                      ? "text-subtitle scale-115 drop-shadow-[0_0_10px_rgba(250,204,59,0.8)]"
+                      : "text-white/80 hover:text-white"
+                  }`}
+                  style={{ WebkitTextStroke: 0 }}
+                  onClick={() => {
+                    setIsSpeaking(true);
+                    if (q.speak) speak(q.speak.text, q.speak.lang);
+                    else {
+                      const hasAr = /[\u0600-\u06FF]/.test(q.prompt);
+                      speak(q.prompt, hasAr ? "ar" : "en");
+                    }
+                    setTimeout(() => setIsSpeaking(false), 1400);
+                  }}
+                >
+                  <SpeakerIcon size={24} />
+                </button>
+              ) : null}
+            </p>
+          )}
+          {sentence && (!isDictation || phase !== "answering") ? (
             <p className="text-xs sm:text-sm text-white/70 max-w-lg mx-auto text-center font-normal px-4 italic line-clamp-2" dir="auto">
               “{sentence}”
             </p>

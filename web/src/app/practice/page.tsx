@@ -40,6 +40,7 @@ function PracticeLoader() {
   const { state, reload } = useLoad(fetchWords);
   const searchParams = useSearchParams();
   const urlLang = searchParams.get("lang");
+  const urlMode = searchParams.get("mode");
   const [selectedLang, setSelectedLang] = useState<string | null>(urlLang);
 
   const words = state.status === "ready" ? state.data : null;
@@ -81,8 +82,8 @@ function PracticeLoader() {
     );
   }
 
-  // If user has multiple languages and hasn't picked one yet:
-  if (!selectedLang && languages.length > 1) {
+  // If user has multiple languages and hasn't picked one yet (skip picker when drilling missed words):
+  if (!selectedLang && languages.length > 1 && urlMode !== "missed") {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-12">
         <div className="grid gap-6 rounded-3xl border border-line bg-surface p-6 shadow-sm sm:p-8">
@@ -120,11 +121,31 @@ function PracticeLoader() {
     );
   }
 
-  const filteredWords =
+  const urlPractice = searchParams.get("practice");
+  const urlIds = searchParams.get("ids");
+  const modeOverride =
+    urlPractice === "dictation" || urlPractice === "typing" || urlPractice === "choice" || urlPractice === "mixed"
+      ? urlPractice
+      : undefined;
+
+  let filteredWords =
     selectedLang && selectedLang !== "all"
       ? state.data.filter((w) => (w.src_lang || "auto").toLowerCase() === selectedLang.toLowerCase())
       : state.data;
 
+  if (urlIds) {
+    const idSet = new Set(urlIds.split(",").map((s) => s.trim()).filter(Boolean));
+    const subset = filteredWords.filter((w) => idSet.has(w.id));
+    if (subset.length > 0) filteredWords = subset;
+  } else if (urlMode === "missed") {
+    const trouble = [...filteredWords]
+      .filter((w) => w.wrong_count > 0)
+      .sort((a, b) => b.wrong_count - a.wrong_count);
+    if (trouble.length > 0) {
+      filteredWords = trouble;
+    }
+  }
+
   // "Practice again" reloads the words, so the next session uses fresh schedules.
-  return <PracticeSession words={filteredWords} onAgain={reload} />;
+  return <PracticeSession words={filteredWords} onAgain={reload} modeOverride={modeOverride} />;
 }

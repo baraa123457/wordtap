@@ -1,20 +1,23 @@
 import { NextResponse } from "next/server";
+import { guardApiRequest } from "@/lib/api-guard";
 
 export async function GET(req: Request) {
+  const blocked = guardApiRequest(req, "tts", 60);
+  if (blocked) return blocked;
+
   try {
     const url = new URL(req.url);
-    const text = (url.searchParams.get("text") || "").trim();
+    const text = (url.searchParams.get("text") || "").trim().slice(0, 500);
     const lang = (url.searchParams.get("lang") || "ar").trim();
 
     if (!text) {
       return NextResponse.json({ error: "Missing text" }, { status: 400 });
     }
 
-    // Google Translate TTS endpoint
-    const prefix = lang.slice(0, 2).toLowerCase();
+    const prefix = lang.replace(/[^a-zA-Z-]/g, "").slice(0, 5).toLowerCase() || "en";
     const googleTtsUrl = `https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=${encodeURIComponent(
-      prefix,
-    )}&q=${encodeURIComponent(text.slice(0, 500))}`;
+      prefix.slice(0, 2),
+    )}&q=${encodeURIComponent(text)}`;
 
     const res = await fetch(googleTtsUrl, {
       signal: AbortSignal.timeout(6000),
@@ -39,11 +42,9 @@ export async function GET(req: Request) {
         "Cache-Control": "public, max-age=86400, s-maxage=86400",
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("TTS API error:", err);
-    return NextResponse.json(
-      { error: err.message || "TTS failed" },
-      { status: 500 },
-    );
+    const message = err instanceof Error && err.message ? err.message : "TTS failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

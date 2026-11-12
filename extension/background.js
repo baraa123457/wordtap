@@ -1,10 +1,15 @@
-// Service worker: translation, account sign-in, and syncing saved words to WordTap.
-import { CONFIG } from "./config.js";
+// Service worker: translation, TTS audio, context menus, and syncing saved words to WordTap.
+import { CONFIG, getWebsiteUrl } from "./config.js";
 
 // ---------------------------------------------------------------------------
-// Translation
+// Translation & TTS
 // ---------------------------------------------------------------------------
 const cache = new Map();
+const ttsCache = new Map();
+
+function stripHtmlTags(str) {
+  return String(str || "").replace(/<[^>]+>/g, "").trim();
+}
 
 async function translate(text, target, srcLang = "auto", context = "") {
   let sl = srcLang && srcLang !== "auto" ? srcLang.toLowerCase() : "auto";
@@ -35,7 +40,7 @@ async function translate(text, target, srcLang = "auto", context = "") {
     encodeURIComponent(sl) +
     "&tl=" +
     encodeURIComponent(target) +
-    "&dt=t&dt=bd&q=" +
+    "&dt=t&dt=bd&dt=qca&dt=at&q=" +
     encodeURIComponent(text);
 
   const res = await fetch(url);
@@ -43,12 +48,43 @@ async function translate(text, target, srcLang = "auto", context = "") {
   const data = await res.json();
 
   const detected = sl !== "auto" ? sl : data[2] ? data[2].toLowerCase() : "auto";
+  const mainText = (data[0] || []).map((part) => part[0]).join("");
 
   let partsOfSpeech = [];
+  const altSet = new Set();
+
   if (Array.isArray(data[1])) {
     partsOfSpeech = data[1]
       .map((item) => (Array.isArray(item) && typeof item[0] === "string" ? item[0].toLowerCase() : null))
       .filter(Boolean);
+    for (const group of data[1]) {
+      if (Array.isArray(group) && Array.isArray(group[1])) {
+        for (const term of group[1]) {
+          if (typeof term === "string" && term.trim() && term.trim().toLowerCase() !== mainText.trim().toLowerCase()) {
+            altSet.add(term.trim());
+          }
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(data[5]) && Array.isArray(data[5][0]) && Array.isArray(data[5][0][2])) {
+    for (const cand of data[5][0][2]) {
+      if (Array.isArray(cand) && typeof cand[0] === "string") {
+        const val = cand[0].trim();
+        if (val && val.toLowerCase() !== mainText.trim().toLowerCase()) {
+          altSet.add(val);
+        }
+      }
+    }
+  }
+
+  let correction = null;
+  if (Array.isArray(data[7])) {
+    const rawCorr = typeof data[7][1] === "string" && data[7][1].trim() ? data[7][1] : stripHtmlTags(data[7][0]);
+    if (rawCorr && rawCorr.toLowerCase() !== text.trim().toLowerCase()) {
+      correction = rawCorr;
+    }
   }
 
   // Fallback dictionary for non-English words if dictionary was empty
@@ -70,17 +106,50 @@ async function translate(text, target, srcLang = "auto", context = "") {
   }
 
   const primaryPos = partsOfSpeech[0] || null;
+  const alternatives = Array.from(altSet).slice(0, 4);
 
   const result = {
-    text: (data[0] || []).map((part) => part[0]).join(""),
+    text: mainText,
     src: detected,
     partsOfSpeech,
     pos: primaryPos,
+    alternatives,
+    correction,
   };
 
   if (cache.size > 500) cache.delete(cache.keys().next().value);
   cache.set(key, result);
   return result;
+}
+
+async function fetchTtsDataUrl(text, lang = "en") {
+  const clean = (text || "").trim().slice(0, 180);
+  if (!clean) return { ok: false, error: "Empty text" };
+  const tl = (lang && lang !== "auto" ? lang : "en").toLowerCase().split("-")[0];
+  const cacheKey = `${tl}|${clean}`;
+  if (ttsCache.has(cacheKey)) {
+    return { ok: true, dataUrl: ttsCache.get(cacheKey) };
+  }
+
+  try {
+    const ttsUrl =
+      `https://translate.googleapis.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${encodeURIComponent(tl)}&q=${encodeURIComponent(clean)}`;
+    const res = await fetch(ttsUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    const dataUrl = `data:audio/mpeg;base64,${btoa(binary)}`;
+    if (ttsCache.size > 80) ttsCache.delete(ttsCache.keys().next().value);
+    ttsCache.set(cacheKey, dataUrl);
+    return { ok: true, dataUrl };
+  } catch (e) {
+    return { ok: false, error: e?.message || "TTS fetch failed" };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -295,6 +364,7 @@ async function pushEntry(w, times) {
     p_source_title: titleContext,
     p_source_url: w.page || "",
     p_times: times,
+    p_sentence: w.sentence || "",
   };
   let token = await getToken();
   if (!token) throw new HttpError(401, "signed out");
@@ -307,12 +377,22 @@ async function pushEntry(w, times) {
       await request("/rest/v1/rpc/save_word", { body: args, token });
       return;
     }
-    // If remote database has legacy save_word without p_src_lang, retry without p_src_lang:
-    if (args.p_src_lang) {
-      const fallback = { ...args };
-      delete fallback.p_src_lang;
-      await request("/rest/v1/rpc/save_word", { body: fallback, token });
-      return;
+    // Gracefully fallback if migration 006 hasn't added p_sentence yet
+    if (args.p_sentence !== undefined) {
+      const noSentence = { ...args };
+      delete noSentence.p_sentence;
+      try {
+        await request("/rest/v1/rpc/save_word", { body: noSentence, token });
+        return;
+      } catch (e2) {
+        if (noSentence.p_src_lang) {
+          const legacy = { ...noSentence };
+          delete legacy.p_src_lang;
+          await request("/rest/v1/rpc/save_word", { body: legacy, token });
+          return;
+        }
+        throw e2;
+      }
     }
     throw e;
   }
@@ -471,11 +551,47 @@ async function syncNow(forceAll = true) {
   }
 }
 
+function setupContextMenus() {
+  if (!chrome.contextMenus) return;
+  try {
+    chrome.contextMenus.removeAll(() => {
+      chrome.contextMenus.create({
+        id: "wordtap-translate-selection",
+        title: 'Translate "%s" with WordTap',
+        contexts: ["selection"],
+      });
+      chrome.contextMenus.create({
+        id: "wordtap-ocr-snip",
+        title: "WordTap: Capture Screen Text (OCR)",
+        contexts: ["page", "video", "image"],
+      });
+    });
+  } catch (_) {}
+}
+
+if (chrome.contextMenus?.onClicked) {
+  chrome.contextMenus.onClicked.addListener((info, tab) => {
+    if (!tab?.id) return;
+    if (info.menuItemId === "wordtap-translate-selection" && info.selectionText) {
+      chrome.tabs
+        .sendMessage(tab.id, {
+          type: "wordtap:translate-context",
+          text: info.selectionText.trim(),
+        })
+        .catch(() => {});
+    } else if (info.menuItemId === "wordtap-ocr-snip") {
+      startSnipOnTab(tab.id);
+    }
+  });
+}
+
 chrome.runtime.onInstalled?.addListener(() => {
+  setupContextMenus();
   flush(true).then(pullCloudWords).catch(() => {});
 });
 
 chrome.runtime.onStartup.addListener(() => {
+  setupContextMenus();
   flush(true).then(pullCloudWords).catch(() => {});
 });
 
@@ -497,6 +613,7 @@ async function addHistory(entry) {
       lang: entry.lang || "ar",
       title: entry.title || "",
       page: entry.page || "",
+      source: entry.source || "selection",
       timestamp: new Date().toISOString(),
       saved: Boolean(entry.saved),
     };
@@ -505,6 +622,64 @@ async function addHistory(entry) {
     return { ok: true, item: newItem };
   } catch (e) {
     return { ok: false, error: e.message };
+  }
+}
+
+async function deleteHistoryItem(id, text, lang) {
+  try {
+    const { history = [] } = await chrome.storage.local.get({ history: [] });
+    const cleanText = (text || "").trim().toLowerCase();
+    const updated = history.filter((h) => {
+      if (id && h.id === id) return false;
+      if (cleanText && h.text && h.text.trim().toLowerCase() === cleanText) {
+        if (!lang || h.lang === lang) return false;
+      }
+      return true;
+    });
+    await chrome.storage.local.set({ history: updated });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+async function clearAllHistory() {
+  try {
+    await chrome.storage.local.set({ history: [] });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+async function getAccountStats() {
+  if (!configured()) return { ok: false };
+  try {
+    const token = await getToken();
+    if (!token) return { ok: false };
+    const [wordRows, statsRows] = await Promise.all([
+      request("/rest/v1/words?select=next_review,box", { method: "GET", token }).catch(() => []),
+      request("/rest/v1/user_stats?select=streak,xp,daily_goal,today_xp&limit=1", { method: "GET", token }).catch(() => []),
+    ]);
+    const nowMs = Date.now();
+    const words = Array.isArray(wordRows) ? wordRows : [];
+    const due = words.filter((w) => w.next_review && new Date(w.next_review).getTime() <= nowMs).length;
+    const st = Array.isArray(statsRows) && statsRows[0] ? statsRows[0] : {};
+    if (chrome.action?.setBadgeText) {
+      chrome.action.setBadgeText({ text: due > 0 ? (due > 99 ? "99+" : String(due)) : "" });
+      chrome.action.setBadgeBackgroundColor({ color: "#facc3b" });
+    }
+    return {
+      ok: true,
+      due,
+      total: words.length,
+      streak: Number(st.streak || 0),
+      xp: Number(st.xp || 0),
+      dailyGoal: Number(st.daily_goal || 20),
+      todayXp: Number(st.today_xp || 0),
+    };
+  } catch {
+    return { ok: false };
   }
 }
 
@@ -576,13 +751,13 @@ const OCR_LANG_MAP = {
 };
 
 async function recognizeTextFromImage(imageBase64, srcLang = "en") {
-  // 1. Try local WordTap server first if reachable
-  const webUrl = CONFIG.WEBSITE_URL || "http://localhost:3000";
+  // 1. Try local/configured WordTap server first if reachable
+  const webUrl = await getWebsiteUrl();
   try {
     const localRes = await fetch(`${webUrl}/api/ocr`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: imageBase64 }),
+      body: JSON.stringify({ image: imageBase64, lang: srcLang }),
     });
     if (localRes.ok) {
       const data = await localRes.json();
@@ -591,10 +766,10 @@ async function recognizeTextFromImage(imageBase64, srcLang = "en") {
       }
     }
   } catch (_) {
-    // Local server not running; proceed to Cloud OCR
+    // Web server not running; proceed to Cloud OCR fallback
   }
 
-  // 2. Cloud OCR Engine (Works standalone everywhere, no localhost required)
+  // 2. Cloud OCR Engine fallback
   const langCode = (srcLang && srcLang !== "auto" ? srcLang : "en").toLowerCase().slice(0, 2);
   const ocrLang = OCR_LANG_MAP[langCode] || "eng";
 
@@ -605,7 +780,12 @@ async function recognizeTextFromImage(imageBase64, srcLang = "en") {
   form.append("isOverlayRequired", "false");
   form.append("detectOrientation", "true");
 
-  const apiKeys = ["K84725916788957", "helloworld"];
+  const { ocrApiKey } = await chrome.storage.sync.get(["ocrApiKey"]).catch(() => ({}));
+  const apiKeys = [
+    ...(typeof ocrApiKey === "string" && ocrApiKey.trim() ? [ocrApiKey.trim()] : []),
+    "K84725916788957",
+    "helloworld",
+  ];
   for (const key of apiKeys) {
     try {
       const cloudRes = await fetch("https://api.ocr.space/parse/image", {
@@ -652,6 +832,8 @@ async function processOcrAndTranslate(imageBase64, target = "ar", srcLang = "aut
     src: trans.src,
     pos: trans.pos || null,
     partsOfSpeech: trans.partsOfSpeech || [],
+    alternatives: trans.alternatives || [],
+    correction: trans.correction || null,
   };
 }
 
@@ -787,6 +969,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
     case "translate":
       return reply(translate(msg.text, msg.target, msg.srcLang, msg.context).then((r) => ({ ok: true, ...r })));
+    case "tts:speak":
+      return reply(fetchTtsDataUrl(msg.text, msg.lang));
+    case "stats:get":
+      return reply(getAccountStats());
+    case "config:get-web-url":
+      return reply(getWebsiteUrl().then((url) => ({ ok: true, url })));
     case "save":
       return reply(saveWord(msg.entry));
     case "word:is-saved":
@@ -797,6 +985,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return reply(addHistory(msg.entry));
     case "history:get":
       return reply(chrome.storage.local.get({ history: [] }));
+    case "history:delete":
+      return reply(deleteHistoryItem(msg.id, msg.text, msg.lang));
+    case "history:clear":
+      return reply(clearAllHistory());
     case "auth:status":
       return reply(status().then((s) => ({ ok: true, ...s })));
     case "auth:signIn":

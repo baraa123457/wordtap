@@ -19,6 +19,7 @@ function makeWord(i: number, patch: Partial<Word> = {}): Word {
     target_lang: "ar",
     source_title: "Some show",
     source_url: "",
+    sentence: "",
     times_seen: 1,
     box: 0,
     next_review: "2020-01-01T00:00:00Z",
@@ -259,6 +260,50 @@ describe("buildSession", () => {
     it("accepts valid vocabulary words and short idioms", () => {
       expect(isPracticableWord(makeWord(1, { text: "appetizer", translation: "فاتح الشهية" }))).toBe(true);
       expect(isPracticableWord(makeWord(2, { text: "out of the blue", translation: "فجأة" }))).toBe(true);
+    });
+  });
+
+  describe("dictation mode and word.sentence", () => {
+    it("creates dictation type questions when mode is dictation", () => {
+      const sample = [
+        makeWord(1, { text: "cinema", translation: "سينما", src_lang: "en" }),
+        makeWord(2, { text: "theater", translation: "مسرح", src_lang: "en" }),
+        makeWord(3, { text: "subtitle", translation: "ترجمة", src_lang: "en" }),
+      ];
+      const qs = buildSession(sample, { size: 3, mode: "dictation", canSpeak: true, now: NOW, rng: seeded(21) });
+      expect(qs).toHaveLength(3);
+      for (const q of qs) {
+        expect(q.type).toBe("type");
+        if (q.type === "type") {
+          expect(q.variant).toBe("dictation");
+          expect(q.speak?.text).toBe(q.answer);
+        }
+      }
+    });
+
+    it("uses explicit word.sentence for cloze prompts when available", () => {
+      const sample = [
+        makeWord(1, {
+          box: 2,
+          text: "reckless",
+          translation: "متهور",
+          source_title: "Netflix",
+          sentence: "That was a reckless decision to make.",
+        }),
+        makeWord(2, {
+          box: 2,
+          text: "careful",
+          translation: "حذر",
+          source_title: "Netflix",
+          sentence: "Please be careful out there.",
+        }),
+      ];
+      const qs = buildSession(sample, { size: 1, canSpeak: false, now: NOW, rng: seeded(22) });
+      expect(qs[0]?.type).toBe("choice");
+      if (qs[0]?.type === "choice") {
+        expect(qs[0].variant).toBe("cloze");
+        expect(qs[0].prompt).toContain("______");
+      }
     });
   });
 });

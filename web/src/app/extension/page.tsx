@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 
 const STEPS = [
@@ -45,10 +44,10 @@ const STEPS = [
   },
   {
     num: "4",
-    title: "Tap Words on YouTube & Netflix",
+    title: "Tap Words on Subtitles & Web Pages",
     body: (
       <span>
-        Play any video with subtitles. Click any word to see its translation instantly, or <kbd className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 border border-line text-[11px] font-mono">Shift</kbd> + click to translate the full sentence!
+        Click any word in video subtitles on YouTube, Netflix, Prime Video, Disney+, Udemy, Coursera, or TED — or highlight text on any webpage, or press <kbd className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 border border-line text-[11px] font-mono">Alt+S</kbd> for Screen OCR!
       </span>
     ),
   },
@@ -139,15 +138,15 @@ export default function ExtensionPage() {
             </li>
             <li className="flex items-center gap-2">
               <span className="text-subtitle font-bold">✓</span>
-              <span>Subtitle popup display duration</span>
+              <span>Selection trigger: Pop-up card, Floating icon, or Hold Alt</span>
             </li>
             <li className="flex items-center gap-2">
               <span className="text-subtitle font-bold">✓</span>
-              <span>Auto-pause video on word tap</span>
+              <span>Screen Capture OCR (Alt+S) &amp; right-click translate</span>
             </li>
             <li className="flex items-center gap-2">
               <span className="text-subtitle font-bold">✓</span>
-              <span>Auto-save words or manual save mode</span>
+              <span>Word saving mode (Manual, Subtitles only, or Auto-save all)</span>
             </li>
           </ul>
         </div>

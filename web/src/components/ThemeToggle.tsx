@@ -6,18 +6,15 @@ import { MoonIcon, SunIcon } from "./Icons";
 
 export function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
-  const [theme, setTheme] = useState<ThemeMode>("system");
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     const s = getStoredSettings();
-    setTheme(s.theme || "system");
     checkDark(s.theme || "system");
 
     function onThemeChange() {
       const updated = getStoredSettings();
-      setTheme(updated.theme || "system");
       checkDark(updated.theme || "system");
     }
 
@@ -49,7 +46,6 @@ export function ThemeToggle() {
   function toggle() {
     const next: ThemeMode = isDark ? "light" : "dark";
     saveStoredSettings({ theme: next });
-    setTheme(next);
     setIsDark(!isDark);
   }
 

@@ -201,12 +201,16 @@ export function cancelSpeech(): void {
     try {
       activeAudio.pause();
       activeAudio.currentTime = 0;
-    } catch (_) {}
+    } catch {
+      // ignore audio stop error
+    }
     activeAudio = null;
   }
   if ("speechSynthesis" in window) {
     try {
       window.speechSynthesis.cancel();
-    } catch (_) {}
+    } catch {
+      // ignore synthesis cancel error
+    }
   }
 }

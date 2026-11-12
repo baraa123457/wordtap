@@ -5,7 +5,7 @@ import { parseSourceContext } from "./format";
 export type Rng = () => number;
 
 export type ChoiceVariant = "to-translation" | "to-word" | "listen" | "cloze";
-export type TypeVariant = "to-translation" | "to-word";
+export type TypeVariant = "to-translation" | "to-word" | "dictation";
 
 export type ChoiceQuestion = {
   type: "choice";
@@ -21,6 +21,7 @@ export type ChoiceQuestion = {
   /** Language of the option choices, so any choice can be spoken aloud */
   optionsLang?: string;
   context: string;
+  sentence?: string;
   sourceUrl?: string;
 };
 
@@ -32,6 +33,7 @@ export type ScrambleQuestion = {
   answer: string;
   tiles: { id: string; char: string }[];
   context: string;
+  sentence?: string;
   sourceUrl?: string;
   speak?: { text: string; lang: string } | null;
 };
@@ -44,6 +46,7 @@ export type TypeQuestion = {
   prompt: string;
   answer: string;
   context: string;
+  sentence?: string;
   sourceUrl?: string;
   speak?: { text: string; lang: string } | null;
 };
@@ -58,7 +61,7 @@ export type MatchQuestion = {
 
 export type Question = ChoiceQuestion | ScrambleQuestion | TypeQuestion | MatchQuestion;
 
-export type PracticeMode = "mixed" | "typing" | "choice";
+export type PracticeMode = "mixed" | "typing" | "choice" | "dictation";
 
 export type BuildOptions = {
   /** Number of different words to practice in one session. */
@@ -172,7 +175,7 @@ export function makeClozePrompt(sentence: string, targetWord: string): string {
 export function makeScrambleTiles(text: string, rng: Rng = Math.random): { id: string; char: string }[] {
   const chars = text.trim().split("");
   const tiles = chars.map((char, index) => ({ id: `tile-${index}`, char }));
-  let shuffled = shuffle(tiles, rng);
+  const shuffled = shuffle(tiles, rng);
   if (shuffled.length > 1 && shuffled.map((t) => t.char).join("") === chars.join("")) {
     const temp = shuffled[0]!;
     shuffled[0] = shuffled[1]!;
@@ -228,7 +231,8 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
     const id = `q${index}-${word.id}`;
     const context = word.source_title;
     const sourceUrl = word.source_url || undefined;
-    const { sentence } = parseSourceContext(word.source_title);
+    const parsedContext = parseSourceContext(word.source_title);
+    const sentence = (word.sentence && word.sentence.trim()) || parsedContext.sentence;
     const hasSentence = Boolean(sentence && sentence.trim());
     const targetEscaped = word.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const canCloze =
@@ -236,6 +240,23 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
       sentence !== undefined &&
       (new RegExp(`\\b${targetEscaped}\\b`, "i").test(sentence) ||
         sentence.toLowerCase().includes(word.text.toLowerCase()));
+
+    // Dictation Mode: Hear the word and type it from sound
+    if (mode === "dictation") {
+      const srcLang = word.src_lang && word.src_lang !== "auto" ? word.src_lang : "en";
+      return {
+        type: "type",
+        id,
+        variant: "dictation",
+        wordId: word.id,
+        prompt: word.translation,
+        answer: word.text,
+        context,
+        sentence,
+        sourceUrl,
+        speak: { text: word.text, lang: srcLang },
+      };
+    }
 
     // Writing Mode: Prompt shows translation (e.g. "كان") and user types the word (e.g. "was")
     if (mode === "typing") {
@@ -248,6 +269,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         prompt: word.translation,
         answer: word.text,
         context,
+        sentence,
         sourceUrl,
         speak: { text: word.text, lang: srcLang },
       };
@@ -291,6 +313,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         speak,
         optionsLang,
         context,
+        sentence,
         sourceUrl,
       };
     };
@@ -318,6 +341,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         prompt: word.translation,
         answer: word.text,
         context,
+        sentence,
         sourceUrl,
         speak: { text: word.text, lang: srcLang },
       };
@@ -333,6 +357,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         answer: word.text,
         tiles: makeScrambleTiles(word.text, rng),
         context,
+        sentence,
         sourceUrl,
         speak: { text: word.text, lang: srcLang },
       };
@@ -361,6 +386,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
         prompt: word.translation,
         answer: word.text,
         context,
+        sentence,
         sourceUrl,
         speak: { text: word.text, lang: srcLang },
       };
@@ -374,7 +400,7 @@ export function buildSession(words: Word[], options: BuildOptions = {}): Questio
   const firstQuestions = firstBatch.map((word, i) => buildQuestion(word, i));
   const secondQuestions = secondBatch.map((word, i) => buildQuestion(word, firstBatch.length + i));
 
-  if (mode !== "typing" && firstBatch.length >= 3) {
+  if (mode !== "typing" && mode !== "dictation" && firstBatch.length >= 3) {
     const matchQuestion: MatchQuestion = {
       type: "match",
       id: "match",

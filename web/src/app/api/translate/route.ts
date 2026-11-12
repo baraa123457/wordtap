@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
+import { guardApiRequest } from "@/lib/api-guard";
+
+const MAX_TRANSLATE_CHARS = 2000;
+
+type GoogleTranslateData = unknown[];
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
 
 export async function GET(req: Request) {
+  const blocked = guardApiRequest(req, "translate", 60);
+  if (blocked) return blocked;
+
   const url = new URL(req.url);
-  const text = (url.searchParams.get("text") || "").trim();
+  const text = (url.searchParams.get("text") || "").trim().slice(0, MAX_TRANSLATE_CHARS);
   const src = url.searchParams.get("src") || "auto";
   const target = url.searchParams.get("target") || "ar";
   const forceExact = url.searchParams.get("forceExact") === "true";
@@ -10,15 +22,26 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const blocked = guardApiRequest(req, "translate", 60);
+  if (blocked) return blocked;
+
   try {
-    const body = await req.json();
-    const text = (body.text || "").trim();
+    const body = (await req.json()) as {
+      text?: string;
+      src?: string;
+      target?: string;
+      forceExact?: boolean;
+    };
+    const text = (body.text || "").trim().slice(0, MAX_TRANSLATE_CHARS);
     const src = body.src || "auto";
     const target = body.target || "ar";
     const forceExact = Boolean(body.forceExact);
     return handleTranslate(text, src, target, forceExact);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Invalid JSON" }, { status: 400 });
+  } catch (err: unknown) {
+    return NextResponse.json(
+      { error: getErrorMessage(err, "Invalid JSON") },
+      { status: 400 },
+    );
   }
 }
 
@@ -27,22 +50,22 @@ function levenshtein(a: string, b: string): number {
   const bn = b.length;
   if (an === 0) return bn;
   if (bn === 0) return an;
-  const matrix: number[][] = Array.from({ length: bn + 1 }, () => Array(an + 1).fill(0));
-  for (let i = 0; i <= an; ++i) matrix[0][i] = i;
-  for (let i = 1; i <= bn; ++i) matrix[i][0] = i;
+  const matrix: number[][] = Array.from({ length: bn + 1 }, () => Array<number>(an + 1).fill(0));
+  for (let i = 0; i <= an; ++i) matrix[0]![i] = i;
+  for (let i = 1; i <= bn; ++i) matrix[i]![0] = i;
   for (let i = 1; i <= bn; ++i) {
     for (let j = 1; j <= an; ++j) {
       if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
+        matrix[i]![j] = matrix[i - 1]![j - 1]!;
       } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+        matrix[i]![j] = Math.min(
+          matrix[i - 1]![j - 1]! + 1,
+          Math.min(matrix[i]![j - 1]! + 1, matrix[i - 1]![j]! + 1),
         );
       }
     }
   }
-  return matrix[bn][an];
+  return matrix[bn]![an]!;
 }
 
 async function findSuggestCorrection(text: string): Promise<string | null> {
@@ -60,7 +83,7 @@ async function findSuggestCorrection(text: string): Promise<string | null> {
       },
     });
     if (!sRes.ok) return null;
-    const sData = await sRes.json();
+    const sData = (await sRes.json()) as unknown[];
     const suggestions = Array.isArray(sData?.[1]) ? sData[1] : [];
 
     let bestCandidate: string | null = null;
@@ -70,7 +93,10 @@ async function findSuggestCorrection(text: string): Promise<string | null> {
       if (typeof raw !== "string") continue;
       const stripped = raw
         .replace(/[\u0600-\u06FF]+/g, "")
-        .replace(/\b(meaning|translate|translation|definition|synonyms?|antonyms?|in python|in java|movie|film)\b/gi, "")
+        .replace(
+          /\b(meaning|translate|translation|definition|synonyms?|antonyms?|in python|in java|movie|film)\b/gi,
+          "",
+        )
         .replace(/[^a-zA-Z\s'-]/g, "")
         .trim();
       if (!stripped) continue;
@@ -80,6 +106,7 @@ async function findSuggestCorrection(text: string): Promise<string | null> {
       const candidateList = isSingle ? [tokens[0]].filter(Boolean) : [stripped, tokens[0]];
 
       for (const cand of candidateList) {
+        if (!cand) continue;
         const candLower = cand.toLowerCase();
         if (!candLower || candLower === lowerInput) continue;
         const dist = levenshtein(lowerInput, candLower);
@@ -129,7 +156,7 @@ async function handleTranslate(
       src,
     )}&tl=${encodeURIComponent(target)}${dtParams}&q=${encodeURIComponent(text)}`;
 
-    let data: any = null;
+    let data: GoogleTranslateData | null = null;
     try {
       const res = await fetch(url, {
         signal: AbortSignal.timeout(6000),
@@ -140,10 +167,10 @@ async function handleTranslate(
       });
 
       if (res.ok) {
-        data = await res.json();
+        data = (await res.json()) as GoogleTranslateData;
       }
-    } catch (e) {
-      console.warn("Google translate primary fetch error, trying gtx fallback:", e);
+    } catch (err: unknown) {
+      console.warn("Google translate primary fetch error, trying gtx fallback:", err);
     }
 
     // Resilient fallback to secondary gtx client if primary was throttled or failed
@@ -160,14 +187,13 @@ async function handleTranslate(
           },
         });
         if (fbRes.ok) {
-          data = await fbRes.json();
+          data = (await fbRes.json()) as GoogleTranslateData;
         }
-      } catch (fbErr) {
+      } catch (fbErr: unknown) {
         console.warn("Google translate fallback error:", fbErr);
       }
     }
 
-    // Check for spelling correction in data[7]
     let correction: {
       correctedText: string;
       originalText: string;
@@ -195,7 +221,7 @@ async function handleTranslate(
       }
     }
 
-    // If auto-detect misclassified an English typo (e.g. 'reciept' -> 'lus', or 'succesfull' -> Hindi), retry with sl=en to check for spell correction
+    // Retry with sl=en to surface spell correction when auto-detect misclassifies an English typo
     if (
       !forceExact &&
       !correction &&
@@ -213,7 +239,7 @@ async function handleTranslate(
           },
         });
         if (enRes.ok) {
-          const enData = await enRes.json();
+          const enData = (await enRes.json()) as GoogleTranslateData;
           if (
             Array.isArray(enData[7]) &&
             enData[7].length >= 2 &&
@@ -232,19 +258,18 @@ async function handleTranslate(
             }
           }
         }
-      } catch (e) {
+      } catch {
         // ignore retry error
       }
     }
 
-    // If Google returned data successfully:
     if (data && Array.isArray(data[0])) {
       let translation = "";
       let sourcePronunciation = "";
       let targetPronunciation = "";
 
       for (const item of data[0]) {
-        if (!item) continue;
+        if (!Array.isArray(item)) continue;
         if (typeof item[0] === "string") {
           translation += item[0];
         }
@@ -260,13 +285,15 @@ async function handleTranslate(
           if (Array.isArray(entry) && typeof entry[0] === "string" && Array.isArray(entry[1])) {
             definitions.push({
               partOfSpeech: entry[0],
-              meanings: entry[1].filter((m: any) => typeof m === "string").slice(0, 5),
+              meanings: entry[1]
+                .filter((m: unknown): m is string => typeof m === "string")
+                .slice(0, 5),
             });
           }
         }
       }
 
-      const headword = Array.isArray(data[1]) && data[1][0] ? data[1][0][3] : undefined;
+      const headword = Array.isArray(data[1]) && Array.isArray(data[1][0]) ? data[1][0][3] : undefined;
       const hasDict = Array.isArray(data[1]) && data[1].length > 0;
       const isEcho = translation.trim().toLowerCase() === text.trim().toLowerCase();
       const headwordDiffers =
@@ -274,7 +301,6 @@ async function handleTranslate(
         typeof headword === "string" &&
         headword.trim().toLowerCase() !== text.trim().toLowerCase();
 
-      // Check if dictionary headword differs (e.g. definitly -> definitely)
       if (!forceExact && !correction && headwordDiffers && typeof headword === "string") {
         correction = {
           correctedText: headword.trim(),
@@ -283,7 +309,6 @@ async function handleTranslate(
         };
       }
 
-      // Check Google Suggest fallback ONLY for likely typos
       const isLikelyTypo = !hasDict || isEcho || headwordDiffers;
       if (!forceExact && !correction && isLikelyTypo) {
         const candidate = await findSuggestCorrection(text);
@@ -294,7 +319,6 @@ async function handleTranslate(
             autoCorrected: false,
           };
 
-          // If translation was just echoing the untranslated typo (like inherte -> inherte), fetch candidate's translation!
           if (isEcho) {
             try {
               const candUrl = `https://translate.googleapis.com/translate_a/single?client=dict-chrome-ex&sl=auto&tl=${encodeURIComponent(
@@ -308,12 +332,19 @@ async function handleTranslate(
                 },
               });
               if (candRes.ok) {
-                const candData = await candRes.json();
-                if (candData && Array.isArray(candData[0]) && candData[0][0]?.[0]) {
+                const candData = (await candRes.json()) as GoogleTranslateData;
+                if (
+                  candData &&
+                  Array.isArray(candData[0]) &&
+                  Array.isArray(candData[0][0]) &&
+                  typeof candData[0][0][0] === "string"
+                ) {
                   translation = candData[0][0][0];
-                  if (candData[0][1]?.[2]) targetPronunciation = candData[0][1][2];
-                  if (candData[0][1]?.[3]) sourcePronunciation = candData[0][1][3];
-                  correction.autoCorrected = true; // Since candidate translation is served!
+                  if (Array.isArray(candData[0][1])) {
+                    if (typeof candData[0][1][2] === "string") targetPronunciation = candData[0][1][2];
+                    if (typeof candData[0][1][3] === "string") sourcePronunciation = candData[0][1][3];
+                  }
+                  correction.autoCorrected = true;
                 }
               }
             } catch {
@@ -323,7 +354,6 @@ async function handleTranslate(
         }
       }
 
-      // Also extract alternative translations from data[5] (synonyms/alternatives)
       if (Array.isArray(data[5])) {
         for (const group of data[5]) {
           if (Array.isArray(group) && Array.isArray(group[2])) {
@@ -362,17 +392,18 @@ async function handleTranslate(
           ? "en"
           : src;
 
-      // Enrich with human subtitle/idiomatic memory from MyMemory for phrases & idioms (e.g. "My treat" -> "على حسابي")
       if (text.length <= 120) {
         try {
           const effectiveSrc = detectedSrcLang || (src === "auto" ? "autodetect" : src);
           const memPair = `${effectiveSrc}|${target}`;
           const memRes = await fetch(
             `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(memPair)}`,
-            { signal: AbortSignal.timeout(2500) }
+            { signal: AbortSignal.timeout(2500) },
           );
           if (memRes.ok) {
-            const memData = await memRes.json();
+            const memData = (await memRes.json()) as {
+              matches?: Array<{ translation?: unknown }>;
+            };
             const memAlts: string[] = [];
             if (Array.isArray(memData?.matches)) {
               for (const m of memData.matches) {
@@ -417,7 +448,6 @@ async function handleTranslate(
         }
       }
 
-      // If definitions are empty for non-English words with Arabic target, fetch definitions with tl=en
       if (
         definitions.length === 0 &&
         text.trim().length >= 2 &&
@@ -436,13 +466,15 @@ async function handleTranslate(
             },
           });
           if (dRes.ok) {
-            const dJson = await dRes.json();
+            const dJson = (await dRes.json()) as GoogleTranslateData;
             if (Array.isArray(dJson[1])) {
               for (const entry of dJson[1]) {
                 if (Array.isArray(entry) && typeof entry[0] === "string" && Array.isArray(entry[1])) {
                   definitions.push({
                     partOfSpeech: entry[0],
-                    meanings: entry[1].filter((m: any) => typeof m === "string").slice(0, 5),
+                    meanings: entry[1]
+                      .filter((m: unknown): m is string => typeof m === "string")
+                      .slice(0, 5),
                   });
                 }
               }
@@ -471,13 +503,14 @@ async function handleTranslate(
       });
     }
 
-    // Fallback: MyMemory Translation API
     const pair = `${src === "auto" ? "autodetect" : src}|${target}`;
     const memRes = await fetch(
       `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(pair)}`,
     );
     if (memRes.ok) {
-      const memData = await memRes.json();
+      const memData = (await memRes.json()) as {
+        responseData?: { translatedText?: string };
+      };
       return NextResponse.json({
         text,
         translation: memData?.responseData?.translatedText || text,
@@ -490,10 +523,10 @@ async function handleTranslate(
     }
 
     throw new Error("All translation providers failed");
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Translation API error:", err);
     return NextResponse.json(
-      { error: err.message || "Translation failed" },
+      { error: getErrorMessage(err, "Translation failed") },
       { status: 500 },
     );
   }
