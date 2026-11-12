@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { deleteWord, recordPractice, reviewWord } from "@/lib/api";
 import { localDateString } from "@/lib/dates";
 import type { Word } from "@/lib/schemas";
-import { buildSession, type MatchQuestion, type Question } from "@/lib/session";
+import { buildSession, isPracticableWord, type MatchQuestion, type Question } from "@/lib/session";
 import { getStoredSettings } from "@/lib/settings";
 import { canSpeak } from "@/lib/speech";
 import { checkTyped } from "@/lib/text";
@@ -56,17 +56,28 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
   const [isDeleting, setIsDeleting] = useState(false);
 
   const reviewed = useRef(new Set<string>());
+  const deletedIds = useRef(new Set<string>());
   const xpSaved = useRef(false);
   const wordsById = useMemo(() => new Map(words.map((w) => [w.id, w])), [words]);
 
   const current = queue[0];
   const finished = current === undefined;
 
+  const validWords = useMemo(
+    () => words.filter((w) => isPracticableWord(w) && !deletedIds.current.has(w.id)),
+    [words],
+  );
+
+  const remainingCount = useMemo(() => {
+    return Math.max(0, validWords.filter((w) => !reviewed.current.has(w.id)).length);
+  }, [validWords, finished]);
+
   const handleDeleteWord = useCallback(
     async (wordId: string) => {
       setIsDeleting(true);
       try {
         await deleteWord(wordId);
+        deletedIds.current.add(wordId);
         // Remove word from queue immediately, including within Match questions!
         setQueue((prev) =>
           prev
@@ -218,6 +229,8 @@ export function PracticeSession({ words, onAgain }: { words: Word[]; onAgain: ()
         reviewFailed={reviewFailed}
         onRetrySave={retrySave}
         onAgain={onAgain}
+        remainingCount={remainingCount}
+        totalWords={validWords.length}
       />
     );
   }

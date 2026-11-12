@@ -14,9 +14,22 @@ type Props = {
   reviewFailed: boolean;
   onRetrySave: () => void;
   onAgain: () => void;
+  remainingCount?: number;
+  totalWords?: number;
 };
 
-export function Summary({ xp, asked, right, missed, save, reviewFailed, onRetrySave, onAgain }: Props) {
+export function Summary({
+  xp,
+  asked,
+  right,
+  missed,
+  save,
+  reviewFailed,
+  onRetrySave,
+  onAgain,
+  remainingCount,
+  totalWords,
+}: Props) {
   const accuracy = asked === 0 ? 100 : Math.round((right / asked) * 100);
 
   return (
@@ -57,6 +70,54 @@ export function Summary({ xp, asked, right, missed, save, reviewFailed, onRetryS
           <span>Streak maintained 🔥</span>
         </div>
       </div>
+
+      {/* Remaining Words to Practice Notification */}
+      {typeof remainingCount === "number" && (
+        <div
+          className={`apple-card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs sm:text-sm transition-all ${
+            remainingCount > 0
+              ? "bg-subtitle/10 border-subtitle/30 shadow-sm"
+              : "bg-surface-elevated/40 border-line/60"
+          }`}
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <span className="text-2xl sm:text-3xl shrink-0">
+              {remainingCount > 0 ? "📚" : "🎉"}
+            </span>
+            <div className="space-y-1 min-w-0">
+              {remainingCount > 0 ? (
+                <>
+                  <p className="font-bold text-ink text-sm sm:text-base">
+                    You still have {remainingCount} {remainingCount === 1 ? "word" : "words"} you need to practice!
+                  </p>
+                  <p className="text-muted text-xs sm:text-sm" dir="rtl">
+                    ما زال لديك <strong className="text-subtitle font-bold">{remainingCount}</strong>{" "}
+                    {remainingCount === 1 ? "كلمة تحتاج" : "كلمات تحتاج"} للتدرب عليها
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-bold text-ok-ink text-sm sm:text-base">
+                    You're all caught up for today!
+                  </p>
+                  <p className="text-muted text-xs sm:text-sm" dir="rtl">
+                    أحسنت! تدربت على جميع كلماتك اليوم 🎉
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+          {remainingCount > 0 ? (
+            <button
+              type="button"
+              className="btn btn-primary min-h-10 px-4 py-2 text-xs sm:text-sm font-semibold shrink-0 cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-transform"
+              onClick={onAgain}
+            >
+              Practice next {Math.min(remainingCount, 5)} words →
+            </button>
+          ) : null}
+        </div>
+      )}
 
       {save === "error" ? (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-bad-soft px-4 py-3 text-bad">
@@ -111,7 +172,9 @@ export function Summary({ xp, asked, right, missed, save, reviewFailed, onRetryS
 
       <div className="flex flex-wrap gap-3">
         <button type="button" className="btn btn-primary" onClick={onAgain}>
-          Practice again
+          {typeof remainingCount === "number" && remainingCount > 0
+            ? `Practice again (${remainingCount} left)`
+            : "Practice again"}
         </button>
         <Link href="/dashboard" className="btn">
           Back to dashboard
