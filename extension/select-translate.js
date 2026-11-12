@@ -32,7 +32,6 @@
         syncSettingsFromWeb();
       }
     });
-    return;
   }
 
   const RTL_LANGS = ["ar", "fa", "ur", "he"];
