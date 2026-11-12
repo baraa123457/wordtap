@@ -81,6 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options: emailRedirectTo ? { emailRedirectTo } : undefined,
     });
     if (error) return { error: error.message, needsConfirmation: false };
+    // Supabase hides duplicate-email errors when email enumeration protection is on by returning identities: []
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      return {
+        error: "An account with this email already exists. Try signing in or using Forgot password.",
+        needsConfirmation: false,
+      };
+    }
     return { error: null, needsConfirmation: data.session === null };
   }, []);
 
@@ -95,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
-    const redirectTo = getAuthRedirectUrl("/auth/callback?next=/settings%23password");
+    const redirectTo = getAuthRedirectUrl("/auth/callback");
     const { error } = await getSupabase().auth.resetPasswordForEmail(
       email,
       redirectTo ? { redirectTo } : undefined,
