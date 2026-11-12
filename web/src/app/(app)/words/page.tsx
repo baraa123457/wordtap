@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { addCustomWord, deleteWord, fetchWords, updateWordDetails, updateWordLanguage, updateWordTranslation } from "@/lib/api";
 import { formatDueIn, wordStatus, type WordStatus } from "@/lib/format";
 import type { Word } from "@/lib/schemas";
@@ -10,6 +10,7 @@ import { useLoad } from "@/hooks/useLoad";
 import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
 import { MasteryDots } from "@/components/MasteryDots";
 import { SpeakerIcon } from "@/components/Icons";
+import { POS_BADGES } from "@/components/TranslatorCard";
 
 type Filter = "all" | WordStatus;
 
@@ -52,8 +53,36 @@ export default function WordsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newText, setNewText] = useState("");
   const [newTranslation, setNewTranslation] = useState("");
-  const [newLang, setNewLang] = useState("de");
+  const [newLang, setNewLang] = useState("en");
+  const [detectedPos, setDetectedPos] = useState<string | null>(null);
   const [addBusy, setAddBusy] = useState(false);
+
+  // Auto-detect translation and part-of-speech when typing in Add Word form
+  useEffect(() => {
+    if (!showAddForm || !newText.trim() || newText.trim().length < 2) {
+      setDetectedPos(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/translate?text=${encodeURIComponent(newText.trim())}&src=${newLang}&target=ar`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.primaryPartOfSpeech) {
+            setDetectedPos(data.primaryPartOfSpeech);
+          }
+          if (data.translation && !newTranslation) {
+            setNewTranslation(data.translation);
+          }
+        }
+      } catch {
+        // ignore auto-detect error
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [newText, newLang, showAddForm, newTranslation]);
 
   const words = state.status === "ready" ? state.data : null;
 
@@ -206,40 +235,58 @@ export default function WordsPage() {
       </div>
 
       {showAddForm ? (
-        <form onSubmit={handleAddWord} className="grid gap-3 rounded-2xl border border-line bg-surface p-4 sm:grid-cols-[1fr_1fr_auto_auto]">
-          <input
-            className="field"
-            type="text"
-            placeholder="Word (e.g. was)"
-            value={newText}
-            onChange={(e) => setNewText(e.target.value)}
-            required
-          />
-          <input
-            className="field"
-            type="text"
-            placeholder="Translation (e.g. كان or ماذا)"
-            value={newTranslation}
-            onChange={(e) => setNewTranslation(e.target.value)}
-            required
-          />
-          <select
-            className="field"
-            value={newLang}
-            onChange={(e) => setNewLang(e.target.value)}
-          >
-            <option value="de">German (DE)</option>
-            <option value="en">English (EN)</option>
-            <option value="fr">French (FR)</option>
-            <option value="es">Spanish (ES)</option>
-            <option value="it">Italian (IT)</option>
-            <option value="tr">Turkish (TR)</option>
-            <option value="ru">Russian (RU)</option>
-            <option value="ar">Arabic (AR)</option>
-          </select>
-          <button type="submit" className="btn btn-primary" disabled={addBusy}>
-            {addBusy ? "Adding…" : "Save word"}
-          </button>
+        <form onSubmit={handleAddWord} className="grid gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm animate-in fade-in">
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto]">
+            <input
+              className="field"
+              type="text"
+              placeholder="Word (e.g. breadth or inherit)"
+              value={newText}
+              onChange={(e) => setNewText(e.target.value)}
+              required
+            />
+            <input
+              className="field"
+              type="text"
+              placeholder="Translation (e.g. اتساع or يرث)"
+              value={newTranslation}
+              onChange={(e) => setNewTranslation(e.target.value)}
+              required
+            />
+            <select
+              className="field"
+              value={newLang}
+              onChange={(e) => setNewLang(e.target.value)}
+            >
+              <option value="en">English (EN)</option>
+              <option value="de">German (DE)</option>
+              <option value="fr">French (FR)</option>
+              <option value="es">Spanish (ES)</option>
+              <option value="it">Italian (IT)</option>
+              <option value="tr">Turkish (TR)</option>
+              <option value="ru">Russian (RU)</option>
+              <option value="ar">Arabic (AR)</option>
+            </select>
+            <button type="submit" className="btn btn-primary" disabled={addBusy}>
+              {addBusy ? "Adding…" : "Save word"}
+            </button>
+          </div>
+          {detectedPos ? (
+            <div className="flex items-center gap-2 text-xs text-muted pt-1 border-t border-line/40">
+              <span className="font-medium">Detected Word Type / نوع الكلمة:</span>
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                  POS_BADGES[detectedPos.toLowerCase()]?.badge ||
+                  "bg-subtitle/15 text-subtitle-edge dark:text-subtitle border-subtitle/30"
+                }`}
+              >
+                <span>{POS_BADGES[detectedPos.toLowerCase()]?.en || detectedPos}</span>
+                <span className="opacity-75 font-normal text-[10px]">
+                  · {POS_BADGES[detectedPos.toLowerCase()]?.ar || detectedPos}
+                </span>
+              </span>
+            </div>
+          ) : null}
         </form>
       ) : null}
 

@@ -417,6 +417,47 @@ async function handleTranslate(
         }
       }
 
+      // If definitions are empty for non-English words with Arabic target, fetch definitions with tl=en
+      if (
+        definitions.length === 0 &&
+        text.trim().length >= 2 &&
+        text.trim().length <= 40 &&
+        !text.trim().includes(" ")
+      ) {
+        try {
+          const dictUrl = `https://translate.googleapis.com/translate_a/single?client=dict-chrome-ex&sl=auto&tl=en&dt=bd&q=${encodeURIComponent(
+            text.trim(),
+          )}`;
+          const dRes = await fetch(dictUrl, {
+            signal: AbortSignal.timeout(2000),
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            },
+          });
+          if (dRes.ok) {
+            const dJson = await dRes.json();
+            if (Array.isArray(dJson[1])) {
+              for (const entry of dJson[1]) {
+                if (Array.isArray(entry) && typeof entry[0] === "string" && Array.isArray(entry[1])) {
+                  definitions.push({
+                    partOfSpeech: entry[0],
+                    meanings: entry[1].filter((m: any) => typeof m === "string").slice(0, 5),
+                  });
+                }
+              }
+            }
+          }
+        } catch {
+          // ignore dict error
+        }
+      }
+
+      const partsOfSpeech = definitions
+        .map((d) => d.partOfSpeech.toLowerCase())
+        .filter((pos) => pos && pos !== "alternatives");
+      const primaryPartOfSpeech = partsOfSpeech[0] || null;
+
       return NextResponse.json({
         text,
         translation: translation || text,
@@ -424,6 +465,8 @@ async function handleTranslate(
         sourcePronunciation,
         targetPronunciation,
         definitions,
+        partsOfSpeech,
+        primaryPartOfSpeech,
         correction,
       });
     }

@@ -73,6 +73,7 @@
       @keyframes tipFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
       .orig-line{display:flex;align-items:center;gap:6px;margin-bottom:5px;padding-right:16px}
       .orig{color:#959cc2;font-size:12px;font-weight:600;word-break:break-word}
+      .pos-badge{display:none;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:999px;background:rgba(250,204,59,.15);color:#ffd23f;border:1px solid rgba(250,204,59,.35);white-space:nowrap;text-transform:lowercase}
       .spk-btn{background:none;border:none;color:#facc3b;cursor:pointer;padding:2px 4px;border-radius:5px;display:inline-flex;align-items:center;transition:transform .1s,color .1s}
       .spk-btn:hover{color:#ffe270;transform:scale(1.15)}
       .spk-btn.speaking{color:#34d399}
@@ -90,6 +91,7 @@
       <span class="x">×</span>
       <div class="orig-line">
         <div class="orig"></div>
+        <span class="pos-badge"></span>
         <button class="spk-btn" title="Pronounce in English" aria-label="Listen">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -104,6 +106,7 @@
     </div>`;
   const tip = shadow.querySelector(".tip");
   const origEl = shadow.querySelector(".orig");
+  const posEl = shadow.querySelector(".pos-badge");
   const spkBtn = shadow.querySelector(".spk-btn");
   const trEl = shadow.querySelector(".tr");
   const saveBtn = shadow.querySelector(".save-btn");
@@ -206,11 +209,30 @@
     savedEl.style.display = note ? "block" : "none";
   }
 
-  function showTip(x, y, original, translated, rtl, note, warn, srcLang) {
+  const POS_LABELS = {
+    noun: "noun · اسم",
+    verb: "verb · فعل",
+    adjective: "adj · صفة",
+    adverb: "adv · ظرف",
+    pronoun: "pron · ضمير",
+    preposition: "prep · حرف جر",
+    conjunction: "conj · حرف عطف",
+    interjection: "interj · تعجب",
+    phrase: "phrase · عبارة",
+    idiom: "idiom · مصطلح",
+  };
+
+  function showTip(x, y, original, translated, rtl, note, warn, srcLang, pos) {
     mount();
     currentOrigText = original;
     if (srcLang) currentSrcLang = srcLang;
     origEl.textContent = original;
+    if (pos) {
+      posEl.textContent = POS_LABELS[pos.toLowerCase()] || pos;
+      posEl.style.display = "inline-flex";
+    } else {
+      posEl.style.display = "none";
+    }
     trEl.textContent = translated;
     trEl.dir = rtl ? "rtl" : "ltr";
     setNote(note, warn);
@@ -558,7 +580,7 @@
         }
 
         const willSave = settings.saveWords === true && settings.translateSaveMode !== "manual";
-        showTip(e.clientX, e.clientY, text, res.text, RTL_LANGS.includes(target), willSave ? "Saving…" : "", false, finalSrc);
+        showTip(e.clientX, e.clientY, text, res.text, RTL_LANGS.includes(target), willSave ? "Saving…" : "", false, finalSrc, res.pos);
 
         const titleContext =
           fullLine && fullLine.trim() && fullLine.trim().length > text.length
@@ -570,6 +592,7 @@
           translation: res.text,
           lang: target,
           src: finalSrc,
+          pos: res.pos || null,
           page: location.href,
           title: titleContext,
           sentence: fullLine ? fullLine.trim() : "",

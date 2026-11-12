@@ -238,6 +238,22 @@
       100% { opacity: 1; transform: scale(1.15); }
     }
 
+    .pos-badge {
+      display: none;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1.5px 7px;
+      border-radius: 999px;
+      background: rgba(250, 204, 59, 0.16);
+      color: #ffd23f;
+      border: 1px solid rgba(250, 204, 59, 0.35);
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      text-transform: lowercase;
+    }
+
     .actions-wrap {
       display: flex;
       align-items: center;
@@ -356,6 +372,7 @@
     <div class="card-top" title="Drag to move card">
       <div class="orig-wrap">
         <span class="orig" id="orig"></span>
+        <span class="pos-badge" id="posBadge"></span>
         <button class="speak-btn" id="speakBtn" title="Pronounce in English" aria-label="Pronounce in English">
           <svg class="speaker-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -389,6 +406,20 @@
   const saveBtn  = shadow.getElementById("saveBtn");
   const closeBtn = shadow.getElementById("closeBtn");
   const aiBadge  = shadow.getElementById("aiBadge");
+  const posBadge = shadow.getElementById("posBadge");
+
+  const POS_LABELS = {
+    noun: "noun · اسم",
+    verb: "verb · فعل",
+    adjective: "adj · صفة",
+    adverb: "adv · ظرف",
+    pronoun: "pron · ضمير",
+    preposition: "prep · حرف جر",
+    conjunction: "conj · حرف عطف",
+    interjection: "interj · تعجب",
+    phrase: "phrase · عبارة",
+    idiom: "idiom · مصطلح",
+  };
 
   let tipToken = 0;
   let lastEntry = null;
@@ -557,6 +588,7 @@
   function showLoadingCard(rect, text) {
     mount();
     origEl.textContent = text.length > 70 ? text.slice(0, 67) + "…" : text;
+    posBadge.style.display = "none";
     trEl.innerHTML = `<span class="loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
     setStatus("", false);
     saveBtn.hidden   = true;
@@ -640,6 +672,13 @@
 
       lastSrcLang = res.src || (detectedSrc !== "auto" ? detectedSrc : "en");
       speakBtn.title = `Listen pronunciation (${lastSrcLang.toUpperCase()})`;
+
+      if (res.pos) {
+        posBadge.textContent = POS_LABELS[res.pos.toLowerCase()] || res.pos;
+        posBadge.style.display = "inline-flex";
+      } else {
+        posBadge.style.display = "none";
+      }
 
       let surrounding = "";
       try {

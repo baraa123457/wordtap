@@ -35,7 +35,7 @@ async function translate(text, target, srcLang = "auto", context = "") {
     encodeURIComponent(sl) +
     "&tl=" +
     encodeURIComponent(target) +
-    "&dt=t&q=" +
+    "&dt=t&dt=bd&q=" +
     encodeURIComponent(text);
 
   const res = await fetch(url);
@@ -43,9 +43,39 @@ async function translate(text, target, srcLang = "auto", context = "") {
   const data = await res.json();
 
   const detected = sl !== "auto" ? sl : data[2] ? data[2].toLowerCase() : "auto";
+
+  let partsOfSpeech = [];
+  if (Array.isArray(data[1])) {
+    partsOfSpeech = data[1]
+      .map((item) => (Array.isArray(item) && typeof item[0] === "string" ? item[0].toLowerCase() : null))
+      .filter(Boolean);
+  }
+
+  // Fallback dictionary for non-English words if dictionary was empty
+  if (partsOfSpeech.length === 0 && !text.includes(" ") && text.trim().length <= 35) {
+    try {
+      const enDictUrl =
+        "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=bd&q=" +
+        encodeURIComponent(text.trim());
+      const enRes = await fetch(enDictUrl);
+      if (enRes.ok) {
+        const enData = await enRes.json();
+        if (Array.isArray(enData[1])) {
+          partsOfSpeech = enData[1]
+            .map((item) => (Array.isArray(item) && typeof item[0] === "string" ? item[0].toLowerCase() : null))
+            .filter(Boolean);
+        }
+      }
+    } catch (_) {}
+  }
+
+  const primaryPos = partsOfSpeech[0] || null;
+
   const result = {
     text: (data[0] || []).map((part) => part[0]).join(""),
     src: detected,
+    partsOfSpeech,
+    pos: primaryPos,
   };
 
   if (cache.size > 500) cache.delete(cache.keys().next().value);

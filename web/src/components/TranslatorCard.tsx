@@ -49,7 +49,22 @@ type TranslationResult = {
   sourcePronunciation?: string;
   targetPronunciation?: string;
   definitions?: Definition[];
+  partsOfSpeech?: string[];
+  primaryPartOfSpeech?: string | null;
   correction?: SpellCorrection | null;
+};
+
+export const POS_BADGES: Record<string, { en: string; ar: string; badge: string }> = {
+  noun: { en: "noun", ar: "اسم", badge: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30" },
+  verb: { en: "verb", ar: "فعل", badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" },
+  adjective: { en: "adj", ar: "صفة", badge: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30" },
+  adverb: { en: "adv", ar: "ظرف", badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30" },
+  pronoun: { en: "pron", ar: "ضمير", badge: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30" },
+  preposition: { en: "prep", ar: "حرف جر", badge: "bg-pink-500/15 text-pink-600 dark:text-pink-400 border-pink-500/30" },
+  conjunction: { en: "conj", ar: "حرف عطف", badge: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30" },
+  interjection: { en: "interj", ar: "تعجب", badge: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30" },
+  phrase: { en: "phrase", ar: "عبارة", badge: "bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30" },
+  idiom: { en: "idiom", ar: "تعبير اصطلاحي", badge: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30" },
 };
 
 function getInitialTopLangs(
@@ -919,11 +934,37 @@ export function TranslatorCard({
                 {/* Header: Translated text + Edit/Customize button */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <div
-                      dir="auto"
-                      className="text-xl sm:text-2xl font-bold text-ink leading-relaxed select-all"
-                    >
-                      {baseTranslation}
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <div
+                        dir="auto"
+                        className="text-xl sm:text-2xl font-bold text-ink leading-relaxed select-all"
+                      >
+                        {baseTranslation}
+                      </div>
+
+                      {/* Part of Speech Badges (noun / verb / adj / etc.) */}
+                      {result?.partsOfSpeech && result.partsOfSpeech.length > 0 ? (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {result.partsOfSpeech.map((pos) => {
+                            const p = pos.toLowerCase();
+                            const meta = POS_BADGES[p] || {
+                              en: p,
+                              ar: p,
+                              badge: "bg-subtitle/15 text-subtitle-edge dark:text-subtitle border-subtitle/30",
+                            };
+                            return (
+                              <span
+                                key={p}
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border tracking-wide shadow-2xs ${meta.badge}`}
+                                title={`${meta.en} (${meta.ar})`}
+                              >
+                                <span>{meta.en}</span>
+                                <span className="opacity-75 font-normal text-[10px]">· {meta.ar}</span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : null}
                     </div>
 
                     {/* Target Pronunciation / Phonetics */}
@@ -1147,8 +1188,18 @@ export function TranslatorCard({
                           key={`def-${idx}`}
                           className="flex flex-wrap items-baseline gap-2 text-xs sm:text-sm"
                         >
-                          <span className="inline-block px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/10 text-muted font-medium text-[11px]">
-                            {def.partOfSpeech}
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border ${
+                              POS_BADGES[def.partOfSpeech.toLowerCase()]?.badge ||
+                              "bg-black/5 dark:bg-white/10 text-muted border-line"
+                            }`}
+                          >
+                            <span>{POS_BADGES[def.partOfSpeech.toLowerCase()]?.en || def.partOfSpeech}</span>
+                            {POS_BADGES[def.partOfSpeech.toLowerCase()]?.ar ? (
+                              <span className="opacity-75 font-normal text-[10px]">
+                                ({POS_BADGES[def.partOfSpeech.toLowerCase()]?.ar})
+                              </span>
+                            ) : null}
                           </span>
                           <div className="flex flex-wrap items-center gap-1.5">
                             {def.meanings.map((m, mIdx) => {
