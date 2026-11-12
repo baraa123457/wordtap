@@ -464,6 +464,54 @@ async function deleteCloudWord(text, srcLang = "auto", targetLang = "ar") {
 }
 
 // ---------------------------------------------------------------------------
+// OCR & Screen Snip Translation
+// ---------------------------------------------------------------------------
+async function processOcrAndTranslate(imageBase64, target = "ar", srcLang = "auto") {
+  const webUrl = CONFIG.WEBSITE_URL || "http://localhost:3000";
+  const ocrRes = await fetch(`${webUrl}/api/ocr`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image: imageBase64 }),
+  });
+
+  if (!ocrRes.ok) {
+    const err = await ocrRes.json().catch(() => ({}));
+    throw new Error(err.error || "OCR server error (HTTP " + ocrRes.status + ")");
+  }
+
+  const ocrData = await ocrRes.json();
+  const extractedText = (ocrData.text || "").trim();
+  if (!extractedText) {
+    throw new Error("No readable text detected in the selected area.");
+  }
+
+  // Immediately translate the extracted OCR text
+  const trans = await translate(extractedText, target, srcLang);
+
+  return {
+    ok: true,
+    text: extractedText,
+    translation: trans.text,
+    src: trans.src,
+    pos: trans.pos || null,
+    partsOfSpeech: trans.partsOfSpeech || [],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Keyboard Shortcut & Commands Listener
+// ---------------------------------------------------------------------------
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "take-ocr-screenshot") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs && tabs[0] && tabs[0].id) {
+        chrome.tabs.sendMessage(tabs[0].id, { type: "ocr:start-snip" }).catch(() => {});
+      }
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Messages from the page script and the popup
 // ---------------------------------------------------------------------------
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -477,6 +525,31 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   };
 
   switch (msg.type) {
+    case "ocr:capture-screen":
+      return reply(
+        new Promise((resolve, reject) => {
+          chrome.tabs.captureVisibleTab(null, { format: "png" }, (dataUrl) => {
+            if (chrome.runtime.lastError || !dataUrl) {
+              reject(
+                new Error(
+                  chrome.runtime.lastError ? chrome.runtime.lastError.message : "Screen capture failed",
+                ),
+              );
+            } else {
+              resolve({ ok: true, dataUrl });
+            }
+          });
+        }),
+      );
+    case "ocr:process":
+      return reply(processOcrAndTranslate(msg.image, msg.target, msg.srcLang));
+    case "ocr:start-on-active-tab":
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0] && tabs[0].id) {
+          chrome.tabs.sendMessage(tabs[0].id, { type: "ocr:start-snip" }).catch(() => {});
+        }
+      });
+      return reply(Promise.resolve({ ok: true }));
     case "translate":
       return reply(translate(msg.text, msg.target, msg.srcLang, msg.context).then((r) => ({ ok: true, ...r })));
     case "save":

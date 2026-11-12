@@ -54,6 +54,15 @@ if ($("openOptionsBtn")) {
   });
 }
 
+if ($("ocrCaptureBtn")) {
+  $("ocrCaptureBtn").addEventListener("click", async () => {
+    try {
+      await send({ type: "ocr:start-on-active-tab" });
+    } catch (_) {}
+    window.close();
+  });
+}
+
 // ---------- Account ----------
 const panels = ["acctLoading", "acctUnconfigured", "signInForm", "signedIn"];
 function showPanel(name) {
