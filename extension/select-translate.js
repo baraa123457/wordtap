@@ -68,22 +68,6 @@
     ".vjs-text-track-display"
   ].join(",");
 
-  const AI_CHAT_HOSTS = [
-    "claude.ai",
-    "chatgpt.com",
-    "chat.openai.com",
-    "gemini.google.com",
-    "perplexity.ai",
-    "copilot.microsoft.com",
-    "poe.com",
-    "chat.deepseek.com",
-    "aistudio.google.com",
-    "grok.com"
-  ];
-  const isAiChatSite =
-    typeof window !== "undefined" &&
-    AI_CHAT_HOSTS.some((h) => window.location.hostname.includes(h));
-
   const SAVE_NOTES = {
     synced:       { text: "✓ Saved to your WordTap account", warn: false },
     queued:       { text: "✓ Saved · will sync when online", warn: true },
@@ -122,7 +106,6 @@
     translateSaveMode: "manual",
     targetLang: "ar",
     selectionMode: "immediate", // "immediate" | "icon" | "alt" | "off"
-    protectAiChats: false,
   };
 
   if (isContextValid() && chrome.storage && chrome.storage.sync) {
@@ -357,18 +340,6 @@
     }
     .status[data-warn="true"] { color: #fbbf24; }
 
-    /* AI Chat footer banner */
-    .ai-badge {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 10px;
-      color: #7982a9;
-      padding-top: 4px;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      user-select: none;
-    }
-
     /* Loading animation */
     @keyframes pulse {
       0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
@@ -482,10 +453,6 @@
       <div class="tr" id="tr"></div>
       <span class="status" id="status"></span>
     </div>
-    <div class="ai-badge" id="aiBadge" style="display:none">
-      <span>🤖 AI Chat Protected</span>
-      <span style="opacity:0.75">Drag to move</span>
-    </div>
   </div>
   `;
 
@@ -497,7 +464,6 @@
   const statusEl = shadow.getElementById("status");
   const saveBtn  = shadow.getElementById("saveBtn");
   const closeBtn = shadow.getElementById("closeBtn");
-  const aiBadge  = shadow.getElementById("aiBadge");
   const posBadge = shadow.getElementById("posBadge");
 
   const POS_LABELS = {
@@ -613,9 +579,6 @@
   function positionCard(rect) {
     mount();
     card.style.display = "flex";
-    if (isAiChatSite && aiBadge) {
-      aiBadge.style.display = "flex";
-    }
     const r = card.getBoundingClientRect();
     const padding = 12;
 

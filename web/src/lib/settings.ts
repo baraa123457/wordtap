@@ -3,6 +3,7 @@ export type ThemeMode = "light" | "dark" | "system";
 export type VoiceGender = "female" | "male" | "auto";
 export type VoiceTone = "soft" | "natural" | "deep" | "energetic";
 export type TranslateSaveMode = "auto" | "manual" | "subtitles_only";
+export type SelectionMode = "immediate" | "icon" | "off";
 
 export type UserSettings = {
   theme: ThemeMode;
@@ -18,6 +19,7 @@ export type UserSettings = {
   voiceURI: string;
   targetLang: string;
   translateSaveMode: TranslateSaveMode;
+  selectionMode?: SelectionMode;
 };
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -34,6 +36,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   voiceURI: "",
   targetLang: "ar",
   translateSaveMode: "manual",
+  selectionMode: "immediate",
 };
 
 const STORAGE_KEY = "wordtap_settings";

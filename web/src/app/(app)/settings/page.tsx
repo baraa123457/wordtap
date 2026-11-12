@@ -516,6 +516,88 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Text Selection Translation Mode (Extension) */}
+        <div className="grid gap-3 border-t border-line/50 pt-4">
+          <div>
+            <div className="font-semibold text-ink">Text selection translation</div>
+            <div className="text-xs sm:text-sm text-muted">
+              Choose how translations appear when you highlight words on web pages (Claude, ChatGPT, articles, Wikipedia, etc.).
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Pop-up Card */}
+            <button
+              type="button"
+              onClick={() => update({ selectionMode: "immediate" })}
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+                (settings.selectionMode || "immediate") === "immediate"
+                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
+                  : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
+              }`}
+            >
+              <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-subtitle">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-ink text-sm">💬 Pop-up card</span>
+                  <span
+                    className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
+                      (settings.selectionMode || "immediate") === "immediate"
+                        ? "bg-subtitle text-subtitle-ink border-subtitle"
+                        : "border-line bg-surface"
+                    }`}
+                  >
+                    {(settings.selectionMode || "immediate") === "immediate" ? "✓" : ""}
+                  </span>
+                </div>
+                <p className="text-xs text-muted mt-1 leading-relaxed">
+                  Immediately shows the translation card when you select text anywhere.
+                </p>
+              </div>
+            </button>
+
+            {/* Floating Icon */}
+            <button
+              type="button"
+              onClick={() => update({ selectionMode: "icon" })}
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+                settings.selectionMode === "icon"
+                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
+                  : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
+              }`}
+            >
+              <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-subtitle">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 8v8" />
+                  <path d="M8 12h8" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-ink text-sm">🔘 Floating icon</span>
+                  <span
+                    className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
+                      settings.selectionMode === "icon"
+                        ? "bg-subtitle text-subtitle-ink border-subtitle"
+                        : "border-line bg-surface"
+                    }`}
+                  >
+                    {settings.selectionMode === "icon" ? "✓" : ""}
+                  </span>
+                </div>
+                <p className="text-xs text-muted mt-1 leading-relaxed">
+                  Shows a small floating WordTap icon. Click it whenever you want to open the card.
+                </p>
+              </div>
+            </button>
+          </div>
+        </div>
+
         {/* Default Translation Language */}
         <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/50 pt-4">
           <div>
