@@ -16,17 +16,16 @@ const DEFAULTS = {
 };
 
 chrome.storage.sync.get(DEFAULTS, (s) => {
-  $("enabled").checked = s.enabled;
-  $("pauseOnClick").checked = s.pauseOnClick;
+  if ($("enabled")) $("enabled").checked = s.enabled;
   const mode = s.translateSaveMode || (s.saveWords ? "auto" : "manual");
   if ($("translateSaveMode")) $("translateSaveMode").value = mode;
-  $("lang").value = s.targetLang;
-  $("hideSeconds").value = String(s.hideSeconds);
+  if ($("lang")) $("lang").value = s.targetLang;
+  if ($("hideSeconds")) $("hideSeconds").value = String(s.hideSeconds);
   if ($("selectionMode")) $("selectionMode").value = s.selectionMode || "immediate";
 });
 
-for (const id of ["enabled", "pauseOnClick"]) {
-  $(id).addEventListener("change", (e) => chrome.storage.sync.set({ [id]: e.target.checked }));
+if ($("enabled")) {
+  $("enabled").addEventListener("change", (e) => chrome.storage.sync.set({ enabled: e.target.checked }));
 }
 
 if ($("translateSaveMode")) {
