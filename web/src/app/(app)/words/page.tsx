@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addCustomWord,
   bulkDeleteWords,
@@ -20,6 +20,7 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
 import { MasteryDots } from "@/components/MasteryDots";
 import { SpeakerIcon } from "@/components/Icons";
 import { POS_BADGES } from "@/components/TranslatorCard";
+import { parseImportFile } from "@/lib/import";
 
 type Filter = "all" | WordStatus;
 type SourceFilter = "all" | "subtitles" | "ocr" | "translator" | "web";
@@ -151,6 +152,55 @@ export default function WordsPage() {
   const [newLang, setNewLang] = useState("en");
   const [detectedPos, setDetectedPos] = useState<string | null>(null);
   const [addBusy, setAddBusy] = useState(false);
+
+  // Import state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importStatus, setImportStatus] = useState<string | null>(null);
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportBusy(true);
+    setImportStatus("Reading file…");
+    try {
+      const text = await file.text();
+      const rows = parseImportFile(text);
+      if (rows.length === 0) {
+        setImportStatus("No valid words found in file. Format as CSV, TSV (Anki), or 'Word - Translation'.");
+        return;
+      }
+
+      setImportStatus(`Importing ${rows.length} word${rows.length === 1 ? "" : "s"}…`);
+      let successCount = 0;
+
+      for (const row of rows) {
+        try {
+          await addCustomWord(
+            row.text,
+            row.translation,
+            row.src_lang || "en",
+            row.target_lang || "ar",
+            row.sentence,
+            row.source_title
+          );
+          successCount++;
+        } catch {
+          // continue with next word
+        }
+      }
+
+      setImportStatus(`Successfully imported ${successCount} word${successCount === 1 ? "" : "s"}!`);
+      await reload();
+      setTimeout(() => setImportStatus(null), 5000);
+    } catch (err: unknown) {
+      setImportStatus(err instanceof Error ? err.message : "Failed to parse import file.");
+    } finally {
+      setImportBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
 
   // Auto-detect translation and part-of-speech when typing in Add Word form
   useEffect(() => {
@@ -435,6 +485,22 @@ export default function WordsPage() {
           >
             Anki (.tsv)
           </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.tsv,.txt"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <button
+            type="button"
+            disabled={importBusy}
+            onClick={() => fileInputRef.current?.click()}
+            className="btn min-h-9 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
+            title="Import vocabulary from CSV, Anki TSV, or text list"
+          >
+            <span>{importBusy ? "Importing…" : "Import"}</span>
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -460,6 +526,19 @@ export default function WordsPage() {
           </Link>
         </div>
       </div>
+
+      {importStatus ? (
+        <div className="rounded-xl border border-subtitle/40 bg-subtitle/15 px-4 py-2.5 text-xs font-semibold text-ink flex items-center justify-between animate-in fade-in">
+          <span>{importStatus}</span>
+          <button
+            type="button"
+            onClick={() => setImportStatus(null)}
+            className="text-muted hover:text-ink text-xs underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
 
       {selectMode ? (
         <div className="apple-card px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-subtitle/10 border-subtitle/30">
