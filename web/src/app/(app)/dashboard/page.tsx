@@ -11,6 +11,7 @@ import { ErrorState } from "@/components/StateViews";
 import { MasteryDots } from "@/components/MasteryDots";
 import { FireIcon } from "@/components/Icons";
 import { TranslatorCard } from "@/components/TranslatorCard";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
 type DashboardData = { words: Word[]; stats: Stats };
 
@@ -195,6 +196,9 @@ export default function DashboardPage() {
 
   return (
     <div className="grid min-w-0 max-w-full gap-6">
+      {/* 0. Onboarding Checklist for Activation */}
+      <OnboardingChecklist words={words} />
+
       {/* 1. Today's Practice Card - FIRST for habit reinforcement */}
       <section aria-labelledby="today" className="apple-card overflow-hidden w-full min-w-0 transition-all">
         {/* Top bar */}

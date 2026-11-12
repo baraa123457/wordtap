@@ -4,8 +4,9 @@ import Link from "next/link";
 import { fetchWords } from "@/lib/api";
 import { useLoad } from "@/hooks/useLoad";
 import { RequireAuth } from "@/components/RequireAuth";
-import { EmptyState, ErrorState, LoadingState } from "@/components/StateViews";
+import { ErrorState, LoadingState } from "@/components/StateViews";
 import { PracticeSession } from "@/components/practice/PracticeSession";
+import { SAMPLE_WORDS } from "@/lib/sampleWords";
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
@@ -42,6 +43,7 @@ function PracticeLoader() {
   const urlLang = searchParams.get("lang");
   const urlMode = searchParams.get("mode");
   const [selectedLang, setSelectedLang] = useState<string | null>(urlLang);
+  const [trySampleSession, setTrySampleSession] = useState(false);
 
   const words = state.status === "ready" ? state.data : null;
 
@@ -68,17 +70,51 @@ function PracticeLoader() {
     );
   }
   if (state.data.length === 0) {
+    if (trySampleSession) {
+      return (
+        <div className="space-y-4">
+          <div className="mx-auto max-w-lg mt-4 px-4 py-2 bg-subtitle/15 border border-subtitle/30 rounded-xl text-xs font-semibold text-ink flex items-center justify-between">
+            <span>Demo Mode: Practicing 4 sample words (these will not be saved to your account).</span>
+            <button
+              type="button"
+              onClick={() => setTrySampleSession(false)}
+              className="text-muted hover:text-ink underline text-[11px]"
+            >
+              Exit demo
+            </button>
+          </div>
+          <PracticeSession words={SAMPLE_WORDS} onAgain={() => setTrySampleSession(false)} />
+        </div>
+      );
+    }
+
     return (
-      <EmptyState
-        title="Nothing to practice yet"
-        action={
-          <Link href="/extension" className="btn btn-primary">
-            Set up the extension
-          </Link>
-        }
-      >
-        Save a few words from subtitles first, then come back.
-      </EmptyState>
+      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-12">
+        <div className="apple-card p-6 sm:p-8 space-y-6 text-center">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-subtitle/20 border border-subtitle/30 flex items-center justify-center text-2xl">
+            🎬
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-extrabold text-ink">No words to practice yet</h1>
+            <p className="text-xs sm:text-sm text-muted leading-relaxed">
+              Words you tap in YouTube or Netflix subtitles appear here automatically. Once saved, you can review them with spaced repetition.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 pt-2">
+            <Link href="/extension" className="btn btn-primary font-bold py-3">
+              Install Chrome Extension
+            </Link>
+            <button
+              type="button"
+              onClick={() => setTrySampleSession(true)}
+              className="btn btn-quiet text-xs font-semibold"
+            >
+              Or try a 4-question sample session
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
