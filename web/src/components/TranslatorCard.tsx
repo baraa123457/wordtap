@@ -973,52 +973,6 @@ export function TranslatorCard({
                         {result.targetPronunciation}
                       </p>
                     ) : null}
-
-                    {/* Spell Correction Hint on Translation Side */}
-                    {result?.correction ? (
-                      <div className="mt-2.5 flex items-center gap-2 flex-wrap text-xs text-ink/90 bg-subtitle/15 border border-subtitle/30 px-3 py-1.5 rounded-xl">
-                        {result.correction.autoCorrected ? (
-                          <>
-                            <span className="text-subtitle font-bold text-sm">✨</span>
-                            <span>عرض الترجمة لـ:</span>
-                            <span className="font-bold text-subtitle">{result.correction.correctedText}</span>
-                            <span className="text-muted text-[11px]">
-                              (بدلاً من{" "}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (debounceTimer.current) clearTimeout(debounceTimer.current);
-                                  void fetchTranslation(result.correction!.originalText, srcLang, targetLang, true);
-                                }}
-                                className="text-subtitle hover:underline underline-offset-2 cursor-pointer font-medium"
-                              >
-                                {result.correction.originalText}
-                              </button>
-                              )
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-subtitle font-bold text-sm">💡</span>
-                            <span>هل تقصد:</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (debounceTimer.current) clearTimeout(debounceTimer.current);
-                                setInputText(result.correction!.correctedText);
-                                void fetchTranslation(result.correction!.correctedText, srcLang, targetLang);
-                              }}
-                              className="font-bold text-subtitle hover:underline underline-offset-2 cursor-pointer text-xs sm:text-sm bg-subtitle/20 px-2 py-0.5 rounded-lg border border-subtitle/35"
-                            >
-                              {result.correction.correctedText}
-                            </button>
-                            <span className="text-muted text-[11px]">
-                              (Did you mean: {result.correction.correctedText}?)
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    ) : null}
                   </div>
 
                   {/* Edit/Customize Button */}
