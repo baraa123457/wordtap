@@ -235,6 +235,7 @@ async function signIn(email, password) {
 
   try {
     await flush();
+    await pullCloudWords();
   } catch {
     // Offline right after signing in: the queue is kept and retried later.
   }
@@ -392,10 +393,74 @@ async function saveWord(entry) {
   return { ok: true, cloud: (await pendingTotal()) === 0 ? "synced" : "queued" };
 }
 
+async function pullCloudWords() {
+  const token = await getToken().catch(() => null);
+  if (!token) return;
+  try {
+    const list = await request("/rest/v1/words?select=id,text,translation,src_lang,target_lang", { token });
+    if (Array.isArray(list)) {
+      const { deleted = [] } = await chrome.storage.local.get({ deleted: [] });
+      await enqueue(async () => {
+        const words = await readWords();
+        for (const item of list) {
+          if (!item.text) continue;
+          const clean = item.text.replace(/::[a-z]{2,5}$/i, "").trim();
+          if (deleted.includes(clean.toLowerCase())) continue;
+          const src = (item.src_lang && item.src_lang !== "auto") ? item.src_lang.toLowerCase() : "auto";
+          const target = item.target_lang || "ar";
+          const key = src + "|" + target + "|" + clean.toLowerCase();
+          if (!words[key]) {
+            words[key] = {
+              text: clean,
+              translation: item.translation || "",
+              src: item.src_lang || "auto",
+              lang: target,
+              count: 1,
+              pending: 0,
+              firstSeen: Date.now(),
+              lastSeen: Date.now(),
+            };
+          }
+        }
+        await chrome.storage.local.set({ words });
+      });
+    }
+  } catch (_) {
+    // Non-fatal if offline
+  }
+}
+
+async function isWordSavedInDb(rawText) {
+  if (!rawText) return false;
+  const norm = rawText.trim().toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+  const { deleted = [] } = await chrome.storage.local.get({ deleted: [] });
+  if (deleted.includes(norm) || deleted.includes(rawText.trim().toLowerCase())) return false;
+
+  const words = await readWords();
+  for (const [k, w] of Object.entries(words)) {
+    if (w && w.text) {
+      const wNorm = w.text.trim().toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+      if (wNorm === norm || w.text.trim().toLowerCase() === rawText.trim().toLowerCase()) {
+        return true;
+      }
+    }
+    const parts = k.split("|");
+    if (parts.length >= 3) {
+      const kWord = parts.slice(2).join("|").trim().toLowerCase();
+      const kNorm = kWord.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+      if (kNorm === norm || kWord === rawText.trim().toLowerCase()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 async function syncNow(forceAll = true) {
   try {
     await flush(forceAll);
     if ((await pendingTotal()) > 0) await flush();
+    await pullCloudWords();
     return { ok: true, ...(await status()) };
   } catch (e) {
     return { ok: false, error: e && e.message ? e.message : "Could not reach WordTap.", ...(await status()) };
@@ -403,15 +468,15 @@ async function syncNow(forceAll = true) {
 }
 
 chrome.runtime.onInstalled?.addListener(() => {
-  flush(true).catch(() => {});
+  flush(true).then(pullCloudWords).catch(() => {});
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  flush(true).catch(() => {});
+  flush(true).then(pullCloudWords).catch(() => {});
 });
 
 // Immediate run when background script initializes:
-flush(true).catch(() => {});
+flush(true).then(pullCloudWords).catch(() => {});
 
 async function addHistory(entry) {
   try {
@@ -677,6 +742,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return reply(translate(msg.text, msg.target, msg.srcLang, msg.context).then((r) => ({ ok: true, ...r })));
     case "save":
       return reply(saveWord(msg.entry));
+    case "word:is-saved":
+      return reply(isWordSavedInDb(msg.text).then((saved) => ({ ok: true, saved })));
     case "word:delete":
       return reply(deleteCloudWord(msg.text, msg.srcLang, msg.targetLang));
     case "history:add":

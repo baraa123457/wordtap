@@ -48,13 +48,66 @@
     hideSeconds: 3, // how long the tooltip stays (0 = until closed)
     targetLang: "ar",
   };
+
+  let savedWordsSet = new Set();
+
+  function normWord(w) {
+    if (!w) return "";
+    return w.trim().toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+  }
+
+  function updateSavedWordsFromStorage() {
+    if (!isContextValid() || !chrome.storage || !chrome.storage.local) return;
+    try {
+      chrome.storage.local.get({ words: {}, deleted: [] }, (data) => {
+        if (!data) return;
+        const deleted = Array.isArray(data.deleted) ? data.deleted.map((d) => normWord(d)) : [];
+        const set = new Set();
+        if (data.words && typeof data.words === "object") {
+          for (const [key, item] of Object.entries(data.words)) {
+            if (item && item.text) {
+              const n = normWord(item.text);
+              if (n && !deleted.includes(n)) set.add(n);
+            }
+            const parts = key.split("|");
+            if (parts.length >= 3) {
+              const kw = parts.slice(2).join("|");
+              const n = normWord(kw);
+              if (n && !deleted.includes(n)) set.add(n);
+            }
+          }
+        }
+        savedWordsSet = set;
+      });
+    } catch (_) {}
+  }
+
+  function isWordSaved(raw) {
+    if (!raw) return false;
+    const n = normWord(raw);
+    return savedWordsSet.has(n) || savedWordsSet.has(raw.trim().toLowerCase());
+  }
+
+  updateSavedWordsFromStorage();
+
+  window.addEventListener("wordtap:word-deleted", (e) => {
+    if (e.detail && e.detail.text) {
+      const n = normWord(e.detail.text);
+      savedWordsSet.delete(n);
+      savedWordsSet.delete(e.detail.text.trim().toLowerCase());
+    }
+  });
+
   if (isContextValid() && chrome.storage && chrome.storage.sync) {
     try {
       chrome.storage.sync.get(settings, (v) => Object.assign(settings, v));
       chrome.storage.onChanged.addListener((changes, area) => {
-        if (area !== "sync") return;
-        for (const k in changes) settings[k] = changes[k].newValue;
-        if (!settings.enabled) hideTip();
+        if (area === "sync") {
+          for (const k in changes) settings[k] = changes[k].newValue;
+          if (!settings.enabled) hideTip();
+        } else if (area === "local" && (changes.words || changes.deleted)) {
+          updateSavedWordsFromStorage();
+        }
       });
     } catch (_) {}
   }
@@ -197,9 +250,11 @@
       if (saved && saved.ok) {
         saveBtn.classList.add("saved");
         saveBtn.textContent = "✓ In your words";
+        savedWordsSet.add(normWord(currentPendingEntry.text));
         const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
         setNote(note.text, note.warn);
       } else {
+        saveBtn.classList.remove("saved");
         saveBtn.textContent = "⭐ + Save to My Words";
         setNote("Could not save this word", true);
       }
@@ -609,22 +664,45 @@
         // Always record to translation history
         safeSendMessage({ type: "history:add", entry });
 
+        const alreadySaved = isWordSaved(entry.text);
+
         if (!willSave) {
           // Manual Save Mode: show the Save button!
           saveBtn.style.display = "inline-flex";
-          saveBtn.classList.remove("saved");
-          saveBtn.textContent = "⭐ + Save to My Words";
+          if (alreadySaved) {
+            saveBtn.classList.add("saved");
+            saveBtn.textContent = "✓ In your words";
+            saveBtn.title = "Already saved in your words";
+          } else {
+            saveBtn.classList.remove("saved");
+            saveBtn.textContent = "⭐ + Save to My Words";
+            saveBtn.title = "Save to My Words";
+          }
+          safeSendMessage({ type: "word:is-saved", text: entry.text }, (check) => {
+            if (!isContextValid() || token !== tipToken) return;
+            if (check && check.saved) {
+              savedWordsSet.add(normWord(entry.text));
+              saveBtn.classList.add("saved");
+              saveBtn.textContent = "✓ In your words";
+              saveBtn.title = "Already saved in your words";
+            }
+          });
           return;
         }
 
         // Auto Save Mode:
         saveBtn.style.display = "none";
+        if (alreadySaved) {
+          setNote("✓ In your words", false);
+          return;
+        }
         safeSendMessage({ type: "save", entry }, (saved) => {
           if (!isContextValid() || token !== tipToken) return;
           if (!saved || !saved.ok) {
             setNote("Could not save this word", true);
             return;
           }
+          savedWordsSet.add(normWord(entry.text));
           const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
           setNote(note.text, note.warn);
         });

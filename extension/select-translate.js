@@ -108,16 +108,68 @@
     selectionMode: "immediate", // "immediate" | "icon" | "alt" | "off"
   };
 
+  let savedWordsSet = new Set();
+
+  function normWord(w) {
+    if (!w) return "";
+    return w.trim().toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+  }
+
+  function updateSavedWordsFromStorage() {
+    if (!isContextValid() || !chrome.storage || !chrome.storage.local) return;
+    try {
+      chrome.storage.local.get({ words: {}, deleted: [] }, (data) => {
+        if (!data) return;
+        const deleted = Array.isArray(data.deleted) ? data.deleted.map((d) => normWord(d)) : [];
+        const set = new Set();
+        if (data.words && typeof data.words === "object") {
+          for (const [key, item] of Object.entries(data.words)) {
+            if (item && item.text) {
+              const n = normWord(item.text);
+              if (n && !deleted.includes(n)) set.add(n);
+            }
+            const parts = key.split("|");
+            if (parts.length >= 3) {
+              const kw = parts.slice(2).join("|");
+              const n = normWord(kw);
+              if (n && !deleted.includes(n)) set.add(n);
+            }
+          }
+        }
+        savedWordsSet = set;
+      });
+    } catch (_) {}
+  }
+
+  function isWordSaved(raw) {
+    if (!raw) return false;
+    const n = normWord(raw);
+    return savedWordsSet.has(n) || savedWordsSet.has(raw.trim().toLowerCase());
+  }
+
+  updateSavedWordsFromStorage();
+
+  window.addEventListener("wordtap:word-deleted", (e) => {
+    if (e.detail && e.detail.text) {
+      const n = normWord(e.detail.text);
+      savedWordsSet.delete(n);
+      savedWordsSet.delete(e.detail.text.trim().toLowerCase());
+    }
+  });
+
   if (isContextValid() && chrome.storage && chrome.storage.sync) {
     try {
       chrome.storage.sync.get(settings, (v) => {
         if (v) Object.assign(settings, v);
       });
       chrome.storage.onChanged.addListener((changes, area) => {
-        if (area !== "sync") return;
-        for (const k in changes) settings[k] = changes[k].newValue;
-        if (!settings.enabled || settings.selectionMode === "off") {
-          hideAll();
+        if (area === "sync") {
+          for (const k in changes) settings[k] = changes[k].newValue;
+          if (!settings.enabled || settings.selectionMode === "off") {
+            hideAll();
+          }
+        } else if (area === "local" && (changes.words || changes.deleted)) {
+          updateSavedWordsFromStorage();
         }
       });
     } catch (_) {}
@@ -288,6 +340,15 @@
     }
     .save-btn:hover { background: #ffe270; transform: scale(1.03); }
     .save-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+    .save-btn.saved {
+      background: rgba(52, 211, 153, 0.16) !important;
+      color: #34d399 !important;
+      border: 1px solid rgba(52, 211, 153, 0.35) !important;
+      cursor: default !important;
+      opacity: 1 !important;
+      transform: none !important;
+      box-shadow: none !important;
+    }
     .save-btn[hidden] { display: none !important; }
 
     .close-btn {
@@ -642,6 +703,20 @@
     });
   }
 
+  function setSaveBtnState(saved) {
+    if (saved) {
+      saveBtn.classList.add("saved");
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = `✓ Saved`;
+      saveBtn.title = "Already saved in your words";
+    } else {
+      saveBtn.classList.remove("saved");
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = `⭐ Save`;
+      saveBtn.title = "Save to My Words";
+    }
+  }
+
   function showLoadingCard(rect, text) {
     mount();
     origEl.textContent = text.length > 70 ? text.slice(0, 67) + "…" : text;
@@ -649,7 +724,7 @@
     trEl.innerHTML = `<span class="loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
     setStatus("", false);
     saveBtn.hidden   = true;
-    saveBtn.disabled = false;
+    setSaveBtnState(false);
     positionCard(rect);
   }
 
@@ -667,17 +742,34 @@
         settings.translateSaveMode !== "manual" &&
         settings.translateSaveMode !== "subtitles_only");
 
+    const alreadySaved = isWordSaved(entry.text);
+
     if (willSave) {
-      saveBtn.hidden = true;
-      setStatus("Saving…", false);
-      doSave(entry);
+      if (alreadySaved) {
+        saveBtn.hidden = true;
+        setStatus("✓ In your words", false);
+      } else {
+        saveBtn.hidden = true;
+        setStatus("Saving…", false);
+        doSave(entry);
+      }
     } else {
       saveBtn.hidden = false;
-      saveBtn.disabled = false;
-      saveBtn.innerHTML = `⭐ Save`;
-      saveBtn.style.background = "#facc3b";
-      saveBtn.style.color = "#12152e";
+      setSaveBtnState(alreadySaved);
       setStatus("", false);
+
+      // Also verify asynchronously with background DB in case local storage is syncing
+      safeSendMessage({ type: "word:is-saved", text: entry.text }, (res) => {
+        if (!isContextValid() || !lastEntry || lastEntry.text !== entry.text) return;
+        if (res && res.saved) {
+          savedWordsSet.add(normWord(entry.text));
+          if (!willSave) {
+            setSaveBtnState(true);
+          } else {
+            setStatus("✓ In your words", false);
+          }
+        }
+      });
     }
 
     positionCard(rect);
@@ -692,6 +784,7 @@
         setStatus("Could not save word", true);
         return;
       }
+      savedWordsSet.add(normWord(entry.text));
       const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
       setStatus(note.text, note.warn);
       saveBtn.hidden = true;
@@ -772,7 +865,7 @@
 
   // ── Event Handlers ────────────────────────────────────────────────────────
   saveBtn.addEventListener("click", () => {
-    if (!lastEntry || saveBtn.disabled) return;
+    if (!lastEntry || saveBtn.disabled || saveBtn.classList.contains("saved")) return;
     saveBtn.disabled = true;
     saveBtn.innerHTML = `Saving…`;
     setStatus("Saving…", false);
@@ -780,15 +873,13 @@
       if (!isContextValid()) return;
       if (!saved || !saved.ok) {
         setStatus("Could not save word", true);
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = `⭐ Save`;
+        setSaveBtnState(false);
         return;
       }
       const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
       setStatus(note.text, note.warn);
-      saveBtn.innerHTML = `✓ Saved`;
-      saveBtn.style.background = "rgba(52,211,153,.2)";
-      saveBtn.style.color = "#34d399";
+      setSaveBtnState(true);
+      savedWordsSet.add(normWord(lastEntry.text));
     });
   });
 
