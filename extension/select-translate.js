@@ -121,8 +121,8 @@
     saveWords: false,
     translateSaveMode: "manual",
     targetLang: "ar",
-    selectionMode: isAiChatSite ? "icon" : "immediate", // "immediate" | "icon" | "alt" | "off"
-    protectAiChats: true,
+    selectionMode: "immediate", // "immediate" | "icon" | "alt" | "off"
+    protectAiChats: false,
   };
 
   if (isContextValid() && chrome.storage && chrome.storage.sync) {
@@ -507,7 +507,7 @@
 
   function mount() {
     const parent = document.fullscreenElement || document.body || document.documentElement;
-    if (host.parentNode !== parent) {
+    if (parent) {
       parent.appendChild(host);
     }
   }
@@ -595,8 +595,9 @@
     iconBtn.style.top  = Math.round(top)  + "px";
   }
 
-  // ── Position Translation Card: Prefers above selection so reading is never obstructed ──
+  // ── Position Translation Card: Places cleanly below selection so other tools & reading are not blocked ──
   function positionCard(rect) {
+    mount();
     card.style.display = "flex";
     if (isAiChatSite && aiBadge) {
       aiBadge.style.display = "flex";
@@ -611,14 +612,15 @@
       left = window.innerWidth - padding - r.width;
     }
 
-    // Vertical: Prefer ABOVE selection (so reading continuation is not blocked)
-    let top = rect.top - r.height - 10;
+    // Vertical: Prefer cleanly BELOW selection (avoids colliding with extensions like Google Dictionary)
+    let top = rect.bottom + 8;
 
-    // If not enough room above, place cleanly BELOW selection
-    if (top < padding) {
-      top = rect.bottom + 10;
+    // If not enough room below, place above selection
+    if (top + r.height > window.innerHeight - padding) {
+      top = rect.top - r.height - 8;
     }
     // Clamp inside window
+    if (top < padding) top = padding;
     if (top + r.height > window.innerHeight - padding) {
       top = Math.max(padding, window.innerHeight - padding - r.height);
     }
@@ -835,13 +837,8 @@
     if (!isContextValid()) return;
     if (!settings.enabled) return;
 
-    let mode = settings.selectionMode || (isAiChatSite ? "icon" : "immediate");
+    let mode = settings.selectionMode || "immediate";
     if (mode === "off") return;
-
-    // AI Chat sites (Claude, ChatGPT, Gemini): Default to floating icon so answers are never covered
-    if (isAiChatSite && settings.protectAiChats !== false && mode === "immediate") {
-      mode = "icon";
-    }
 
     // Alt key mode: only trigger if user is holding Alt / Option
     if (mode === "alt" && !(e && (e.altKey || e.metaKey))) {
