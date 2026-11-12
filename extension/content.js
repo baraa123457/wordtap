@@ -579,7 +579,10 @@
           currentVideoSubLang = finalSrc;
         }
 
-        const willSave = settings.saveWords === true && settings.translateSaveMode !== "manual";
+        const willSave =
+          settings.translateSaveMode === "auto" ||
+          settings.translateSaveMode === "subtitles_only" ||
+          (settings.saveWords === true && settings.translateSaveMode !== "manual");
         showTip(e.clientX, e.clientY, text, res.text, RTL_LANGS.includes(target), willSave ? "Saving…" : "", false, finalSrc, res.pos);
 
         const titleContext =

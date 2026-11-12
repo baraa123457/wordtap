@@ -2,7 +2,7 @@ export type PracticeMode = "mixed" | "typing" | "choice";
 export type ThemeMode = "light" | "dark" | "system";
 export type VoiceGender = "female" | "male" | "auto";
 export type VoiceTone = "soft" | "natural" | "deep" | "energetic";
-export type TranslateSaveMode = "auto" | "manual";
+export type TranslateSaveMode = "auto" | "manual" | "subtitles_only";
 
 export type UserSettings = {
   theme: ThemeMode;

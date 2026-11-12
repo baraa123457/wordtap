@@ -233,6 +233,44 @@
         </div>
       </div>
 
+      <!-- Word Saving Mode -->
+      <div class="grid-row">
+        <div class="label-col">Word saving mode:</div>
+        <div class="control-col">
+          <div class="section-subtitle">How words are added to your practice vocabulary:</div>
+
+          <div class="radio-option">
+            <input type="radio" id="save-manual" name="translateSaveMode" value="manual" />
+            <label class="radio-label-wrap" for="save-manual">
+              <div class="radio-title">✍️ Manual save (Show ⭐ Save button)</div>
+              <div class="radio-desc">
+                Words are saved only when you click the "Save to My Words" button in the popup card.
+              </div>
+            </label>
+          </div>
+
+          <div class="radio-option">
+            <input type="radio" id="save-subs" name="translateSaveMode" value="subtitles_only" />
+            <label class="radio-label-wrap" for="save-subs">
+              <div class="radio-title">🎬 Subtitles only (Auto-save video subtitles only)</div>
+              <div class="radio-desc">
+                Clicking a word in YouTube or Netflix subtitles automatically saves it. Webpage selections stay manual.
+              </div>
+            </label>
+          </div>
+
+          <div class="radio-option">
+            <input type="radio" id="save-auto" name="translateSaveMode" value="auto" />
+            <label class="radio-label-wrap" for="save-auto">
+              <div class="radio-title">⚡ Auto-save all</div>
+              <div class="radio-desc">
+                Every translated word across subtitles and webpages is instantly saved to your list.
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
       <!-- Pop-up translations -->
       <div class="grid-row">
         <div class="label-col">Pop-up translations:</div>

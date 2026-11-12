@@ -656,7 +656,11 @@
     // Always record to translation history
     safeSendMessage({ type: "history:add", entry });
 
-    const willSave = settings.saveWords === true && settings.translateSaveMode !== "manual";
+    const willSave =
+      settings.translateSaveMode === "auto" ||
+      (settings.saveWords === true &&
+        settings.translateSaveMode !== "manual" &&
+        settings.translateSaveMode !== "subtitles_only");
 
     if (willSave) {
       saveBtn.hidden = true;

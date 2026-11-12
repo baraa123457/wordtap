@@ -407,7 +407,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 pt-1">
+          <div className="grid gap-3 sm:grid-cols-3 pt-1">
             {/* Manual Save Card */}
             <button
               type="button"
@@ -427,7 +427,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-ink">Manual save</span>
+                  <span className="font-bold text-ink text-sm">Manual save</span>
                   <span
                     className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
                       (settings.translateSaveMode || "manual") === "manual"
@@ -439,12 +439,48 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-muted mt-1 leading-relaxed">
-                  Words are saved only when you click the <strong>&quot;Save to My Words&quot;</strong> button.
+                  Words are saved only when you click the <strong>&quot;Save&quot;</strong> button.
                 </p>
               </div>
             </button>
 
-            {/* Auto Save Card */}
+            {/* Subtitles Only Auto-Save Card */}
+            <button
+              type="button"
+              onClick={() => update({ translateSaveMode: "subtitles_only" })}
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+                settings.translateSaveMode === "subtitles_only"
+                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
+                  : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
+              }`}
+            >
+              <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-subtitle">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="3" />
+                  <line x1="6" y1="12" x2="18" y2="12" />
+                  <line x1="8" y1="15" x2="16" y2="15" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-ink text-sm">Subtitles only</span>
+                  <span
+                    className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
+                      settings.translateSaveMode === "subtitles_only"
+                        ? "bg-subtitle text-subtitle-ink border-subtitle"
+                        : "border-line bg-surface"
+                    }`}
+                  >
+                    {settings.translateSaveMode === "subtitles_only" ? "✓" : ""}
+                  </span>
+                </div>
+                <p className="text-xs text-muted mt-1 leading-relaxed">
+                  Auto-save when clicking words in <strong>video subtitles</strong> only. Web text stays manual.
+                </p>
+              </div>
+            </button>
+
+            {/* Auto Save All Card */}
             <button
               type="button"
               onClick={() => update({ translateSaveMode: "auto" })}
@@ -461,7 +497,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-ink">Auto-save</span>
+                  <span className="font-bold text-ink text-sm">Auto-save all</span>
                   <span
                     className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
                       settings.translateSaveMode === "auto"
@@ -473,7 +509,7 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-muted mt-1 leading-relaxed">
-                  Every translated word is instantly and automatically added to your practice list.
+                  Every translated word everywhere is automatically added to your practice list.
                 </p>
               </div>
             </button>

@@ -26,15 +26,16 @@ export function SubtitleDemo() {
   }, []);
 
   const current = picked === null ? null : DEMO_WORDS[picked];
-  const isManual = (settings.translateSaveMode || "manual") === "manual";
+  const isAuto =
+    (settings.translateSaveMode || "manual") === "auto" ||
+    settings.translateSaveMode === "subtitles_only";
+  const isManual = !isAuto;
   const isCurrentSaved = current ? savedWords.has(current.word.toLowerCase()) : false;
 
   function handleWordClick(index: number) {
     setPicked(index);
     const item = DEMO_WORDS[index];
     if (!item) return;
-
-    const isAuto = (settings.translateSaveMode || "manual") === "auto";
 
     // Record into translation history
     addHistoryItem({
