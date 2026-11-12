@@ -150,6 +150,17 @@ export default function ExtensionPage() {
             </li>
           </ul>
         </div>
+
+        {/* Privacy & Trust reassurance */}
+        <div className="apple-card p-5 border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-muted">
+          <div>
+            <strong className="text-ink">100% Privacy-respecting.</strong> We only read subtitles when you click a word. No browsing history tracking.
+          </div>
+          <div className="flex gap-4 shrink-0 font-medium">
+            <a href="/privacy" className="hover:text-ink underline underline-offset-4">Privacy Policy</a>
+            <a href="/terms" className="hover:text-ink underline underline-offset-4">Terms of Service</a>
+          </div>
+        </div>
       </div>
     </AppShell>
   );

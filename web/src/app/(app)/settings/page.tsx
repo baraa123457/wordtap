@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { fetchStats, setDailyGoal, deleteAccount } from "@/lib/api";
+import { fetchStats, fetchWords, setDailyGoal, deleteAccount } from "@/lib/api";
+import { exportWordsToCsv, downloadCsvFile } from "@/lib/export";
 import { getStoredSettings, saveStoredSettings, type UserSettings, type PracticeMode } from "@/lib/settings";
 import { canSpeak, speak } from "@/lib/speech";
 import { SpeakerIcon } from "@/components/Icons";
@@ -40,6 +41,30 @@ export default function SettingsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Data export state
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+
+  async function handleExportCsv() {
+    setExportBusy(true);
+    setExportMessage(null);
+    try {
+      const words = await fetchWords();
+      if (!words || words.length === 0) {
+        setExportMessage("You don't have any saved words to export yet.");
+        return;
+      }
+      const csv = exportWordsToCsv(words);
+      downloadCsvFile(csv, `wordtap-vocabulary-${new Date().toISOString().slice(0, 10)}.csv`);
+      setExportMessage(`Successfully exported ${words.length} saved word${words.length === 1 ? "" : "s"}!`);
+    } catch (e: unknown) {
+      setExportMessage(e instanceof Error ? e.message : "Failed to export words.");
+    } finally {
+      setExportBusy(false);
+      setTimeout(() => setExportMessage(null), 5000);
+    }
+  }
 
   async function handleDeleteAccount() {
     setDeleteBusy(true);
@@ -859,6 +884,32 @@ export default function SettingsPage() {
           <button type="button" onClick={() => void signOut()} className="btn btn-quiet min-w-28 text-xs font-medium">
             Sign out
           </button>
+        </div>
+
+        {/* Your Data: Export */}
+        <div className="border-t border-line/50 pt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="font-semibold text-ink">Your data (Export CSV)</div>
+              <div className="text-xs sm:text-sm text-muted">
+                Download a clean CSV file of all your saved words, translations, and subtitle sentences.
+              </div>
+              {exportMessage ? (
+                <div className="text-xs font-semibold text-subtitle mt-1">{exportMessage}</div>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              disabled={exportBusy}
+              onClick={() => void handleExportCsv()}
+              className="btn btn-secondary min-w-36 shrink-0 text-xs font-semibold flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>{exportBusy ? "Exporting…" : "Export CSV"}</span>
+            </button>
+          </div>
         </div>
 
         {/* Delete Account (Danger Zone) */}
