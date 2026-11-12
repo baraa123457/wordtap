@@ -46,6 +46,55 @@ export function detectVoiceGender(voice: SpeechSynthesisVoice): "female" | "male
   return "unknown";
 }
 
+/**
+ * Deterministically ranks and selects a consistent voice for a given language and gender,
+ * ensuring the selected voice never changes randomly between page reloads or words.
+ */
+export function pickConsistentVoice(
+  voices: SpeechSynthesisVoice[],
+  prefix: string,
+  gender: VoiceGender,
+  voiceURI?: string
+): SpeechSynthesisVoice | undefined {
+  if (voiceURI) {
+    const matched = voices.find((v) => v.voiceURI === voiceURI);
+    if (matched) return matched;
+  }
+
+  // Filter voices matching the requested language prefix (e.g. "en")
+  const langVoices = voices.filter((v) => {
+    const l = (v.lang || "").toLowerCase();
+    return l.startsWith(prefix) || l.replace("_", "-").startsWith(prefix);
+  });
+
+  if (langVoices.length === 0) return undefined;
+
+  // Filter by requested gender if specified
+  const genderMatched =
+    gender !== "auto"
+      ? langVoices.filter((v) => detectVoiceGender(v) === gender)
+      : langVoices;
+
+  const candidatePool = genderMatched.length > 0 ? genderMatched : langVoices;
+
+  // Sort candidate voices deterministically:
+  // 1. Natural / Online / High-quality voices first (e.g. Google, Natural, Microsoft Online)
+  // 2. Stable alphabetical order by name so the choice never flips randomly
+  return candidatePool.slice().sort((a, b) => {
+    const aName = a.name.toLowerCase();
+    const bName = b.name.toLowerCase();
+    const aQuality =
+      (aName.includes("natural") || aName.includes("online") || aName.includes("google") ? 2 : 0) +
+      (!a.localService ? 1 : 0);
+    const bQuality =
+      (bName.includes("natural") || bName.includes("online") || bName.includes("google") ? 2 : 0) +
+      (!b.localService ? 1 : 0);
+
+    if (bQuality !== aQuality) return bQuality - aQuality;
+    return a.name.localeCompare(b.name);
+  })[0];
+}
+
 export function getAvailableVoices(): SpeechSynthesisVoice[] {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return [];
   return window.speechSynthesis.getVoices();
@@ -172,23 +221,10 @@ export function speak(text: string, lang: string, options?: SpeakOptions | numbe
   utterance.rate = rate;
   utterance.pitch = pitch;
 
-  let chosenVoice: SpeechSynthesisVoice | undefined;
-
-  if (opts.voiceURI) {
-    chosenVoice = voices.find((v) => v.voiceURI === opts.voiceURI);
+  const chosenVoice = pickConsistentVoice(voices, prefix, opts.gender || "female", opts.voiceURI);
+  if (chosenVoice) {
+    utterance.voice = chosenVoice;
   }
-
-  if (!chosenVoice && gender !== "auto") {
-    chosenVoice = langVoices.find((v) => detectVoiceGender(v) === gender);
-  }
-
-  if (!chosenVoice && langVoices.length > 0) {
-    chosenVoice =
-      langVoices.find((v) => !v.localService) ||
-      langVoices[0];
-  }
-
-  if (chosenVoice) utterance.voice = chosenVoice;
 
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);

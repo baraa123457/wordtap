@@ -31,6 +31,7 @@ export default function SettingsPage() {
   const [dailyGoalVal, setDailyGoalVal] = useState<number>(20);
   const [goalSaving, setGoalSaving] = useState(false);
   const [goalMessage, setGoalMessage] = useState<string | null>(null);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   // Password change state
   const [newPassword, setNewPassword] = useState("");
@@ -104,8 +105,13 @@ export default function SettingsPage() {
       .then((s) => setDailyGoalVal(s.daily_goal))
       .catch(() => {});
 
-    if (canSpeak()) {
-      window.speechSynthesis.getVoices();
+    if (canSpeak() && typeof window !== "undefined" && "speechSynthesis" in window) {
+      const loadVoices = () => {
+        const v = window.speechSynthesis.getVoices();
+        if (v && v.length > 0) setAvailableVoices(v);
+      };
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
     }
   }, []);
 
@@ -844,6 +850,38 @@ export default function SettingsPage() {
             <option value={1.15}>1.15x (Fast)</option>
           </select>
         </div>
+
+        {/* Specific Voice Lock (Optional Override) */}
+        {availableVoices.length > 0 ? (
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/50 pt-4">
+            <div>
+              <div className="font-semibold text-ink">Lock specific browser voice</div>
+              <div className="text-xs sm:text-sm text-muted">
+                Pin your preferred system voice so it never changes automatically.
+              </div>
+            </div>
+            <select
+              value={settings.voiceURI || ""}
+              onChange={(e) => {
+                const uri = e.target.value;
+                update({ voiceURI: uri });
+                if (uri) {
+                  speak("Voice locked to this speaker", "en-US", { voiceURI: uri });
+                }
+              }}
+              className="field w-64 max-w-full text-xs"
+            >
+              <option value="">Consistent Best Match (Recommended)</option>
+              {availableVoices
+                .filter((v) => (v.lang || "").toLowerCase().startsWith("en"))
+                .map((v) => (
+                  <option key={v.voiceURI} value={v.voiceURI}>
+                    {v.name} ({v.lang})
+                  </option>
+                ))}
+            </select>
+          </div>
+        ) : null}
       </section>
 
       {/* 4. Account & Security */}
