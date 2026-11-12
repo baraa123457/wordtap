@@ -523,14 +523,36 @@ async function processOcrAndTranslate(imageBase64, target = "ar", srcLang = "aut
   };
 }
 
+async function startSnipOnTab(tabId) {
+  if (!tabId) return;
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: "ocr:start-snip" });
+  } catch (_) {
+    // If content script was not already loaded on this tab, inject it now!
+    try {
+      if (chrome.scripting) {
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          files: ["select-translate.js"],
+        });
+        setTimeout(() => {
+          chrome.tabs.sendMessage(tabId, { type: "ocr:start-snip" }).catch(() => {});
+        }, 120);
+      }
+    } catch (e) {
+      console.warn("Could not inject OCR script into tab:", e);
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Keyboard Shortcut & Commands Listener
 // ---------------------------------------------------------------------------
 chrome.commands.onCommand.addListener((command) => {
   if (command === "take-ocr-screenshot") {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
       if (tabs && tabs[0] && tabs[0].id) {
-        chrome.tabs.sendMessage(tabs[0].id, { type: "ocr:start-snip" }).catch(() => {});
+        startSnipOnTab(tabs[0].id);
       }
     });
   }
@@ -539,7 +561,7 @@ chrome.commands.onCommand.addListener((command) => {
 // ---------------------------------------------------------------------------
 // Messages from the page script and the popup
 // ---------------------------------------------------------------------------
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg) return;
 
   const reply = (promise) => {
@@ -553,13 +575,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     case "ocr:capture-screen":
       return reply(
         new Promise((resolve, reject) => {
-          chrome.tabs.captureVisibleTab(null, { format: "png" }, (dataUrl) => {
+          const winId = sender && sender.tab ? sender.tab.windowId : undefined;
+          chrome.tabs.captureVisibleTab(winId, { format: "png" }, (dataUrl) => {
             if (chrome.runtime.lastError || !dataUrl) {
-              reject(
-                new Error(
-                  chrome.runtime.lastError ? chrome.runtime.lastError.message : "Screen capture failed",
-                ),
-              );
+              chrome.tabs.captureVisibleTab(null, { format: "png" }, (retryUrl) => {
+                if (chrome.runtime.lastError || !retryUrl) {
+                  reject(
+                    new Error(
+                      chrome.runtime.lastError ? chrome.runtime.lastError.message : "Screen capture failed",
+                    ),
+                  );
+                } else {
+                  resolve({ ok: true, dataUrl: retryUrl });
+                }
+              });
             } else {
               resolve({ ok: true, dataUrl });
             }
@@ -568,13 +597,19 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       );
     case "ocr:process":
       return reply(processOcrAndTranslate(msg.image, msg.target, msg.srcLang));
-    case "ocr:start-on-active-tab":
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    case "ocr:start-tab":
+    case "ocr:start-on-active-tab": {
+      if (msg.tabId) {
+        startSnipOnTab(msg.tabId);
+        return reply(Promise.resolve({ ok: true }));
+      }
+      chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
         if (tabs && tabs[0] && tabs[0].id) {
-          chrome.tabs.sendMessage(tabs[0].id, { type: "ocr:start-snip" }).catch(() => {});
+          startSnipOnTab(tabs[0].id);
         }
       });
       return reply(Promise.resolve({ ok: true }));
+    }
     case "translate":
       return reply(translate(msg.text, msg.target, msg.srcLang, msg.context).then((r) => ({ ok: true, ...r })));
     case "save":

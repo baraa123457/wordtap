@@ -55,11 +55,17 @@ if ($("openOptionsBtn")) {
 }
 
 if ($("ocrCaptureBtn")) {
-  $("ocrCaptureBtn").addEventListener("click", async () => {
-    try {
-      await send({ type: "ocr:start-on-active-tab" });
-    } catch (_) {}
-    window.close();
+  $("ocrCaptureBtn").addEventListener("click", () => {
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+      const tab = tabs && tabs[0];
+      if (tab && tab.id) {
+        chrome.runtime.sendMessage({
+          type: "ocr:start-tab",
+          tabId: tab.id,
+        });
+      }
+      setTimeout(() => window.close(), 100);
+    });
   });
 }
 

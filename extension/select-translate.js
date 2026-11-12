@@ -945,6 +945,10 @@
     mount();
     hideAll();
 
+    // Ensure host spans the full viewport to direct interactions to the snipper overlay
+    host.style.width = "100vw";
+    host.style.height = "100vh";
+
     const overlay = document.createElement("div");
     overlay.className = "ocr-overlay";
 
@@ -972,10 +976,13 @@
 
     function cleanup() {
       window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("mousedown", onMouseDown, true);
       window.removeEventListener("mousemove", onMouseMove, true);
       window.removeEventListener("mouseup", onMouseUp, true);
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       if (activeOcrOverlay === overlay) activeOcrOverlay = null;
+      host.style.width = "0";
+      host.style.height = "0";
     }
 
     function onKeyDown(e) {
@@ -1149,7 +1156,7 @@
       }, 50);
     }
 
-    overlay.addEventListener("mousedown", onMouseDown, true);
+    window.addEventListener("mousedown", onMouseDown, true);
     window.addEventListener("mousemove", onMouseMove, true);
     window.addEventListener("mouseup", onMouseUp, true);
     window.addEventListener("keydown", onKeyDown, true);
