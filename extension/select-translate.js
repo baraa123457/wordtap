@@ -211,6 +211,7 @@
       gap: 6px;
       cursor: grab;
       user-select: none;
+      padding-right: 26px;
     }
     .orig-wrap {
       display: flex;
@@ -307,20 +308,28 @@
     .save-btn[hidden] { display: none !important; }
 
     .close-btn {
-      background: none;
-      border: none;
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       color: #959cc2;
       cursor: pointer;
-      font-size: 16px;
-      line-height: 1;
-      padding: 2px 4px;
-      border-radius: 4px;
-      flex: none;
-      transition: color 0.1s, background-color 0.1s;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+      padding: 0;
+      z-index: 10;
     }
     .close-btn:hover {
       color: #ffffff;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(239, 68, 68, 0.35);
+      border-color: rgba(239, 68, 68, 0.5);
+      transform: scale(1.1);
     }
 
     .tr-row {
@@ -447,6 +456,12 @@
 
   <!-- Compact Translation Card -->
   <div class="card" id="card" role="dialog" aria-label="WordTap Translation">
+    <button class="close-btn" id="closeBtn" title="Close (Esc)" aria-label="Close">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
     <div class="card-top" title="Drag to move card">
       <div class="orig-wrap">
         <span class="orig" id="orig"></span>
@@ -461,7 +476,6 @@
       </div>
       <div class="actions-wrap">
         <button class="save-btn" id="saveBtn">⭐ Save</button>
-        <button class="close-btn" id="closeBtn" title="Close (Esc)" aria-label="Close">×</button>
       </div>
     </div>
     <div class="tr-row">
@@ -815,7 +829,10 @@
     });
   });
 
-  closeBtn.addEventListener("click", hideAll);
+  closeBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    hideAll();
+  });
 
   iconBtn.addEventListener("click", (e) => {
     e.stopPropagation();
