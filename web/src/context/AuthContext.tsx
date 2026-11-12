@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { User } from "@supabase/supabase-js";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getAuthRedirectUrl, getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export type AuthState =
   | { status: "loading" }
@@ -24,6 +24,8 @@ type AuthContextValue = {
   state: AuthState;
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string) => Promise<SignUpResult>;
+  resendConfirmation: (email: string) => Promise<string | null>;
+  resetPassword: (email: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 };
 
@@ -72,16 +74,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string): Promise<SignUpResult> => {
-    const { data, error } = await getSupabase().auth.signUp({ email, password });
+    const emailRedirectTo = getAuthRedirectUrl("/auth/callback");
+    const { data, error } = await getSupabase().auth.signUp({
+      email,
+      password,
+      options: emailRedirectTo ? { emailRedirectTo } : undefined,
+    });
     if (error) return { error: error.message, needsConfirmation: false };
     return { error: null, needsConfirmation: data.session === null };
+  }, []);
+
+  const resendConfirmation = useCallback(async (email: string) => {
+    const emailRedirectTo = getAuthRedirectUrl("/auth/callback");
+    const { error } = await getSupabase().auth.resend({
+      type: "signup",
+      email,
+      options: emailRedirectTo ? { emailRedirectTo } : undefined,
+    });
+    return error ? error.message : null;
+  }, []);
+
+  const resetPassword = useCallback(async (email: string) => {
+    const redirectTo = getAuthRedirectUrl("/auth/callback?next=/settings%23password");
+    const { error } = await getSupabase().auth.resetPasswordForEmail(
+      email,
+      redirectTo ? { redirectTo } : undefined,
+    );
+    return error ? error.message : null;
   }, []);
 
   const signOut = useCallback(async () => {
     await getSupabase().auth.signOut();
   }, []);
 
-  const value = useMemo(() => ({ state, signIn, signUp, signOut }), [state, signIn, signUp, signOut]);
+  const value = useMemo(
+    () => ({ state, signIn, signUp, resendConfirmation, resetPassword, signOut }),
+    [state, signIn, signUp, resendConfirmation, resetPassword, signOut],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

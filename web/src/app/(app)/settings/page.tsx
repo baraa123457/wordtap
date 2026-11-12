@@ -812,7 +812,7 @@ export default function SettingsPage() {
           <div className="text-base font-bold text-ink mt-0.5">{userEmail || "Signed in"}</div>
         </div>
 
-        <form onSubmit={handlePasswordChange} className="grid gap-3 border-t border-line/50 pt-4">
+        <form id="password" onSubmit={handlePasswordChange} className="grid gap-3 border-t border-line/50 pt-4">
           <div className="font-semibold text-ink">Change password</div>
 
           {pwMessage ? (
