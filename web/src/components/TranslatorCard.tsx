@@ -786,6 +786,34 @@ export function TranslatorCard({
               </button>
             ) : null}
 
+            {/* Source Part of Speech Badges (noun / verb / adj / etc.) */}
+            {result?.partsOfSpeech && result.partsOfSpeech.length > 0 ? (
+              <div
+                className={`mt-2.5 flex items-center gap-1.5 flex-wrap ${
+                  isRTL ? "justify-end" : "justify-start"
+                }`}
+              >
+                {result.partsOfSpeech.map((pos) => {
+                  const p = pos.toLowerCase();
+                  const meta = POS_BADGES[p] || {
+                    en: p,
+                    ar: p,
+                    badge: "bg-subtitle/15 text-subtitle-edge dark:text-subtitle border-subtitle/30",
+                  };
+                  return (
+                    <span
+                      key={p}
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border tracking-wide shadow-2xs select-none ${meta.badge}`}
+                      title={`Part of speech: ${meta.en} (${meta.ar})`}
+                    >
+                      <span>{meta.en}</span>
+                      <span className="opacity-75 font-normal text-[10px]">· {meta.ar}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
+
             {/* Source Pronunciation / Phonetics */}
             {result?.sourcePronunciation ? (
               <p
