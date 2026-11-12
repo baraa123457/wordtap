@@ -4,7 +4,7 @@
 export const CONFIG = {
   SUPABASE_URL: "https://vjjilwbhvoxfigrokqch.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_YzMg6sNWjpwwfP2T-apa-Q_c3EHVBNa",
-  WEBSITE_URL: "http://localhost:3000",
+  WEBSITE_URL: "https://wordtap.vercel.app",
 };
 
 /**
