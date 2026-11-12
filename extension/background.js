@@ -491,21 +491,84 @@ async function deleteCloudWord(text, srcLang = "auto", targetLang = "ar") {
 // ---------------------------------------------------------------------------
 // OCR & Screen Snip Translation
 // ---------------------------------------------------------------------------
-async function processOcrAndTranslate(imageBase64, target = "ar", srcLang = "auto") {
-  const webUrl = CONFIG.WEBSITE_URL || "http://localhost:3000";
-  const ocrRes = await fetch(`${webUrl}/api/ocr`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image: imageBase64 }),
-  });
+const OCR_LANG_MAP = {
+  en: "eng",
+  de: "ger",
+  fr: "fre",
+  es: "spa",
+  it: "ita",
+  pt: "por",
+  tr: "tur",
+  ru: "rus",
+  ar: "ara",
+  ja: "jpn",
+  ko: "kor",
+  zh: "chs",
+};
 
-  if (!ocrRes.ok) {
-    const err = await ocrRes.json().catch(() => ({}));
-    throw new Error(err.error || "OCR server error (HTTP " + ocrRes.status + ")");
+async function recognizeTextFromImage(imageBase64, srcLang = "en") {
+  // 1. Try local WordTap server first if reachable
+  const webUrl = CONFIG.WEBSITE_URL || "http://localhost:3000";
+  try {
+    const localRes = await fetch(`${webUrl}/api/ocr`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imageBase64 }),
+    });
+    if (localRes.ok) {
+      const data = await localRes.json();
+      if (data && data.text && data.text.trim()) {
+        return data.text.trim();
+      }
+    }
+  } catch (_) {
+    // Local server not running; proceed to Cloud OCR
   }
 
-  const ocrData = await ocrRes.json();
-  const extractedText = (ocrData.text || "").trim();
+  // 2. Cloud OCR Engine (Works standalone everywhere, no localhost required)
+  const langCode = (srcLang && srcLang !== "auto" ? srcLang : "en").toLowerCase().slice(0, 2);
+  const ocrLang = OCR_LANG_MAP[langCode] || "eng";
+
+  const form = new URLSearchParams();
+  form.append("base64Image", imageBase64);
+  form.append("language", ocrLang);
+  form.append("scale", "true");
+  form.append("isOverlayRequired", "false");
+  form.append("detectOrientation", "true");
+
+  const apiKeys = ["K84725916788957", "helloworld"];
+  for (const key of apiKeys) {
+    try {
+      const cloudRes = await fetch("https://api.ocr.space/parse/image", {
+        method: "POST",
+        headers: {
+          apikey: key,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: form,
+      });
+
+      if (!cloudRes.ok) continue;
+
+      const cloudData = await cloudRes.json();
+      if (cloudData && Array.isArray(cloudData.ParsedResults) && cloudData.ParsedResults.length > 0) {
+        const text = (cloudData.ParsedResults[0].ParsedText || "")
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+
+        if (text) return text;
+      }
+    } catch (_) {}
+  }
+
+  throw new Error("No readable text detected in the selected area.");
+}
+
+async function processOcrAndTranslate(imageBase64, target = "ar", srcLang = "auto") {
+  const extractedText = await recognizeTextFromImage(imageBase64, srcLang);
   if (!extractedText) {
     throw new Error("No readable text detected in the selected area.");
   }

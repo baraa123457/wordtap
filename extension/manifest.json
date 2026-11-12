@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WordTap: Subtitle Click Translator",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Click any word in video subtitles to translate it and save it to your WordTap account. Shift+click translates the whole line.",
   "permissions": ["storage", "activeTab", "scripting"],
   "icons": {
@@ -13,6 +13,7 @@
   "host_permissions": [
     "https://translate.googleapis.com/*",
     "https://*.supabase.co/*",
+    "https://api.ocr.space/*",
     "<all_urls>"
   ],
   "background": {
