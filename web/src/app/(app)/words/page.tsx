@@ -94,6 +94,25 @@ export default function WordsPage() {
 
   const words = state.status === "ready" ? state.data : null;
 
+  // Broadcast all saved words to active extension scripts & local cache
+  useEffect(() => {
+    if (words && Array.isArray(words)) {
+      const payload = words.map((w) => ({
+        text: w.text,
+        translation: w.translation,
+        src: w.src_lang,
+        target: w.target_lang,
+      }));
+      try {
+        localStorage.setItem("wordtap_cached_words", JSON.stringify(payload));
+      } catch (_) {}
+      if (typeof window !== "undefined") {
+        window.postMessage({ type: "wordtap:words-synced", words: payload }, "*");
+        window.dispatchEvent(new CustomEvent("wordtap_words_synced", { detail: { words: payload } }));
+      }
+    }
+  }, [words]);
+
   const languageTabs = useMemo(() => {
     if (!words) return [];
     const counts = new Map<string, number>();

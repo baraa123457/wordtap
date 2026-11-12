@@ -149,11 +149,88 @@
 
   updateSavedWordsFromStorage();
 
+  function syncFromWebsiteStorage() {
+    try {
+      const cached = localStorage.getItem("wordtap_cached_words");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          for (const item of parsed) {
+            if (item && item.text) {
+              const n = normWord(item.text);
+              if (n) savedWordsSet.add(n);
+              savedWordsSet.add(item.text.trim().toLowerCase());
+            }
+          }
+          safeSendMessage({ type: "words:save-batch", words: parsed });
+        }
+      }
+      // Check for Supabase session in localStorage
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("sb-") && k.endsWith("-auth-token")) {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            const session = JSON.parse(raw);
+            if (session && session.access_token) {
+              safeSendMessage({ type: "auth:sync-session", session });
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  syncFromWebsiteStorage();
+
+  window.addEventListener("message", (e) => {
+    if (!e.data || typeof e.data !== "object") return;
+    if (e.data.type === "wordtap:words-synced" && Array.isArray(e.data.words)) {
+      for (const item of e.data.words) {
+        if (item && item.text) {
+          const n = normWord(item.text);
+          if (n) savedWordsSet.add(n);
+          savedWordsSet.add(item.text.trim().toLowerCase());
+        }
+      }
+      safeSendMessage({ type: "words:save-batch", words: e.data.words });
+      if (lastEntry && isWordSaved(lastEntry.text)) {
+        setSaveBtnState(true);
+      }
+    } else if (e.data.type === "wordtap:word-deleted" && e.data.text) {
+      const n = normWord(e.data.text);
+      savedWordsSet.delete(n);
+      savedWordsSet.delete(e.data.text.trim().toLowerCase());
+      if (lastEntry && normWord(lastEntry.text) === n) {
+        setSaveBtnState(false);
+      }
+    }
+  });
+
+  window.addEventListener("wordtap_words_synced", (e) => {
+    if (e.detail && Array.isArray(e.detail.words)) {
+      for (const item of e.detail.words) {
+        if (item && item.text) {
+          const n = normWord(item.text);
+          if (n) savedWordsSet.add(n);
+          savedWordsSet.add(item.text.trim().toLowerCase());
+        }
+      }
+      safeSendMessage({ type: "words:save-batch", words: e.detail.words });
+      if (lastEntry && isWordSaved(lastEntry.text)) {
+        setSaveBtnState(true);
+      }
+    }
+  });
+
   window.addEventListener("wordtap:word-deleted", (e) => {
     if (e.detail && e.detail.text) {
       const n = normWord(e.detail.text);
       savedWordsSet.delete(n);
       savedWordsSet.delete(e.detail.text.trim().toLowerCase());
+      if (lastEntry && normWord(lastEntry.text) === n) {
+        setSaveBtnState(false);
+      }
     }
   });
 
@@ -708,11 +785,19 @@
       saveBtn.classList.add("saved");
       saveBtn.disabled = true;
       saveBtn.innerHTML = `✓ Saved`;
+      saveBtn.style.background = "rgba(52, 211, 153, 0.2)";
+      saveBtn.style.color = "#34d399";
+      saveBtn.style.borderColor = "rgba(52, 211, 153, 0.4)";
+      saveBtn.style.cursor = "default";
       saveBtn.title = "Already saved in your words";
     } else {
       saveBtn.classList.remove("saved");
       saveBtn.disabled = false;
       saveBtn.innerHTML = `⭐ Save`;
+      saveBtn.style.background = "#facc3b";
+      saveBtn.style.color = "#12152e";
+      saveBtn.style.borderColor = "#d4a311";
+      saveBtn.style.cursor = "pointer";
       saveBtn.title = "Save to My Words";
     }
   }

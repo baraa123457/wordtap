@@ -154,14 +154,18 @@ function configured() {
   return Boolean(url && key) && !url.includes("YOUR-PROJECT") && !key.startsWith("YOUR-");
 }
 
-async function request(path, { body, token } = {}) {
+async function request(path, { body, token, method } = {}) {
+  const httpMethod = method || (body ? "POST" : "GET");
+  const headers = {
+    apikey: CONFIG.SUPABASE_ANON_KEY,
+    Authorization: "Bearer " + (token || CONFIG.SUPABASE_ANON_KEY),
+  };
+  if (body) {
+    headers["Content-Type"] = "application/json";
+  }
   const res = await fetch(CONFIG.SUPABASE_URL + path, {
-    method: "POST",
-    headers: {
-      apikey: CONFIG.SUPABASE_ANON_KEY,
-      Authorization: "Bearer " + (token || CONFIG.SUPABASE_ANON_KEY),
-      "Content-Type": "application/json",
-    },
+    method: httpMethod,
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
@@ -737,6 +741,49 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
       });
       return reply(Promise.resolve({ ok: true }));
+    }
+    case "auth:sync-session": {
+      if (msg.session && msg.session.access_token) {
+        return reply(
+          storeSession(msg.session)
+            .then(() => pullCloudWords())
+            .then(() => ({ ok: true }))
+        );
+      }
+      return reply(Promise.resolve({ ok: false }));
+    }
+    case "words:save-batch": {
+      if (Array.isArray(msg.words)) {
+        return reply(
+          enqueue(async () => {
+            const words = await readWords();
+            const { deleted = [] } = await chrome.storage.local.get({ deleted: [] });
+            for (const item of msg.words) {
+              if (!item || !item.text) continue;
+              const clean = item.text.replace(/::[a-z]{2,5}$/i, "").trim();
+              if (deleted.includes(clean.toLowerCase())) continue;
+              const src = (item.src && item.src !== "auto") ? item.src.toLowerCase() : "auto";
+              const target = item.target || "ar";
+              const key = src + "|" + target + "|" + clean.toLowerCase();
+              if (!words[key]) {
+                words[key] = {
+                  text: clean,
+                  translation: item.translation || "",
+                  src: item.src || "auto",
+                  lang: target,
+                  count: 1,
+                  pending: 0,
+                  firstSeen: Date.now(),
+                  lastSeen: Date.now(),
+                };
+              }
+            }
+            await chrome.storage.local.set({ words });
+            return { ok: true, count: Object.keys(words).length };
+          })
+        );
+      }
+      return reply(Promise.resolve({ ok: false }));
     }
     case "translate":
       return reply(translate(msg.text, msg.target, msg.srcLang, msg.context).then((r) => ({ ok: true, ...r })));

@@ -90,6 +90,33 @@
 
   updateSavedWordsFromStorage();
 
+  window.addEventListener("message", (e) => {
+    if (!e.data || typeof e.data !== "object") return;
+    if (e.data.type === "wordtap:words-synced" && Array.isArray(e.data.words)) {
+      for (const item of e.data.words) {
+        if (item && item.text) {
+          const n = normWord(item.text);
+          if (n) savedWordsSet.add(n);
+          savedWordsSet.add(item.text.trim().toLowerCase());
+        }
+      }
+      safeSendMessage({ type: "words:save-batch", words: e.data.words });
+    }
+  });
+
+  window.addEventListener("wordtap_words_synced", (e) => {
+    if (e.detail && Array.isArray(e.detail.words)) {
+      for (const item of e.detail.words) {
+        if (item && item.text) {
+          const n = normWord(item.text);
+          if (n) savedWordsSet.add(n);
+          savedWordsSet.add(item.text.trim().toLowerCase());
+        }
+      }
+      safeSendMessage({ type: "words:save-batch", words: e.detail.words });
+    }
+  });
+
   window.addEventListener("wordtap:word-deleted", (e) => {
     if (e.detail && e.detail.text) {
       const n = normWord(e.detail.text);
