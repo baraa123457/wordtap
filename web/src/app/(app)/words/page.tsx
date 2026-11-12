@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { addCustomWord, deleteWord, fetchWords, updateWordDetails, updateWordLanguage, updateWordTranslation } from "@/lib/api";
+import {
+  addCustomWord,
+  deleteWord,
+  deleteWordByText,
+  fetchWords,
+  updateWordDetails,
+  updateWordLanguage,
+  updateWordTranslation,
+} from "@/lib/api";
 import { formatDueIn, wordStatus, type WordStatus } from "@/lib/format";
 import type { Word } from "@/lib/schemas";
 import { canSpeak, speak } from "@/lib/speech";
@@ -136,8 +144,37 @@ export default function WordsPage() {
     setActionError(null);
     try {
       await deleteWord(word.id);
+      await deleteWordByText(word.text, word.src_lang).catch(() => {});
       setData(all.filter((w) => w.id !== word.id));
       setConfirmId(null);
+
+      // Record tombstone in localStorage so the extension immediately purges it
+      try {
+        const raw = localStorage.getItem("wordtap_deleted_words");
+        const list = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(list)) {
+          list.push({ text: word.text, srcLang: word.src_lang });
+          if (list.length > 200) list.shift();
+          localStorage.setItem("wordtap_deleted_words", JSON.stringify(list));
+        }
+      } catch (_) {}
+
+      // Broadcast to any active extension scripts
+      if (typeof window !== "undefined") {
+        window.postMessage(
+          {
+            type: "wordtap:word-deleted",
+            text: word.text,
+            srcLang: word.src_lang,
+          },
+          "*",
+        );
+        window.dispatchEvent(
+          new CustomEvent("wordtap_word_deleted", {
+            detail: { text: word.text, srcLang: word.src_lang },
+          }),
+        );
+      }
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Could not delete the word.");
     } finally {

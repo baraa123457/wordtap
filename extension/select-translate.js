@@ -26,10 +26,36 @@
       } catch (_) {}
     }
     syncSettingsFromWeb();
-    window.addEventListener("storage", syncSettingsFromWeb);
+    function syncDeletedWordsFromWeb() {
+      try {
+        const raw = localStorage.getItem("wordtap_deleted_words");
+        if (raw && isContextValid() && chrome.storage) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list) && list.length > 0) {
+            for (const item of list) {
+              const text = typeof item === "string" ? item : item.text;
+              const srcLang = typeof item === "object" ? item.srcLang : "auto";
+              safeSendMessage({ type: "word:delete", text, srcLang });
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    syncDeletedWordsFromWeb();
+    window.addEventListener("storage", (e) => {
+      if (e.key === "wordtap_settings") syncSettingsFromWeb();
+      if (e.key === "wordtap_deleted_words") syncDeletedWordsFromWeb();
+    });
     window.addEventListener("message", (e) => {
       if (e.data && e.data.type === "wordtap:sync-settings") {
         syncSettingsFromWeb();
+      }
+      if (e.data && e.data.type === "wordtap:word-deleted") {
+        safeSendMessage({
+          type: "word:delete",
+          text: e.data.text,
+          srcLang: e.data.srcLang || "auto",
+        });
       }
     });
   }

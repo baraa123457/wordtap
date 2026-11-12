@@ -331,8 +331,9 @@ async function doFlush(forceAll = false) {
       continue;
     }
 
-    const sending = forceAll ? (w.count || 1) : pendingOf(w);
-    if (!forceAll && sending <= 0) continue;
+    // Only push words that actually have pending changes to upload
+    const sending = pendingOf(w);
+    if (sending <= 0) continue;
 
     let rejected = false;
     try {
@@ -364,8 +365,19 @@ function flush(forceAll = false) {
   return flushing;
 }
 
+function isValidWordToSave(text) {
+  if (!text || typeof text !== "string") return false;
+  const clean = text.trim();
+  if (clean.length < 2) return false;
+  if (clean.length > 150) return false;
+  return true;
+}
+
 /** Called after every save. Reports where the word ended up. */
 async function saveWord(entry) {
+  if (!entry || !entry.text || !isValidWordToSave(entry.text)) {
+    return { ok: false, error: "Invalid word" };
+  }
   await saveLocal(entry);
   if (!configured()) return { ok: true, cloud: "local" };
   const { session } = await chrome.storage.local.get("session");
@@ -430,20 +442,23 @@ async function addHistory(entry) {
 async function deleteCloudWord(text, srcLang = "auto", targetLang = "ar") {
   if (!text) return { ok: true };
   const clean = text.trim();
+
   // 1. Remove from local words cache and record tombstone
   await enqueue(async () => {
     const words = await readWords();
-    const srcCode = srcLang && srcLang !== "auto" ? srcLang.toLowerCase() : "auto";
-    const key = srcCode + "|" + (targetLang || "ar") + "|" + clean.toLowerCase();
-    delete words[key];
+    // Delete ALL matching keys in local words map regardless of language prefix
+    for (const k of Object.keys(words)) {
+      const w = words[k];
+      if (w && w.text && w.text.trim().toLowerCase() === clean.toLowerCase()) {
+        delete words[k];
+      }
+    }
     const { deleted = [] } = await chrome.storage.local.get({ deleted: [] });
     if (!deleted.includes(clean.toLowerCase())) {
       deleted.push(clean.toLowerCase());
       if (deleted.length > 500) deleted.shift();
-      await chrome.storage.local.set({ words, deleted });
-    } else {
-      await chrome.storage.local.set({ words });
     }
+    await chrome.storage.local.set({ words, deleted });
   });
 
   // 2. Delete from Supabase if configured and user is signed in
@@ -455,6 +470,16 @@ async function deleteCloudWord(text, srcLang = "auto", targetLang = "ar") {
           body: { p_text: clean, p_src_lang: srcLang || "auto" },
           token,
         });
+        // Also perform direct delete to catch any tagged entries (e.g., "word::en")
+        const enc = encodeURIComponent(clean);
+        await request("/rest/v1/words?text=ilike." + enc, {
+          method: "DELETE",
+          token,
+        }).catch(() => {});
+        await request("/rest/v1/words?text=ilike." + encodeURIComponent(clean + "::*"), {
+          method: "DELETE",
+          token,
+        }).catch(() => {});
       }
     } catch (e) {
       console.warn("Could not delete word from cloud:", e);
