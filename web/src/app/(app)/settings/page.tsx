@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { fetchStats, fetchWords, setDailyGoal, deleteAccount } from "@/lib/api";
 import { exportWordsToCsv, downloadCsvFile } from "@/lib/export";
+import { exportWordsToAnki, downloadAnkiFile } from "@/lib/anki";
 import { getStoredSettings, saveStoredSettings, type UserSettings, type PracticeMode } from "@/lib/settings";
 import { canSpeak, speak } from "@/lib/speech";
 import { SpeakerIcon } from "@/components/Icons";
@@ -57,9 +58,29 @@ export default function SettingsPage() {
       }
       const csv = exportWordsToCsv(words);
       downloadCsvFile(csv, `wordtap-vocabulary-${new Date().toISOString().slice(0, 10)}.csv`);
-      setExportMessage(`Successfully exported ${words.length} saved word${words.length === 1 ? "" : "s"}!`);
+      setExportMessage(`Successfully exported ${words.length} saved word${words.length === 1 ? "" : "s"} as CSV!`);
     } catch (e: unknown) {
       setExportMessage(e instanceof Error ? e.message : "Failed to export words.");
+    } finally {
+      setExportBusy(false);
+      setTimeout(() => setExportMessage(null), 5000);
+    }
+  }
+
+  async function handleExportAnki() {
+    setExportBusy(true);
+    setExportMessage(null);
+    try {
+      const words = await fetchWords();
+      if (!words || words.length === 0) {
+        setExportMessage("You don't have any saved words to export yet.");
+        return;
+      }
+      const ankiText = exportWordsToAnki(words);
+      downloadAnkiFile(ankiText, `wordtap-anki-${new Date().toISOString().slice(0, 10)}.txt`);
+      setExportMessage(`Exported ${words.length} words formatted for Anki! Import via Anki -> File -> Import.`);
+    } catch (e: unknown) {
+      setExportMessage(e instanceof Error ? e.message : "Failed to export for Anki.");
     } finally {
       setExportBusy(false);
       setTimeout(() => setExportMessage(null), 5000);
@@ -890,25 +911,32 @@ export default function SettingsPage() {
         <div className="border-t border-line/50 pt-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="font-semibold text-ink">Your data (Export CSV)</div>
+              <div className="font-semibold text-ink">Your data (Export CSV &amp; Anki)</div>
               <div className="text-xs sm:text-sm text-muted">
-                Download a clean CSV file of all your saved words, translations, and subtitle sentences.
+                Download your saved vocabulary with full subtitle sentences for offline use or Anki flashcards.
               </div>
               {exportMessage ? (
                 <div className="text-xs font-semibold text-subtitle mt-1">{exportMessage}</div>
               ) : null}
             </div>
-            <button
-              type="button"
-              disabled={exportBusy}
-              onClick={() => void handleExportCsv()}
-              className="btn btn-secondary min-w-36 shrink-0 text-xs font-semibold flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              <span>{exportBusy ? "Exporting…" : "Export CSV"}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={exportBusy}
+                onClick={() => void handleExportCsv()}
+                className="btn btn-secondary text-xs font-semibold flex items-center justify-center gap-2"
+              >
+                <span>Export CSV</span>
+              </button>
+              <button
+                type="button"
+                disabled={exportBusy}
+                onClick={() => void handleExportAnki()}
+                className="btn btn-secondary text-xs font-semibold flex items-center justify-center gap-2"
+              >
+                <span>Export Anki Deck</span>
+              </button>
+            </div>
           </div>
         </div>
 
