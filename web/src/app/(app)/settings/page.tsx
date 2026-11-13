@@ -869,11 +869,12 @@ export default function SettingsPage() {
                   speak("Voice locked to this speaker", "en-US", { voiceURI: uri });
                 }
               }}
-              className="field w-64 max-w-full text-xs"
+              className="field w-72 max-w-full text-xs"
             >
-              <option value="">Consistent Best Match (Recommended)</option>
+              <option value="">Consistent Best Match for Language &amp; Gender (Recommended)</option>
               {availableVoices
-                .filter((v) => (v.lang || "").toLowerCase().startsWith("en"))
+                .slice()
+                .sort((a, b) => (a.lang || "").localeCompare(b.lang || "") || a.name.localeCompare(b.name))
                 .map((v) => (
                   <option key={v.voiceURI} value={v.voiceURI}>
                     {v.name} ({v.lang})

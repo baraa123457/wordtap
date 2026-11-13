@@ -29,12 +29,14 @@ export type SpeakOptions = {
 
 const FEMALE_NAMES = [
   "female", "woman", "zira", "samantha", "katja", "victoria", "karen", "fiona", "tessa",
-  "helena", "hedda", "amira", "salma", "stephanie", "susan", "linda", "joana", "anna", "petra"
+  "helena", "hedda", "amira", "salma", "stephanie", "susan", "linda", "joana", "anna", "petra",
+  "leila", "meryem", "zeina", "fatima", "nour", "mariam", "monica", "elena", "lucia"
 ];
 
 const MALE_NAMES = [
   "male", "man", "david", "george", "alex", "fred", "stefan", "daniel", "oliver", "tarik",
-  "shakir", "mark", "richard", "thomas", "paul", "martin", "hans"
+  "shakir", "mark", "richard", "thomas", "paul", "martin", "hans", "maged", "mehdi", "omar",
+  "hassan", "ali", "khalid", "naayf", "pablo", "jorge", "alain"
 ];
 
 export function detectVoiceGender(voice: SpeechSynthesisVoice): "female" | "male" | "unknown" {
@@ -149,24 +151,22 @@ export function speak(text: string, lang: string, options?: SpeakOptions | numbe
   const effectiveLang = lang && lang !== "auto" ? lang : hasArabic ? "ar" : "en";
   const prefix = effectiveLang.toLowerCase().slice(0, 2);
 
-  // 1. Arabic: Most Windows/browser environments lack local Arabic TTS voices.
-  // Play crystal-clear native Google Arabic TTS directly!
-  if (prefix === "ar" || hasArabic) {
-    playRemoteTTS(cleanText, "ar");
-    return;
-  }
-
-  // If SpeechSynthesis is not supported, use remote TTS
+  // 1. If SpeechSynthesis is available and has an Arabic voice, use it so gender & pitch apply!
+  // If no local voice exists for this language, fallback to remote TTS.
   if (!("speechSynthesis" in window)) {
     playRemoteTTS(cleanText, prefix);
     return;
   }
 
   const voices = window.speechSynthesis.getVoices();
-  const langVoices = voices.filter((v) => v.lang.toLowerCase().startsWith(prefix));
+  const langVoices = voices.filter((v) => {
+    const l = (v.lang || "").toLowerCase();
+    return l.startsWith(prefix) || l.replace("_", "-").startsWith(prefix);
+  });
 
-  // 2. If no local voice exists for this language, fallback to remote TTS
-  if (langVoices.length === 0 && prefix !== "en") {
+  // If the browser doesn't have a voice for this language (e.g. Arabic on older Windows without language pack),
+  // fallback to remote Google TTS
+  if (langVoices.length === 0) {
     playRemoteTTS(cleanText, prefix);
     return;
   }
