@@ -22,13 +22,18 @@ describe("parseImportFile", () => {
     expect(rows[1]!.translation).toBe("مذهول");
   });
 
-  it("parses simple dash or colon lists", () => {
-    const list = `Apple - تفاحة\nBanana : موز`;
+  it("swaps inverted pairs where column 1 is Arabic and column 2 is English", () => {
+    const list = `متوافق\tCompatible\nنزاهة - Integrity`;
     const rows = parseImportFile(list);
     expect(rows).toHaveLength(2);
-    expect(rows[0]!.text).toBe("Apple");
-    expect(rows[0]!.translation).toBe("تفاحة");
-    expect(rows[1]!.text).toBe("Banana");
-    expect(rows[1]!.translation).toBe("موز");
+    expect(rows[0]!.text).toBe("Compatible");
+    expect(rows[0]!.translation).toBe("متوافق");
+    expect(rows[0]!.src_lang).toBe("en");
+    expect(rows[0]!.target_lang).toBe("ar");
+
+    expect(rows[1]!.text).toBe("Integrity");
+    expect(rows[1]!.translation).toBe("نزاهة");
+    expect(rows[1]!.src_lang).toBe("en");
+    expect(rows[1]!.target_lang).toBe("ar");
   });
 });

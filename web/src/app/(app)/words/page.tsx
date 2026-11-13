@@ -177,11 +177,27 @@ export default function WordsPage() {
 
       for (const row of rows) {
         try {
+          const isTextArabic = /[\u0600-\u06FF]/.test(row.text);
+          const isTransArabic = /[\u0600-\u06FF]/.test(row.translation);
+
+          let text = row.text;
+          let translation = row.translation;
+          let src_lang = row.src_lang || "en";
+          let target_lang = row.target_lang || "ar";
+
+          // If imported with Arabic as the word and English as translation, swap so English is learned
+          if (isTextArabic && !isTransArabic) {
+            text = row.translation;
+            translation = row.text;
+            src_lang = "en";
+            target_lang = "ar";
+          }
+
           await addCustomWord(
-            row.text,
-            row.translation,
-            row.src_lang || "en",
-            row.target_lang || "ar",
+            text,
+            translation,
+            src_lang,
+            target_lang,
             row.sentence,
             row.source_title
           );
@@ -408,8 +424,22 @@ export default function WordsPage() {
     setAddBusy(true);
     setActionError(null);
     try {
+      const isInputArabic = /[\u0600-\u06FF]/.test(newText.trim());
+      const isTransArabic = /[\u0600-\u06FF]/.test(newTranslation.trim());
+
+      let wordToSave = newText.trim();
+      let transToSave = newTranslation.trim();
+      let srcLangToSave = newLang;
+
+      // If user typed Arabic in the word box and English in translation box, auto-swap them
+      if (isInputArabic && !isTransArabic) {
+        wordToSave = newTranslation.trim();
+        transToSave = newText.trim();
+        srcLangToSave = "en";
+      }
+
       const target = getStoredSettings().targetLang || "ar";
-      await addCustomWord(newText.trim(), newTranslation.trim(), newLang, target);
+      await addCustomWord(wordToSave, transToSave, srcLangToSave, target);
       setNewText("");
       setNewTranslation("");
       setShowAddForm(false);

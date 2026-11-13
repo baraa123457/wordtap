@@ -10,6 +10,43 @@ export type ImportedWordRow = {
   source_title?: string;
 };
 
+const ARABIC_CHAR_REGEX = /[\u0600-\u06FF]/;
+
+/**
+ * Normalizes word and translation order:
+ * If column 1 is Arabic (e.g. "متوافق") and column 2 is English (e.g. "Compatible"),
+ * automatically swap them so the target vocabulary is the foreign word ("Compatible")
+ * and the translation is Arabic ("متوافق"), with src_lang="en" and target_lang="ar".
+ */
+export function normalizeImportPair(
+  col1: string,
+  col2: string,
+  explicitSrc?: string,
+  explicitTarget?: string
+): { text: string; translation: string; src_lang: string; target_lang: string } {
+  const c1 = (col1 || "").trim();
+  const c2 = (col2 || "").trim();
+  const c1IsArabic = ARABIC_CHAR_REGEX.test(c1);
+  const c2IsArabic = ARABIC_CHAR_REGEX.test(c2);
+
+  if (c1IsArabic && !c2IsArabic) {
+    // Inverted pair: Column 1 is Arabic translation, Column 2 is English/Foreign word!
+    return {
+      text: c2,
+      translation: c1,
+      src_lang: explicitSrc && explicitSrc !== "ar" ? explicitSrc : "en",
+      target_lang: "ar",
+    };
+  }
+
+  return {
+    text: c1,
+    translation: c2,
+    src_lang: explicitSrc || (c2IsArabic ? "en" : "auto"),
+    target_lang: explicitTarget || (c2IsArabic ? "ar" : "ar"),
+  };
+}
+
 /**
  * Parses raw text into imported word items.
  * Supports:
@@ -39,9 +76,12 @@ export function parseImportFile(rawContent: string): ImportedWordRow[] {
     if (line.includes("\t")) {
       const parts = line.split("\t").map((p) => p.trim());
       if (parts[0] && parts[1]) {
+        const pair = normalizeImportPair(parts[0], parts[1]);
         results.push({
-          text: parts[0],
-          translation: parts[1],
+          text: pair.text,
+          translation: pair.translation,
+          src_lang: pair.src_lang,
+          target_lang: pair.target_lang,
           sentence: parts[2] || "",
           source_title: parts[3] || "Imported deck",
         });
@@ -53,12 +93,13 @@ export function parseImportFile(rawContent: string): ImportedWordRow[] {
     if (line.includes(",")) {
       const cells = parseCsvLine(line);
       if (cells.length >= 2 && cells[0] && cells[1]) {
+        const pair = normalizeImportPair(cells[0], cells[1], cells[2], cells[3]);
         // If WordTap format: Word,Translation,SourceLang,TargetLang,Box,Sentence,SourceTitle,SourceURL
         results.push({
-          text: cells[0],
-          translation: cells[1],
-          src_lang: cells[2] || undefined,
-          target_lang: cells[3] || undefined,
+          text: pair.text,
+          translation: pair.translation,
+          src_lang: pair.src_lang,
+          target_lang: pair.target_lang,
           sentence: cells[5] || "",
           source_title: cells[6] || "Imported CSV",
         });
@@ -69,9 +110,12 @@ export function parseImportFile(rawContent: string): ImportedWordRow[] {
     // 3. Fallback: "Word - Translation" or "Word : Translation"
     const dashMatch = line.match(/^([^:-]+)\s*[:—–-]\s*(.+)$/);
     if (dashMatch && dashMatch[1] && dashMatch[2]) {
+      const pair = normalizeImportPair(dashMatch[1].trim(), dashMatch[2].trim());
       results.push({
-        text: dashMatch[1].trim(),
-        translation: dashMatch[2].trim(),
+        text: pair.text,
+        translation: pair.translation,
+        src_lang: pair.src_lang,
+        target_lang: pair.target_lang,
         source_title: "Quick list",
       });
     }
