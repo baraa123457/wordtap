@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { AuthActions } from "@/components/AuthActions";
 import { Logo } from "@/components/Logo";
 import { SubtitleDemo } from "@/components/SubtitleDemo";
@@ -9,8 +11,27 @@ import { RealAppShowcase } from "@/components/RealAppShowcase";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function LandingClient() {
+  const router = useRouter();
+  const { state } = useAuth();
   const [lang, setLang] = useState<"en" | "ar">("en");
   const isAr = lang === "ar";
+
+  useEffect(() => {
+    if (state.status === "signed-in") {
+      router.replace("/dashboard");
+    }
+  }, [state.status, router]);
+
+  if (state.status === "signed-in" || state.status === "loading") {
+    return (
+      <div className="mx-auto flex min-h-dvh w-full max-w-5xl items-center justify-center">
+        <div className="flex items-center gap-2 text-xs font-semibold text-muted">
+          <span className="w-2.5 h-2.5 rounded-full bg-subtitle animate-pulse" />
+          <span>Opening your dashboard…</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
