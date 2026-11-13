@@ -30,7 +30,9 @@
         "*://www.disneyplus.com/*",
         "*://www.udemy.com/*",
         "*://www.coursera.org/*",
-        "*://www.ted.com/*"
+        "*://www.ted.com/*",
+        "*://*.bbc.com/*",
+        "*://*.bbc.co.uk/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle",

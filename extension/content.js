@@ -13,6 +13,15 @@
     ".c-video-captions-container", // Coursera
     ".Transcript__cue", // TED
     ".vjs-text-track-display", // generic video.js / HTML5
+    // BBC Video Player & SMP Subtitles
+    ".smp-subtitles",
+    ".smp-subtitles-container",
+    '[class*="subtitles-container"]',
+    '[class*="subtitles-cue"]',
+    '[class*="smp-subtitles"]',
+    '[class*="gel-video-subtitles"]',
+    '[data-bbc-container="subtitles"]',
+    "smp-toucan-player",
   ].join(",");
 
   const WORD_CHAR = /[\p{L}\p{M}\p{N}'’-]/u;
@@ -391,8 +400,10 @@
     const seg =
       el.closest(".caption-visual-line") ||
       el.closest(".player-timedtext-text-container") ||
+      el.closest('[class*="subtitles-cue"]') ||
+      el.closest('[class*="subtitles-line"]') ||
       cont;
-    return seg.innerText.replace(/\s+/g, " ").trim();
+    return (seg.innerText || seg.textContent || "").replace(/\s+/g, " ").trim();
   }
 
   // ---------- Keep the video playing ----------
