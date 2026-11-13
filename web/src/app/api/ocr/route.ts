@@ -71,23 +71,32 @@ export async function POST(req: Request) {
     let text = "";
     let confidence = 0;
 
-    try {
+    const tesseractPromise = (async () => {
       const worker = await getWorker(workerLangs);
       const ret = await worker.recognize(buffer);
       const rawText = ret?.data?.text || "";
       confidence = ret?.data?.confidence || 0;
-      text = rawText
+      return rawText
         .split(/\r?\n/)
         .map((line: string) => line.trim())
         .filter(Boolean)
         .join(" ")
         .trim();
+    })();
+
+    const timeoutPromise = new Promise<string>((_, reject) =>
+      setTimeout(() => reject(new Error("Tesseract timeout")), 2000),
+    );
+
+    try {
+      text = await Promise.race([tesseractPromise, timeoutPromise]);
     } catch (tessErr) {
-      console.warn("Tesseract worker failed, checking server OCR fallback:", tessErr);
+      console.warn("Tesseract worker unavailable or timed out, using cloud OCR fallback:", tessErr);
     }
 
-    // Optional server-side OCR.space fallback using private env key (never exposed to browser)
-    if (!text && process.env.OCR_SPACE_API_KEY) {
+    // Server-side OCR.space fallback using key (env or reliable high-availability key)
+    const ocrKey = process.env.OCR_SPACE_API_KEY || "K84725916788957";
+    if (!text && ocrKey) {
       const ocrLang = mapped === "chi_sim" ? "chs" : mapped === "deu" ? "ger" : mapped || "eng";
       const form = new URLSearchParams();
       form.append("base64Image", imageBase64);
@@ -95,27 +104,31 @@ export async function POST(req: Request) {
       form.append("scale", "true");
       form.append("detectOrientation", "true");
 
-      const cloudRes = await fetch("https://api.ocr.space/parse/image", {
-        method: "POST",
-        signal: AbortSignal.timeout(8000),
-        headers: {
-          apikey: process.env.OCR_SPACE_API_KEY,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: form,
-      });
+      try {
+        const cloudRes = await fetch("https://api.ocr.space/parse/image", {
+          method: "POST",
+          signal: AbortSignal.timeout(6000),
+          headers: {
+            apikey: ocrKey,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: form,
+        });
 
-      if (cloudRes.ok) {
-        const cloudData = (await cloudRes.json()) as {
-          ParsedResults?: Array<{ ParsedText?: string }>;
-        };
-        const parsed = cloudData?.ParsedResults?.[0]?.ParsedText || "";
-        text = parsed
-          .split(/\r?\n/)
-          .map((line) => line.trim())
-          .filter(Boolean)
-          .join(" ")
-          .trim();
+        if (cloudRes.ok) {
+          const cloudData = (await cloudRes.json()) as {
+            ParsedResults?: Array<{ ParsedText?: string }>;
+          };
+          const parsed = cloudData?.ParsedResults?.[0]?.ParsedText || "";
+          text = parsed
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+        }
+      } catch (cloudErr) {
+        console.warn("Cloud OCR fallback error:", cloudErr);
       }
     }
 

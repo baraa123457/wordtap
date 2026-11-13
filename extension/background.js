@@ -785,13 +785,14 @@ const OCR_LANG_MAP = {
 };
 
 async function recognizeTextFromImage(imageBase64, srcLang = "en") {
-  // 1. Try local/configured WordTap server first if reachable
+  // 1. Try local/configured WordTap server first if reachable (max 3s timeout)
   const webUrl = await getWebsiteUrl();
   try {
     const localRes = await fetch(`${webUrl}/api/ocr`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: imageBase64, lang: srcLang }),
+      signal: AbortSignal.timeout(3000),
     });
     if (localRes.ok) {
       const data = await localRes.json();
@@ -800,7 +801,7 @@ async function recognizeTextFromImage(imageBase64, srcLang = "en") {
       }
     }
   } catch (_) {
-    // Web server not running; proceed to Cloud OCR fallback
+    // Web server not running or timed out; proceed to Cloud OCR fallback
   }
 
   // 2. Cloud OCR Engine fallback
@@ -824,6 +825,7 @@ async function recognizeTextFromImage(imageBase64, srcLang = "en") {
     try {
       const cloudRes = await fetch("https://api.ocr.space/parse/image", {
         method: "POST",
+        signal: AbortSignal.timeout(6000),
         headers: {
           apikey: key,
           "Content-Type": "application/x-www-form-urlencoded",
