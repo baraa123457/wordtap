@@ -52,6 +52,7 @@ function PracticeLoader() {
     const counts = new Map<string, number>();
     for (const w of words) {
       const code = (w.src_lang || "auto").toLowerCase();
+      if (code === "ar") continue;
       counts.set(code, (counts.get(code) || 0) + 1);
     }
     return Array.from(counts.entries()).map(([code, count]) => ({

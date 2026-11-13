@@ -272,6 +272,8 @@ export default function WordsPage() {
     const counts = new Map<string, number>();
     for (const w of words) {
       const code = (w.src_lang || "auto").toLowerCase();
+      // When native language is Arabic, Arabic is never a foreign language being studied
+      if (code === "ar") continue;
       counts.set(code, (counts.get(code) || 0) + 1);
     }
     return Array.from(counts.entries()).map(([code, count]) => ({
@@ -391,9 +393,18 @@ export default function WordsPage() {
   }
 
   async function handleSaveWordDetails(word: Word) {
-    const cleanT = editText.trim();
-    const cleanTr = editTranslation.trim();
+    let cleanT = editText.trim();
+    let cleanTr = editTranslation.trim();
     if (!cleanT || !cleanTr) return;
+
+    const isTextArabic = /[\u0600-\u06FF]/.test(cleanT);
+    const isTransArabic = /[\u0600-\u06FF]/.test(cleanTr);
+    const isTransLatin = /[a-zA-Z]/.test(cleanTr);
+    if (isTextArabic && isTransLatin && !isTransArabic) {
+      const temp = cleanT;
+      cleanT = cleanTr;
+      cleanTr = temp;
+    }
 
     if (cleanT === word.text && cleanTr === word.translation) {
       setEditingId(null);
@@ -816,7 +827,6 @@ export default function WordsPage() {
                       <option value="pt">PT</option>
                       <option value="tr">TR</option>
                       <option value="ru">RU</option>
-                      <option value="ar">AR</option>
                       <option value="ja">JA</option>
                       <option value="ko">KO</option>
                       <option value="zh">ZH</option>

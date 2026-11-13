@@ -26,6 +26,51 @@ export function cleanWordText(text: string): string {
     .trim();
 }
 
+export function normalizeWordPair(w: {
+  text: string;
+  translation: string;
+  src_lang?: string;
+  target_lang?: string;
+}): {
+  text: string;
+  translation: string;
+  src_lang: string;
+  target_lang: string;
+  isInverted: boolean;
+} {
+  let text = cleanWordText(w.text);
+  let translation = (w.translation || "").trim();
+  let srcLang = (w.src_lang || "en").toLowerCase();
+  let targetLang = (w.target_lang || "ar").toLowerCase();
+
+  const isTextArabic = /[\u0600-\u06FF]/.test(text);
+  const isTransArabic = /[\u0600-\u06FF]/.test(translation);
+  const isTransLatin = /[a-zA-Z]/.test(translation);
+
+  // If text is Arabic script and translation is Latin/English (e.g. text="عميل", translation="client")
+  // Or src_lang was saved as "ar" while translation is Latin
+  const isInverted =
+    (isTextArabic && isTransLatin && !isTransArabic) ||
+    (srcLang === "ar" && isTransLatin);
+
+  if (isInverted) {
+    const originalText = text;
+    text = translation;
+    translation = originalText;
+    srcLang = srcLang === "ar" ? "en" : srcLang;
+    targetLang = "ar";
+    return { text, translation, src_lang: srcLang, target_lang: targetLang, isInverted: true };
+  }
+
+  // If marked "ar" but target is "ar" (native Arabic speaker studying foreign words)
+  if (srcLang === "ar" && (targetLang === "ar" || !isTextArabic)) {
+    srcLang = "en";
+    return { text, translation, src_lang: srcLang, target_lang: "ar", isInverted: true };
+  }
+
+  return { text, translation, src_lang: srcLang, target_lang: targetLang, isInverted: false };
+}
+
 export async function fetchWords(): Promise<Word[]> {
   const supabase = getSupabase();
   const primary = await supabase
@@ -48,15 +93,60 @@ export async function fetchWords(): Promise<Word[]> {
 
   if (error) throw new Error(error.message);
   const words = wordsSchema.parse(rows);
-  return words.map((w) => {
+
+  const invertedToHeal: { id: string; text: string; translation: string; src_lang: string; target_lang: string }[] = [];
+
+  const cleaned = words.map((w) => {
     const match = (w.text || "").match(/::([a-z]{2,5})$/i);
     const inferredLang = match ? match[1].toLowerCase() : w.src_lang;
+    const baseText = cleanWordText(w.text);
+    const normalized = normalizeWordPair({
+      text: baseText,
+      translation: w.translation,
+      src_lang: inferredLang || w.src_lang,
+      target_lang: w.target_lang,
+    });
+
+    if (normalized.isInverted) {
+      invertedToHeal.push({
+        id: w.id,
+        text: normalized.text,
+        translation: normalized.translation,
+        src_lang: normalized.src_lang,
+        target_lang: normalized.target_lang,
+      });
+    }
+
     return {
       ...w,
-      text: cleanWordText(w.text),
-      src_lang: inferredLang || w.src_lang,
+      text: normalized.text,
+      translation: normalized.translation,
+      src_lang: normalized.src_lang,
+      target_lang: normalized.target_lang,
     };
   });
+
+  // Automatically heal inverted records in Supabase so the database is permanently normalized
+  if (invertedToHeal.length > 0) {
+    Promise.resolve().then(async () => {
+      for (const item of invertedToHeal) {
+        try {
+          await updateWordDetails(
+            item.id,
+            {
+              text: item.text,
+              translation: item.translation,
+              src_lang: item.src_lang,
+            }
+          );
+        } catch {
+          // ignore background update error
+        }
+      }
+    });
+  }
+
+  return cleaned;
 }
 
 export async function fetchStats(): Promise<Stats> {
@@ -148,35 +238,48 @@ export async function updateWordDetails(
   word?: Word,
 ): Promise<void> {
   const supabase = getSupabase();
-  const nextText =
+  const rawText =
     updates.text !== undefined
       ? cleanWordText(updates.text)
       : word
       ? cleanWordText(word.text)
       : "";
-  const nextLang =
+  const rawLang =
     updates.src_lang !== undefined ? updates.src_lang : word?.src_lang || "en";
-  const nextTrans =
+  const rawTrans =
     updates.translation !== undefined ? updates.translation.trim() : word?.translation || "";
 
+  const norm = normalizeWordPair({
+    text: rawText,
+    translation: rawTrans,
+    src_lang: rawLang,
+    target_lang: word?.target_lang || "ar",
+  });
+
+  const nextText = norm.text;
+  const nextLang = norm.src_lang;
+  const nextTrans = norm.translation;
   const taggedText = tagWordByLang(nextText, nextLang);
 
   // 1. Prefer atomic SECURITY DEFINER update RPC (migration 006) — preserves SRS stats
   const rpcRes = await supabase.rpc("update_word_details", {
     p_word_id: id,
     p_text: taggedText || null,
-    p_translation: updates.translation !== undefined ? nextTrans : null,
-    p_src_lang: updates.src_lang !== undefined ? nextLang : null,
+    p_translation: updates.translation !== undefined || norm.isInverted ? nextTrans : null,
+    p_src_lang: updates.src_lang !== undefined || norm.isInverted ? nextLang : null,
   });
   if (!rpcRes.error && rpcRes.data) {
     return;
   }
 
   // 2. Fallback to direct table update (when RLS update policy permits)
-  const payload: { text?: string; translation?: string; src_lang?: string } = {};
-  if (updates.text !== undefined || updates.src_lang !== undefined) payload.text = taggedText;
-  if (updates.translation !== undefined) payload.translation = nextTrans;
-  if (updates.src_lang !== undefined) payload.src_lang = nextLang;
+  const payload: { text?: string; translation?: string; src_lang?: string; target_lang?: string } = {};
+  if (updates.text !== undefined || updates.src_lang !== undefined || norm.isInverted) {
+    payload.text = taggedText;
+  }
+  if (updates.translation !== undefined || norm.isInverted) payload.translation = nextTrans;
+  if (updates.src_lang !== undefined || norm.isInverted) payload.src_lang = nextLang;
+  if (norm.isInverted) payload.target_lang = norm.target_lang;
 
   const { data, error } = await supabase.from("words").update(payload).eq("id", id).select("id");
   if (!error && data && data.length > 0) {
@@ -190,7 +293,7 @@ export async function updateWordDetails(
       p_text: taggedText,
       p_translation: nextTrans,
       p_src_lang: nextLang,
-      p_target_lang: word.target_lang,
+      p_target_lang: norm.target_lang || word.target_lang,
       p_source_title: word.source_title || "",
       p_source_url: word.source_url || "",
       p_times: word.times_seen || 1,
@@ -224,16 +327,25 @@ export async function addCustomWord(
   sourceUrl = "",
   sentence = "",
 ): Promise<string> {
-  const tagged = tagWordByLang(text, srcLang);
+  const norm = normalizeWordPair({
+    text,
+    translation,
+    src_lang: srcLang,
+    target_lang: targetLang,
+  });
+
+  const finalSrc = norm.src_lang;
+  const finalTarget = norm.target_lang;
+  const tagged = tagWordByLang(norm.text, finalSrc);
   const supabase = getSupabase();
 
   // 1. Try full save_word signature including p_sentence (migration 006)
   if (sentence) {
     const res0 = await supabase.rpc("save_word", {
       p_text: tagged,
-      p_translation: translation,
-      p_src_lang: srcLang,
-      p_target_lang: targetLang,
+      p_translation: norm.translation,
+      p_src_lang: finalSrc,
+      p_target_lang: finalTarget,
       p_source_title: sourceTitle,
       p_source_url: sourceUrl,
       p_times: 1,
@@ -245,9 +357,9 @@ export async function addCustomWord(
   // 2. Try save_word with p_src_lang (migration 001/002)
   const res1 = await supabase.rpc("save_word", {
     p_text: tagged,
-    p_translation: translation,
-    p_src_lang: srcLang,
-    p_target_lang: targetLang,
+    p_translation: norm.translation,
+    p_src_lang: finalSrc,
+    p_target_lang: finalTarget,
     p_source_title: sourceTitle,
     p_source_url: sourceUrl,
   });
@@ -256,8 +368,8 @@ export async function addCustomWord(
   // 3. Try save_word without p_src_lang (legacy database schema)
   const res2 = await supabase.rpc("save_word", {
     p_text: tagged,
-    p_translation: translation,
-    p_target_lang: targetLang,
+    p_translation: norm.translation,
+    p_target_lang: finalTarget,
   });
   if (!res2.error) return res2.data as string;
 
@@ -266,9 +378,9 @@ export async function addCustomWord(
     .from("words")
     .insert({
       text: tagged,
-      translation,
-      src_lang: srcLang,
-      target_lang: targetLang,
+      translation: norm.translation,
+      src_lang: finalSrc,
+      target_lang: finalTarget,
       source_title: sourceTitle,
       source_url: sourceUrl,
     })

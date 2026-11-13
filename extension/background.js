@@ -350,17 +350,35 @@ function tagWordByLang(text, lang) {
 // Syncing
 // ---------------------------------------------------------------------------
 async function pushEntry(w, times) {
-  const srcCode = (w.src || "auto").toLowerCase();
-  const taggedText = tagWordByLang(w.text, srcCode);
+  let srcCode = (w.src || "auto").toLowerCase();
+  let text = w.text || "";
+  let translation = w.translation || "";
+  let targetLang = w.lang || "ar";
+
+  const isTextArabic = /[\u0600-\u06FF]/.test(text);
+  const isTransArabic = /[\u0600-\u06FF]/.test(translation);
+  const isTransLatin = /[a-zA-Z]/.test(translation);
+
+  if ((isTextArabic && isTransLatin && !isTransArabic) || (srcCode === "ar" && isTransLatin)) {
+    const temp = text;
+    text = translation;
+    translation = temp;
+    srcCode = srcCode === "ar" ? "en" : srcCode;
+    targetLang = "ar";
+  } else if (srcCode === "ar" && (targetLang === "ar" || !isTextArabic)) {
+    srcCode = "en";
+  }
+
+  const taggedText = tagWordByLang(text, srcCode);
   const titleContext =
     w.sentence && w.title && !w.title.includes(w.sentence)
       ? `"${w.sentence}" — ${w.title}`
       : w.title || "";
   const args = {
     p_text: taggedText,
-    p_translation: w.translation,
+    p_translation: translation,
     p_src_lang: srcCode,
-    p_target_lang: w.lang,
+    p_target_lang: targetLang,
     p_source_title: titleContext,
     p_source_url: w.page || "",
     p_times: times,
@@ -488,16 +506,32 @@ async function pullCloudWords() {
         const words = await readWords();
         for (const item of list) {
           if (!item.text) continue;
-          const clean = item.text.replace(/::[a-z]{2,5}$/i, "").trim();
+          let clean = item.text.replace(/::[a-z]{2,5}$/i, "").trim();
+          let trans = item.translation || "";
+          let src = (item.src_lang && item.src_lang !== "auto") ? item.src_lang.toLowerCase() : "auto";
+          let target = item.target_lang || "ar";
+
+          const isTextArabic = /[\u0600-\u06FF]/.test(clean);
+          const isTransArabic = /[\u0600-\u06FF]/.test(trans);
+          const isTransLatin = /[a-zA-Z]/.test(trans);
+
+          if ((isTextArabic && isTransLatin && !isTransArabic) || (src === "ar" && isTransLatin)) {
+            const temp = clean;
+            clean = trans;
+            trans = temp;
+            src = src === "ar" ? "en" : src;
+            target = "ar";
+          } else if (src === "ar" && target === "ar") {
+            src = "en";
+          }
+
           if (deleted.includes(clean.toLowerCase())) continue;
-          const src = (item.src_lang && item.src_lang !== "auto") ? item.src_lang.toLowerCase() : "auto";
-          const target = item.target_lang || "ar";
           const key = src + "|" + target + "|" + clean.toLowerCase();
           if (!words[key]) {
             words[key] = {
               text: clean,
-              translation: item.translation || "",
-              src: item.src_lang || "auto",
+              translation: trans,
+              src: src,
               lang: target,
               count: 1,
               pending: 0,
