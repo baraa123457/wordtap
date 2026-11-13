@@ -153,10 +153,39 @@ export default function WordsPage() {
   const [detectedPos, setDetectedPos] = useState<string | null>(null);
   const [addBusy, setAddBusy] = useState(false);
 
+  // Export & Import menu state
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showImportMenu, setShowImportMenu] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const importMenuRef = useRef<HTMLDivElement>(null);
+
   // Import state
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+      if (importMenuRef.current && !importMenuRef.current.contains(event.target as Node)) {
+        setShowImportMenu(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setShowExportMenu(false);
+        setShowImportMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -510,38 +539,121 @@ export default function WordsPage() {
           {langFilter !== "all" ? ` · ${LANG_LABELS[langFilter] || langFilter}` : ""})
         </h1>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => exportWordsCsv(exportSource)}
-            className="btn min-h-9 px-3 py-1.5 text-xs font-semibold"
-            title="Download visible words as CSV"
-          >
-            Export CSV
-          </button>
-          <button
-            type="button"
-            onClick={() => exportWordsAnkiTsv(exportSource)}
-            className="btn min-h-9 px-3 py-1.5 text-xs font-semibold"
-            title="Download visible words as Anki-compatible TSV"
-          >
-            Anki (.tsv)
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.tsv,.txt"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          <button
-            type="button"
-            disabled={importBusy}
-            onClick={() => fileInputRef.current?.click()}
-            className="btn min-h-9 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
-            title="Import vocabulary from CSV, Anki TSV, or text list"
-          >
-            <span>{importBusy ? "Importing…" : "Import"}</span>
-          </button>
+          {/* Unified Export Menu */}
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setShowExportMenu((v) => !v);
+                setShowImportMenu(false);
+              }}
+              className="btn min-h-9 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
+              title="Export your vocabulary"
+              aria-expanded={showExportMenu}
+            >
+              <span>Export</span>
+              <svg
+                className={`w-3 h-3 text-muted transition-transform duration-150 ${showExportMenu ? "rotate-180" : ""}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showExportMenu && (
+              <div className="absolute left-0 mt-1.5 w-44 rounded-xl border border-line bg-surface p-1 shadow-xl z-30 animate-in fade-in zoom-in-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportWordsCsv(exportSource);
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left"
+                >
+                  <span className="font-semibold">.csv</span>
+                  <span className="text-[11px] text-muted">Spreadsheet</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportWordsAnkiTsv(exportSource);
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left"
+                >
+                  <span className="font-semibold">.tsv</span>
+                  <span className="text-[11px] text-muted">Anki Deck</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Unified Import Menu */}
+          <div className="relative" ref={importMenuRef}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.tsv,.txt"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              disabled={importBusy}
+              onClick={() => {
+                setShowImportMenu((v) => !v);
+                setShowExportMenu(false);
+              }}
+              className="btn min-h-9 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
+              title="Import vocabulary from file"
+              aria-expanded={showImportMenu}
+            >
+              <span>{importBusy ? "Importing…" : "Import"}</span>
+              <svg
+                className={`w-3 h-3 text-muted transition-transform duration-150 ${showImportMenu ? "rotate-180" : ""}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showImportMenu && (
+              <div className="absolute left-0 mt-1.5 w-44 rounded-xl border border-line bg-surface p-1 shadow-xl z-30 animate-in fade-in zoom-in-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.accept = ".csv";
+                      fileInputRef.current.click();
+                    }
+                    setShowImportMenu(false);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left"
+                >
+                  <span className="font-semibold">.csv</span>
+                  <span className="text-[11px] text-muted">Spreadsheet</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.accept = ".tsv,.txt";
+                      fileInputRef.current.click();
+                    }
+                    setShowImportMenu(false);
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left"
+                >
+                  <span className="font-semibold">.tsv</span>
+                  <span className="text-[11px] text-muted">Anki (.tsv)</span>
+                </button>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => {
