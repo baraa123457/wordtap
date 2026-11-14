@@ -1,390 +1,1256 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=360, initial-scale=1" />
+  <title>WordTap</title>
   <style>
     :root {
-      --bg:            #f2f4fa;
-      --surface:       #ffffff;
-      --ink:           #12152e;
-      --muted:         #5e658a;
-      --line:          #e2e6f2;
-      --focus:         #facc3b;
-      --screen:        #0e1022;
-      --screen-line:   rgba(255, 255, 255, 0.1);
-      --screen-ink:    #ffffff;
-      --screen-muted:  #959cc2;
-      --subtitle:      #facc3b;
-      --subtitle-edge: #d4a311;
-      --subtitle-ink:  #12152e;
-      --ok:            #10b981;
-      --ok-soft:       #d1fae5;
-      --bad:           #ef4444;
-      --bad-soft:      #fee2e2;
+      /* Dark Theme (Midnight Theater - Default & Brand Identity) */
+      --bg: #0b0d1e;
+      --surface: #141731;
+      --surface-elevated: #1b1f42;
+      --surface-hover: #222752;
+      --ink: #eef1ff;
+      --ink-secondary: #c5caea;
+      --muted: #959cc2;
+      --line: rgba(230, 235, 255, 0.1);
+      --line-strong: rgba(230, 235, 255, 0.18);
+      --focus: #facc3b;
+
+      /* Signature Subtitle Yellow */
+      --subtitle: #facc3b;
+      --subtitle-hover: #ffe270;
+      --subtitle-edge: #d9a714;
+      --subtitle-ink: #1a1400;
+
+      --ok: #34d399;
+      --ok-soft: rgba(52, 211, 153, 0.15);
+      --bad: #f87171;
+      --bad-soft: rgba(248, 113, 113, 0.15);
+      --warn: #fbbf24;
+      --warn-soft: rgba(251, 191, 36, 0.15);
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
     }
 
-    @media (prefers-color-scheme: dark) {
+    @media (prefers-color-scheme: light) {
       :root {
-        --bg:            #0b0d1e;
-        --surface:       #141731;
-        --ink:           #eef1ff;
-        --muted:         #959cc2;
-        --line:          #222646;
-        --focus:         #facc3b;
-        --screen:        #0a0b18;
-        --screen-line:   rgba(255, 255, 255, 0.08);
-        --screen-ink:    #ffffff;
-        --screen-muted:  #959cc2;
-        --subtitle:      #facc3b;
-        --subtitle-edge: #d4a311;
-        --subtitle-ink:  #12152e;
-        --ok:            #34d399;
-        --ok-soft:       rgba(16, 185, 129, 0.15);
-        --bad:           #f87171;
-        --bad-soft:      rgba(239, 68, 68, 0.15);
+        --bg: #f2f4fa;
+        --surface: #ffffff;
+        --surface-elevated: #f8f9fe;
+        --surface-hover: #edf0f9;
+        --ink: #12152e;
+        --ink-secondary: #3b4168;
+        --muted: #5e658a;
+        --line: rgba(30, 37, 80, 0.1);
+        --line-strong: rgba(30, 37, 80, 0.18);
+        --focus: #facc3b;
+
+        --subtitle: #facc3b;
+        --subtitle-hover: #ffe270;
+        --subtitle-edge: #d9a714;
+        --subtitle-ink: #1a1400;
+
+        --ok: #10b981;
+        --ok-soft: #d1fae5;
+        --bad: #ef4444;
+        --bad-soft: #fee2e2;
+        --warn: #f59e0b;
+        --warn-soft: #fef3c7;
       }
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      width: 350px;
+      width: 360px;
+      height: 520px;
+      max-height: 520px;
+      overflow: hidden;
       background: var(--bg);
       color: var(--ink);
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Readex Pro", system-ui, sans-serif;
       font-size: 13.5px;
-      line-height: 1.5;
-      padding: 0 0 16px;
+      line-height: 1.45;
       -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
     }
 
     :lang(ar), [dir="rtl"], .tr {
       font-family: "Readex Pro", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     }
 
+    /* Focus Rings */
+    :focus-visible {
+      outline: 2px solid var(--subtitle);
+      outline-offset: 2px;
+    }
+
+    /* Views container & slide transition */
+    .views-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .view {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      transition: transform 180ms ease, opacity 180ms ease;
+    }
+
+    .view[hidden] {
+      display: none !important;
+    }
+
+    .view.slide-left {
+      transform: translateX(-100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .view.slide-right {
+      transform: translateX(100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ── Top Bar ── */
     .topbar {
       display: flex;
       align-items: center;
-      gap: 10px;
-      background: var(--screen);
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--screen-line);
+      justify-content: space-between;
+      height: 48px;
+      padding: 0 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      flex: none;
     }
-    .logo-name {
+
+    .brand-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-logo {
+      display: block;
+      width: 25px;
+      height: 18px;
+    }
+
+    .brand-wordmark {
       font-size: 15px;
       font-weight: 700;
-      color: var(--screen-ink);
-      letter-spacing: -0.01em;
+      letter-spacing: -0.02em;
+      line-height: 1;
     }
-    .logo-name span { color: var(--subtitle); }
+    .brand-word { color: var(--ink); }
+    .brand-tap { color: var(--subtitle); }
 
-    .section {
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Apple-style Toggle Switch */
+    .toggle-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sw {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      display: inline-block;
+      flex: none;
+    }
+    .sw input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+    .sw span {
+      position: absolute;
+      inset: 0;
+      background: rgba(149, 156, 194, 0.25);
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      transition: background 150ms ease, border-color 150ms ease;
+      border: 1px solid var(--line);
+    }
+    .sw span::before {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      left: 2px;
+      top: 2px;
+      background: #ffffff;
+      border-radius: 50%;
+      transition: transform 150ms ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    }
+    .sw input:checked + span {
+      background: var(--subtitle);
+      border-color: var(--subtitle-edge);
+    }
+    .sw input:checked + span::before {
+      transform: translateX(16px);
+      background: #1a1400;
+    }
+    .sw input:focus-visible + span {
+      outline: 2px solid var(--subtitle);
+      outline-offset: 2px;
+    }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 120ms ease, background 120ms ease, transform 100ms ease;
+    }
+    .icon-btn:hover {
+      color: var(--ink);
+      background: var(--surface-hover);
+    }
+    .icon-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* ── Content Scroller ── */
+    .content-area {
+      flex: 1;
+      padding: 10px 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .content-area::-webkit-scrollbar { width: 4px; }
+    .content-area::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+
+    /* Extension Disabled Banner */
+    .disabled-banner {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--warn-soft);
+      border: 1px solid var(--warn);
+      color: var(--warn);
+      border-radius: var(--radius-md);
+      font-size: 11.5px;
+      font-weight: 600;
+      animation: fadeIn 150ms ease-out;
+    }
+    .disabled-banner.show { display: flex; }
+
+    /* Dim quick controls when extension is off */
+    .home-body.is-disabled {
+      opacity: 0.55;
+      pointer-events: none;
+      filter: grayscale(0.2);
+    }
+
+    /* ── Hero Card (Words Due & Practice) ── */
+    .hero-card {
+      background: linear-gradient(145deg, var(--surface) 0%, var(--surface-elevated) 100%);
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      top: -30px;
+      right: -30px;
+      width: 100px;
+      height: 100px;
+      background: radial-gradient(circle, rgba(250, 204, 59, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .hero-due-col {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hero-due-num {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+    }
+
+    .hero-due-label {
+      font-size: 11.5px;
+      color: var(--muted);
+      font-weight: 600;
+      margin-top: 3px;
+    }
+
+    .hero-badges-col {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      align-items: flex-end;
+    }
+
+    .hero-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      background: var(--surface-hover);
+      border: 1px solid var(--line);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-secondary);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .hero-chip.streak { color: #f59e0b; border-color: rgba(245, 158, 11, 0.25); background: rgba(245, 158, 11, 0.08); }
+    .hero-chip.xp { color: var(--subtitle); border-color: rgba(250, 204, 59, 0.25); background: rgba(250, 204, 59, 0.08); }
+
+    /* Signed Out State in Hero */
+    .hero-signed-out {
+      text-align: center;
+      padding: 4px 0;
+    }
+    .hero-signed-out-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .hero-signed-out-desc {
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+
+    /* All Caught Up state */
+    .all-caught-up {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .caught-up-icon {
+      font-size: 24px;
+      line-height: 1;
+    }
+    .caught-up-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--ok);
+    }
+    .caught-up-desc {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 36px;
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 650;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 140ms ease, transform 100ms ease, box-shadow 140ms ease, border-color 140ms ease;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-primary {
+      background: var(--subtitle);
+      color: var(--subtitle-ink);
+      border-color: var(--subtitle-edge);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(250, 204, 59, 0.25);
+    }
+    .btn-primary:hover {
+      background: var(--subtitle-hover);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(250, 204, 59, 0.35);
+    }
+
+    .btn-secondary {
+      background: var(--surface-elevated);
+      color: var(--ink);
+      border-color: var(--line);
+    }
+    .btn-secondary:hover {
+      background: var(--surface-hover);
+      border-color: var(--line-strong);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+    .btn-outline:hover {
+      background: var(--surface-hover);
+      color: var(--ink);
+      border-color: var(--subtitle);
+    }
+
+    .btn-danger-outline {
+      background: transparent;
+      color: var(--bad);
+      border-color: rgba(248, 113, 113, 0.3);
+    }
+    .btn-danger-outline:hover {
+      background: var(--bad-soft);
+      border-color: var(--bad);
+    }
+
+    .btn-danger {
+      background: var(--bad);
+      color: #ffffff;
+      border-color: #b91c1c;
+    }
+    .btn-danger:hover {
+      background: #ef4444;
+    }
+
+    .btn-sm {
+      min-height: 28px;
+      padding: 4px 10px;
+      font-size: 11.5px;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-block { width: 100%; }
+
+    /* ── Quick Settings Card ── */
+    .card {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 14px 16px;
-      margin: 12px 12px 0;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-      transition: background 0.15s, border-color 0.15s;
+      border-radius: var(--radius-lg);
+      padding: 12px 14px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
-    .section-title {
+
+    .card-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Segmented Control for Save Mode */
+    .segmented-control {
+      display: flex;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 2.5px;
+      gap: 2px;
+      margin-bottom: 5px;
+    }
+
+    .segment-btn {
+      flex: 1;
+      min-height: 28px;
+      background: transparent;
+      border: none;
+      border-radius: 9px;
+      color: var(--muted);
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+      white-space: nowrap;
+    }
+    .segment-btn:hover { color: var(--ink); }
+    .segment-btn.active {
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.06);
+    }
+    .segment-btn:focus-visible {
+      outline: 2px solid var(--subtitle);
+      outline-offset: 1px;
+    }
+
+    .helper-text {
+      font-size: 10.5px;
+      color: var(--muted);
+      line-height: 1.35;
+      margin-bottom: 10px;
+      min-height: 15px;
+    }
+
+    /* Compact Language Select Row */
+    .select-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-top: 4px;
+      border-top: 1px solid var(--line);
+    }
+    .select-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-secondary);
+    }
+    .select-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 170px;
+    }
+    .select-wrap select {
+      width: 100%;
+      height: 28px;
+      padding: 2px 24px 2px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--line);
+      background: var(--bg);
+      color: var(--ink);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      appearance: none;
+      outline: none;
+      transition: border-color 140ms ease;
+    }
+    .select-wrap select:focus {
+      border-color: var(--subtitle);
+      box-shadow: 0 0 0 2px rgba(250, 204, 59, 0.2);
+    }
+    .select-arrow {
+      position: absolute;
+      right: 7px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+    }
+
+    /* ── Recent Words Section ── */
+    .recent-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .recent-title {
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: var(--muted);
-      margin-bottom: 10px;
+    }
+    .view-all-link {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--subtitle);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: opacity 120ms ease;
+    }
+    .view-all-link:hover { opacity: 0.85; text-decoration: underline; }
+
+    .word-list {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
     }
 
-    #account p { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
-    #account p strong { color: var(--ink); }
-    #account code {
-      background: var(--bg); border: 1px solid var(--line);
-      border-radius: 6px; padding: 2px 6px; font-size: 12px; color: var(--ink);
+    .word-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      transition: background 120ms ease, border-color 120ms ease;
+      min-height: 38px;
     }
+    .word-row:hover {
+      background: var(--surface-hover);
+      border-color: var(--line-strong);
+    }
+
+    .word-text-col {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .word-src {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 48%;
+      direction: ltr;
+    }
+
+    .word-tr {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--subtitle);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 48%;
+      direction: rtl;
+      unicode-bidi: plaintext;
+      text-align: right;
+      font-family: "Readex Pro", system-ui, sans-serif;
+    }
+
+    .word-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: none;
+    }
+
+    .action-icon-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 3px;
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 120ms ease, transform 100ms ease, background 120ms ease;
+    }
+    .action-icon-btn:hover {
+      color: var(--subtitle);
+      background: rgba(250, 204, 59, 0.15);
+      transform: scale(1.1);
+    }
+    .action-icon-btn.speaking {
+      color: var(--ok);
+      background: var(--ok-soft);
+    }
+
+    .del-btn {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 120ms ease, color 120ms ease;
+    }
+    .word-row:hover .del-btn,
+    .word-row:focus-within .del-btn {
+      opacity: 0.75;
+      pointer-events: auto;
+    }
+    .del-btn:hover {
+      opacity: 1 !important;
+      color: var(--bad) !important;
+      background: var(--bad-soft);
+    }
+
+    /* Empty state */
+    .empty-words-card {
+      text-align: center;
+      padding: 16px 12px;
+      background: var(--surface);
+      border: 1px dashed var(--line-strong);
+      border-radius: var(--radius-lg);
+    }
+    .empty-icon { font-size: 24px; margin-bottom: 4px; }
+    .empty-title { font-size: 12.5px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+    .empty-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+    /* ── Footer Row ── */
+    .home-footer {
+      height: 48px;
+      padding: 0 14px;
+      background: var(--surface);
+      border-top: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex: none;
+    }
+
+    .ocr-pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line-strong);
+      background: var(--bg);
+      color: var(--ink);
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease, transform 100ms ease;
+    }
+    .ocr-pill-btn:hover {
+      background: var(--surface-hover);
+      border-color: var(--subtitle);
+    }
+    .ocr-pill-btn:active { transform: scale(0.97); }
+
+    .kbd-shortcut {
+      font-size: 9.5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 700;
+      background: var(--surface-hover);
+      color: var(--muted);
+      border: 1px solid var(--line);
+      padding: 1px 4px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .sync-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      cursor: default;
+    }
+
+    .sync-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--ok);
+      flex: none;
+      transition: background 150ms ease;
+    }
+    .sync-dot.syncing {
+      background: var(--subtitle);
+      animation: pulseDot 1s infinite alternate ease-in-out;
+    }
+    .sync-dot.offline {
+      background: var(--bad);
+    }
+    .sync-dot.queued {
+      background: var(--warn);
+    }
+    @keyframes pulseDot {
+      from { transform: scale(0.85); opacity: 0.6; }
+      to { transform: scale(1.15); opacity: 1; }
+    }
+
+    /* ── Settings View ── */
+    .settings-topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 48px;
+      padding: 0 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      flex: none;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      transition: background 120ms ease, color 120ms ease;
+    }
+    .back-btn:hover {
+      background: var(--surface-hover);
+      color: var(--subtitle);
+    }
+
+    .settings-content {
+      flex: 1;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+    .settings-content::-webkit-scrollbar { width: 4px; }
+    .settings-content::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
 
     .field {
       width: 100%;
-      min-height: 38px;
-      padding: 8px 12px;
-      border-radius: 10px;
+      height: 36px;
+      padding: 8px 10px;
+      border-radius: var(--radius-md);
       border: 1px solid var(--line);
-      background: var(--surface);
+      background: var(--bg);
       color: var(--ink);
       font: inherit;
-      font-size: 13px;
+      font-size: 12.5px;
+      outline: none;
+      transition: border-color 140ms ease, box-shadow 140ms ease;
       margin-bottom: 8px;
-      transition: border-color 150ms, box-shadow 150ms;
-      display: block;
     }
     .field:focus {
-      outline: none;
       border-color: var(--subtitle);
       box-shadow: 0 0 0 2px rgba(250, 204, 59, 0.25);
     }
-    .field::placeholder { color: var(--muted); opacity: 0.7; }
 
-    .pw-wrap { position: relative; }
-    .pw-wrap .field { padding-right: 36px; }
+    .pw-wrap {
+      position: relative;
+    }
+    .pw-wrap .field {
+      padding-right: 36px;
+    }
     .pw-eye {
-      position: absolute; right: 9px; top: 50%; transform: translateY(-60%);
-      background: none; border: none; padding: 0; color: var(--muted);
-      cursor: pointer; display: flex; align-items: center;
+      position: absolute;
+      right: 9px;
+      top: 50%;
+      transform: translateY(-65%);
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 2px;
     }
     .pw-eye:hover { color: var(--ink); }
 
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-      min-height: 36px; padding: 6px 14px; border-radius: 10px;
-      border: 1px solid var(--line);
-      background: var(--surface); color: var(--ink);
-      font: inherit; font-size: 13px; font-weight: 600;
-      cursor: pointer; transition: transform 100ms ease, background 120ms ease, box-shadow 120ms ease;
-      text-decoration: none;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-    }
-    .btn:hover { background: color-mix(in srgb, var(--surface) 90%, var(--ink)); }
-    .btn:active { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-    .btn-primary {
-      background: var(--subtitle); border-color: var(--subtitle-edge);
-      color: var(--subtitle-ink); font-weight: 650;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(250, 204, 59, 0.25);
-    }
-    .btn-primary:hover {
-      background: color-mix(in srgb, var(--subtitle) 90%, white);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15), 0 4px 10px rgba(250, 204, 59, 0.35);
-    }
-    .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-
-    #authError {
-      background: var(--bad-soft); border: 1px solid var(--bad);
-      border-radius: 10px; padding: 8px 12px;
-      color: var(--bad); font-size: 12px; font-weight: 500; margin-bottom: 8px;
-    }
-    #syncError { color: var(--bad); font-size: 12px; margin: 6px 0 0; }
-    [hidden] { display: none !important; }
-
-    .who-email { font-weight: 700; color: var(--ink); font-size: 13px; }
-    .sync-line { font-size: 12px; color: var(--muted); margin: 3px 0 10px; }
-
-    .row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 9px 0; border-bottom: 1px solid var(--line);
-    }
-    .row:last-of-type { border-bottom: none; }
-    .row-label strong { font-size: 13px; font-weight: 600; }
-    .row-label small { display: block; color: var(--muted); font-size: 11px; }
-
-    .sw { position: relative; width: 40px; height: 22px; flex: none; }
-    .sw input { opacity: 0; width: 0; height: 0; }
-    .sw span {
-      position: absolute; inset: 0; background: color-mix(in srgb, var(--ink) 18%, transparent);
-      border-radius: 22px; cursor: pointer; transition: background .18s;
-      border: 1px solid var(--line);
-    }
-    .sw span::before {
-      content: ""; position: absolute;
-      width: 16px; height: 16px; left: 2px; top: 2px;
-      background: #ffffff; border-radius: 50%; transition: transform .18s;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    }
-    .sw input:checked + span { background: var(--subtitle); border-color: var(--subtitle-edge); }
-    .sw input:checked + span::before { transform: translateX(18px); background: #ffffff; }
-
-    select.field {
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6082' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 10px center;
-      padding-right: 30px;
-      cursor: pointer;
+    .alert-box {
+      background: var(--bad-soft);
+      border: 1px solid var(--bad);
+      color: var(--bad);
+      border-radius: var(--radius-md);
+      padding: 8px 10px;
+      font-size: 11.5px;
+      font-weight: 500;
+      margin-bottom: 8px;
     }
 
-    .sel-label {
-      display: block; font-size: 11px; font-weight: 700;
-      color: var(--muted); text-transform: uppercase;
-      letter-spacing: .05em; margin: 12px 0 5px;
+    .confirm-box {
+      background: var(--bad-soft);
+      border: 1px solid var(--bad);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      margin-top: 8px;
+      animation: fadeIn 140ms ease-out;
+    }
+    .confirm-msg {
+      font-size: 11.5px;
+      color: var(--ink);
+      line-height: 1.4;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .confirm-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
     }
 
-    .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .list-head h3 { font-size: 13px; font-weight: 700; }
-    .list-btns button {
-      font: inherit; font-size: 11px; font-weight: 500; padding: 3px 8px; margin-left: 4px;
-      border: 1px solid var(--line); background: var(--bg); border-radius: 7px;
-      cursor: pointer; color: var(--muted); transition: background .12s, color .12s;
-    }
-    .list-btns button:hover { background: var(--line); color: var(--ink); }
-
-    #search {
-      width: 100%; padding: 8px 12px; margin-bottom: 8px;
-      border: 1px solid var(--line); border-radius: 10px;
-      background: var(--surface); color: var(--ink); font: inherit; font-size: 13px;
-      transition: border-color .15s;
-    }
-    #search:focus { outline: none; border-color: var(--subtitle); box-shadow: 0 0 0 2px rgba(250, 204, 59, 0.25); }
-
-    #list { max-height: 190px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; }
-    .item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
-    .item:last-child { border-bottom: 0; }
-    .item .w { flex: 1; min-width: 0; }
-    .item .t { font-weight: 650; font-size: 13px; color: var(--ink); word-break: break-word; }
-    .item .tr { color: #f59e0b; font-weight: 600; font-size: 13px; word-break: break-word; }
-    .item .tr[dir=rtl] { text-align: right; }
-    .item .c { font-size: 11px; color: var(--muted); }
-    .item .spk { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 2px 4px; display: inline-flex; align-items: center; border-radius: 4px; transition: color 0.15s, transform 0.1s; }
-    .item .spk:hover { color: var(--subtitle-edge); transform: scale(1.15); }
-    .item .spk.speaking { color: var(--ok); }
-    .item .del { border: 0; background: none; color: var(--muted); font-size: 17px; cursor: pointer; line-height: 1; transition: color .12s; }
-    .item .del:hover { color: var(--bad); }
-    .lang-pill {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--line);
-      background: var(--bg);
+    .key-tips-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11.5px;
       color: var(--muted);
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.12s, color 0.12s;
+      line-height: 1.4;
     }
-    .lang-pill:hover { color: var(--ink); background: var(--line); }
-    .lang-pill.active { background: var(--subtitle); color: var(--subtitle-ink); border-color: var(--subtitle-edge); }
+    .key-tip-item {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .key-tip-item strong {
+      color: var(--ink-secondary);
+      font-size: 11px;
+    }
 
-    .hint { font-size: 11px; color: var(--muted); line-height: 1.5; text-align: center; padding: 10px 14px 0; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
   </style>
 </head>
 <body>
+  <div class="views-wrapper">
 
-  <!-- Logo bar -->
-  <div class="topbar">
-    <svg width="28" height="20" viewBox="0 0 30 22" aria-hidden>
-      <rect x="0.5" y="0.5" width="29" height="21" rx="5" fill="#151833" stroke="#262a52"/>
-      <rect x="6"   y="8"   width="18" height="3"   rx="1.5"  fill="#fff"/>
-      <rect x="9"   y="14"  width="12" height="2.5" rx="1.25" fill="#ffd23f"/>
-    </svg>
-    <span class="logo-name">Word<span>Tap</span></span>
-    <button id="openOptionsBtn" title="Options" style="margin-left:auto;background:none;border:none;color:#a9aed3;cursor:pointer;display:flex;align-items:center;padding:2px;" aria-label="Open options">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-      </svg>
-    </button>
-  </div>
-
-  <!-- Screen OCR Snip Action -->
-  <div style="padding: 10px 14px 4px;">
-    <button class="btn btn-primary" id="ocrCaptureBtn" type="button" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:9px 12px;font-size:13px;border-radius:10px;box-shadow:0 2px 8px rgba(250,204,59,0.25);cursor:pointer;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-        <circle cx="12" cy="13" r="4"></circle>
-      </svg>
-      <span>Screen OCR & Translate</span>
-      <span style="font-size:10.5px;opacity:0.85;background:rgba(0,0,0,0.25);padding:1.5px 6px;border-radius:4px;margin-left:auto;font-family:monospace;font-weight:700;">Alt+S</span>
-    </button>
-  </div>
-
-  <!-- Account -->
-  <div class="section" id="account" aria-label="Account">
-    <div class="section-title">Account</div>
-
-    <div id="acctLoading"><p>Checking…</p></div>
-
-    <div id="acctUnconfigured" hidden>
-      <p>This copy of the extension is not connected to a WordTap project yet. Fill in <code>config.js</code> and reload the extension.</p>
-      <p>Words are saved on this device in the meantime.</p>
-    </div>
-
-    <form id="signInForm" hidden>
-      <p>Sign in to keep your words and practice them on the website.</p>
-      <input id="email" class="field" type="email" placeholder="Email" autocomplete="email" required />
-      <div class="pw-wrap">
-        <input id="password" class="field" type="password" placeholder="Password" autocomplete="current-password" required />
-        <button type="button" class="pw-eye" id="pwToggle" aria-label="Show password">
-          <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+    <!-- ══════════════════════════════════════════════════════════════════════════
+         HOME VIEW
+         ══════════════════════════════════════════════════════════════════════════ -->
+    <div class="view" id="viewHome">
+      <!-- Top Bar -->
+      <header class="topbar">
+        <a href="#" class="brand-group" id="logoLink" title="WordTap Home">
+          <svg class="brand-logo" viewBox="0 0 30 22" aria-hidden="true">
+            <rect x="0.5" y="0.5" width="29" height="21" rx="5" fill="#151833" stroke="#262a52"/>
+            <rect x="6" y="8" width="18" height="3" rx="1.5" fill="#ffffff"/>
+            <rect x="9" y="14" width="12" height="2.5" rx="1.25" fill="#facc3b"/>
           </svg>
+          <span class="brand-wordmark">
+            <span class="brand-word">Word</span><span class="brand-tap">Tap</span>
+          </span>
+        </a>
+
+        <div class="topbar-actions">
+          <label class="sw" title="Turn WordTap extension on or off">
+            <input type="checkbox" id="enabled" aria-label="Toggle WordTap extension" />
+            <span></span>
+          </label>
+          <button type="button" class="icon-btn" id="openSettingsBtn" title="Extension Settings" aria-label="Open settings">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Home Content -->
+      <div class="content-area">
+        <!-- Disabled Banner -->
+        <div class="disabled-banner" id="disabledBanner">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+          <span>WordTap is paused. Turn on switch to translate.</span>
+        </div>
+
+        <div class="home-body" id="homeBody">
+          <!-- Hero Card: Practice & Words Due -->
+          <div class="hero-card" id="heroCard">
+            <!-- Signed In State -->
+            <div id="heroSignedInState">
+              <div class="hero-stats-row">
+                <div class="hero-due-col">
+                  <div class="hero-due-num" id="heroDueCount">0</div>
+                  <div class="hero-due-label" id="heroDueLabel">words due today</div>
+                </div>
+                <div class="hero-badges-col">
+                  <div class="hero-chip streak" id="heroStreakChip" title="Practice streak">
+                    <span>🔥</span>
+                    <span id="heroStreakText">0-day streak</span>
+                  </div>
+                  <div class="hero-chip xp" id="heroXpChip" title="Experience points">
+                    <span>⚡</span>
+                    <span id="heroXpText">0 XP</span>
+                  </div>
+                </div>
+              </div>
+              <a id="openSite" class="btn btn-primary btn-block" target="_blank" rel="noopener">
+                Practice now →
+              </a>
+            </div>
+
+            <!-- Signed Out State -->
+            <div id="heroSignedOutState" class="hero-signed-out" hidden>
+              <div class="hero-signed-out-title">Practice what you watch</div>
+              <div class="hero-signed-out-desc">Sign in to track spaced repetition, keep streaks, and practice words on the web.</div>
+              <button type="button" class="btn btn-primary btn-block" id="heroSignInBtn">
+                Sign in to WordTap →
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Settings Card -->
+          <div class="card" style="margin-top: 10px;">
+            <div class="card-title">
+              <span>Word Saving Mode</span>
+            </div>
+
+            <!-- Segmented Control for Save Mode -->
+            <div class="segmented-control" role="radiogroup" aria-label="Word saving mode">
+              <button type="button" class="segment-btn active" data-mode="manual" role="radio" aria-checked="true" title="Manual: save with ⭐ button">
+                <span>⭐ Manual</span>
+              </button>
+              <button type="button" class="segment-btn" data-mode="subtitles_only" role="radio" aria-checked="false" title="Subtitles: auto-save video subtitles">
+                <span>🎬 Subtitles</span>
+              </button>
+              <button type="button" class="segment-btn" data-mode="auto" role="radio" aria-checked="false" title="Auto: save every translated word">
+                <span>⚡ Auto</span>
+              </button>
+            </div>
+            <!-- Dynamic Helper Text -->
+            <div class="helper-text" id="saveModeHelper">Click ⭐ on any translation tooltip to save</div>
+
+            <!-- Compact Translate To Row -->
+            <div class="select-row">
+              <label class="select-label" for="lang">Translate into</label>
+              <div class="select-wrap">
+                <select id="lang" aria-label="Translate to language">
+                  <option value="ar">العربية (Arabic)</option>
+                  <option value="en">English</option>
+                  <option value="fr">Français</option>
+                  <option value="es">Español</option>
+                  <option value="de">Deutsch</option>
+                  <option value="it">Italiano</option>
+                  <option value="pt">Português</option>
+                  <option value="tr">Türkçe</option>
+                  <option value="ru">Русский</option>
+                  <option value="zh-CN">中文 (简体)</option>
+                  <option value="ja">日本語</option>
+                  <option value="ko">한국어</option>
+                  <option value="hi">हिन्दी</option>
+                  <option value="ur">اردو</option>
+                  <option value="fa">فارسی</option>
+                </select>
+                <div class="select-arrow">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Words (Max 5 items, no page-level scroll) -->
+          <div style="margin-top: 10px;">
+            <div class="recent-header">
+              <span class="recent-title">Recent Words (<span id="count">0</span>)</span>
+              <a href="#" class="view-all-link" id="viewAllWordsLink" target="_blank" rel="noopener">View all →</a>
+            </div>
+
+            <!-- List rendered by popup.js -->
+            <div class="word-list" id="list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Home Footer Row -->
+      <footer class="home-footer">
+        <button type="button" class="ocr-pill-btn" id="ocrCaptureBtn" title="Capture screen area OCR (Alt+S)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+          <span>Screen OCR</span>
+          <span class="kbd-shortcut">Alt+S</span>
         </button>
-      </div>
-      <div id="authError" role="alert" hidden></div>
-      <div class="actions">
-        <button class="btn btn-primary" id="signInBtn" type="submit">Sign in</button>
-        <a class="btn" id="signUpLink" target="_blank" rel="noopener">Create account</a>
-      </div>
-    </form>
 
-    <div id="signedIn" hidden>
-      <p class="who-email" id="who"></p>
-      <p class="sync-line" id="syncLine"></p>
-      <p class="sync-line" id="studyBadge" style="margin-top:3px;color:var(--subtitle-edge);font-weight:600;" hidden></p>
-      <div id="syncError" role="alert" hidden></div>
-      <div class="actions">
-        <a class="btn" id="openSite" target="_blank" rel="noopener">Practice words</a>
-        <button class="btn" id="syncBtn" type="button">Sync now</button>
-        <button class="btn" id="signOutBtn" type="button">Sign out</button>
+        <div class="sync-indicator" id="syncStatus" title="Word synchronization status with your WordTap cloud account">
+          <span class="sync-dot" id="syncDot"></span>
+          <span id="syncText">Synced just now</span>
+        </div>
+      </footer>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════════
+         SETTINGS VIEW (Smooth in-place slide, back arrow returns to Home)
+         ══════════════════════════════════════════════════════════════════════════ -->
+    <div class="view slide-right" id="viewSettings" hidden>
+      <!-- Top Bar -->
+      <header class="settings-topbar">
+        <button type="button" class="back-btn" id="backToHomeBtn" aria-label="Return to home view">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <span>Settings</span>
+        </button>
+      </header>
+
+      <!-- Scrollable Settings Content -->
+      <div class="settings-content">
+        <!-- Account Card -->
+        <div class="card" id="account" aria-label="Account">
+          <div class="card-title">Account</div>
+
+          <div id="acctLoading"><p style="color:var(--muted);font-size:12px;">Checking account status…</p></div>
+
+          <div id="acctUnconfigured" hidden>
+            <p style="font-size:12px;color:var(--muted);line-height:1.4;">This copy of the extension is operating in local mode. Words are saved safely on this device.</p>
+          </div>
+
+          <!-- Sign In Form -->
+          <form id="signInForm" hidden>
+            <p style="font-size:12px;color:var(--muted);line-height:1.4;margin-bottom:8px;">Sign in to sync your words across devices and practice on the web.</p>
+            <input id="email" class="field" type="email" placeholder="Email" autocomplete="email" required />
+            <div class="pw-wrap">
+              <input id="password" class="field" type="password" placeholder="Password" autocomplete="current-password" required />
+              <button type="button" class="pw-eye" id="pwToggle" aria-label="Show password">
+                <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+            <div id="authError" class="alert-box" role="alert" hidden></div>
+            <div style="display:flex;gap:6px;margin-top:2px;">
+              <button class="btn btn-primary btn-sm" id="signInBtn" type="submit">Sign in</button>
+              <a class="btn btn-secondary btn-sm" id="signUpLink" target="_blank" rel="noopener">Create account</a>
+            </div>
+          </form>
+
+          <!-- Signed In State -->
+          <div id="signedIn" hidden>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <div style="font-weight:700;font-size:13px;color:var(--ink);word-break:break-all;" id="who">user@example.com</div>
+              <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:var(--ok-soft);color:var(--ok);font-weight:700;">Active</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);margin-bottom:6px;" id="syncLine">All saved words are backed up to your account.</p>
+            <p id="studyBadge" style="font-size:11.5px;color:var(--subtitle);font-weight:600;margin-bottom:8px;" hidden></p>
+            <div id="syncError" class="alert-box" role="alert" hidden></div>
+            <div style="display:flex;gap:6px;margin-top:4px;">
+              <button class="btn btn-secondary btn-sm" id="syncBtn" type="button">Sync now</button>
+              <button class="btn btn-danger-outline btn-sm" id="signOutBtn" type="button">Sign out</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Word List & Export Card -->
+        <div class="card">
+          <div class="card-title">Saved Words Cache</div>
+          <p style="font-size:11.5px;color:var(--muted);line-height:1.4;margin-bottom:10px;">
+            <strong id="cacheCountText" style="color:var(--ink)">0</strong> words cached locally on this device for instant offline translation.
+          </p>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button id="export" class="btn btn-secondary btn-sm" type="button">Export CSV</button>
+            <button id="clearBtn" class="btn btn-danger-outline btn-sm" type="button">Clear local cache</button>
+          </div>
+
+          <!-- Inline Clear Confirmation -->
+          <div id="clearConfirmBox" class="confirm-box" hidden>
+            <div class="confirm-msg" id="clearConfirmMsg">Delete all words from this device? Words already backed up to your WordTap cloud account remain safe in the cloud.</div>
+            <div class="confirm-actions">
+              <button type="button" class="btn btn-secondary btn-sm" id="cancelClearBtn">Cancel</button>
+              <button type="button" class="btn btn-danger btn-sm" id="confirmClearBtn">Delete permanently</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Advanced Preferences -->
+        <div class="card">
+          <div class="card-title">Selection Trigger</div>
+          <p style="font-size:11.5px;color:var(--muted);margin-bottom:6px;">When you select text on a webpage:</p>
+          <div class="select-wrap" style="max-width:100%;margin-bottom:12px;">
+            <select id="selectionMode" class="field" style="height:34px;margin-bottom:0;">
+              <option value="immediate">💬 Pop-up card (Show card immediately)</option>
+              <option value="icon">🔘 Floating icon (Click icon to show card)</option>
+              <option value="off">🚫 Disabled (Don't translate selections)</option>
+            </select>
+            <div class="select-arrow" style="right:10px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+
+          <div class="card-title" style="margin-top:10px;">Keyboard Shortcuts</div>
+          <div class="key-tips-list">
+            <div class="key-tip-item">
+              <span class="kbd-shortcut">Click</span>
+              <span>Subtitle word to translate</span>
+            </div>
+            <div class="key-tip-item">
+              <span class="kbd-shortcut">Shift+Click</span>
+              <span>Translate the whole subtitle line</span>
+            </div>
+            <div class="key-tip-item">
+              <span class="kbd-shortcut">Alt+S</span>
+              <span>Capture screen area OCR</span>
+            </div>
+            <div class="key-tip-item">
+              <span class="kbd-shortcut">Click word</span>
+              <span>Edit OCR typos directly in card</span>
+            </div>
+            <div class="key-tip-item">
+              <span class="kbd-shortcut">Esc</span>
+              <span>Close translation card</span>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;padding-top:8px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;">
+            <button id="openOptionsBtn" class="btn btn-secondary btn-sm" type="button">Full Options Page →</button>
+          </div>
+        </div>
       </div>
     </div>
+
   </div>
 
-  <!-- Settings -->
-  <div class="section">
-    <div class="section-title">Settings</div>
-    <div class="row">
-      <div class="row-label"><strong>Extension on</strong><small>Turn click-to-translate on or off</small></div>
-      <label class="sw"><input type="checkbox" id="enabled" /><span></span></label>
-    </div>
-    <div class="row" style="border-bottom:none">
-      <div class="row-label"><strong>Word saving mode</strong><small>Manual (⭐ button) vs Auto-save</small></div>
-    </div>
-    <select id="translateSaveMode" class="field" style="margin-bottom:8px">
-      <option value="manual">✍️ Manual save (Show ⭐ Save button)</option>
-      <option value="subtitles_only">🎬 Subtitles only (Auto-save video subtitles only)</option>
-      <option value="auto">⚡ Auto-save all (Save every translated word)</option>
+  <!-- Hidden elements to preserve full backwards-compatibility with existing selectors -->
+  <div style="display:none;" aria-hidden="true">
+    <select id="translateSaveMode">
+      <option value="manual">manual</option>
+      <option value="subtitles_only">subtitles_only</option>
+      <option value="auto">auto</option>
     </select>
-    <div class="row" style="border-bottom:none">
-      <div class="row-label"><strong>When text is selected</strong><small>Choose Pop-up card or Floating icon</small></div>
-    </div>
-    <select id="selectionMode" class="field" style="margin-bottom:8px">
-      <option value="immediate">💬 Pop-up card (Show card immediately)</option>
-      <option value="icon">🔘 Floating icon (Click icon to show card)</option>
-      <option value="off">🚫 Disabled (Don't translate selections)</option>
-    </select>
-    <label class="sel-label" for="lang">Translate to</label>
-    <select id="lang" class="field">
-      <option value="ar">العربية (Arabic)</option>
-      <option value="en">English</option>
-      <option value="fr">Français</option>
-      <option value="es">Español</option>
-      <option value="de">Deutsch</option>
-      <option value="it">Italiano</option>
-      <option value="pt">Português</option>
-      <option value="tr">Türkçe</option>
-      <option value="ru">Русский</option>
-      <option value="zh-CN">中文 (简体)</option>
-      <option value="ja">日本語</option>
-      <option value="ko">한국어</option>
-      <option value="hi">हिन्दी</option>
-      <option value="ur">اردو</option>
-      <option value="fa">فارسی</option>
-    </select>
+    <input type="search" id="search" value="" />
+    <div id="langPills"></div>
+    <button id="clear"></button>
   </div>
-
-  <!-- Saved words -->
-  <div class="section">
-    <div class="list-head">
-      <h3>Saved on this device (<span id="count">0</span>)</h3>
-      <div class="list-btns">
-        <button id="export">Export CSV</button>
-        <button id="clear">Clear</button>
-      </div>
-    </div>
-    <div id="langPills" style="display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px;"></div>
-    <input id="search" type="search" placeholder="Search saved words…" />
-    <div id="list"></div>
-  </div>
-
-  <p class="hint">Click a subtitle word to translate. Shift+click translates the whole line. Esc closes the tooltip.</p>
 
   <script type="module" src="popup.js"></script>
 </body>
