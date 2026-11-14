@@ -654,9 +654,14 @@
     .corr-row {
       display: none;
       align-items: center;
-      gap: 4px;
-      font-size: 11px;
-      color: #959cc2;
+      gap: 6px;
+      font-size: 11.5px;
+      color: #cbd5e1;
+      background: rgba(250, 204, 59, 0.12);
+      border: 1px solid rgba(250, 204, 59, 0.3);
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-top: 5px;
     }
     .corr-link {
       background: none;
@@ -667,6 +672,9 @@
       font-weight: 700;
       text-decoration: underline;
       cursor: pointer;
+    }
+    .corr-link:hover {
+      color: #ffffff;
     }
     .alts-row {
       display: none;
@@ -1112,17 +1120,20 @@
     corrEl.innerHTML = "";
     if (extras.correction && extras.correction.toLowerCase() !== lastText.trim().toLowerCase()) {
       corrEl.style.display = "flex";
+      const icon = document.createElement("span");
+      icon.textContent = "💡";
       const label = document.createElement("span");
       label.textContent = "Did you mean:";
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "corr-link";
       btn.textContent = extras.correction;
+      btn.title = `Switch to correct word: "${extras.correction}"`;
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         triggerTranslation(rect, extras.correction, "");
       });
-      corrEl.append(label, btn);
+      corrEl.append(icon, label, btn);
     } else {
       corrEl.style.display = "none";
     }

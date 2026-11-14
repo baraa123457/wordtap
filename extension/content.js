@@ -183,6 +183,9 @@
       .tr:hover{border-bottom-color:rgba(250,204,59,0.4)}
       .tr[dir=rtl]{text-align:right}
       .tr-input{background:rgba(14,16,34,0.95);border:1px solid #facc3b;border-radius:5px;color:#ffffff;font-size:15px;font-weight:700;font-family:"Readex Pro",system-ui,sans-serif;padding:2px 6px;outline:none;width:125px}
+      .corr-row{display:none;align-items:center;gap:5px;font-size:11px;color:#cbd5e1;background:rgba(250,204,59,0.12);border:1px solid rgba(250,204,59,0.3);padding:3px 8px;border-radius:6px;margin-top:5px}
+      .corr-link{background:none;border:none;padding:0;color:#facc3b;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+      .corr-link:hover{color:#ffffff}
       .alts-row{display:none;flex-wrap:wrap;gap:4px;margin-top:6px;max-width:280px}
       .alts-row[dir=rtl]{direction:rtl}
       .alt-chip{border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.08);color:#d1d5f0;border-radius:999px;padding:2px 8px;font-size:11.5px;font-family:"Readex Pro",system-ui,sans-serif;cursor:pointer;transition:all .12s ease;outline:none;user-select:none}
@@ -228,6 +231,7 @@
         </button>
         <button class="save-edit-btn save-tr-btn" title="Apply change" style="display:none;">✓</button>
       </div>
+      <div class="corr-row"></div>
       <div class="alts-row"></div>
       <button class="save-btn" title="Save word to My Words">⭐ + Save to My Words</button>
       <div class="saved"></div>
@@ -243,6 +247,7 @@
   const trInput = shadow.querySelector(".tr-input");
   const editTrBtn = shadow.querySelector(".edit-tr-btn");
   const saveTrBtn = shadow.querySelector(".save-tr-btn");
+  const corrEl = shadow.querySelector(".corr-row");
   const altsEl = shadow.querySelector(".alts-row");
   const saveBtn = shadow.querySelector(".save-btn");
   const savedEl = shadow.querySelector(".saved");
@@ -540,7 +545,7 @@
     continuous: "continuous · مستمر",
   };
 
-  function showTip(x, y, original, translated, rtl, note, warn, srcLang, pos, alternatives, willSave) {
+  function showTip(x, y, original, translated, rtl, note, warn, srcLang, pos, alternatives, willSave, correction) {
     mount();
     currentOrigText = original;
     if (srcLang) currentSrcLang = srcLang;
@@ -562,6 +567,39 @@
     }
     trEl.textContent = translated;
     trEl.dir = rtl ? "rtl" : "ltr";
+
+    corrEl.innerHTML = "";
+    if (correction && correction.toLowerCase() !== original.trim().toLowerCase()) {
+      corrEl.style.display = "flex";
+      const icon = document.createElement("span");
+      icon.textContent = "💡";
+      const label = document.createElement("span");
+      label.textContent = "Did you mean:";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "corr-link";
+      btn.textContent = correction;
+      btn.title = `Switch to correct word: "${correction}"`;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        currentOrigText = correction;
+        origEl.textContent = correction;
+        trEl.textContent = "…";
+        setNote("Translating…", false);
+        const target = settings.targetLang;
+        safeSendMessage({ type: "translate", text: correction, target, srcLang: currentSrcLang }, (res) => {
+          if (!isContextValid()) return;
+          if (!res || !res.ok) {
+            trEl.textContent = "Translation failed";
+            return;
+          }
+          showTip(x, y, correction, res.text, RTL_LANGS.includes(target), willSave ? "Saving…" : "", false, currentSrcLang, res.pos, res.alternatives, willSave, res.correction);
+        });
+      });
+      corrEl.append(icon, label, btn);
+    } else {
+      corrEl.style.display = "none";
+    }
 
     altsEl.innerHTML = "";
     altsEl.dir = rtl ? "rtl" : "ltr";
@@ -988,7 +1026,8 @@
           finalSrc,
           res.pos,
           res.alternatives,
-          willSave
+          willSave,
+          res.correction
         );
 
         const titleContext =

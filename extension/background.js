@@ -11,6 +11,81 @@ function stripHtmlTags(str) {
   return String(str || "").replace(/<[^>]+>/g, "").trim();
 }
 
+function levenshtein(a, b) {
+  const an = a.length;
+  const bn = b.length;
+  if (an === 0) return bn;
+  if (bn === 0) return an;
+  const matrix = Array.from({ length: bn + 1 }, () => Array(an + 1).fill(0));
+  for (let i = 0; i <= an; ++i) matrix[0][i] = i;
+  for (let i = 1; i <= bn; ++i) matrix[i][0] = i;
+  for (let i = 1; i <= bn; ++i) {
+    for (let j = 1; j <= an; ++j) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+        );
+      }
+    }
+  }
+  return matrix[bn][an];
+}
+
+async function findSuggestCorrection(text) {
+  const clean = text.trim();
+  if (!clean || clean.length < 3 || clean.length > 50) return null;
+  const lowerInput = clean.toLowerCase();
+
+  try {
+    const suggestUrl = `https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(clean)}`;
+    const sRes = await fetch(suggestUrl);
+    if (!sRes.ok) return null;
+    const sData = await sRes.json();
+    const suggestions = Array.isArray(sData && sData[1]) ? sData[1] : [];
+
+    let bestCandidate = null;
+    let lowestDist = 999;
+
+    for (const raw of suggestions) {
+      if (typeof raw !== "string") continue;
+      const stripped = raw
+        .replace(/[\u0600-\u06FF]+/g, "")
+        .replace(/\b(meaning|translate|translation|definition|synonyms?|antonyms?|in python|in java|movie|film)\b/gi, "")
+        .replace(/[^a-zA-Z\s'-]/g, "")
+        .trim();
+      if (!stripped) continue;
+
+      const tokens = stripped.split(/\s+/).filter(Boolean);
+      const isSingle = !lowerInput.includes(" ");
+      const candidateList = isSingle ? [tokens[0]].filter(Boolean) : [stripped, tokens[0]];
+
+      for (const cand of candidateList) {
+        if (!cand) continue;
+        const candLower = cand.toLowerCase();
+        if (!candLower || candLower === lowerInput) continue;
+        const dist = levenshtein(lowerInput, candLower);
+        const maxLen = Math.max(lowerInput.length, candLower.length);
+        const similarity = 1 - dist / maxLen;
+
+        const maxAllowedDist = maxLen >= 7 ? 3 : 2;
+        if (dist <= maxAllowedDist && similarity >= 0.6) {
+          if (dist < lowestDist) {
+            lowestDist = dist;
+            bestCandidate = candLower;
+          }
+        }
+      }
+    }
+
+    return bestCandidate;
+  } catch {
+    return null;
+  }
+}
+
 async function translate(text, target, srcLang = "auto", context = "") {
   let sl = srcLang && srcLang !== "auto" ? srcLang.toLowerCase() : "auto";
 
@@ -47,7 +122,11 @@ async function translate(text, target, srcLang = "auto", context = "") {
   if (!res.ok) throw new Error("HTTP " + res.status);
   const data = await res.json();
 
-  const detected = sl !== "auto" ? sl : data[2] ? data[2].toLowerCase() : "auto";
+  let detected = sl !== "auto" ? sl : data[2] ? data[2].toLowerCase() : "auto";
+  if ((detected === "hi" || detected === "mr") && /^[a-zA-Z\s'-]+$/.test(text.trim())) {
+    detected = "en";
+  }
+
   const mainText = (data[0] || []).map((part) => part[0]).join("");
 
   let partsOfSpeech = [];
@@ -99,8 +178,49 @@ async function translate(text, target, srcLang = "auto", context = "") {
   if (Array.isArray(data[7])) {
     const rawCorr = typeof data[7][1] === "string" && data[7][1].trim() ? data[7][1] : stripHtmlTags(data[7][0]);
     if (rawCorr && rawCorr.toLowerCase() !== text.trim().toLowerCase()) {
-      correction = rawCorr;
+      if (!/^[a-zA-Z]/.test(text.trim()) || /[a-zA-Z]/.test(rawCorr)) {
+        correction = rawCorr;
+      }
     }
+  }
+
+  // Fallback to Google Suggest spell-check if data[7] didn't find an English spelling correction
+  if (!correction && !text.includes(" ") && text.trim().length >= 3 && text.trim().length <= 40 && /^[a-zA-Z'-]+$/.test(text.trim())) {
+    try {
+      const suggestCorr = await findSuggestCorrection(text.trim());
+      if (suggestCorr && suggestCorr.toLowerCase() !== text.trim().toLowerCase()) {
+        correction = suggestCorr;
+      }
+    } catch (_) {}
+  }
+
+  // If word was a typo and dictionary had no POS or alternatives, fetch dictionary for the corrected word!
+  if (correction && partsOfSpeech.length === 0) {
+    try {
+      const corrDictUrl =
+        "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=" +
+        encodeURIComponent(target) +
+        "&dt=t&dt=bd&dt=qca&dt=at&q=" +
+        encodeURIComponent(correction);
+      const cRes = await fetch(corrDictUrl);
+      if (cRes.ok) {
+        const cData = await cRes.json();
+        if (Array.isArray(cData[1])) {
+          partsOfSpeech = cData[1]
+            .map((item) => (Array.isArray(item) && typeof item[0] === "string" ? item[0].toLowerCase() : null))
+            .filter(Boolean);
+          for (const group of cData[1]) {
+            if (Array.isArray(group) && Array.isArray(group[1])) {
+              for (const term of group[1]) {
+                if (typeof term === "string" && term.trim() && term.trim().toLowerCase() !== mainText.trim().toLowerCase()) {
+                  altSet.add(term.trim());
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   // Fallback dictionary for non-English words if dictionary was empty
