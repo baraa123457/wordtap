@@ -8,6 +8,7 @@ import { getStoredSettings, type UserSettings } from "@/lib/settings";
 import type { Word } from "@/lib/schemas";
 import { SpeakerIcon, CloseIcon, TrashIcon } from "@/components/Icons";
 import { addHistoryItem, markHistoryItemSaved } from "@/lib/history";
+import { getVerbConjugation, type VerbConjugation } from "@/lib/verbs";
 
 const POPULAR_LANGS = [
   { code: "en", name: "English", native: "English" },
@@ -52,6 +53,7 @@ type TranslationResult = {
   partsOfSpeech?: string[];
   primaryPartOfSpeech?: string | null;
   correction?: SpellCorrection | null;
+  verbInfo?: VerbConjugation | null;
 };
 
 export const POS_BADGES: Record<string, { en: string; ar: string; badge: string }> = {
@@ -65,6 +67,11 @@ export const POS_BADGES: Record<string, { en: string; ar: string; badge: string 
   interjection: { en: "interj", ar: "تعجب", badge: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30" },
   phrase: { en: "phrase", ar: "عبارة", badge: "bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30" },
   idiom: { en: "idiom", ar: "تعبير اصطلاحي", badge: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30" },
+  // Verb Tense Badges
+  past: { en: "past (V2)", ar: "ماضي", badge: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40" },
+  present: { en: "present (V1)", ar: "مضارع", badge: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40" },
+  past_participle: { en: "past part. (V3)", ar: "تصريف ثالث", badge: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40" },
+  continuous: { en: "continuous (-ing)", ar: "مستمر", badge: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40" },
 };
 
 function getInitialTopLangs(
@@ -307,6 +314,29 @@ export function TranslatorCard({
         );
       })(),
   );
+
+  const activeVerbConjugation = useMemo(() => {
+    if (result?.verbInfo) return result.verbInfo;
+    const clean = (result?.text || inputText).trim().toLowerCase();
+    if (clean && !clean.includes(" ") && clean.length <= 30) {
+      return getVerbConjugation(clean);
+    }
+    return null;
+  }, [result?.verbInfo, result?.text, inputText]);
+
+  const effectivePartsOfSpeech = useMemo(() => {
+    const list = [...(result?.partsOfSpeech || [])];
+    if (activeVerbConjugation) {
+      if (!list.includes("verb")) list.unshift("verb");
+      for (const t of activeVerbConjugation.currentTenses) {
+        if (t === "past" && !list.includes("past")) list.push("past");
+        if (t === "past_participle" && !list.includes("past_participle")) list.push("past_participle");
+        if (t === "present_participle" && !list.includes("continuous")) list.push("continuous");
+        if (t === "base" && !list.includes("present")) list.push("present");
+      }
+    }
+    return list;
+  }, [result?.partsOfSpeech, activeVerbConjugation]);
 
   const [isDeletingWord, setIsDeletingWord] = useState(false);
 
@@ -788,14 +818,14 @@ export function TranslatorCard({
               </button>
             ) : null}
 
-            {/* Source Part of Speech Badges (noun / verb / adj / etc.) */}
-            {result?.partsOfSpeech && result.partsOfSpeech.length > 0 ? (
+            {/* Source Part of Speech Badges (noun / verb / adj / past / present etc.) */}
+            {effectivePartsOfSpeech.length > 0 ? (
               <div
                 className={`mt-2.5 flex items-center gap-1.5 flex-wrap ${
                   isRTL ? "justify-end" : "justify-start"
                 }`}
               >
-                {result.partsOfSpeech.map((pos) => {
+                {effectivePartsOfSpeech.map((pos) => {
                   const p = pos.toLowerCase();
                   const meta = POS_BADGES[p] || {
                     en: p,
@@ -972,10 +1002,10 @@ export function TranslatorCard({
                         {baseTranslation}
                       </div>
 
-                      {/* Part of Speech Badges (noun / verb / adj / etc.) */}
-                      {result?.partsOfSpeech && result.partsOfSpeech.length > 0 ? (
+                      {/* Part of Speech & Tense Badges (noun / verb / adj / past / present etc.) */}
+                      {effectivePartsOfSpeech.length > 0 ? (
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          {result.partsOfSpeech.map((pos) => {
+                          {effectivePartsOfSpeech.map((pos) => {
                             const p = pos.toLowerCase();
                             const meta = POS_BADGES[p] || {
                               en: p,
@@ -1155,6 +1185,146 @@ export function TranslatorCard({
                           ✓ تطبيق التعديل
                         </button>
                       </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Verb Conjugation Table (Past, Present, Past Participle) */}
+                {activeVerbConjugation ? (
+                  <div className="mt-3 pt-3 border-t border-line/50 space-y-2.5">
+                    <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted flex-wrap gap-1">
+                      <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
+                        <span className="text-sm">⏱️</span>
+                        <span>تصريفات الفعل ({activeVerbConjugation.base}):</span>
+                        <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                          {activeVerbConjugation.tenseLabelAr}
+                        </span>
+                      </span>
+                      <span className="text-[11px] font-normal text-muted/70 lowercase">
+                        اضغط على أي تصريف لترجمته
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      {/* V1 Present */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInputText(activeVerbConjugation.base);
+                          textareaRef.current?.focus();
+                        }}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          activeVerbConjugation.currentTenses.includes("base")
+                            ? "border-subtitle bg-subtitle/15 shadow-xs ring-1 ring-subtitle"
+                            : "border-line bg-black/[0.02] dark:bg-white/[0.04] hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
+                        }`}
+                        title="المصدر / المضارع البسيط (V1)"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted">V1 · مضارع</span>
+                          {activeVerbConjugation.currentTenses.includes("base") && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-subtitle text-black">الحالي</span>
+                          )}
+                        </div>
+                        <div className="text-sm font-bold text-ink mt-0.5">{activeVerbConjugation.base}</div>
+                        <div className="text-[10px] text-muted">المصدر / الحاضر</div>
+                      </button>
+
+                      {/* V2 Past Simple */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInputText(activeVerbConjugation.past);
+                          textareaRef.current?.focus();
+                        }}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          activeVerbConjugation.currentTenses.includes("past")
+                            ? "border-subtitle bg-subtitle/15 shadow-xs ring-1 ring-subtitle"
+                            : "border-line bg-black/[0.02] dark:bg-white/[0.04] hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
+                        }`}
+                        title="الماضي البسيط (V2)"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted">V2 · ماضي</span>
+                          {activeVerbConjugation.currentTenses.includes("past") && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-subtitle text-black">الحالي</span>
+                          )}
+                        </div>
+                        <div className="text-sm font-bold text-ink mt-0.5">{activeVerbConjugation.past}</div>
+                        <div className="text-[10px] text-muted">الماضي البسيط</div>
+                      </button>
+
+                      {/* V3 Past Participle */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInputText(activeVerbConjugation.pastParticiple);
+                          textareaRef.current?.focus();
+                        }}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          activeVerbConjugation.currentTenses.includes("past_participle")
+                            ? "border-subtitle bg-subtitle/15 shadow-xs ring-1 ring-subtitle"
+                            : "border-line bg-black/[0.02] dark:bg-white/[0.04] hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
+                        }`}
+                        title="التصريف الثالث (V3 - Past Participle)"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted">V3 · تصريف 3</span>
+                          {activeVerbConjugation.currentTenses.includes("past_participle") && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-subtitle text-black">الحالي</span>
+                          )}
+                        </div>
+                        <div className="text-sm font-bold text-ink mt-0.5">{activeVerbConjugation.pastParticiple}</div>
+                        <div className="text-[10px] text-muted">التصريف الثالث</div>
+                      </button>
+
+                      {/* V4 Continuous (-ing) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInputText(activeVerbConjugation.presentParticiple);
+                          textareaRef.current?.focus();
+                        }}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          activeVerbConjugation.currentTenses.includes("present_participle")
+                            ? "border-subtitle bg-subtitle/15 shadow-xs ring-1 ring-subtitle"
+                            : "border-line bg-black/[0.02] dark:bg-white/[0.04] hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
+                        }`}
+                        title="المضارع المستمر / اسم الفاعل (-ing)"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted">V4 · مستمر</span>
+                          {activeVerbConjugation.currentTenses.includes("present_participle") && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-subtitle text-black">الحالي</span>
+                          )}
+                        </div>
+                        <div className="text-sm font-bold text-ink mt-0.5">{activeVerbConjugation.presentParticiple}</div>
+                        <div className="text-[10px] text-muted">اسم الفاعل (-ing)</div>
+                      </button>
+
+                      {/* V5 3rd Person Singular */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInputText(activeVerbConjugation.thirdPerson);
+                          textareaRef.current?.focus();
+                        }}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer col-span-2 sm:col-span-1 ${
+                          activeVerbConjugation.currentTenses.includes("third_person")
+                            ? "border-subtitle bg-subtitle/15 shadow-xs ring-1 ring-subtitle"
+                            : "border-line bg-black/[0.02] dark:bg-white/[0.04] hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
+                        }`}
+                        title="المضارع للمفرد الغائب (-s)"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted">V5 · مفرد</span>
+                          {activeVerbConjugation.currentTenses.includes("third_person") && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-subtitle text-black">الحالي</span>
+                          )}
+                        </div>
+                        <div className="text-sm font-bold text-ink mt-0.5">{activeVerbConjugation.thirdPerson}</div>
+                        <div className="text-[10px] text-muted">المضارع الغائب (-s)</div>
+                      </button>
                     </div>
                   </div>
                 ) : null}

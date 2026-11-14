@@ -68,6 +68,22 @@ async function translate(text, target, srcLang = "auto", context = "") {
     }
   }
 
+  // Check English dictionary definitions in data[12] for verb tenses
+  if (Array.isArray(data[12])) {
+    for (const group of data[12]) {
+      if (Array.isArray(group) && group[0] === "verb") {
+        if (!partsOfSpeech.includes("verb")) partsOfSpeech.unshift("verb");
+        const defStr = JSON.stringify(group[1] || "").toLowerCase();
+        if (defStr.includes("past participle") && !partsOfSpeech.includes("past_participle")) {
+          partsOfSpeech.push("past_participle");
+        }
+        if (defStr.includes("past of") || defStr.includes("past tense") || defStr.includes("past and")) {
+          if (!partsOfSpeech.includes("past")) partsOfSpeech.push("past");
+        }
+      }
+    }
+  }
+
   if (Array.isArray(data[5]) && Array.isArray(data[5][0]) && Array.isArray(data[5][0][2])) {
     for (const cand of data[5][0][2]) {
       if (Array.isArray(cand) && typeof cand[0] === "string") {

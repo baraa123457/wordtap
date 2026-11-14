@@ -335,6 +335,10 @@
     interjection: "interj · تعجب",
     phrase: "phrase · عبارة",
     idiom: "idiom · مصطلح",
+    past: "past · ماضي",
+    present: "present · مضارع",
+    past_participle: "past part. · تصريف ثالث",
+    continuous: "continuous · مستمر",
   };
 
   function showTip(x, y, original, translated, rtl, note, warn, srcLang, pos) {

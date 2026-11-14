@@ -755,6 +755,10 @@
     interjection: "interj · تعجب",
     phrase: "phrase · عبارة",
     idiom: "idiom · مصطلح",
+    past: "past · ماضي",
+    present: "present · مضارع",
+    past_participle: "past part. · تصريف ثالث",
+    continuous: "continuous · مستمر",
   };
 
   let tipToken = 0;

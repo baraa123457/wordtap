@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { guardApiRequest } from "@/lib/api-guard";
+import { getVerbConjugation } from "@/lib/verbs";
 
 const MAX_TRANSLATE_CHARS = 2000;
 
@@ -485,9 +486,43 @@ async function handleTranslate(
         }
       }
 
+      let verbBaseHint: string | undefined;
+      if (Array.isArray(data[14]) && Array.isArray(data[14][0]) && typeof data[14][0][0] === "string") {
+        verbBaseHint = data[14][0][0];
+      } else if (typeof headword === "string") {
+        verbBaseHint = headword;
+      }
+
+      let hasVerbInGoogleDef = false;
+      if (Array.isArray(data[12])) {
+        for (const group of data[12]) {
+          if (Array.isArray(group) && group[0] === "verb") {
+            hasVerbInGoogleDef = true;
+            break;
+          }
+        }
+      }
+
+      const verbInfo = getVerbConjugation(text, verbBaseHint);
+
       const partsOfSpeech = definitions
         .map((d) => d.partOfSpeech.toLowerCase())
         .filter((pos) => pos && pos !== "alternatives");
+
+      if (verbInfo || hasVerbInGoogleDef) {
+        if (!partsOfSpeech.includes("verb")) {
+          partsOfSpeech.unshift("verb");
+        }
+        if (verbInfo) {
+          for (const t of verbInfo.currentTenses) {
+            if (t === "past" && !partsOfSpeech.includes("past")) partsOfSpeech.push("past");
+            if (t === "past_participle" && !partsOfSpeech.includes("past_participle")) partsOfSpeech.push("past_participle");
+            if (t === "present_participle" && !partsOfSpeech.includes("continuous")) partsOfSpeech.push("continuous");
+            if (t === "base" && !partsOfSpeech.includes("present")) partsOfSpeech.push("present");
+          }
+        }
+      }
+
       const primaryPartOfSpeech = partsOfSpeech[0] || null;
 
       return NextResponse.json({
@@ -500,6 +535,7 @@ async function handleTranslate(
         partsOfSpeech,
         primaryPartOfSpeech,
         correction,
+        verbInfo,
       });
     }
 
