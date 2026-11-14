@@ -174,6 +174,11 @@
       .spk-btn.speaking{color:#34d399}
       .tr{font-size:18px;font-weight:700;color:#ffffff;word-break:break-word;font-family:"Readex Pro",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;line-height:1.4}
       .tr[dir=rtl]{text-align:right}
+      .alts-row{display:none;flex-wrap:wrap;gap:4px;margin-top:6px;max-width:280px}
+      .alts-row[dir=rtl]{direction:rtl}
+      .alt-chip{border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.08);color:#d1d5f0;border-radius:999px;padding:2px 8px;font-size:11.5px;font-family:"Readex Pro",system-ui,sans-serif;cursor:pointer;transition:all .12s ease;outline:none;user-select:none}
+      .alt-chip:hover{border-color:#facc3b;color:#ffffff;background:rgba(250,204,59,0.2);transform:scale(1.04)}
+      .alt-chip.active{border-color:#facc3b;background:#facc3b;color:#12152e;font-weight:700}
       .saved{margin-top:6px;font-size:11px;font-weight:600;color:#34d399;display:none}
       .saved[data-warn="true"]{color:#fbbf24}
       .save-btn{background:#facc3b;color:#12152e;border:1px solid #d4a311;cursor:pointer;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:700;display:none;align-items:center;gap:4px;margin-top:8px;box-shadow:0 1px 3px rgba(0,0,0,0.2), 0 2px 6px rgba(250,204,59,0.3);transition:background .1s,transform .1s}
@@ -196,6 +201,7 @@
         </button>
       </div>
       <div class="tr"></div>
+      <div class="alts-row"></div>
       <button class="save-btn" title="Save word to My Words">⭐ + Save to My Words</button>
       <div class="saved"></div>
     </div>`;
@@ -204,6 +210,7 @@
   const posEl = shadow.querySelector(".pos-badge");
   const spkBtn = shadow.querySelector(".spk-btn");
   const trEl = shadow.querySelector(".tr");
+  const altsEl = shadow.querySelector(".alts-row");
   const saveBtn = shadow.querySelector(".save-btn");
   const savedEl = shadow.querySelector(".saved");
   shadow.querySelector(".x").addEventListener("click", (e) => {
@@ -341,7 +348,7 @@
     continuous: "continuous · مستمر",
   };
 
-  function showTip(x, y, original, translated, rtl, note, warn, srcLang, pos) {
+  function showTip(x, y, original, translated, rtl, note, warn, srcLang, pos, alternatives, willSave) {
     mount();
     currentOrigText = original;
     if (srcLang) currentSrcLang = srcLang;
@@ -354,6 +361,57 @@
     }
     trEl.textContent = translated;
     trEl.dir = rtl ? "rtl" : "ltr";
+
+    altsEl.innerHTML = "";
+    altsEl.dir = rtl ? "rtl" : "ltr";
+    const alts = Array.isArray(alternatives) ? alternatives : [];
+    if (alts.length > 0) {
+      altsEl.style.display = "flex";
+      for (const alt of alts) {
+        if (!alt || alt === translated) continue;
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "alt-chip";
+        chip.textContent = alt;
+        chip.title = `Switch translation to "${alt}"`;
+        chip.addEventListener("click", (e) => {
+          e.stopPropagation();
+          trEl.textContent = alt;
+          const chips = altsEl.querySelectorAll(".alt-chip");
+          chips.forEach((c) => c.classList.remove("active"));
+          chip.classList.add("active");
+
+          if (currentPendingEntry) {
+            currentPendingEntry.translation = alt;
+            safeSendMessage({ type: "history:add", entry: currentPendingEntry });
+
+            if (willSave || isWordSaved(currentPendingEntry.text)) {
+              setNote("Saving…", false);
+              safeSendMessage({ type: "save", entry: currentPendingEntry }, (saved) => {
+                if (!isContextValid()) return;
+                if (saved && saved.ok) {
+                  savedWordsSet.add(normWord(currentPendingEntry.text));
+                  const n = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+                  setNote(n.text, n.warn);
+                  saveBtn.classList.add("saved");
+                  saveBtn.textContent = "✓ In your words";
+                }
+              });
+            } else {
+              saveBtn.style.display = "inline-flex";
+              saveBtn.classList.remove("saved");
+              saveBtn.textContent = "⭐ + Save to My Words";
+              setNote("", false);
+            }
+          }
+        });
+        altsEl.appendChild(chip);
+      }
+      if (!altsEl.children.length) altsEl.style.display = "none";
+    } else {
+      altsEl.style.display = "none";
+    }
+
     setNote(note, warn);
     saveBtn.style.display = "none";
     saveBtn.classList.remove("saved");
@@ -379,9 +437,12 @@
       });
     }
 
-    // Close the tooltip by itself after 1 second (unless cursor is hovering the tooltip)
+    // Close the tooltip by itself (give 2.8s when alternatives are available so user can click, 1.2s otherwise)
     clearTimeout(hideTimer);
-    if (translated !== "…" && !tip.dataset.hovered) hideTimer = setTimeout(hideTip, 1000);
+    if (translated !== "…" && !tip.dataset.hovered) {
+      const delay = alts.length > 0 ? 2800 : 1200;
+      hideTimer = setTimeout(hideTip, delay);
+    }
   }
 
   // ---------- Word under the cursor ----------
@@ -715,7 +776,19 @@
           settings.translateSaveMode === "auto" ||
           settings.translateSaveMode === "subtitles_only" ||
           (settings.saveWords === true && settings.translateSaveMode !== "manual");
-        showTip(e.clientX, e.clientY, text, res.text, RTL_LANGS.includes(target), willSave ? "Saving…" : "", false, finalSrc, res.pos);
+        showTip(
+          e.clientX,
+          e.clientY,
+          text,
+          res.text,
+          RTL_LANGS.includes(target),
+          willSave ? "Saving…" : "",
+          false,
+          finalSrc,
+          res.pos,
+          res.alternatives,
+          willSave
+        );
 
         const titleContext =
           fullLine && fullLine.trim() && fullLine.trim().length > text.length

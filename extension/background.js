@@ -122,7 +122,7 @@ async function translate(text, target, srcLang = "auto", context = "") {
   }
 
   const primaryPos = partsOfSpeech[0] || null;
-  const alternatives = Array.from(altSet).slice(0, 4);
+  const alternatives = Array.from(altSet).slice(0, 6);
 
   const result = {
     text: mainText,
