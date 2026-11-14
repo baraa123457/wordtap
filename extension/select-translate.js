@@ -424,7 +424,7 @@
     .orig-wrap {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
       flex: 1;
       min-width: 0;
     }
@@ -436,6 +436,63 @@
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 135px;
+      cursor: pointer;
+      border-bottom: 1px dashed rgba(149, 156, 194, 0.4);
+      padding-bottom: 1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .orig:hover {
+      color: #ffffff;
+      border-bottom-color: #facc3b;
+    }
+    .edit-btn {
+      background: none;
+      border: none;
+      color: #959cc2;
+      cursor: pointer;
+      padding: 2px 3px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.65;
+      transition: all 0.15s ease;
+      flex: none;
+    }
+    .edit-btn:hover {
+      opacity: 1;
+      color: #facc3b;
+      background: rgba(250, 204, 59, 0.15);
+      transform: scale(1.1);
+    }
+    .orig-input {
+      background: rgba(14, 16, 34, 0.95);
+      border: 1px solid #facc3b;
+      border-radius: 6px;
+      color: #ffffff;
+      font-size: 12.5px;
+      font-weight: 700;
+      font-family: inherit;
+      padding: 2px 6px;
+      outline: none;
+      width: 120px;
+      box-shadow: 0 0 0 2px rgba(250, 204, 59, 0.2);
+    }
+    .save-edit-btn {
+      background: #facc3b;
+      color: #12152e;
+      border: none;
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.12s, transform 0.1s;
+      flex: none;
+    }
+    .save-edit-btn:hover {
+      background: #ffe270;
+      transform: scale(1.05);
     }
 
     /* Compact Dynamic Speaker Button */
@@ -551,9 +608,9 @@
 
     .tr-row {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 6px;
     }
 
     .tr {
@@ -563,6 +620,26 @@
       color: #ffffff;
       line-height: 1.35;
       font-family: "Readex Pro", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      cursor: pointer;
+      border-bottom: 1px dashed transparent;
+      transition: border-bottom-color 0.15s;
+    }
+    .tr:hover {
+      border-bottom-color: rgba(250, 204, 59, 0.4);
+    }
+    .tr-input {
+      background: rgba(14, 16, 34, 0.95);
+      border: 1px solid #facc3b;
+      border-radius: 6px;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: "Readex Pro", system-ui, sans-serif;
+      padding: 2px 6px;
+      outline: none;
+      flex: 1;
+      min-width: 90px;
+      box-shadow: 0 0 0 2px rgba(250, 204, 59, 0.2);
     }
     .tr[dir="rtl"] { text-align: right; }
 
@@ -709,7 +786,15 @@
     </button>
     <div class="card-top" title="Drag to move card">
       <div class="orig-wrap">
-        <span class="orig" id="orig"></span>
+        <span class="orig" id="orig" title="Click to edit word"></span>
+        <input type="text" class="orig-input" id="origInput" style="display:none;" />
+        <button class="edit-btn" id="editOrigBtn" title="Edit word" aria-label="Edit word">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
+        <button class="save-edit-btn" id="saveEditBtn" title="Apply change" style="display:none;" aria-label="Apply change">✓</button>
         <span class="pos-badge" id="posBadge"></span>
         <button class="speak-btn" id="speakBtn" title="Pronounce in English" aria-label="Pronounce in English">
           <svg class="speaker-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -724,7 +809,15 @@
       </div>
     </div>
     <div class="tr-row">
-      <div class="tr" id="tr"></div>
+      <div class="tr" id="tr" title="Click to edit translation"></div>
+      <input type="text" class="tr-input" id="trInput" style="display:none;" />
+      <button class="edit-btn" id="editTrBtn" title="Edit translation" aria-label="Edit translation">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+      </button>
+      <button class="save-edit-btn" id="saveTrBtn" title="Apply change" style="display:none;" aria-label="Apply change">✓</button>
       <span class="status" id="status"></span>
     </div>
     <div class="corr-row" id="corrRow"></div>
@@ -735,8 +828,14 @@
   const iconBtn  = shadow.getElementById("iconBtn");
   const card     = shadow.getElementById("card");
   const origEl   = shadow.getElementById("orig");
+  const origInput = shadow.getElementById("origInput");
+  const editOrigBtn = shadow.getElementById("editOrigBtn");
+  const saveEditBtn = shadow.getElementById("saveEditBtn");
   const speakBtn = shadow.getElementById("speakBtn");
   const trEl     = shadow.getElementById("tr");
+  const trInput  = shadow.getElementById("trInput");
+  const editTrBtn = shadow.getElementById("editTrBtn");
+  const saveTrBtn = shadow.getElementById("saveTrBtn");
   const statusEl = shadow.getElementById("status");
   const saveBtn  = shadow.getElementById("saveBtn");
   const closeBtn = shadow.getElementById("closeBtn");
@@ -779,6 +878,14 @@
     iconBtn.style.display = "none";
     card.style.display    = "none";
     speakBtn.classList.remove("speaking");
+    origInput.style.display = "none";
+    saveEditBtn.style.display = "none";
+    origEl.style.display = "";
+    editOrigBtn.style.display = "";
+    trInput.style.display = "none";
+    saveTrBtn.style.display = "none";
+    trEl.style.display = "";
+    editTrBtn.style.display = "";
     lastEntry = null;
     lastText = "";
     pendingTranslation = null;
@@ -889,6 +996,7 @@
   // ── Position Translation Card: Places cleanly below selection so other tools & reading are not blocked ──
   function positionCard(rect) {
     mount();
+    currentCardRect = rect;
     card.style.display = "flex";
     const r = card.getBoundingClientRect();
     const padding = 12;
@@ -918,6 +1026,7 @@
   }
 
   // ── Make Card Draggable so User can Slide it Anywhere ──────────────────────
+  let currentCardRect = null;
   let isDragging = false;
   let dragStartX = 0;
   let dragStartY = 0;
@@ -927,7 +1036,7 @@
   const cardTop = shadow.querySelector(".card-top");
   if (cardTop) {
     cardTop.addEventListener("mousedown", (e) => {
-      if (e.target.closest("button")) return;
+      if (e.target.closest("button") || e.target.closest("input") || e.target.closest(".orig")) return;
       isDragging = true;
       cardTop.style.cursor = "grabbing";
       dragStartX = e.clientX;
@@ -977,6 +1086,15 @@
 
   function showLoadingCard(rect, text) {
     mount();
+    currentCardRect = rect;
+    origInput.style.display = "none";
+    saveEditBtn.style.display = "none";
+    origEl.style.display = "";
+    editOrigBtn.style.display = "";
+    trInput.style.display = "none";
+    saveTrBtn.style.display = "none";
+    trEl.style.display = "";
+    editTrBtn.style.display = "";
     origEl.textContent = text.length > 70 ? text.slice(0, 67) + "…" : text;
     posBadge.style.display = "none";
     corrEl.style.display = "none";
@@ -1202,6 +1320,119 @@
   closeBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     hideAll();
+  });
+
+  // ── Inline Edit Handlers: Edit Word or Translation on Click / Pencil ─────
+  function enterOrigEdit() {
+    origEl.style.display = "none";
+    editOrigBtn.style.display = "none";
+    posBadge.style.display = "none";
+    origInput.style.display = "inline-block";
+    saveEditBtn.style.display = "inline-flex";
+    origInput.value = lastText || origEl.textContent || "";
+    origInput.focus();
+    origInput.select();
+  }
+
+  function exitOrigEdit(apply) {
+    const newText = origInput.value.trim();
+    origInput.style.display = "none";
+    saveEditBtn.style.display = "none";
+    origEl.style.display = "";
+    editOrigBtn.style.display = "";
+    if (posBadge.textContent && posBadge.textContent.trim()) {
+      posBadge.style.display = "inline-flex";
+    }
+
+    if (apply && newText && newText !== lastText) {
+      const rect = currentCardRect || card.getBoundingClientRect();
+      triggerTranslation(rect, newText, lastEntry?.sentence || "");
+    }
+  }
+
+  origEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    enterOrigEdit();
+  });
+  editOrigBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    enterOrigEdit();
+  });
+  saveEditBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    exitOrigEdit(true);
+  });
+  origInput.addEventListener("click", (e) => e.stopPropagation());
+  origInput.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      exitOrigEdit(true);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      exitOrigEdit(false);
+    }
+  });
+
+  function enterTrEdit() {
+    trEl.style.display = "none";
+    editTrBtn.style.display = "none";
+    trInput.style.display = "inline-block";
+    saveTrBtn.style.display = "inline-flex";
+    trInput.value = trEl.textContent || "";
+    trInput.dir = trEl.dir || "rtl";
+    trInput.focus();
+    trInput.select();
+  }
+
+  function exitTrEdit(apply) {
+    const newTr = trInput.value.trim();
+    trInput.style.display = "none";
+    saveTrBtn.style.display = "none";
+    trEl.style.display = "";
+    editTrBtn.style.display = "";
+
+    if (apply && newTr && newTr !== trEl.textContent && lastEntry) {
+      trEl.textContent = newTr;
+      lastEntry.translation = newTr;
+      safeSendMessage({ type: "history:add", entry: lastEntry });
+      setStatus("Saving…", false);
+      safeSendMessage({ type: "save", entry: lastEntry }, (saved) => {
+        if (!isContextValid()) return;
+        if (saved && saved.ok) {
+          savedWordsSet.add(normWord(lastEntry.text));
+          const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+          setStatus(note.text, note.warn);
+          setSaveBtnState(true);
+        } else {
+          setStatus("Could not save word", true);
+        }
+      });
+    }
+  }
+
+  trEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    enterTrEdit();
+  });
+  editTrBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    enterTrEdit();
+  });
+  saveTrBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    exitTrEdit(true);
+  });
+  trInput.addEventListener("click", (e) => e.stopPropagation());
+  trInput.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      exitTrEdit(true);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      exitTrEdit(false);
+    }
   });
 
   iconBtn.addEventListener("click", (e) => {

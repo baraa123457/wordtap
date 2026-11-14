@@ -166,14 +166,23 @@
         box-shadow:0 12px 36px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,0.12);pointer-events:auto;
         animation:tipFadeIn 0.12s ease-out}
       @keyframes tipFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-      .orig-line{display:flex;align-items:center;gap:6px;margin-bottom:5px;padding-right:16px}
-      .orig{color:#959cc2;font-size:12px;font-weight:600;word-break:break-word}
+      .orig-line{display:flex;align-items:center;gap:4px;margin-bottom:5px;padding-right:16px}
+      .orig{color:#959cc2;font-size:12px;font-weight:600;word-break:break-word;cursor:pointer;border-bottom:1px dashed rgba(149,156,194,0.4);padding-bottom:1px;transition:color .12s,border-color .12s}
+      .orig:hover{color:#ffffff;border-bottom-color:#facc3b}
+      .orig-input{background:rgba(14,16,34,0.95);border:1px solid #facc3b;border-radius:5px;color:#ffffff;font-size:11.5px;font-weight:600;padding:1px 5px;outline:none;width:105px}
+      .edit-btn{background:none;border:none;color:#959cc2;cursor:pointer;padding:1px 3px;border-radius:3px;display:inline-flex;align-items:center;opacity:0.65;transition:all .12s}
+      .edit-btn:hover{opacity:1;color:#facc3b;background:rgba(250,204,59,0.15)}
+      .save-edit-btn{background:#facc3b;color:#12152e;border:none;border-radius:4px;padding:1px 5px;font-size:10.5px;font-weight:700;cursor:pointer;transition:background .12s}
+      .save-edit-btn:hover{background:#ffe270}
       .pos-badge{display:none;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:999px;background:rgba(250,204,59,.15);color:#ffd23f;border:1px solid rgba(250,204,59,.35);white-space:nowrap;text-transform:lowercase}
       .spk-btn{background:none;border:none;color:#facc3b;cursor:pointer;padding:2px 4px;border-radius:5px;display:inline-flex;align-items:center;transition:transform .1s,color .1s}
       .spk-btn:hover{color:#ffe270;transform:scale(1.15)}
       .spk-btn.speaking{color:#34d399}
-      .tr{font-size:18px;font-weight:700;color:#ffffff;word-break:break-word;font-family:"Readex Pro",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;line-height:1.4}
+      .tr-line{display:flex;align-items:center;gap:6px}
+      .tr{font-size:18px;font-weight:700;color:#ffffff;word-break:break-word;font-family:"Readex Pro",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;line-height:1.4;cursor:pointer;border-bottom:1px dashed transparent;transition:border-color .15s}
+      .tr:hover{border-bottom-color:rgba(250,204,59,0.4)}
       .tr[dir=rtl]{text-align:right}
+      .tr-input{background:rgba(14,16,34,0.95);border:1px solid #facc3b;border-radius:5px;color:#ffffff;font-size:15px;font-weight:700;font-family:"Readex Pro",system-ui,sans-serif;padding:2px 6px;outline:none;width:125px}
       .alts-row{display:none;flex-wrap:wrap;gap:4px;margin-top:6px;max-width:280px}
       .alts-row[dir=rtl]{direction:rtl}
       .alt-chip{border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.08);color:#d1d5f0;border-radius:999px;padding:2px 8px;font-size:11.5px;font-family:"Readex Pro",system-ui,sans-serif;cursor:pointer;transition:all .12s ease;outline:none;user-select:none}
@@ -190,7 +199,15 @@
     <div class="tip">
       <span class="x">×</span>
       <div class="orig-line">
-        <div class="orig"></div>
+        <div class="orig" title="Click to edit word"></div>
+        <input type="text" class="orig-input" style="display:none;" />
+        <button class="edit-btn edit-orig-btn" title="Edit word" aria-label="Edit word">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
+        <button class="save-edit-btn save-orig-btn" title="Apply change" style="display:none;">✓</button>
         <span class="pos-badge"></span>
         <button class="spk-btn" title="Pronounce in English" aria-label="Listen">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -200,16 +217,32 @@
           </svg>
         </button>
       </div>
-      <div class="tr"></div>
+      <div class="tr-line">
+        <div class="tr" title="Click to edit translation"></div>
+        <input type="text" class="tr-input" style="display:none;" />
+        <button class="edit-btn edit-tr-btn" title="Edit translation" aria-label="Edit translation">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
+        <button class="save-edit-btn save-tr-btn" title="Apply change" style="display:none;">✓</button>
+      </div>
       <div class="alts-row"></div>
       <button class="save-btn" title="Save word to My Words">⭐ + Save to My Words</button>
       <div class="saved"></div>
     </div>`;
   const tip = shadow.querySelector(".tip");
   const origEl = shadow.querySelector(".orig");
+  const origInput = shadow.querySelector(".orig-input");
+  const editOrigBtn = shadow.querySelector(".edit-orig-btn");
+  const saveOrigBtn = shadow.querySelector(".save-orig-btn");
   const posEl = shadow.querySelector(".pos-badge");
   const spkBtn = shadow.querySelector(".spk-btn");
   const trEl = shadow.querySelector(".tr");
+  const trInput = shadow.querySelector(".tr-input");
+  const editTrBtn = shadow.querySelector(".edit-tr-btn");
+  const saveTrBtn = shadow.querySelector(".save-tr-btn");
   const altsEl = shadow.querySelector(".alts-row");
   const saveBtn = shadow.querySelector(".save-btn");
   const savedEl = shadow.querySelector(".saved");
@@ -298,12 +331,171 @@
   let tipToken = 0; // lets late replies know the tooltip has moved on
 
   function hideTip() {
+    if (tip.dataset.editing) return;
     clearTimeout(hideTimer);
+    origInput.style.display = "none";
+    saveOrigBtn.style.display = "none";
+    origEl.style.display = "";
+    editOrigBtn.style.display = "";
+    trInput.style.display = "none";
+    saveTrBtn.style.display = "none";
+    trEl.style.display = "";
+    editTrBtn.style.display = "";
     tip.style.display = "none";
     delete tip.dataset.hovered;
+    delete tip.dataset.editing;
   }
 
   let currentPendingEntry = null;
+
+  // ── Inline Edit Handlers: Edit Word or Translation on Click / Pencil ─────
+  function enterOrigEdit() {
+    tip.dataset.editing = "1";
+    clearTimeout(hideTimer);
+    origEl.style.display = "none";
+    editOrigBtn.style.display = "none";
+    posEl.style.display = "none";
+    origInput.style.display = "inline-block";
+    saveOrigBtn.style.display = "inline-flex";
+    origInput.value = currentOrigText || origEl.textContent || "";
+    origInput.focus();
+    origInput.select();
+  }
+
+  function exitOrigEdit(apply) {
+    delete tip.dataset.editing;
+    const newText = origInput.value.trim();
+    origInput.style.display = "none";
+    saveOrigBtn.style.display = "none";
+    origEl.style.display = "";
+    editOrigBtn.style.display = "";
+    if (posEl.textContent && posEl.textContent.trim()) {
+      posEl.style.display = "inline-flex";
+    }
+
+    if (apply && newText && newText !== currentOrigText) {
+      currentOrigText = newText;
+      origEl.textContent = newText;
+      trEl.textContent = "…";
+      setNote("Translating…", false);
+      const target = settings.targetLang;
+      safeSendMessage({ type: "translate", text: newText, target, srcLang: currentSrcLang }, (res) => {
+        if (!isContextValid()) return;
+        if (!res || !res.ok) {
+          trEl.textContent = "Translation failed";
+          return;
+        }
+        trEl.textContent = res.text;
+        if (res.pos) {
+          posEl.textContent = POS_LABELS[res.pos.toLowerCase()] || res.pos;
+          posEl.style.display = "inline-flex";
+        }
+        if (currentPendingEntry) {
+          currentPendingEntry.text = newText;
+          currentPendingEntry.translation = res.text;
+          currentPendingEntry.pos = res.pos || null;
+          safeSendMessage({ type: "history:add", entry: currentPendingEntry });
+          safeSendMessage({ type: "save", entry: currentPendingEntry }, (saved) => {
+            if (!isContextValid()) return;
+            if (saved && saved.ok) {
+              savedWordsSet.add(normWord(newText));
+              const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+              setNote(note.text, note.warn);
+              saveBtn.classList.add("saved");
+              saveBtn.textContent = "✓ In your words";
+            }
+          });
+        }
+      });
+    }
+  }
+
+  origEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    enterOrigEdit();
+  });
+  editOrigBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    enterOrigEdit();
+  });
+  saveOrigBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    exitOrigEdit(true);
+  });
+  origInput.addEventListener("click", (e) => e.stopPropagation());
+  origInput.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      exitOrigEdit(true);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      exitOrigEdit(false);
+    }
+  });
+
+  function enterTrEdit() {
+    tip.dataset.editing = "1";
+    clearTimeout(hideTimer);
+    trEl.style.display = "none";
+    editTrBtn.style.display = "none";
+    trInput.style.display = "inline-block";
+    saveTrBtn.style.display = "inline-flex";
+    trInput.value = trEl.textContent || "";
+    trInput.dir = trEl.dir || "rtl";
+    trInput.focus();
+    trInput.select();
+  }
+
+  function exitTrEdit(apply) {
+    delete tip.dataset.editing;
+    const newTr = trInput.value.trim();
+    trInput.style.display = "none";
+    saveTrBtn.style.display = "none";
+    trEl.style.display = "";
+    editTrBtn.style.display = "";
+
+    if (apply && newTr && newTr !== trEl.textContent && currentPendingEntry) {
+      trEl.textContent = newTr;
+      currentPendingEntry.translation = newTr;
+      safeSendMessage({ type: "history:add", entry: currentPendingEntry });
+      setNote("Saving…", false);
+      safeSendMessage({ type: "save", entry: currentPendingEntry }, (saved) => {
+        if (!isContextValid()) return;
+        if (saved && saved.ok) {
+          savedWordsSet.add(normWord(currentPendingEntry.text));
+          const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+          setNote(note.text, note.warn);
+          saveBtn.classList.add("saved");
+          saveBtn.textContent = "✓ In your words";
+        }
+      });
+    }
+  }
+
+  trEl.addEventListener("click", (e) => {
+    e.stopPropagation();
+    enterTrEdit();
+  });
+  editTrBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    enterTrEdit();
+  });
+  saveTrBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    exitTrEdit(true);
+  });
+  trInput.addEventListener("click", (e) => e.stopPropagation());
+  trInput.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      exitTrEdit(true);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      exitTrEdit(false);
+    }
+  });
 
   saveBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -352,6 +544,15 @@
     mount();
     currentOrigText = original;
     if (srcLang) currentSrcLang = srcLang;
+    origInput.style.display = "none";
+    saveOrigBtn.style.display = "none";
+    origEl.style.display = "";
+    editOrigBtn.style.display = "";
+    trInput.style.display = "none";
+    saveTrBtn.style.display = "none";
+    trEl.style.display = "";
+    editTrBtn.style.display = "";
+    delete tip.dataset.editing;
     origEl.textContent = original;
     if (pos) {
       posEl.textContent = POS_LABELS[pos.toLowerCase()] || pos;
