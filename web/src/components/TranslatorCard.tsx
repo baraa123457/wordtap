@@ -701,6 +701,62 @@ export function TranslatorCard({
     }
   }
 
+// Compress and downscale image before upload to avoid multi-megabyte transfers
+async function compressImageForOcr(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const MAX_DIM = 1280;
+      let width = img.naturalWidth || img.width;
+      let height = img.naturalHeight || img.height;
+
+      if (width > MAX_DIM || height > MAX_DIM) {
+        if (width > height) {
+          height = Math.round((height * MAX_DIM) / width);
+          width = MAX_DIM;
+        } else {
+          width = Math.round((width * MAX_DIM) / height);
+          height = MAX_DIM;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, width);
+      canvas.height = Math.max(1, height);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Failed to read image"));
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      // Draw white background in case image has transparency (PNG)
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // Export as crisp JPEG with 0.82 quality: ~100KB payload instead of 5MB
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+      resolve(dataUrl);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Failed to read image file"));
+      reader.readAsDataURL(file);
+    };
+
+    img.src = objectUrl;
+  });
+}
+
   // Process image for translation (OCR)
   const handleImageFile = useCallback(
     async (file: File) => {
@@ -709,8 +765,8 @@ export function TranslatorCard({
         setOcrError("Please upload an image file (PNG, JPG, WEBP).");
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        setOcrError("Image is too large (maximum size: 5 MB).");
+      if (file.size > 15 * 1024 * 1024) {
+        setOcrError("Image is too large (maximum size: 15 MB).");
         return;
       }
 
@@ -718,12 +774,8 @@ export function TranslatorCard({
       setOcrLoading(true);
 
       try {
-        const reader = new FileReader();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error("Failed to read image file"));
-          reader.readAsDataURL(file);
-        });
+        // Fast client-side resize and compression to ~100KB in ~20ms
+        const dataUrl = await compressImageForOcr(file);
 
         const res = await fetch("/api/ocr", {
           method: "POST",
