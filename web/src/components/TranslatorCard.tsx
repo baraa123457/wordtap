@@ -6,7 +6,7 @@ import { speak } from "@/lib/speech";
 import { addCustomWord, deleteWord } from "@/lib/api";
 import { getStoredSettings, type UserSettings } from "@/lib/settings";
 import type { Word } from "@/lib/schemas";
-import { SpeakerIcon, CloseIcon, TrashIcon } from "@/components/Icons";
+import { SpeakerIcon, CloseIcon, TrashIcon, ImageIcon } from "@/components/Icons";
 import { addHistoryItem, markHistoryItemSaved } from "@/lib/history";
 import { getVerbConjugation, type VerbConjugation } from "@/lib/verbs";
 
@@ -259,6 +259,12 @@ export function TranslatorCard({
   const [copiedTarget, setCopiedTarget] = useState<boolean>(false);
   const [savingWord, setSavingWord] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+
+  // Photo / Image OCR State
+  const [ocrLoading, setOcrLoading] = useState<boolean>(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Custom Meaning & Comment States
   const [customTranslation, setCustomTranslation] = useState<string>("");
@@ -654,6 +660,67 @@ export function TranslatorCard({
     }
   }
 
+  // Process image for translation (OCR)
+  const handleImageFile = useCallback(
+    async (file: File) => {
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        setOcrError("Please upload an image file (PNG, JPG, WEBP).");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setOcrError("Image is too large (maximum size: 5 MB).");
+        return;
+      }
+
+      setOcrError(null);
+      setOcrLoading(true);
+
+      try {
+        const reader = new FileReader();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error("Failed to read image file"));
+          reader.readAsDataURL(file);
+        });
+
+        const res = await fetch("/api/ocr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            image: dataUrl,
+            lang: srcLang === "auto" ? "en" : srcLang,
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(errData?.error || "Failed to extract text from image");
+        }
+
+        const data = (await res.json()) as { ok?: boolean; text?: string; error?: string };
+        const extractedText = (data?.text || "").trim();
+
+        if (!extractedText) {
+          setOcrError("No text detected in this image. Try another photo or clearer image.");
+          return;
+        }
+
+        setInputText(extractedText);
+        textareaRef.current?.focus();
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error && err.message
+            ? err.message
+            : "Failed to extract text from image";
+        setOcrError(message);
+      } finally {
+        setOcrLoading(false);
+      }
+    },
+    [srcLang],
+  );
+
   const isRTL =
     /[\u0600-\u06FF\u0590-\u05FF\u0750-\u077F]/.test(inputText) ||
     (srcLang === "ar" && !inputText);
@@ -773,7 +840,30 @@ export function TranslatorCard({
       {/* Two Column Layout (Input on Left, Translation on Right) */}
       <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-line min-h-[220px]">
         {/* Source Text Box */}
-        <div className="flex flex-col justify-between p-4 sm:p-5 relative bg-transparent">
+        <div
+          className={`flex flex-col justify-between p-4 sm:p-5 relative bg-transparent transition-colors ${
+            isDraggingOver ? "bg-subtitle/5 ring-2 ring-inset ring-subtitle/50" : ""
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isDraggingOver) setIsDraggingOver(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDraggingOver(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDraggingOver(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file && file.type.startsWith("image/")) {
+              void handleImageFile(file);
+            }
+          }}
+        >
           <div className="relative">
             <textarea
               ref={textareaRef}
@@ -789,10 +879,26 @@ export function TranslatorCard({
                   handleImmediateAutoSave();
                 }
               }}
+              onPaste={(e) => {
+                const items = e.clipboardData?.items;
+                if (items) {
+                  for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    if (item.type.indexOf("image") !== -1) {
+                      const file = item.getAsFile();
+                      if (file) {
+                        e.preventDefault();
+                        void handleImageFile(file);
+                        return;
+                      }
+                    }
+                  }
+                }
+              }}
               onBlur={() => {
                 handleImmediateAutoSave();
               }}
-              placeholder="Enter text to translate..."
+              placeholder="Enter text to translate or paste / drop an image..."
               dir={isRTL ? "rtl" : "ltr"}
               className={`w-full bg-transparent resize-none text-lg sm:text-2xl font-medium text-ink placeholder:text-muted/50 focus:outline-none border-0 py-0 leading-relaxed ${
                 isRTL ? "pl-11 pr-2 text-right" : "pr-11 pl-2 text-left"
@@ -930,6 +1036,44 @@ export function TranslatorCard({
                 )}
               </div>
             ) : null}
+
+            {/* Drag and Drop Active Overlay */}
+            {isDraggingOver ? (
+              <div className="absolute inset-0 z-20 rounded-2xl border-2 border-dashed border-subtitle bg-surface/95 backdrop-blur-xs flex flex-col items-center justify-center gap-2 pointer-events-none p-4 text-center">
+                <ImageIcon size={36} className="text-subtitle animate-bounce" />
+                <p className="text-sm font-bold text-ink">Drop image to translate</p>
+                <p className="text-xs text-muted">إفلات الصورة لاستخراج النص والترجمة</p>
+              </div>
+            ) : null}
+
+            {/* OCR Processing Banner */}
+            {ocrLoading ? (
+              <div className="mt-3 p-3 rounded-2xl bg-subtitle/10 border border-subtitle/30 flex items-center gap-2.5 text-xs sm:text-sm text-ink animate-pulse shadow-sm">
+                <span className="h-4 w-4 rounded-full border-2 border-subtitle border-t-transparent animate-spin shrink-0" />
+                <div className="flex-1">
+                  <span className="font-semibold text-subtitle">Extracting text from image...</span>
+                  <span className="text-muted text-xs ms-1.5">(جارِ استخراج النص والترجمة...)</span>
+                </div>
+              </div>
+            ) : null}
+
+            {/* OCR Error Banner */}
+            {ocrError ? (
+              <div className="mt-3 p-3 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-2 text-xs sm:text-sm text-red-400 shadow-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="shrink-0 text-base">⚠️</span>
+                  <span className="truncate">{ocrError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOcrError(null)}
+                  className="p-1 text-red-400 hover:text-red-200 text-sm font-bold rounded-lg hover:bg-white/10"
+                  aria-label="Dismiss error"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : null}
           </div>
 
           {/* Bottom Toolbar for Source */}
@@ -971,6 +1115,35 @@ export function TranslatorCard({
                     <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
                     <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
                   </svg>
+                )}
+              </button>
+
+              {/* Photo / Image Translation (OCR) Button */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    void handleImageFile(file);
+                  }
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={ocrLoading}
+                title="Translate image / photo (OCR)"
+                aria-label="Translate image or photo"
+                className="p-2 rounded-xl text-muted hover:text-ink hover:bg-white/10 disabled:opacity-50 transition-all flex items-center gap-1.5"
+              >
+                {ocrLoading ? (
+                  <span className="h-4 w-4 rounded-full border-2 border-subtitle border-t-transparent animate-spin" />
+                ) : (
+                  <ImageIcon size={19} />
                 )}
               </button>
             </div>
