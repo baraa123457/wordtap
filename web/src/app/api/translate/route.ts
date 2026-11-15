@@ -133,6 +133,24 @@ async function findSuggestCorrection(text: string): Promise<string | null> {
   }
 }
 
+function normalizePartOfSpeech(raw: string): string {
+  const p = raw.toLowerCase().replace(/[^a-z_-]/g, "");
+  if (p === "n" || p === "noun") return "noun";
+  if (p === "v" || p === "verb" || p.startsWith("v-") || p === "vt" || p === "vi") return "verb";
+  if (p === "adj" || p === "adjective") return "adjective";
+  if (p === "adv" || p === "adverb") return "adverb";
+  if (p === "prep" || p === "preposition") return "preposition";
+  if (p === "conj" || p === "conjunction") return "conjunction";
+  if (p === "pron" || p === "pronoun") return "pronoun";
+  if (p === "phrase" || p === "phr") return "phrase";
+  if (p === "idiom") return "idiom";
+  if (p === "past") return "past";
+  if (p === "present") return "present";
+  if (p === "past_participle") return "past_participle";
+  if (p === "continuous") return "continuous";
+  return "";
+}
+
 async function handleTranslate(
   text: string,
   src: string,
@@ -149,6 +167,7 @@ async function handleTranslate(
         sourcePronunciation: "",
         targetPronunciation: "",
         definitions: [],
+        sourceDefinitions: [],
         correction: null,
         provider,
       });
@@ -174,8 +193,8 @@ async function handleTranslate(
           const usphone = simple?.word?.[0]?.usphone || simple?.word?.[0]?.ukphone || "";
           const sourcePronunciation = usphone ? `/${usphone}/` : "";
 
-          // Extract Oxford / WordNet definitions
-          const definitions: Array<{ partOfSpeech: string; meanings: string[] }> = [];
+          // 1. Extract Monolingual Source Definitions (English definitions of the source word)
+          const sourceDefinitions: Array<{ partOfSpeech: string; text: string }> = [];
           const ee = uData.ee as {
             word?: {
               trs?: Array<{
@@ -187,21 +206,22 @@ async function handleTranslate(
 
           if (Array.isArray(ee?.word?.trs)) {
             for (const item of ee.word.trs) {
-              const pos = (item.pos || "noun").replace(/\.$/, "").trim().toLowerCase();
-              const meanings: string[] = [];
+              const pos = normalizePartOfSpeech(item.pos || "") || "noun";
               if (Array.isArray(item.tr)) {
                 for (const t of item.tr) {
                   const m = t.l?.i || (typeof t.i === "string" ? t.i : "");
-                  if (m && typeof m === "string") meanings.push(m.trim());
+                  if (m && typeof m === "string") {
+                    const clean = m.trim();
+                    if (clean && !sourceDefinitions.some((sd) => sd.text === clean)) {
+                      sourceDefinitions.push({ partOfSpeech: pos, text: clean });
+                    }
+                  }
                 }
-              }
-              if (meanings.length > 0) {
-                definitions.push({ partOfSpeech: pos, meanings });
               }
             }
           }
 
-          // Extract Collins definitions if available
+          // Extract Collins English definitions if available
           const collins = uData.collins as {
             collins_entries?: Array<{
               entries?: {
@@ -215,12 +235,12 @@ async function handleTranslate(
 
           const cEntries = collins?.collins_entries?.[0]?.entries?.entry || [];
           for (const ce of cEntries) {
-            const pos = (ce.pos_entry?.pos || "def").toLowerCase();
+            const pos = normalizePartOfSpeech(ce.pos_entry?.pos || "") || "verb";
             for (const te of ce.tran_entry || []) {
               if (te.tran) {
                 const clean = String(te.tran).replace(/<[^>]+>/g, "").trim();
-                if (clean && !definitions.some((d) => d.meanings.includes(clean))) {
-                  definitions.push({ partOfSpeech: pos, meanings: [clean] });
+                if (clean && !sourceDefinitions.some((sd) => sd.text === clean)) {
+                  sourceDefinitions.push({ partOfSpeech: pos, text: clean });
                 }
               }
             }
@@ -239,8 +259,10 @@ async function handleTranslate(
             }))
             .filter((ex) => Boolean(ex.sentence));
 
-          // Get target language translation
+          // 2. Extract Bilingual Target Alternative Translations (e.g. Arabic words)
           let translation = "";
+          const targetAlternatives: Array<{ partOfSpeech: string; meanings: string[] }> = [];
+
           const ec = uData.ec as {
             word?: Array<{ trs?: Array<{ tr?: Array<{ l?: { i?: string[] } }> }> }>;
           } | undefined;
@@ -249,35 +271,44 @@ async function handleTranslate(
             translation = ec?.word?.[0]?.trs?.[0]?.tr?.[0]?.l?.i?.[0] || "";
           }
 
-          if (!translation) {
-            try {
-              const transUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(
-                src,
-              )}&tl=${encodeURIComponent(target)}&dt=t&dt=bd&q=${encodeURIComponent(text)}`;
-              const transRes = await fetch(transUrl, { signal: AbortSignal.timeout(4000) });
-              if (transRes.ok) {
-                const transData = await transRes.json();
+          try {
+            const transUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(
+              src,
+            )}&tl=${encodeURIComponent(target)}&dt=t&dt=bd&q=${encodeURIComponent(text)}`;
+            const transRes = await fetch(transUrl, { signal: AbortSignal.timeout(4000) });
+            if (transRes.ok) {
+              const transData = await transRes.json();
+              if (!translation) {
                 translation = Array.isArray(transData?.[0])
                   ? transData[0].map((p: [string]) => p[0]).join("")
                   : "";
-                if (definitions.length === 0 && Array.isArray(transData?.[1])) {
-                  for (const g of transData[1]) {
-                    if (Array.isArray(g) && typeof g[0] === "string" && Array.isArray(g[1])) {
-                      definitions.push({
-                        partOfSpeech: g[0].toLowerCase(),
-                        meanings: g[1].slice(0, 8),
-                      });
+              }
+              if (Array.isArray(transData?.[1])) {
+                for (const g of transData[1]) {
+                  if (Array.isArray(g) && typeof g[0] === "string" && Array.isArray(g[1])) {
+                    const pos = normalizePartOfSpeech(g[0]) || g[0].toLowerCase();
+                    const meanings = g[1]
+                      .filter((m: unknown): m is string => typeof m === "string" && Boolean(m.trim()))
+                      .slice(0, 8);
+                    if (meanings.length > 0) {
+                      targetAlternatives.push({ partOfSpeech: pos, meanings });
                     }
                   }
                 }
               }
-            } catch {}
-          }
+            }
+          } catch {}
 
           const verbInfo = getVerbConjugation(text);
-          const partsOfSpeech = definitions
-            .map((d) => d.partOfSpeech.toLowerCase())
-            .filter((pos) => pos && pos !== "alternatives");
+          const posSet = new Set<string>();
+          for (const sd of sourceDefinitions) {
+            if (sd.partOfSpeech) posSet.add(sd.partOfSpeech);
+          }
+          for (const alt of targetAlternatives) {
+            if (alt.partOfSpeech) posSet.add(alt.partOfSpeech);
+          }
+          if (verbInfo) posSet.add("verb");
+          const partsOfSpeech = Array.from(posSet);
 
           return NextResponse.json({
             text,
@@ -285,7 +316,8 @@ async function handleTranslate(
             detectedSrcLang: src === "auto" ? "en" : src,
             sourcePronunciation,
             targetPronunciation: "",
-            definitions,
+            definitions: targetAlternatives,
+            sourceDefinitions,
             partsOfSpeech,
             primaryPartOfSpeech: partsOfSpeech[0] || null,
             correction: null,
@@ -696,35 +728,44 @@ async function handleTranslate(
       }
 
       let hasVerbInGoogleDef = false;
+      const sourceDefinitions: Array<{ partOfSpeech: string; text: string }> = [];
       if (Array.isArray(data[12])) {
         for (const group of data[12]) {
-          if (Array.isArray(group) && group[0] === "verb") {
-            hasVerbInGoogleDef = true;
-            break;
+          if (Array.isArray(group) && typeof group[0] === "string" && Array.isArray(group[1])) {
+            const pos = normalizePartOfSpeech(group[0]) || group[0].toLowerCase();
+            if (pos === "verb") hasVerbInGoogleDef = true;
+            for (const item of group[1]) {
+              if (Array.isArray(item) && typeof item[0] === "string" && item[0].trim()) {
+                sourceDefinitions.push({ partOfSpeech: pos, text: item[0].trim() });
+              }
+            }
           }
         }
       }
 
       const verbInfo = getVerbConjugation(text, verbBaseHint);
 
-      const partsOfSpeech = definitions
-        .map((d) => d.partOfSpeech.toLowerCase())
-        .filter((pos) => pos && pos !== "alternatives");
-
+      const posSet = new Set<string>();
+      for (const d of definitions) {
+        const norm = normalizePartOfSpeech(d.partOfSpeech);
+        if (norm) posSet.add(norm);
+      }
+      for (const sd of sourceDefinitions) {
+        const norm = normalizePartOfSpeech(sd.partOfSpeech);
+        if (norm) posSet.add(norm);
+      }
       if (verbInfo || hasVerbInGoogleDef) {
-        if (!partsOfSpeech.includes("verb")) {
-          partsOfSpeech.unshift("verb");
-        }
+        posSet.add("verb");
         if (verbInfo) {
           for (const t of verbInfo.currentTenses) {
-            if (t === "past" && !partsOfSpeech.includes("past")) partsOfSpeech.push("past");
-            if (t === "past_participle" && !partsOfSpeech.includes("past_participle")) partsOfSpeech.push("past_participle");
-            if (t === "present_participle" && !partsOfSpeech.includes("continuous")) partsOfSpeech.push("continuous");
-            if (t === "base" && !partsOfSpeech.includes("present")) partsOfSpeech.push("present");
+            if (t === "past") posSet.add("past");
+            if (t === "past_participle") posSet.add("past_participle");
+            if (t === "present_participle") posSet.add("continuous");
+            if (t === "base") posSet.add("present");
           }
         }
       }
-
+      const partsOfSpeech = Array.from(posSet);
       const primaryPartOfSpeech = partsOfSpeech[0] || null;
 
       return NextResponse.json({
@@ -734,6 +775,7 @@ async function handleTranslate(
         sourcePronunciation,
         targetPronunciation,
         definitions,
+        sourceDefinitions,
         partsOfSpeech,
         primaryPartOfSpeech,
         correction,

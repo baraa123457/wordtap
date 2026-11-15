@@ -37,6 +37,11 @@ type Definition = {
   meanings: string[];
 };
 
+export type SourceDefinition = {
+  partOfSpeech: string;
+  text: string;
+};
+
 export type SpellCorrection = {
   correctedText: string;
   originalText: string;
@@ -50,6 +55,7 @@ type TranslationResult = {
   sourcePronunciation?: string;
   targetPronunciation?: string;
   definitions?: Definition[];
+  sourceDefinitions?: SourceDefinition[];
   partsOfSpeech?: string[];
   primaryPartOfSpeech?: string | null;
   correction?: SpellCorrection | null;
@@ -60,12 +66,19 @@ type TranslationResult = {
 
 export const POS_BADGES: Record<string, { en: string; ar: string; badge: string }> = {
   noun: { en: "noun", ar: "اسم", badge: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30" },
+  n: { en: "noun", ar: "اسم", badge: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30" },
   verb: { en: "verb", ar: "فعل", badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" },
+  v: { en: "verb", ar: "فعل", badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" },
   adjective: { en: "adj", ar: "صفة", badge: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30" },
+  adj: { en: "adj", ar: "صفة", badge: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30" },
   adverb: { en: "adv", ar: "ظرف", badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30" },
+  adv: { en: "adv", ar: "ظرف", badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30" },
   pronoun: { en: "pron", ar: "ضمير", badge: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30" },
+  pron: { en: "pron", ar: "ضمير", badge: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30" },
   preposition: { en: "prep", ar: "حرف جر", badge: "bg-pink-500/15 text-pink-600 dark:text-pink-400 border-pink-500/30" },
+  prep: { en: "prep", ar: "حرف جر", badge: "bg-pink-500/15 text-pink-600 dark:text-pink-400 border-pink-500/30" },
   conjunction: { en: "conj", ar: "حرف عطف", badge: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30" },
+  conj: { en: "conj", ar: "حرف عطف", badge: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30" },
   interjection: { en: "interj", ar: "تعجب", badge: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30" },
   phrase: { en: "phrase", ar: "عبارة", badge: "bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30" },
   idiom: { en: "idiom", ar: "تعبير اصطلاحي", badge: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30" },
@@ -351,6 +364,9 @@ export function TranslatorCard({
     return null;
   }, [result?.verbInfo, result?.text, inputText]);
 
+  const [showAllDefinitions, setShowAllDefinitions] = useState(false);
+  const [showAllAlternatives, setShowAllAlternatives] = useState(false);
+
   const effectivePartsOfSpeech = useMemo(() => {
     const list = [...(result?.partsOfSpeech || [])];
     if (activeVerbConjugation) {
@@ -362,8 +378,50 @@ export function TranslatorCard({
         if (t === "base" && !list.includes("present")) list.push("present");
       }
     }
-    return list;
+    const cleanList = list
+      .map((p) => p.toLowerCase().trim())
+      .filter((p) => p && p !== "def" && p !== "alternatives" && p !== "undefined");
+    return Array.from(new Set(cleanList));
   }, [result?.partsOfSpeech, activeVerbConjugation]);
+
+  // Cleanly separate Source Monolingual Definitions (Left Side) from Target Alternatives (Right Side)
+  const { sourceDefinitionsList, targetAlternativesList } = useMemo(() => {
+    const srcDefs: Array<{ partOfSpeech: string; text: string }> = [
+      ...(result?.sourceDefinitions || []),
+    ];
+    const targetAlts: Array<{ partOfSpeech: string; meanings: string[] }> = [];
+
+    if (result?.definitions) {
+      for (const def of result.definitions) {
+        const rawPos = def.partOfSpeech.toLowerCase();
+        const normPos = rawPos === "def" ? "noun" : rawPos;
+        const shortWords: string[] = [];
+
+        for (const m of def.meanings) {
+          const trimmed = m.trim();
+          if (!trimmed) continue;
+          // An explanatory definition sentence typically has >35 chars or >5 words
+          const isExplanation = trimmed.length > 35 || trimmed.split(" ").length > 5;
+          if (isExplanation) {
+            if (!srcDefs.some((s) => s.text === trimmed)) {
+              srcDefs.push({ partOfSpeech: normPos, text: trimmed });
+            }
+          } else {
+            shortWords.push(trimmed);
+          }
+        }
+
+        if (shortWords.length > 0) {
+          targetAlts.push({
+            partOfSpeech: normPos === "def" ? "alternatives" : normPos,
+            meanings: shortWords,
+          });
+        }
+      }
+    }
+
+    return { sourceDefinitionsList: srcDefs, targetAlternativesList: targetAlts };
+  }, [result?.sourceDefinitions, result?.definitions]);
 
   const [isDeletingWord, setIsDeletingWord] = useState(false);
 
@@ -1072,6 +1130,56 @@ async function compressImageForOcr(file: File): Promise<string> {
               </p>
             ) : null}
 
+            {/* Source Monolingual Dictionary Definitions (Left Side) */}
+            {sourceDefinitionsList.length > 0 ? (
+              <div className="mt-3 pt-3 border-t border-line/40 space-y-2 text-left" dir="ltr">
+                <div className="flex items-center justify-between text-xs font-semibold text-muted">
+                  <span className="flex items-center gap-1.5 text-ink font-bold">
+                    <span>📖</span>
+                    <span>Definitions</span>
+                    <span className="text-[11px] font-normal text-muted opacity-80">(معاني الكلمة)</span>
+                  </span>
+                  {sourceDefinitionsList.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllDefinitions((prev) => !prev)}
+                      className="text-[11px] font-semibold text-subtitle hover:underline cursor-pointer flex items-center gap-0.5"
+                    >
+                      {showAllDefinitions
+                        ? "Show less (أقل) ↑"
+                        : `+${sourceDefinitionsList.length - 2} more (المزيد) ↓`}
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  {(showAllDefinitions ? sourceDefinitionsList : sourceDefinitionsList.slice(0, 2)).map(
+                    (def, dIdx) => {
+                      const p = (def.partOfSpeech || "").toLowerCase();
+                      const meta = POS_BADGES[p] || {
+                        en: p,
+                        ar: p,
+                        badge: "bg-surface border-line text-muted",
+                      };
+                      return (
+                        <div
+                          key={`sdef-${dIdx}`}
+                          className="text-xs text-ink/90 flex items-start gap-2 leading-relaxed bg-black/[0.02] dark:bg-white/[0.03] p-2 rounded-xl border border-line/30"
+                        >
+                          <span
+                            className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold border shrink-0 mt-0.5 ${meta.badge}`}
+                          >
+                            {meta.en}
+                          </span>
+                          <span className="flex-1 select-text">{def.text}</span>
+                        </div>
+                      );
+                    },
+                  )}
+                </div>
+              </div>
+            ) : null}
+
             {/* Google-style Spell Correction Banner */}
             {result?.correction ? (
               <div
@@ -1369,30 +1477,6 @@ async function compressImageForOcr(file: File): Promise<string> {
                       >
                         {baseTranslation}
                       </div>
-
-                      {/* Part of Speech & Tense Badges (noun / verb / adj / past / present etc.) */}
-                      {effectivePartsOfSpeech.length > 0 ? (
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {effectivePartsOfSpeech.map((pos) => {
-                            const p = pos.toLowerCase();
-                            const meta = POS_BADGES[p] || {
-                              en: p,
-                              ar: p,
-                              badge: "bg-subtitle/15 text-subtitle-edge dark:text-subtitle border-subtitle/30",
-                            };
-                            return (
-                              <span
-                                key={p}
-                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border tracking-wide shadow-2xs ${meta.badge}`}
-                                title={`${meta.en} (${meta.ar})`}
-                              >
-                                <span>{meta.en}</span>
-                                <span className="opacity-75 font-normal text-[10px]">· {meta.ar}</span>
-                              </span>
-                            );
-                          })}
-                        </div>
-                      ) : null}
                     </div>
 
                     {/* Target Pronunciation / Phonetics */}
@@ -1707,58 +1791,86 @@ async function compressImageForOcr(file: File): Promise<string> {
                   </div>
                 ) : null}
 
-                {/* Dictionary Definitions with Apple capsule chips */}
-                {result.definitions && result.definitions.length > 0 ? (
+                {/* Alternative Translations in the Target Language (Right Side) */}
+                {targetAlternativesList && targetAlternativesList.length > 0 ? (
                   <div className="mt-3 pt-3 border-t border-line/50 space-y-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted flex items-center justify-between">
-                      <span>Dictionary / معاني الكلمة:</span>
-                      <span className="text-[11px] font-normal text-muted/70 lowercase">اضغط على أي معنى لاختياره</span>
-                    </span>
-                    <div className="space-y-2">
-                      {result.definitions.map((def, idx) => (
-                        <div
-                          key={`def-${idx}`}
-                          className="flex flex-wrap items-baseline gap-2 text-xs sm:text-sm"
-                        >
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border ${
-                              POS_BADGES[def.partOfSpeech.toLowerCase()]?.badge ||
-                              "bg-black/5 dark:bg-white/10 text-muted border-line"
-                            }`}
+                    <div className="text-xs font-semibold text-muted flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-ink font-bold">
+                        <span>معاني بديلة / Alternatives</span>
+                        <span className="text-[11px] font-normal text-muted/70">(اضغط لتغيير المعنى)</span>
+                      </span>
+                      {(() => {
+                        const totalChips = targetAlternativesList.reduce(
+                          (acc, curr) => acc + curr.meanings.length,
+                          0,
+                        );
+                        return totalChips > 4 ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllAlternatives((prev) => !prev)}
+                            className="text-[11px] font-semibold text-subtitle hover:underline cursor-pointer flex items-center gap-0.5"
                           >
-                            <span>{POS_BADGES[def.partOfSpeech.toLowerCase()]?.en || def.partOfSpeech}</span>
-                            {POS_BADGES[def.partOfSpeech.toLowerCase()]?.ar ? (
-                              <span className="opacity-75 font-normal text-[10px]">
-                                ({POS_BADGES[def.partOfSpeech.toLowerCase()]?.ar})
+                            {showAllAlternatives ? "Show less (أقل) ↑" : "More (المزيد) ↓"}
+                          </button>
+                        ) : null;
+                      })()}
+                    </div>
+                    <div className="space-y-2">
+                      {targetAlternativesList.map((def, idx) => {
+                        const p = def.partOfSpeech.toLowerCase();
+                        const meta = POS_BADGES[p] || {
+                          en: p,
+                          ar: p,
+                          badge: "bg-black/5 dark:bg-white/10 text-muted border-line",
+                        };
+                        const displayedMeanings = showAllAlternatives
+                          ? def.meanings
+                          : def.meanings.slice(0, 4);
+
+                        return (
+                          <div
+                            key={`alt-${idx}`}
+                            className="flex flex-wrap items-baseline gap-2 text-xs sm:text-sm"
+                          >
+                            {p !== "alternatives" ? (
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border ${meta.badge}`}
+                              >
+                                <span>{meta.en}</span>
+                                {meta.ar ? (
+                                  <span className="opacity-75 font-normal text-[10px]">
+                                    ({meta.ar})
+                                  </span>
+                                ) : null}
                               </span>
                             ) : null}
-                          </span>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            {def.meanings.map((m, mIdx) => {
-                              const isCurrent = baseTranslation.trim() === m.trim();
-                              return (
-                                <button
-                                  key={`m-${idx}-${mIdx}`}
-                                  type="button"
-                                  onClick={() => {
-                                    setCustomTranslation(m.trim());
-                                    setEditMeaning(m.trim());
-                                  }}
-                                  title="اضغط لتغيير المعنى إلى هذا اللفظ"
-                                  className={`max-w-full text-right leading-relaxed break-words px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                                    isCurrent
-                                      ? "bg-subtitle text-black font-semibold shadow-xs"
-                                      : "bg-black/[0.04] dark:bg-white/[0.08] text-ink hover:bg-black/[0.08] dark:hover:bg-white/[0.12]"
-                                  }`}
-                                >
-                                  {m}
-                                  {isCurrent && <span className="ms-1 text-[10px]">✓</span>}
-                                </button>
-                              );
-                            })}
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {displayedMeanings.map((m, mIdx) => {
+                                const isCurrent = baseTranslation.trim() === m.trim();
+                                return (
+                                  <button
+                                    key={`m-${idx}-${mIdx}`}
+                                    type="button"
+                                    onClick={() => {
+                                      setCustomTranslation(m.trim());
+                                      setEditMeaning(m.trim());
+                                    }}
+                                    title="اضغط لتغيير المعنى إلى هذا اللفظ"
+                                    className={`max-w-full text-right leading-relaxed break-words px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                                      isCurrent
+                                        ? "bg-subtitle text-black font-semibold shadow-xs"
+                                        : "bg-black/[0.04] dark:bg-white/[0.08] text-ink hover:bg-black/[0.08] dark:hover:bg-white/[0.12]"
+                                    }`}
+                                  >
+                                    {m}
+                                    {isCurrent && <span className="ms-1 text-[10px]">✓</span>}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ) : null}
