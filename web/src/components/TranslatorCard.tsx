@@ -736,17 +736,25 @@ export function TranslatorCard({
       className="apple-card rounded-3xl overflow-hidden transition-all min-w-0"
     >
       {/* Top Header / Language Switcher Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center border-b border-line/60 bg-surface px-4 py-2.5 gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-line/60 bg-surface px-2.5 sm:px-4 py-2 sm:py-2.5 gap-1.5 sm:gap-3">
         {/* Source Language Segmented Control (Left Column) */}
         <div className="flex items-center min-w-0">
-          <div className="apple-segmented-container">
+          <div className="apple-segmented-container max-w-full overflow-x-auto no-scrollbar">
             <button
               type="button"
               onClick={() => selectSrcLang("auto")}
               data-active={srcLang === "auto" ? "true" : undefined}
-              className="apple-segmented-item whitespace-nowrap"
+              className={`apple-segmented-item whitespace-nowrap text-xs sm:text-sm ${
+                srcLang === "auto" ? "inline-flex" : "hidden sm:inline-flex"
+              }`}
             >
-              Detect language {detectedLabel}
+              <span className="hidden sm:inline">Detect language</span>
+              <span className="sm:hidden">Detect</span>
+              {detectedLabel ? (
+                <span className="opacity-75 font-normal ms-1 text-[11px] sm:text-xs">
+                  {detectedLabel}
+                </span>
+              ) : null}
             </button>
             {topSrcLangs.map((code) => {
               const lang = ALL_LANGS.find((l) => l.code === code) || { code, native: code };
@@ -757,7 +765,9 @@ export function TranslatorCard({
                   type="button"
                   onClick={() => selectSrcLang(code)}
                   data-active={isActive ? "true" : undefined}
-                  className="apple-segmented-item whitespace-nowrap"
+                  className={`apple-segmented-item whitespace-nowrap text-xs sm:text-sm ${
+                    isActive ? "inline-flex" : "hidden xl:inline-flex"
+                  }`}
                 >
                   {lang.native}
                 </button>
@@ -772,13 +782,13 @@ export function TranslatorCard({
         </div>
 
         {/* Swap Button ⇄ (Center Column) */}
-        <div className="flex items-center justify-center shrink-0 px-2">
+        <div className="flex items-center justify-center shrink-0 px-1 sm:px-2 z-10 relative">
           <button
             type="button"
             onClick={handleSwap}
             title="Swap languages"
             aria-label="Swap languages"
-            className="w-8 h-8 rounded-full border border-line bg-black/[0.03] dark:bg-white/[0.06] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] text-muted hover:text-ink active:scale-90 transition-all flex items-center justify-center cursor-pointer"
+            className="w-8 h-8 rounded-full border border-line bg-surface hover:bg-black/[0.08] dark:hover:bg-white/[0.12] text-muted hover:text-ink active:scale-90 transition-all flex items-center justify-center cursor-pointer shadow-2xs"
           >
             <svg
               className="w-4 h-4"
@@ -795,8 +805,8 @@ export function TranslatorCard({
         </div>
 
         {/* Target Language Segmented Control & Save Mode (Right Column) */}
-        <div className="flex items-center justify-between gap-2 min-w-0">
-          <div className="apple-segmented-container min-w-0">
+        <div className="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0">
+          <div className="apple-segmented-container max-w-full overflow-x-auto no-scrollbar">
             {topTargetLangs.map((code) => {
               const lang = ALL_LANGS.find((l) => l.code === code) || { code, native: code };
               const isActive = targetLang === code;
@@ -806,7 +816,9 @@ export function TranslatorCard({
                   type="button"
                   onClick={() => selectTargetLang(code)}
                   data-active={isActive ? "true" : undefined}
-                  className="apple-segmented-item whitespace-nowrap"
+                  className={`apple-segmented-item whitespace-nowrap text-xs sm:text-sm ${
+                    isActive ? "inline-flex" : "hidden xl:inline-flex"
+                  }`}
                 >
                   {lang.native}
                 </button>
@@ -815,7 +827,7 @@ export function TranslatorCard({
             <LanguageDropdown
               current={targetLang}
               onSelect={selectTargetLang}
-              align="left"
+              align="right"
             />
           </div>
 
@@ -823,15 +835,19 @@ export function TranslatorCard({
           <Link
             href="/settings"
             title="Configure Word Saving in Settings (Auto-save / Manual)"
-            className="h-7 inline-flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-full bg-black/[0.03] dark:bg-white/[0.06] border border-line text-muted hover:text-ink transition-all shrink-0 ms-auto"
+            className="h-7 inline-flex items-center gap-1.5 px-2 sm:px-2.5 text-xs font-medium rounded-full bg-black/[0.03] dark:bg-white/[0.06] border border-line text-muted hover:text-ink transition-all shrink-0"
           >
             {(settings.translateSaveMode || "manual") === "auto" ? (
               <>
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[11px] font-semibold text-ink">Auto-save</span>
+                <span className="hidden sm:inline text-[11px] font-semibold text-ink">Auto-save</span>
+                <span className="sm:hidden text-[10px] font-semibold text-ink">Auto</span>
               </>
             ) : (
-              <span className="text-[11px]">Manual save</span>
+              <>
+                <span className="hidden sm:inline text-[11px]">Manual save</span>
+                <span className="sm:hidden text-[10px]">Manual</span>
+              </>
             )}
           </Link>
         </div>
@@ -1077,7 +1093,7 @@ export function TranslatorCard({
           </div>
 
           {/* Bottom Toolbar for Source */}
-          <div className="flex items-center justify-between pt-4 mt-2 border-t border-line/40">
+          <div className="flex items-center justify-between pt-4 mt-2 border-t border-line/40 gap-2 flex-wrap">
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -1378,7 +1394,7 @@ export function TranslatorCard({
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
                       {/* V1 Present */}
                       <button
                         type="button"
@@ -1540,7 +1556,7 @@ export function TranslatorCard({
                                     setEditMeaning(m.trim());
                                   }}
                                   title="اضغط لتغيير المعنى إلى هذا اللفظ"
-                                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                                  className={`max-w-full text-right leading-relaxed break-words px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
                                     isCurrent
                                       ? "bg-subtitle text-black font-semibold shadow-xs"
                                       : "bg-black/[0.04] dark:bg-white/[0.08] text-ink hover:bg-black/[0.08] dark:hover:bg-white/[0.12]"

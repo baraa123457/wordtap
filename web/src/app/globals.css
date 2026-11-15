@@ -178,6 +178,15 @@ bdi {
     border-radius: 9999px;
     background: rgba(90, 100, 145, 0.12);
     border: 1px solid var(--line);
+    max-width: 100%;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
   .apple-segmented-item {
