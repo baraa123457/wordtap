@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { speak } from "@/lib/speech";
 import { addCustomWord, deleteWord } from "@/lib/api";
-import { getStoredSettings, type UserSettings } from "@/lib/settings";
+import { getStoredSettings, type UserSettings, type TranslationProvider } from "@/lib/settings";
 import type { Word } from "@/lib/schemas";
 import { SpeakerIcon, CloseIcon, TrashIcon, ImageIcon } from "@/components/Icons";
 import { addHistoryItem, markHistoryItemSaved } from "@/lib/history";
@@ -54,6 +54,8 @@ type TranslationResult = {
   primaryPartOfSpeech?: string | null;
   correction?: SpellCorrection | null;
   verbInfo?: VerbConjugation | null;
+  examples?: Array<{ sentence: string; source?: string }>;
+  provider?: string;
 };
 
 export const POS_BADGES: Record<string, { en: string; ar: string; badge: string }> = {
@@ -260,6 +262,25 @@ export function TranslatorCard({
   const [savingWord, setSavingWord] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
 
+  // Translation Provider (Engine) State
+  const [provider, setProvider] = useState<TranslationProvider>(
+    () => settings.translationProvider || "google",
+  );
+  const [providerMenuOpen, setProviderMenuOpen] = useState(false);
+  const providerMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (providerMenuRef.current && !providerMenuRef.current.contains(e.target as Node)) {
+        setProviderMenuOpen(false);
+      }
+    }
+    if (providerMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [providerMenuOpen]);
+
   // Photo / Image OCR State
   const [ocrLoading, setOcrLoading] = useState<boolean>(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
@@ -419,7 +440,13 @@ export function TranslatorCard({
   );
 
   const fetchTranslation = useCallback(
-    async (text: string, src: string, target: string, forceExact = false) => {
+    async (
+      text: string,
+      src: string,
+      target: string,
+      forceExact = false,
+      overrideProvider?: TranslationProvider,
+    ) => {
       const q = text.trim();
       if (!q) {
         setResult(null);
@@ -432,11 +459,12 @@ export function TranslatorCard({
 
       setLoading(true);
       try {
+        const activeProv = overrideProvider || provider;
         const url = `/api/translate?text=${encodeURIComponent(q)}&src=${encodeURIComponent(
           src,
         )}&target=${encodeURIComponent(target)}${
           forceExact ? "&forceExact=true" : ""
-        }`;
+        }&provider=${encodeURIComponent(activeProv)}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error("Translation failed");
         const data: TranslationResult = await res.json();
@@ -462,8 +490,21 @@ export function TranslatorCard({
         setLoading(false);
       }
     },
-    [],
+    [provider],
   );
+
+  function selectProvider(p: TranslationProvider) {
+    setProvider(p);
+    setProviderMenuOpen(false);
+    try {
+      const raw = localStorage.getItem("wordtap_settings");
+      const current = raw ? JSON.parse(raw) : {};
+      localStorage.setItem("wordtap_settings", JSON.stringify({ ...current, translationProvider: p }));
+    } catch {}
+    if (inputText.trim()) {
+      void fetchTranslation(inputText, srcLang, targetLang, false, p);
+    }
+  }
 
   // Debounced translation as user types
   useEffect(() => {
@@ -479,13 +520,13 @@ export function TranslatorCard({
     }
 
     debounceTimer.current = setTimeout(() => {
-      void fetchTranslation(inputText, srcLang, targetLang);
+      void fetchTranslation(inputText, srcLang, targetLang, false, provider);
     }, 320);
 
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-  }, [inputText, srcLang, targetLang, fetchTranslation]);
+  }, [inputText, srcLang, targetLang, provider, fetchTranslation]);
 
   // Auto-Save Effect: only saves after 1.8 seconds of complete typing pause!
   useEffect(() => {
@@ -1162,6 +1203,92 @@ export function TranslatorCard({
                   <ImageIcon size={19} />
                 )}
               </button>
+
+              {/* Translation Provider Selector Dropdown */}
+              <div className="h-4 w-px bg-line/60 mx-1 shrink-0" />
+              <div className="relative inline-block" ref={providerMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setProviderMenuOpen((prev) => !prev)}
+                  title="Choose translation provider / dictionary"
+                  className="h-7 px-2 sm:px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] text-ink transition-all cursor-pointer border border-line/40 select-none"
+                >
+                  <span className="text-xs">
+                    {provider === "udictionary"
+                      ? "📖 U-Dict"
+                      : provider === "mymemory"
+                      ? "🧠 MyMemory"
+                      : "🌐 Google"}
+                  </span>
+                  <svg
+                    className={`w-3 h-3 opacity-60 transition-transform duration-150 ${
+                      providerMenuOpen ? "rotate-180" : ""
+                    }`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {providerMenuOpen && (
+                  <div
+                    role="menu"
+                    className="absolute bottom-full mb-1.5 start-0 z-50 min-w-[210px] rounded-2xl border border-line bg-surface/95 p-1.5 shadow-2xl backdrop-blur-xl space-y-1"
+                  >
+                    <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted border-b border-line/40 mb-1">
+                      Translation Provider
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => selectProvider("google")}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                        provider === "google"
+                          ? "bg-subtitle/15 text-ink font-semibold"
+                          : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>🌐</span>
+                        <span>Google Translate</span>
+                      </div>
+                      {provider === "google" && <span className="text-subtitle font-bold">✓</span>}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => selectProvider("udictionary")}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                        provider === "udictionary"
+                          ? "bg-subtitle/15 text-ink font-semibold"
+                          : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>📖</span>
+                        <span>U-Dictionary (Oxford)</span>
+                      </div>
+                      {provider === "udictionary" && <span className="text-subtitle font-bold">✓</span>}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => selectProvider("mymemory")}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                        provider === "mymemory"
+                          ? "bg-subtitle/15 text-ink font-semibold"
+                          : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>🧠</span>
+                        <span>MyMemory</span>
+                      </div>
+                      {provider === "mymemory" && <span className="text-subtitle font-bold">✓</span>}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <span className="text-xs text-muted/60 font-mono">
@@ -1583,6 +1710,34 @@ export function TranslatorCard({
                     </div>
                   </div>
                 ) : null}
+
+                {/* Authentic Example Sentences (from U-Dictionary) */}
+                {result?.examples && result.examples.length > 0 ? (
+                  <div className="mt-3 pt-3 border-t border-line/50 space-y-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-ink font-semibold">
+                        <span>📖</span>
+                        <span>Examples / أمثلة القاموس:</span>
+                      </span>
+                      <span className="text-[10px] text-muted font-mono">U-Dictionary</span>
+                    </span>
+                    <div className="space-y-2">
+                      {result.examples.map((ex, exIdx) => (
+                        <div
+                          key={`ex-${exIdx}`}
+                          className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.04] border border-line text-xs sm:text-sm text-ink leading-relaxed space-y-1"
+                        >
+                          <p className="font-serif italic text-muted-ink" dangerouslySetInnerHTML={{ __html: ex.sentence }} />
+                          {ex.source ? (
+                            <span className="text-[10px] text-muted block text-end font-mono">
+                              — {ex.source}
+                            </span>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="text-lg sm:text-2xl font-medium text-muted/40 py-2">
@@ -1593,7 +1748,7 @@ export function TranslatorCard({
 
           {/* Bottom Toolbar for Target */}
           <div className="flex items-center justify-between pt-4 mt-4 border-t border-line/40 gap-2 flex-wrap">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <button
                 type="button"
                 onClick={() => handleSpeak(baseTranslation, targetLang)}
@@ -1627,6 +1782,12 @@ export function TranslatorCard({
                   </svg>
                 )}
               </button>
+
+              {result?.provider && (
+                <span className="text-[10px] text-muted/70 font-mono ms-1 px-2 py-0.5 rounded-md bg-black/[0.03] dark:bg-white/[0.05]">
+                  via {result.provider === "udictionary" ? "U-Dictionary" : result.provider === "mymemory" ? "MyMemory" : "Google"}
+                </span>
+              )}
             </div>
 
             {/* Save to My Words Button or Auto-Save Status */}

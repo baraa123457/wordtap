@@ -86,7 +86,13 @@ async function findSuggestCorrection(text) {
   }
 }
 
-async function translate(text, target, srcLang = "auto", context = "") {
+async function translate(text, target, srcLang = "auto", context = "", requestedProvider = null) {
+  let provider = requestedProvider;
+  if (!provider) {
+    const s = await chrome.storage.sync.get({ translationProvider: "google" }).catch(() => ({}));
+    provider = s.translationProvider || "google";
+  }
+
   let sl = srcLang && srcLang !== "auto" ? srcLang.toLowerCase() : "auto";
 
   // If language is still auto and we have a full subtitle sentence, detect from the sentence!
@@ -107,8 +113,99 @@ async function translate(text, target, srcLang = "auto", context = "") {
     } catch (_) {}
   }
 
-  const key = sl + "|" + target + "|" + text.toLowerCase();
+  const key = provider + "|" + sl + "|" + target + "|" + text.toLowerCase();
   if (cache.has(key)) return cache.get(key);
+
+  // -------------------------------------------------------------------------
+  // Provider: U-Dictionary (Youdao Deep Dictionary API)
+  // -------------------------------------------------------------------------
+  if (provider === "udictionary") {
+    try {
+      const uRes = await fetch("https://dict.youdao.com/jsonapi?q=" + encodeURIComponent(text.trim()), {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+      });
+      if (uRes.ok) {
+        const uData = await uRes.json();
+        const simple = uData.simple?.word?.[0];
+        const usphone = simple?.usphone || simple?.ukphone || "";
+        const phonetic = usphone ? `/${usphone}/` : "";
+
+        const partsOfSpeech = [];
+        const altSet = new Set();
+        const eeTrs = uData.ee?.word?.trs || [];
+        for (const item of eeTrs) {
+          if (item.pos) {
+            const p = item.pos.replace(/\.$/, "").toLowerCase();
+            if (!partsOfSpeech.includes(p)) partsOfSpeech.push(p);
+          }
+          if (Array.isArray(item.tr)) {
+            for (const t of item.tr) {
+              const defText = t.l?.i || t.i;
+              if (defText && typeof defText === "string") altSet.add(defText);
+            }
+          }
+        }
+
+        let trans = "";
+        if (target.startsWith("zh")) {
+          trans = uData.ec?.word?.[0]?.trs?.[0]?.tr?.[0]?.l?.i?.[0] || "";
+        }
+        if (!trans) {
+          const gUrl =
+            "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" +
+            encodeURIComponent(sl) +
+            "&tl=" +
+            encodeURIComponent(target) +
+            "&dt=t&dt=bd&q=" +
+            encodeURIComponent(text);
+          const gRes = await fetch(gUrl);
+          if (gRes.ok) {
+            const gData = await gRes.json();
+            trans = (gData[0] || []).map((p) => p[0]).join("");
+            if (Array.isArray(gData[1])) {
+              for (const group of gData[1]) {
+                if (Array.isArray(group) && Array.isArray(group[1])) {
+                  for (const term of group[1]) {
+                    if (term && typeof term === "string") altSet.add(term.trim());
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        const authSents = uData.auth_sents_part?.sent || [];
+        const examples = authSents
+          .slice(0, 2)
+          .map((s) => String(s.foreign || "").replace(/<[^>]+>/g, "").trim())
+          .filter(Boolean);
+
+        const result = {
+          text: trans || text,
+          src: sl !== "auto" ? sl : "en",
+          partsOfSpeech,
+          pos: partsOfSpeech[0] || null,
+          alternatives: Array.from(altSet).slice(0, 6),
+          phonetic,
+          examples,
+          provider: "udictionary",
+        };
+
+        if (cache.size > 500) cache.delete(cache.keys().next().value);
+        cache.set(key, result);
+        return result;
+      }
+    } catch (e) {
+      console.warn("Extension U-Dictionary lookup failed, falling back to Google:", e);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Provider: Google Translate (Default primary)
+  // -------------------------------------------------------------------------
 
   const url =
     "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" +
@@ -1140,7 +1237,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return reply(Promise.resolve({ ok: false }));
     }
     case "translate":
-      return reply(translate(msg.text, msg.target, msg.srcLang, msg.context).then((r) => ({ ok: true, ...r })));
+      return reply(
+        translate(msg.text, msg.target, msg.srcLang, msg.context, msg.provider).then((r) => ({
+          ok: true,
+          ...r,
+        })),
+      );
     case "tts:speak":
       return reply(fetchTtsDataUrl(msg.text, msg.lang));
     case "stats:get":

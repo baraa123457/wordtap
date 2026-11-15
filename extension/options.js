@@ -6,11 +6,13 @@
     targetLang: "ar",
     selectionMode: "immediate",
     translateSaveMode: "manual",
+    translationProvider: "google",
     websiteUrl: "http://localhost:3000",
   };
 
   const form = document.getElementById("optionsForm");
   const langSelect = document.getElementById("lang");
+  const providerSelect = document.getElementById("translationProvider");
   const websiteUrlInput = document.getElementById("websiteUrl");
   const resetBtn = document.getElementById("resetBtn");
   const statusMsg = document.getElementById("statusMsg");
@@ -18,6 +20,7 @@
   function restoreOptions() {
     chrome.storage.sync.get(DEFAULTS, (items) => {
       langSelect.value = items.targetLang || "ar";
+      if (providerSelect) providerSelect.value = items.translationProvider || "google";
       if (websiteUrlInput) websiteUrlInput.value = items.websiteUrl || DEFAULTS.websiteUrl;
       const mode = items.selectionMode || "immediate";
       const radio = document.querySelector(`input[name="selectionMode"][value="${mode}"]`);
@@ -34,6 +37,7 @@
     const selectedMode = document.querySelector('input[name="selectionMode"]:checked')?.value || "immediate";
     const selectedSaveMode = document.querySelector('input[name="translateSaveMode"]:checked')?.value || "manual";
     const selectedLang = langSelect.value;
+    const selectedProvider = providerSelect ? providerSelect.value : "google";
     const rawUrl = websiteUrlInput ? websiteUrlInput.value.trim().replace(/\/+$/, "") : DEFAULTS.websiteUrl;
     const websiteUrl = rawUrl && /^https?:\/\//i.test(rawUrl) ? rawUrl : DEFAULTS.websiteUrl;
     if (websiteUrlInput) websiteUrlInput.value = websiteUrl;
@@ -41,6 +45,7 @@
     chrome.storage.sync.set(
       {
         targetLang: selectedLang,
+        translationProvider: selectedProvider,
         selectionMode: selectedMode,
         translateSaveMode: selectedSaveMode,
         saveWords: selectedSaveMode !== "manual",

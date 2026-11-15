@@ -4,6 +4,7 @@ export type VoiceGender = "female" | "male" | "auto";
 export type VoiceTone = "soft" | "natural" | "deep" | "energetic";
 export type TranslateSaveMode = "auto" | "manual" | "subtitles_only";
 export type SelectionMode = "immediate" | "icon" | "alt" | "off";
+export type TranslationProvider = "google" | "udictionary" | "mymemory";
 
 export type UserSettings = {
   theme: ThemeMode;
@@ -20,6 +21,7 @@ export type UserSettings = {
   targetLang: string;
   translateSaveMode: TranslateSaveMode;
   selectionMode?: SelectionMode;
+  translationProvider?: TranslationProvider;
 };
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -37,6 +39,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   targetLang: "ar",
   translateSaveMode: "manual",
   selectionMode: "immediate",
+  translationProvider: "google",
 };
 
 const STORAGE_KEY = "wordtap_settings";

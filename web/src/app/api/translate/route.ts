@@ -19,7 +19,8 @@ export async function GET(req: Request) {
   const src = url.searchParams.get("src") || "auto";
   const target = url.searchParams.get("target") || "ar";
   const forceExact = url.searchParams.get("forceExact") === "true";
-  return handleTranslate(text, src, target, forceExact);
+  const provider = (url.searchParams.get("provider") || "google").toLowerCase();
+  return handleTranslate(text, src, target, forceExact, provider);
 }
 
 export async function POST(req: Request) {
@@ -32,12 +33,14 @@ export async function POST(req: Request) {
       src?: string;
       target?: string;
       forceExact?: boolean;
+      provider?: string;
     };
     const text = (body.text || "").trim().slice(0, MAX_TRANSLATE_CHARS);
     const src = body.src || "auto";
     const target = body.target || "ar";
     const forceExact = Boolean(body.forceExact);
-    return handleTranslate(text, src, target, forceExact);
+    const provider = (body.provider || "google").toLowerCase();
+    return handleTranslate(text, src, target, forceExact, provider);
   } catch (err: unknown) {
     return NextResponse.json(
       { error: getErrorMessage(err, "Invalid JSON") },
@@ -135,6 +138,7 @@ async function handleTranslate(
   src: string,
   target: string,
   forceExact = false,
+  provider = "google",
 ) {
   try {
     if (!text) {
@@ -146,9 +150,207 @@ async function handleTranslate(
         targetPronunciation: "",
         definitions: [],
         correction: null,
+        provider,
       });
     }
 
+    // -------------------------------------------------------------------------
+    // Provider: U-Dictionary (Youdao Deep Dictionary API)
+    // -------------------------------------------------------------------------
+    if (provider === "udictionary") {
+      try {
+        const udictUrl = `https://dict.youdao.com/jsonapi?q=${encodeURIComponent(text)}`;
+        const udictRes = await fetch(udictUrl, {
+          signal: AbortSignal.timeout(6000),
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          },
+        });
+
+        if (udictRes.ok) {
+          const uData = (await udictRes.json()) as Record<string, unknown>;
+          const simple = uData.simple as { word?: Array<{ usphone?: string; ukphone?: string }> } | undefined;
+          const usphone = simple?.word?.[0]?.usphone || simple?.word?.[0]?.ukphone || "";
+          const sourcePronunciation = usphone ? `/${usphone}/` : "";
+
+          // Extract Oxford / WordNet definitions
+          const definitions: Array<{ partOfSpeech: string; meanings: string[] }> = [];
+          const ee = uData.ee as {
+            word?: {
+              trs?: Array<{
+                pos?: string;
+                tr?: Array<{ l?: { i?: string }; i?: string }>;
+              }>;
+            };
+          } | undefined;
+
+          if (Array.isArray(ee?.word?.trs)) {
+            for (const item of ee.word.trs) {
+              const pos = (item.pos || "noun").replace(/\.$/, "").trim().toLowerCase();
+              const meanings: string[] = [];
+              if (Array.isArray(item.tr)) {
+                for (const t of item.tr) {
+                  const m = t.l?.i || (typeof t.i === "string" ? t.i : "");
+                  if (m && typeof m === "string") meanings.push(m.trim());
+                }
+              }
+              if (meanings.length > 0) {
+                definitions.push({ partOfSpeech: pos, meanings });
+              }
+            }
+          }
+
+          // Extract Collins definitions if available
+          const collins = uData.collins as {
+            collins_entries?: Array<{
+              entries?: {
+                entry?: Array<{
+                  pos_entry?: { pos?: string };
+                  tran_entry?: Array<{ tran?: string }>;
+                }>;
+              };
+            }>;
+          } | undefined;
+
+          const cEntries = collins?.collins_entries?.[0]?.entries?.entry || [];
+          for (const ce of cEntries) {
+            const pos = (ce.pos_entry?.pos || "def").toLowerCase();
+            for (const te of ce.tran_entry || []) {
+              if (te.tran) {
+                const clean = String(te.tran).replace(/<[^>]+>/g, "").trim();
+                if (clean && !definitions.some((d) => d.meanings.includes(clean))) {
+                  definitions.push({ partOfSpeech: pos, meanings: [clean] });
+                }
+              }
+            }
+          }
+
+          // Extract authentic example sentences
+          const authSents = uData.auth_sents_part as {
+            sent?: Array<{ foreign?: string; source?: string }>;
+          } | undefined;
+
+          const examples = (authSents?.sent || [])
+            .slice(0, 3)
+            .map((s) => ({
+              sentence: String(s.foreign || "").replace(/<[^>]+>/g, "").trim(),
+              source: String(s.source || "").replace(/<[^>]+>/g, "").trim(),
+            }))
+            .filter((ex) => Boolean(ex.sentence));
+
+          // Get target language translation
+          let translation = "";
+          const ec = uData.ec as {
+            word?: Array<{ trs?: Array<{ tr?: Array<{ l?: { i?: string[] } }> }> }>;
+          } | undefined;
+
+          if (target.startsWith("zh")) {
+            translation = ec?.word?.[0]?.trs?.[0]?.tr?.[0]?.l?.i?.[0] || "";
+          }
+
+          if (!translation) {
+            try {
+              const transUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(
+                src,
+              )}&tl=${encodeURIComponent(target)}&dt=t&dt=bd&q=${encodeURIComponent(text)}`;
+              const transRes = await fetch(transUrl, { signal: AbortSignal.timeout(4000) });
+              if (transRes.ok) {
+                const transData = await transRes.json();
+                translation = Array.isArray(transData?.[0])
+                  ? transData[0].map((p: [string]) => p[0]).join("")
+                  : "";
+                if (definitions.length === 0 && Array.isArray(transData?.[1])) {
+                  for (const g of transData[1]) {
+                    if (Array.isArray(g) && typeof g[0] === "string" && Array.isArray(g[1])) {
+                      definitions.push({
+                        partOfSpeech: g[0].toLowerCase(),
+                        meanings: g[1].slice(0, 8),
+                      });
+                    }
+                  }
+                }
+              }
+            } catch {}
+          }
+
+          const verbInfo = getVerbConjugation(text);
+          const partsOfSpeech = definitions
+            .map((d) => d.partOfSpeech.toLowerCase())
+            .filter((pos) => pos && pos !== "alternatives");
+
+          return NextResponse.json({
+            text,
+            translation: translation || text,
+            detectedSrcLang: src === "auto" ? "en" : src,
+            sourcePronunciation,
+            targetPronunciation: "",
+            definitions,
+            partsOfSpeech,
+            primaryPartOfSpeech: partsOfSpeech[0] || null,
+            correction: null,
+            verbInfo,
+            examples,
+            provider: "udictionary",
+          });
+        }
+      } catch (uErr) {
+        console.warn("U-Dictionary lookup failed, falling back to Google:", uErr);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Provider: MyMemory (Collaborative Translation Memory)
+    // -------------------------------------------------------------------------
+    if (provider === "mymemory") {
+      try {
+        const pair = `${src === "auto" ? "autodetect" : src}|${target}`;
+        const memRes = await fetch(
+          `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(pair)}`,
+          { signal: AbortSignal.timeout(6000) },
+        );
+        if (memRes.ok) {
+          const memData = (await memRes.json()) as {
+            responseData?: { translatedText?: string };
+            matches?: Array<{ translation?: string; quality?: number | string }>;
+          };
+          const translation = memData.responseData?.translatedText || text;
+          const definitions: Array<{ partOfSpeech: string; meanings: string[] }> = [];
+          if (Array.isArray(memData.matches)) {
+            const alts = Array.from(
+              new Set(
+                memData.matches
+                  .map((m) => m.translation?.trim())
+                  .filter((t): t is string => Boolean(t && t !== translation)),
+              ),
+            ).slice(0, 6);
+            if (alts.length > 0) {
+              definitions.push({ partOfSpeech: "alternatives", meanings: alts });
+            }
+          }
+          const verbInfo = getVerbConjugation(text);
+          return NextResponse.json({
+            text,
+            translation,
+            detectedSrcLang: src === "auto" ? "en" : src,
+            sourcePronunciation: "",
+            targetPronunciation: "",
+            definitions,
+            partsOfSpeech: [],
+            primaryPartOfSpeech: null,
+            correction: null,
+            verbInfo,
+            provider: "mymemory",
+          });
+        }
+      } catch (memErr) {
+        console.warn("MyMemory lookup failed, falling back to Google:", memErr);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Provider: Google Translate (Default primary)
+    // -------------------------------------------------------------------------
     const dtParams = forceExact
       ? "&dt=t&dt=bd&dt=rm&dt=at&dt=rw"
       : "&dt=t&dt=bd&dt=rm&dt=qca&dt=sp&dt=at&dt=rw";
@@ -536,6 +738,7 @@ async function handleTranslate(
         primaryPartOfSpeech,
         correction,
         verbInfo,
+        provider: "google",
       });
     }
 

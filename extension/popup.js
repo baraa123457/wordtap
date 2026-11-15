@@ -133,6 +133,7 @@ const DEFAULTS = {
   translateSaveMode: "manual",
   targetLang: "ar",
   selectionMode: "immediate",
+  translationProvider: "google",
 };
 
 chrome.storage.sync.get(DEFAULTS, (s) => {
@@ -145,6 +146,7 @@ chrome.storage.sync.get(DEFAULTS, (s) => {
 
   if ($("lang")) $("lang").value = s.targetLang || "ar";
   if ($("selectionMode")) $("selectionMode").value = s.selectionMode || "immediate";
+  if ($("translationProvider")) $("translationProvider").value = s.translationProvider || "google";
 });
 
 if ($("enabled")) {
@@ -162,6 +164,12 @@ if ($("lang")) {
 if ($("selectionMode")) {
   $("selectionMode").addEventListener("change", (e) =>
     chrome.storage.sync.set({ selectionMode: e.target.value })
+  );
+}
+
+if ($("translationProvider")) {
+  $("translationProvider").addEventListener("change", (e) =>
+    chrome.storage.sync.set({ translationProvider: e.target.value })
   );
 }
 
