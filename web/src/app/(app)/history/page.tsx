@@ -224,7 +224,7 @@ export default function HistoryPage() {
           ) : null}
         </div>
 
-        <div className="overflow-x-auto py-1">
+        <div className="overflow-x-auto no-scrollbar py-1">
           <div className="apple-segmented-container">
             {(["all", "translator", "subtitle", "selection"] as const).map((src) => {
               const active = sourceFilter === src;

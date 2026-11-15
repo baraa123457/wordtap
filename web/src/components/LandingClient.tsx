@@ -40,9 +40,9 @@ export function LandingClient() {
         isAr ? "font-arabic" : ""
       }`}
     >
-      <header className="flex items-center justify-between py-5">
+      <header className="flex flex-wrap items-center justify-between gap-y-3 py-4 sm:py-5">
         <Logo />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Language Switcher */}
           <div className="flex rounded-lg border border-line bg-surface p-0.5 text-xs font-bold">
             <button
