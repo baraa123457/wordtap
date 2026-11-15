@@ -124,18 +124,50 @@
 
   const RTL_LANGS = ["ar", "fa", "ur", "he"];
   const SUBTITLE_SELECTOR = [
+    // YouTube
     ".ytp-caption-window-container",
     ".caption-window",
+    '[class*="caption-window"]',
+    '[class*="ytp-caption"]',
+    // Netflix
     ".player-timedtext",
+    '[class*="player-timedtext"]',
+    // Amazon Prime Video
     ".atvwebplayersdk-captions-text",
     ".atvwebplayersdk-captions-overlay",
+    '[class*="atvwebplayersdk-captions"]',
+    // Disney+
     ".dss-subtitle-renderer-wrapper",
     ".dss-subtitle-renderer-cue",
+    '[class*="dss-subtitle"]',
+    // Udemy
     '[data-purpose="captions-cue-text"]',
     ".captions-display--captions-container--P9o-a",
+    '[class*="captions-display--captions-container"]',
+    // Coursera
     ".c-video-captions-container",
+    '[class*="c-video-captions"]',
+    // TED
     ".Transcript__cue",
-    ".vjs-text-track-display"
+    '[class*="Transcript__cue"]',
+    // Generic video players: Video.js, JWPlayer, Shaka Player, Bitmovin, HTML5
+    ".vjs-text-track-display",
+    '[class*="vjs-text-track"]',
+    '[class*="jw-text-track"]',
+    '[class*="shaka-text-container"]',
+    '[class*="bmpui-ui-subtitle-overlay"]',
+    // BBC Video Player & SMP Subtitles
+    ".smp-subtitles",
+    ".smp-subtitles-container",
+    '[class*="subtitles-container"]',
+    '[class*="subtitles-cue"]',
+    '[class*="smp-subtitles"]',
+    '[class*="gel-video-subtitles"]',
+    '[data-bbc-container="subtitles"]',
+    "smp-toucan-player",
+    // Semantic ARIA cue containers
+    '[aria-label*="captions" i]',
+    '[aria-label*="subtitles" i]',
   ].join(",");
 
   const SAVE_NOTES = {
@@ -748,9 +780,29 @@
       color: #ffffff;
       font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
       box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-      pointer-events: none;
+      pointer-events: auto;
       z-index: 2147483647;
       animation: fadeIn 0.15s ease-out;
+    }
+    .ocr-auto-snap-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #facc3b;
+      color: #0b0d1e;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      margin-left: 6px;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .ocr-auto-snap-btn:hover {
+      background: #ffe375;
+      transform: scale(1.04);
     }
     .ocr-pill-badge {
       display: inline-flex;
@@ -1566,10 +1618,134 @@
   // ── Screen OCR Snipping & Translation ─────────────────────────────────────
   let activeOcrOverlay = null;
 
+  function executeCropAndOcr(rect) {
+    const left = rect.left;
+    const top = rect.top;
+    const width = rect.width;
+    const height = rect.height;
+
+    // Show loading card at the snippet location
+    showLoadingCard(rect, "📸 Scanning text…");
+    trEl.innerHTML = `<span class="loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span> <span style="font-size:12px;color:#959cc2;margin-left:5px;">Scanning text & translating…</span>`;
+
+    // Wait a microtick so overlay is gone before captureVisibleTab
+    setTimeout(() => {
+      safeSendMessage({ type: "ocr:capture-screen" }, (capRes) => {
+        if (!isContextValid()) return;
+        if (!capRes || !capRes.ok || !capRes.dataUrl) {
+          trEl.textContent = capRes?.error || "Screen capture failed";
+          saveBtn.hidden = true;
+          positionCard(rect);
+          return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const scaleX = img.naturalWidth / window.innerWidth;
+            const scaleY = img.naturalHeight / window.innerHeight;
+
+            const cropX = Math.round(left * scaleX);
+            const cropY = Math.round(top * scaleY);
+            const cropW = Math.round(width * scaleX);
+            const cropH = Math.round(height * scaleY);
+
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, cropW);
+            canvas.height = Math.max(1, cropH);
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+            const croppedDataUrl = canvas.toDataURL("image/png");
+
+            safeSendMessage(
+              {
+                type: "ocr:process",
+                image: croppedDataUrl,
+                target: settings.targetLang,
+              },
+              (ocrRes) => {
+                if (!isContextValid()) return;
+                if (!ocrRes || !ocrRes.ok || !ocrRes.text) {
+                  trEl.textContent =
+                    ocrRes && ocrRes.error
+                      ? ocrRes.error
+                      : "No text found in selected area";
+                  saveBtn.hidden = true;
+                  positionCard(rect);
+                  return;
+                }
+
+                const cleanText = ocrRes.text.trim();
+                origEl.textContent =
+                  cleanText.length > 70 ? cleanText.slice(0, 67) + "…" : cleanText;
+                lastText = cleanText;
+                lastSrcLang = ocrRes.src || "en";
+                speakBtn.title = `Listen pronunciation (${lastSrcLang.toUpperCase()})`;
+
+                if (ocrRes.pos) {
+                  posBadge.textContent = POS_LABELS[ocrRes.pos.toLowerCase()] || ocrRes.pos;
+                  posBadge.style.display = "inline-flex";
+                } else {
+                  posBadge.style.display = "none";
+                }
+
+                const entry = {
+                  text: cleanText,
+                  translation: ocrRes.translation,
+                  lang: settings.targetLang,
+                  src: ocrRes.src || "en",
+                  page: location.href,
+                  title: `[OCR] ${document.title}`,
+                  sentence: cleanText,
+                  source: "selection",
+                };
+
+                finaliseCard(
+                  rect,
+                  ocrRes.translation,
+                  RTL_LANGS.includes(settings.targetLang),
+                  entry,
+                  {
+                    alternatives: ocrRes.alternatives,
+                    correction: ocrRes.correction,
+                  },
+                );
+              },
+            );
+          } catch (err) {
+            trEl.textContent = "OCR processing error";
+            saveBtn.hidden = true;
+            positionCard(rect);
+          }
+        };
+
+        img.onerror = () => {
+          trEl.textContent = "Failed to load screenshot image";
+          saveBtn.hidden = true;
+          positionCard(rect);
+        };
+
+        img.src = capRes.dataUrl;
+      });
+    }, 50);
+  }
+
   function startOcrSnip() {
     if (activeOcrOverlay) return;
     mount();
     hideAll();
+
+    // Auto-pause playing videos on the page so subtitles don't vanish while capturing
+    const playingVideos = Array.from(document.querySelectorAll("video")).filter((v) => !v.paused);
+    playingVideos.forEach((v) => {
+      try { v.pause(); } catch (_) {}
+    });
+
+    // Detect if a video player is currently visible on the screen
+    const visibleVideo = Array.from(document.querySelectorAll("video")).find((v) => {
+      const r = v.getBoundingClientRect();
+      return r.width > 240 && r.height > 140 && r.top < window.innerHeight && r.bottom > 0;
+    });
 
     // Ensure host spans the full viewport to direct interactions to the snipper overlay
     host.style.width = "100vw";
@@ -1582,9 +1758,33 @@
     pill.className = "ocr-pill";
     pill.innerHTML = `
       <span class="ocr-pill-badge">📸 OCR</span>
-      <span>Drag a box over any text, subtitle or image to translate</span>
+      <span>Drag a box over text or subtitles to translate</span>
+      ${
+        visibleVideo
+          ? '<button type="button" class="ocr-auto-snap-btn" id="ocrSnapSubBtn" title="Auto-detect and capture subtitle area of video">⚡ Snap Subtitles</button>'
+          : ""
+      }
       <span style="opacity:0.65;font-size:11px;margin-left:4px;">(Esc to cancel)</span>
     `;
+
+    const snapBtn = pill.querySelector("#ocrSnapSubBtn");
+    if (snapBtn && visibleVideo) {
+      snapBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const vRect = visibleVideo.getBoundingClientRect();
+        const rect = {
+          left: Math.max(0, Math.round(vRect.left + vRect.width * 0.08)),
+          top: Math.max(0, Math.round(vRect.top + vRect.height * 0.72)),
+          width: Math.round(vRect.width * 0.84),
+          height: Math.round(vRect.height * 0.25),
+        };
+        rect.right = rect.left + rect.width;
+        rect.bottom = rect.top + rect.height;
+        cleanup();
+        executeCropAndOcr(rect);
+      });
+    }
 
     const box = document.createElement("div");
     box.className = "ocr-box";
@@ -1609,6 +1809,11 @@
       if (activeOcrOverlay === overlay) activeOcrOverlay = null;
       host.style.width = "0";
       host.style.height = "0";
+
+      // Resume playing videos
+      playingVideos.forEach((v) => {
+        try { v.play().catch(() => {}); } catch (_) {}
+      });
     }
 
     function onKeyDown(e) {
@@ -1620,6 +1825,10 @@
     }
 
     function onMouseDown(e) {
+      // Ignore clicks on buttons inside the pill
+      if (e.composedPath && e.composedPath().some((el) => el.classList && el.classList.contains("ocr-auto-snap-btn"))) {
+        return;
+      }
       if (e.button !== 0) {
         cleanup();
         return;
@@ -1681,110 +1890,7 @@
         height,
       };
 
-      // Show loading card at the snippet location
-      showLoadingCard(rect, "📸 Scanning text…");
-      trEl.innerHTML = `<span class="loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span> <span style="font-size:12px;color:#959cc2;margin-left:5px;">Scanning text & translating…</span>`;
-
-      // Wait a microtick so overlay is gone before captureVisibleTab
-      setTimeout(() => {
-        safeSendMessage({ type: "ocr:capture-screen" }, (capRes) => {
-          if (!isContextValid()) return;
-          if (!capRes || !capRes.ok || !capRes.dataUrl) {
-            trEl.textContent = capRes?.error || "Screen capture failed";
-            saveBtn.hidden = true;
-            positionCard(rect);
-            return;
-          }
-
-          const img = new Image();
-          img.onload = () => {
-            try {
-              const scaleX = img.naturalWidth / window.innerWidth;
-              const scaleY = img.naturalHeight / window.innerHeight;
-
-              const cropX = Math.round(left * scaleX);
-              const cropY = Math.round(top * scaleY);
-              const cropW = Math.round(width * scaleX);
-              const cropH = Math.round(height * scaleY);
-
-              const canvas = document.createElement("canvas");
-              canvas.width = Math.max(1, cropW);
-              canvas.height = Math.max(1, cropH);
-              const ctx = canvas.getContext("2d");
-              ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-              const croppedDataUrl = canvas.toDataURL("image/png");
-
-              safeSendMessage(
-                {
-                  type: "ocr:process",
-                  image: croppedDataUrl,
-                  target: settings.targetLang,
-                },
-                (ocrRes) => {
-                  if (!isContextValid()) return;
-                  if (!ocrRes || !ocrRes.ok || !ocrRes.text) {
-                    trEl.textContent =
-                      ocrRes && ocrRes.error
-                        ? ocrRes.error
-                        : "No text found in selected area";
-                    saveBtn.hidden = true;
-                    positionCard(rect);
-                    return;
-                  }
-
-                  const cleanText = ocrRes.text.trim();
-                  origEl.textContent =
-                    cleanText.length > 70 ? cleanText.slice(0, 67) + "…" : cleanText;
-                  lastText = cleanText;
-                  lastSrcLang = ocrRes.src || "en";
-                  speakBtn.title = `Listen pronunciation (${lastSrcLang.toUpperCase()})`;
-
-                  if (ocrRes.pos) {
-                    posBadge.textContent = POS_LABELS[ocrRes.pos.toLowerCase()] || ocrRes.pos;
-                    posBadge.style.display = "inline-flex";
-                  } else {
-                    posBadge.style.display = "none";
-                  }
-
-                  const entry = {
-                    text: cleanText,
-                    translation: ocrRes.translation,
-                    lang: settings.targetLang,
-                    src: ocrRes.src || "en",
-                    page: location.href,
-                    title: `[OCR] ${document.title}`,
-                    sentence: cleanText,
-                    source: "selection",
-                  };
-
-                  finaliseCard(
-                    rect,
-                    ocrRes.translation,
-                    RTL_LANGS.includes(settings.targetLang),
-                    entry,
-                    {
-                      alternatives: ocrRes.alternatives,
-                      correction: ocrRes.correction,
-                    },
-                  );
-                },
-              );
-            } catch (err) {
-              trEl.textContent = "OCR processing error";
-              saveBtn.hidden = true;
-              positionCard(rect);
-            }
-          };
-
-          img.onerror = () => {
-            trEl.textContent = "Failed to load screenshot image";
-            saveBtn.hidden = true;
-            positionCard(rect);
-          };
-
-          img.src = capRes.dataUrl;
-        });
-      }, 50);
+      executeCropAndOcr(rect);
     }
 
     window.addEventListener("mousedown", onMouseDown, true);

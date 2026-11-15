@@ -1,18 +1,39 @@
 (() => {
   // Containers that hold subtitles on supported streaming & learning platforms.
+  // Uses broad, resilient class matching and ARIA attributes to prevent breaks from platform DOM restructuring.
   const SUBTITLE_SELECTOR = [
-    ".ytp-caption-window-container", // YouTube
-    ".caption-window", // YouTube
-    ".player-timedtext", // Netflix
-    ".atvwebplayersdk-captions-text", // Amazon Prime Video
-    ".atvwebplayersdk-captions-overlay", // Amazon Prime Video
-    ".dss-subtitle-renderer-wrapper", // Disney+
-    ".dss-subtitle-renderer-cue", // Disney+
-    '[data-purpose="captions-cue-text"]', // Udemy
-    ".captions-display--captions-container--P9o-a", // Udemy container
-    ".c-video-captions-container", // Coursera
-    ".Transcript__cue", // TED
-    ".vjs-text-track-display", // generic video.js / HTML5
+    // YouTube
+    ".ytp-caption-window-container",
+    ".caption-window",
+    '[class*="caption-window"]',
+    '[class*="ytp-caption"]',
+    // Netflix
+    ".player-timedtext",
+    '[class*="player-timedtext"]',
+    // Amazon Prime Video
+    ".atvwebplayersdk-captions-text",
+    ".atvwebplayersdk-captions-overlay",
+    '[class*="atvwebplayersdk-captions"]',
+    // Disney+
+    ".dss-subtitle-renderer-wrapper",
+    ".dss-subtitle-renderer-cue",
+    '[class*="dss-subtitle"]',
+    // Udemy
+    '[data-purpose="captions-cue-text"]',
+    ".captions-display--captions-container--P9o-a",
+    '[class*="captions-display--captions-container"]',
+    // Coursera
+    ".c-video-captions-container",
+    '[class*="c-video-captions"]',
+    // TED
+    ".Transcript__cue",
+    '[class*="Transcript__cue"]',
+    // Generic video players: Video.js, JWPlayer, Shaka Player, Bitmovin, HTML5
+    ".vjs-text-track-display",
+    '[class*="vjs-text-track"]',
+    '[class*="jw-text-track"]',
+    '[class*="shaka-text-container"]',
+    '[class*="bmpui-ui-subtitle-overlay"]',
     // BBC Video Player & SMP Subtitles
     ".smp-subtitles",
     ".smp-subtitles-container",
@@ -22,6 +43,9 @@
     '[class*="gel-video-subtitles"]',
     '[data-bbc-container="subtitles"]',
     "smp-toucan-player",
+    // Semantic ARIA cue containers
+    '[aria-label*="captions" i]',
+    '[aria-label*="subtitles" i]',
   ].join(",");
 
   const WORD_CHAR = /[\p{L}\p{M}\p{N}'’-]/u;
@@ -1102,4 +1126,144 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") hideTip();
   });
+
+  // ---------- Subtitle Health Telemetry & Canvas Fallback Detector ----------
+  function getStreamingPlatform() {
+    const h = location.hostname.toLowerCase();
+    if (h.includes("youtube.com")) return "youtube";
+    if (h.includes("netflix.com")) return "netflix";
+    if (h.includes("primevideo.com") || h.includes("amazon.")) return "primevideo";
+    if (h.includes("disneyplus.com")) return "disneyplus";
+    if (h.includes("udemy.com")) return "udemy";
+    if (h.includes("coursera.org")) return "coursera";
+    if (h.includes("ted.com")) return "ted";
+    if (h.includes("bbc.")) return "bbc";
+    return null;
+  }
+
+  let healthCheckedOnce = false;
+  let canvasFallbackPill = null;
+
+  function reportSubtitleHealth(platform, status, details = {}) {
+    safeSendMessage({
+      type: "telemetry:subtitle-health",
+      health: {
+        platform,
+        status, // "healthy_dom" | "canvas_or_broken_dom" | "no_active_video"
+        url: location.origin + location.pathname,
+        timestamp: Date.now(),
+        ...details,
+      },
+    });
+  }
+
+  function showCanvasFallbackNotice(videoEl) {
+    if (canvasFallbackPill || !videoEl) return;
+    const parent = videoEl.parentElement || document.body;
+    const pill = document.createElement("div");
+    pill.className = "wordtap-canvas-ocr-hint";
+    pill.style.cssText = `
+      position: absolute;
+      bottom: 64px;
+      right: 20px;
+      z-index: 2147483640;
+      background: rgba(14, 16, 34, 0.94);
+      border: 1px solid rgba(250, 204, 59, 0.6);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.6);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+      transition: transform 0.15s ease;
+    `;
+    pill.innerHTML = `
+      <span style="background:#facc3b;color:#0b0d1e;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;">📸 OCR</span>
+      <span>Subtitles on Canvas? Press <strong>Alt+S</strong> to translate</span>
+      <span style="opacity:0.6;margin-left:4px;font-size:12px;cursor:pointer;" title="Dismiss">✕</span>
+    `;
+
+    pill.addEventListener("mouseenter", () => {
+      pill.style.transform = "scale(1.03)";
+    });
+    pill.addEventListener("mouseleave", () => {
+      pill.style.transform = "scale(1)";
+    });
+
+    pill.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (e.target.textContent === "✕") {
+        pill.remove();
+        canvasFallbackPill = null;
+        return;
+      }
+      safeSendMessage({ type: "ocr:start-on-active-tab" });
+    });
+
+    try {
+      parent.appendChild(pill);
+      canvasFallbackPill = pill;
+      setTimeout(() => {
+        if (canvasFallbackPill === pill) {
+          pill.remove();
+          canvasFallbackPill = null;
+        }
+      }, 9000);
+    } catch (_) {}
+  }
+
+  function runSubtitleHealthCheck() {
+    const platform = getStreamingPlatform();
+    if (!platform) return;
+
+    const video = document.querySelector("video");
+    if (!video || video.paused || video.currentTime < 5) return;
+
+    // Check if DOM subtitles exist
+    const hasDomSubs = Boolean(document.querySelector(SUBTITLE_SELECTOR));
+
+    // Check if HTML5 textTracks exist
+    let hasTextTracks = false;
+    try {
+      if (video.textTracks && video.textTracks.length > 0) {
+        for (let i = 0; i < video.textTracks.length; i++) {
+          const t = video.textTracks[i];
+          if (t.mode === "showing" || (t.activeCues && t.activeCues.length > 0)) {
+            hasTextTracks = true;
+            break;
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Check for canvas player / DRM rendering layer
+    const hasCanvas = Boolean(document.querySelector("canvas"));
+
+    if (hasDomSubs || hasTextTracks) {
+      reportSubtitleHealth(platform, "healthy_dom", { hasDomSubs, hasTextTracks });
+      if (canvasFallbackPill) {
+        canvasFallbackPill.remove();
+        canvasFallbackPill = null;
+      }
+    } else if (hasCanvas) {
+      reportSubtitleHealth(platform, "canvas_or_broken_dom", {
+        reason: "Canvas player detected with no DOM subtitle match",
+        hasCanvas: true,
+      });
+      // Show subtle fallback notice once per video session
+      if (!healthCheckedOnce) {
+        showCanvasFallbackNotice(video);
+        healthCheckedOnce = true;
+      }
+    }
+  }
+
+  // Periodic health check every 12 seconds during active playback
+  setInterval(runSubtitleHealthCheck, 12000);
 })();

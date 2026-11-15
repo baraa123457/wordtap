@@ -650,3 +650,35 @@ if ($("export")) {
     URL.revokeObjectURL(a.href);
   });
 }
+
+// ---------- Subtitle Health Telemetry Display ----------
+function updateSubtitleHealthUI() {
+  const badge = $("subtitleHealthStatusBadge");
+  const details = $("subtitleHealthDetails");
+  if (!badge || !details) return;
+
+  chrome.runtime.sendMessage({ type: "telemetry:get-health" }, (res) => {
+    if (!res || !res.ok || !res.health) return;
+    const healthMap = res.health;
+    const platforms = Object.keys(healthMap);
+    if (!platforms.length) return;
+
+    const degraded = platforms.filter(
+      (p) => healthMap[p].status === "canvas_or_broken_dom"
+    );
+
+    if (degraded.length > 0) {
+      badge.textContent = `${degraded.join(", ").toUpperCase()}: Alt+S Fallback`;
+      badge.style.background = "rgba(234, 179, 8, 0.2)";
+      badge.style.color = "#eab308";
+      details.innerHTML = `Canvas/DRM subtitles detected on <strong style="color:var(--text);">${degraded.join(", ")}</strong>. Press <strong style="color:var(--text);">Alt+S</strong> or click Screen OCR to translate instantly.`;
+    } else {
+      badge.textContent = "DOM Active (Healthy)";
+      badge.style.background = "rgba(74, 222, 128, 0.15)";
+      badge.style.color = "#4ade80";
+      details.textContent = "DOM subtitle selectors are operating normally across streaming platforms.";
+    }
+  });
+}
+
+updateSubtitleHealthUI();

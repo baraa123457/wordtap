@@ -1037,16 +1037,17 @@ async function recognizeTextFromImage(imageBase64, srcLang = "en") {
     // Web server not running or timed out; proceed to Cloud OCR fallback
   }
 
-  // 2. Cloud OCR Engine fallback
+  // 2. Cloud OCR Engine fallback (OCR Engine 2 is multi-threaded and 3-4x faster)
   const langCode = (srcLang && srcLang !== "auto" ? srcLang : "en").toLowerCase().slice(0, 2);
   const ocrLang = OCR_LANG_MAP[langCode] || "eng";
 
   const form = new URLSearchParams();
   form.append("base64Image", imageBase64);
   form.append("language", ocrLang);
-  form.append("scale", "true");
+  form.append("OCREngine", "2");
+  form.append("scale", "false");
   form.append("isOverlayRequired", "false");
-  form.append("detectOrientation", "true");
+  form.append("detectOrientation", "false");
 
   const { ocrApiKey } = await chrome.storage.sync.get(["ocrApiKey"]).catch(() => ({}));
   const apiKeys = [
@@ -1192,6 +1193,39 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
       });
       return reply(Promise.resolve({ ok: true }));
+    }
+    case "telemetry:subtitle-health": {
+      const healthData = msg.health;
+      if (healthData && healthData.platform) {
+        chrome.storage.local.get(["wordtap_subtitle_health"], (data) => {
+          const current = data.wordtap_subtitle_health || {};
+          current[healthData.platform] = {
+            ...healthData,
+            reportedAt: Date.now(),
+          };
+          chrome.storage.local.set({ wordtap_subtitle_health: current });
+        });
+
+        // Forward to backend telemetry endpoint if configured (fire-and-forget)
+        getWebsiteUrl().then((webUrl) => {
+          fetch(`${webUrl}/api/telemetry/subtitle-health`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(healthData),
+            signal: AbortSignal.timeout(3000),
+          }).catch(() => {});
+        }).catch(() => {});
+      }
+      return reply(Promise.resolve({ ok: true }));
+    }
+    case "telemetry:get-health": {
+      return reply(
+        new Promise((resolve) => {
+          chrome.storage.local.get(["wordtap_subtitle_health"], (data) => {
+            resolve({ ok: true, health: data.wordtap_subtitle_health || {} });
+          });
+        })
+      );
     }
     case "auth:sync-session": {
       if (msg.session && msg.session.access_token) {
