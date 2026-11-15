@@ -11,6 +11,18 @@ function stripHtmlTags(str) {
   return String(str || "").replace(/<[^>]+>/g, "").trim();
 }
 
+function isInflectionOrPlural(input, candidate) {
+  const a = input.toLowerCase().trim();
+  const b = candidate.toLowerCase().trim();
+  if (a === b) return true;
+  if (b === a + "s" || a === b + "s") return true;
+  if (b === a + "es" || a === b + "es") return true;
+  if (b === a + "d" || a === b + "d") return true;
+  if (b === a + "ed" || a === b + "ed") return true;
+  if (b === a + "ing" || a === b + "ing") return true;
+  return false;
+}
+
 function levenshtein(a, b) {
   const an = a.length;
   const bn = b.length;
@@ -66,6 +78,7 @@ async function findSuggestCorrection(text) {
         if (!cand) continue;
         const candLower = cand.toLowerCase();
         if (!candLower || candLower === lowerInput) continue;
+        if (isInflectionOrPlural(lowerInput, candLower)) continue;
         const dist = levenshtein(lowerInput, candLower);
         const maxLen = Math.max(lowerInput.length, candLower.length);
         const similarity = 1 - dist / maxLen;

@@ -48,6 +48,31 @@ export type SpellCorrection = {
   autoCorrected: boolean;
 };
 
+function renderHighlightedSentence(sentence: string, targetWord: string) {
+  const clean = sentence.replace(/<[^>]+>/g, "").trim();
+  if (!targetWord || !targetWord.trim()) {
+    return clean;
+  }
+  const cleanWord = targetWord.trim();
+  const escaped = cleanWord.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`(\\b${escaped}(?:s|es|ed|ing|d)?\\b)`, "gi");
+  const parts = clean.split(regex);
+
+  return parts.map((part, i) => {
+    if (regex.test(part)) {
+      return (
+        <span
+          key={i}
+          className="not-italic font-extrabold text-amber-600 dark:text-amber-300 bg-amber-500/15 dark:bg-amber-400/20 px-1.5 py-0.5 rounded-md border border-amber-500/30 dark:border-amber-400/30 shadow-2xs"
+        >
+          {part}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 type TranslationResult = {
   text: string;
   translation: string;
@@ -2066,7 +2091,9 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                           key={`ex-${exIdx}`}
                           className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.04] border border-line text-xs sm:text-sm text-ink leading-relaxed space-y-1"
                         >
-                          <p className="font-serif italic text-muted-ink" dangerouslySetInnerHTML={{ __html: ex.sentence }} />
+                          <p className="font-serif italic text-muted-ink">
+                            {renderHighlightedSentence(ex.sentence, inputText)}
+                          </p>
                           {ex.source ? (
                             <span className="text-[10px] text-muted block text-end font-mono">
                               — {ex.source}

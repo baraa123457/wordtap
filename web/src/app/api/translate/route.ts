@@ -78,6 +78,29 @@ function levenshtein(a: string, b: string): number {
   return matrix[bn]![an]!;
 }
 
+function isInflectionOrPlural(input: string, candidate: string): boolean {
+  const a = input.toLowerCase().trim();
+  const b = candidate.toLowerCase().trim();
+  if (a === b) return true;
+  if (b === a + "s" || a === b + "s") return true;
+  if (b === a + "es" || a === b + "es") return true;
+  if (b === a + "d" || a === b + "d") return true;
+  if (b === a + "ed" || a === b + "ed") return true;
+  if (b === a + "ing" || a === b + "ing") return true;
+  return false;
+}
+
+function cleanEnglishDefinition(str: string): string {
+  return str
+    .replace(/<[^>]+>/g, "")
+    // Strip Chinese/Japanese/Korean characters in parentheses: (短程) or （差使）
+    .replace(/\s*[\(\（\[\【][^\)\）\]\】]*[\u4e00-\u9fa5\u3040-\u30ff\u3400-\u4dbf]+[^\)\）\]\】]*[\)\）\]\】]/g, "")
+    // Strip any remaining bare CJK characters
+    .replace(/[\u4e00-\u9fa5\u3040-\u30ff\u3400-\u4dbf\uac00-\ud7af]+/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 async function findSuggestCorrection(text: string): Promise<string | null> {
   const clean = text.trim();
   if (!clean || clean.length < 3 || clean.length > 50) return null;
@@ -119,6 +142,9 @@ async function findSuggestCorrection(text: string): Promise<string | null> {
         if (!cand) continue;
         const candLower = cand.toLowerCase();
         if (!candLower || candLower === lowerInput) continue;
+        // Never suggest plurals or simple inflections of a word (e.g. "errands" for "errand")
+        if (isInflectionOrPlural(lowerInput, candLower)) continue;
+
         const dist = levenshtein(lowerInput, candLower);
         const maxLen = Math.max(lowerInput.length, candLower.length);
         const similarity = 1 - dist / maxLen;
@@ -141,10 +167,10 @@ async function findSuggestCorrection(text: string): Promise<string | null> {
 
 function normalizePartOfSpeech(raw: string): string {
   const p = raw.toLowerCase().replace(/[^a-z_-]/g, "");
-  if (p === "n" || p === "noun") return "noun";
+  if (p === "n" || p === "noun" || p.startsWith("n-") || p.startsWith("n_")) return "noun";
   if (p === "v" || p === "verb" || p.startsWith("v-") || p === "vt" || p === "vi") return "verb";
-  if (p === "adj" || p === "adjective") return "adjective";
-  if (p === "adv" || p === "adverb") return "adverb";
+  if (p === "adj" || p === "adjective" || p.startsWith("adj-")) return "adjective";
+  if (p === "adv" || p === "adverb" || p.startsWith("adv-")) return "adverb";
   if (p === "prep" || p === "preposition") return "preposition";
   if (p === "conj" || p === "conjunction") return "conjunction";
   if (p === "pron" || p === "pronoun") return "pronoun";
@@ -200,7 +226,8 @@ async function handleTranslate(
         let queryWord = text;
         const hasDirectDefs = Boolean(uData?.ee || uData?.collins);
 
-        if (!forceExact) {
+        // Only search for typo suggestion if the word is NOT already a recognized word in the dictionary
+        if (!forceExact && !hasDirectDefs) {
           const candidate = await findSuggestCorrection(text);
           if (candidate && candidate.toLowerCase() !== text.trim().toLowerCase()) {
             correction = {
@@ -210,24 +237,22 @@ async function handleTranslate(
             };
 
             // If the original misspelled query has no direct dictionary entry, load definitions for the suggested word!
-            if (!hasDirectDefs) {
-              queryWord = candidate;
-              try {
-                const candRes = await fetch(
-                  `https://dict.youdao.com/jsonapi?q=${encodeURIComponent(candidate)}`,
-                  {
-                    signal: AbortSignal.timeout(4000),
-                    headers: {
-                      "User-Agent":
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                    },
+            queryWord = candidate;
+            try {
+              const candRes = await fetch(
+                `https://dict.youdao.com/jsonapi?q=${encodeURIComponent(candidate)}`,
+                {
+                  signal: AbortSignal.timeout(4000),
+                  headers: {
+                    "User-Agent":
+                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                   },
-                );
-                if (candRes.ok) {
-                  uData = (await candRes.json()) as Record<string, unknown>;
-                }
-              } catch {}
-            }
+                },
+              );
+              if (candRes.ok) {
+                uData = (await candRes.json()) as Record<string, unknown>;
+              }
+            } catch {}
           }
         }
 
@@ -254,7 +279,7 @@ async function handleTranslate(
                 for (const t of item.tr) {
                   const m = t.l?.i || (typeof t.i === "string" ? t.i : "");
                   if (m && typeof m === "string") {
-                    const clean = m.trim();
+                    const clean = cleanEnglishDefinition(m);
                     if (clean && !sourceDefinitions.some((sd) => sd.text === clean)) {
                       sourceDefinitions.push({ partOfSpeech: pos, text: clean });
                     }
@@ -270,7 +295,10 @@ async function handleTranslate(
               entries?: {
                 entry?: Array<{
                   pos_entry?: { pos?: string };
-                  tran_entry?: Array<{ tran?: string }>;
+                  tran_entry?: Array<{
+                    pos_entry?: { pos?: string };
+                    tran?: string;
+                  }>;
                 }>;
               };
             }>;
@@ -278,10 +306,13 @@ async function handleTranslate(
 
           const cEntries = collins?.collins_entries?.[0]?.entries?.entry || [];
           for (const ce of cEntries) {
-            const pos = normalizePartOfSpeech(ce.pos_entry?.pos || "") || "verb";
             for (const te of ce.tran_entry || []) {
+              const pos =
+                normalizePartOfSpeech(te.pos_entry?.pos || "") ||
+                normalizePartOfSpeech(ce.pos_entry?.pos || "") ||
+                "noun";
               if (te.tran) {
-                const clean = String(te.tran).replace(/<[^>]+>/g, "").trim();
+                const clean = cleanEnglishDefinition(String(te.tran));
                 if (clean && !sourceDefinitions.some((sd) => sd.text === clean)) {
                   sourceDefinitions.push({ partOfSpeech: pos, text: clean });
                 }
