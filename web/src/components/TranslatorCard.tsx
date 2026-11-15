@@ -6,7 +6,7 @@ import { speak } from "@/lib/speech";
 import { addCustomWord, deleteWord } from "@/lib/api";
 import { getStoredSettings, type UserSettings, type TranslationProvider } from "@/lib/settings";
 import type { Word } from "@/lib/schemas";
-import { SpeakerIcon, CloseIcon, TrashIcon, ImageIcon } from "@/components/Icons";
+import { SpeakerIcon, CloseIcon, TrashIcon, ImageIcon, MicIcon } from "@/components/Icons";
 import { addHistoryItem, markHistoryItemSaved } from "@/lib/history";
 import { getVerbConjugation, type VerbConjugation } from "@/lib/verbs";
 
@@ -872,6 +872,145 @@ async function compressImageForOcr(file: File): Promise<string> {
     [srcLang],
   );
 
+interface BrowserSpeechRecognitionEvent {
+  resultIndex: number;
+  results: {
+    length: number;
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
+interface BrowserSpeechRecognitionErrorEvent {
+  error: string;
+}
+
+interface BrowserSpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionInstance;
+
+  // Speech Recognition (Microphone Voice Dictation)
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const recognitionRef = useRef<BrowserSpeechRecognitionInstance | null>(null);
+
+  const getSpeechLang = useCallback((langCode: string): string => {
+    const map: Record<string, string> = {
+      en: "en-US",
+      ar: "ar-SA",
+      es: "es-ES",
+      fr: "fr-FR",
+      de: "de-DE",
+      it: "it-IT",
+      pt: "pt-BR",
+      ru: "ru-RU",
+      tr: "tr-TR",
+      ja: "ja-JP",
+      ko: "ko-KR",
+      zh: "zh-CN",
+      nl: "nl-NL",
+      pl: "pl-PL",
+      sv: "sv-SE",
+    };
+    if (langCode === "auto") {
+      return (typeof navigator !== "undefined" && navigator.language) || "en-US";
+    }
+    return map[langCode] || langCode;
+  }, []);
+
+  const toggleListening = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognitionAPI =
+      (window as unknown as { SpeechRecognition?: BrowserSpeechRecognitionConstructor }).SpeechRecognition ||
+      (window as unknown as { webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor }).webkitSpeechRecognition;
+
+    if (!SpeechRecognitionAPI) {
+      setSpeechError("Speech recognition is not supported in this browser. Try Chrome, Edge, or Safari.");
+      setTimeout(() => setSpeechError(null), 4000);
+      return;
+    }
+
+    setSpeechError(null);
+    try {
+      const recognition = new SpeechRecognitionAPI();
+      recognitionRef.current = recognition;
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = getSpeechLang(srcLang);
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript.trim()) {
+          setInputText(transcript.trim());
+          if (debounceTimer.current) clearTimeout(debounceTimer.current);
+          void fetchTranslation(transcript.trim(), srcLang, targetLang);
+        }
+      };
+
+      recognition.onerror = (event: BrowserSpeechRecognitionErrorEvent) => {
+        setIsListening(false);
+        if (event.error === "not-allowed") {
+          setSpeechError("Microphone permission denied. Please allow microphone in browser.");
+        } else if (event.error !== "no-speech" && event.error !== "aborted") {
+          setSpeechError(`Speech error: ${event.error}`);
+        }
+        setTimeout(() => setSpeechError(null), 4000);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch {
+      setIsListening(false);
+      setSpeechError("Failed to start voice input. Please try again.");
+      setTimeout(() => setSpeechError(null), 4000);
+    }
+  }, [isListening, srcLang, targetLang, getSpeechLang, fetchTranslation]);
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {}
+      }
+    };
+  }, []);
+
   const isRTL =
     /[\u0600-\u06FF\u0590-\u05FF\u0750-\u077F]/.test(inputText) ||
     (srcLang === "ar" && !inputText);
@@ -1291,6 +1430,39 @@ async function compressImageForOcr(file: File): Promise<string> {
                 </button>
               </div>
             ) : null}
+
+            {/* Voice Input Listening Pulse Banner */}
+            {isListening ? (
+              <div className="mt-3 p-3 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-2.5 text-xs sm:text-sm text-red-500 shadow-sm animate-pulse">
+                <div className="flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-full bg-red-500 animate-ping" />
+                  <span className="font-bold">Listening... Speak now</span>
+                  <span className="text-muted text-xs ms-1">(جاري الاستماع... تحدث الآن)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className="px-2 py-0.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 font-semibold text-xs text-red-500 transition-colors"
+                >
+                  Done / إنهاء
+                </button>
+              </div>
+            ) : null}
+
+            {/* Speech Recognition Error Banner */}
+            {speechError ? (
+              <div className="mt-3 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2 text-xs text-amber-500 shadow-sm">
+                <span className="truncate">🎙️ {speechError}</span>
+                <button
+                  type="button"
+                  onClick={() => setSpeechError(null)}
+                  className="p-1 hover:bg-white/10 rounded-md font-bold"
+                  aria-label="Dismiss voice error"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : null}
           </div>
 
           {/* Bottom Toolbar for Source */}
@@ -1361,6 +1533,28 @@ async function compressImageForOcr(file: File): Promise<string> {
                   <span className="h-4 w-4 rounded-full border-2 border-subtitle border-t-transparent animate-spin" />
                 ) : (
                   <ImageIcon size={19} />
+                )}
+              </button>
+
+              {/* Voice Input Microphone Button */}
+              <button
+                type="button"
+                onClick={toggleListening}
+                title={
+                  isListening
+                    ? "Stop listening (جاري الاستماع... اضغط للإيقاف)"
+                    : "Voice input / Translate by speaking (إدخال صوتي)"
+                }
+                aria-label="Translate by voice"
+                className={`p-2 rounded-xl transition-all flex items-center gap-1.5 relative ${
+                  isListening
+                    ? "bg-red-500/15 text-red-500 ring-2 ring-red-500/40 shadow-sm"
+                    : "text-muted hover:text-ink hover:bg-white/10"
+                }`}
+              >
+                <MicIcon size={19} className={isListening ? "animate-pulse text-red-500" : ""} />
+                {isListening && (
+                  <span className="h-2 w-2 rounded-full bg-red-500 animate-ping absolute top-1 right-1" />
                 )}
               </button>
 
