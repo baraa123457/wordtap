@@ -4,7 +4,7 @@ export type VoiceGender = "female" | "male" | "auto";
 export type VoiceTone = "soft" | "natural" | "deep" | "energetic";
 export type TranslateSaveMode = "auto" | "manual" | "subtitles_only";
 export type SelectionMode = "immediate" | "icon" | "alt" | "off";
-export type TranslationProvider = "google" | "udictionary" | "mymemory";
+export type TranslationProvider = "google" | "udictionary";
 
 export type UserSettings = {
   theme: ThemeMode;

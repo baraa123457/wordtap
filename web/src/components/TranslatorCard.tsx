@@ -1374,11 +1374,7 @@ async function compressImageForOcr(file: File): Promise<string> {
                   className="h-7 px-2 sm:px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] text-ink transition-all cursor-pointer border border-line/40 select-none"
                 >
                   <span className="text-xs">
-                    {provider === "udictionary"
-                      ? "📖 U-Dict"
-                      : provider === "mymemory"
-                      ? "🧠 MyMemory"
-                      : "🌐 Google"}
+                    {provider === "udictionary" ? "📖 U-Dict" : "🌐 Google"}
                   </span>
                   <svg
                     className={`w-3 h-3 opacity-60 transition-transform duration-150 ${
@@ -1430,21 +1426,6 @@ async function compressImageForOcr(file: File): Promise<string> {
                         <span>U-Dictionary (Oxford)</span>
                       </div>
                       {provider === "udictionary" && <span className="text-subtitle font-bold">✓</span>}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => selectProvider("mymemory")}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                        provider === "mymemory"
-                          ? "bg-subtitle/15 text-ink font-semibold"
-                          : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/5"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span>🧠</span>
-                        <span>MyMemory</span>
-                      </div>
-                      {provider === "mymemory" && <span className="text-subtitle font-bold">✓</span>}
                     </button>
                   </div>
                 )}
@@ -1949,7 +1930,7 @@ async function compressImageForOcr(file: File): Promise<string> {
 
               {result?.provider && (
                 <span className="text-[10px] text-muted/70 font-mono ms-1 px-2 py-0.5 rounded-md bg-black/[0.03] dark:bg-white/[0.05]">
-                  via {result.provider === "udictionary" ? "U-Dictionary" : result.provider === "mymemory" ? "MyMemory" : "Google"}
+                  via {result.provider === "udictionary" ? "U-Dictionary" : "Google"}
                 </span>
               )}
             </div>

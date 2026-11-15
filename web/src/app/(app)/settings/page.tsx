@@ -491,11 +491,11 @@ export default function SettingsPage() {
           <div>
             <div className="font-semibold text-ink">Translation Provider (Engine)</div>
             <div className="text-xs sm:text-sm text-muted">
-              Choose your dictionary and translation engine (Google Translate, U-Dictionary / Youdao, or MyMemory).
+              Choose your dictionary and translation engine (Google Translate or U-Dictionary / Youdao).
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 pt-1">
+          <div className="grid gap-3 sm:grid-cols-2 pt-1">
             {/* Google Translate */}
             <button
               type="button"
@@ -556,38 +556,6 @@ export default function SettingsPage() {
                 </div>
                 <p className="text-xs text-muted mt-1 leading-relaxed">
                   Deep Oxford & Collins dictionary queries with IPA phonetics, grammatical forms, and authentic examples.
-                </p>
-              </div>
-            </button>
-
-            {/* MyMemory */}
-            <button
-              type="button"
-              onClick={() => update({ translationProvider: "mymemory" })}
-              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
-                settings.translationProvider === "mymemory"
-                  ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
-                  : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
-              }`}
-            >
-              <div className="w-9 h-9 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-base">
-                🧠
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-ink text-sm">MyMemory</span>
-                  <span
-                    className={`inline-flex items-center justify-center w-5 h-5 rounded-md border text-xs font-bold transition-colors ${
-                      settings.translationProvider === "mymemory"
-                        ? "bg-subtitle text-subtitle-ink border-subtitle"
-                        : "border-line bg-surface"
-                    }`}
-                  >
-                    {settings.translationProvider === "mymemory" ? "✓" : ""}
-                  </span>
-                </div>
-                <p className="text-xs text-muted mt-1 leading-relaxed">
-                  Collaborative translation memory with human translations, colloquial idioms, and alternative phrases.
                 </p>
               </div>
             </button>
