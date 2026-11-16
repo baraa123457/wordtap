@@ -186,7 +186,7 @@ export function Summary({
         {onChangeLang ? (
           <button
             type="button"
-            className="btn btn-quiet border border-line hover:border-subtitle"
+            className="btn"
             onClick={onChangeLang}
           >
             Change language

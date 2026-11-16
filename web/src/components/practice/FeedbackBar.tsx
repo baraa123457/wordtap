@@ -108,7 +108,7 @@ export function FeedbackBar({
                 type="button"
                 onClick={() => onContinue("hard")}
                 title="Mark as Hard (will practice again this session)"
-                className="px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-white/70 dark:bg-black/30 hover:bg-white dark:hover:bg-black/50 text-ink border border-line shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                className="btn min-h-10 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
               >
                 <span>😓 Hard</span>
                 <span className="text-[11px] text-muted">(Practice more)</span>

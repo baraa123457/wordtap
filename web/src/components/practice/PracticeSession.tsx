@@ -362,17 +362,23 @@ export function PracticeSession({
       {/* Leave Practice Confirmation Modal */}
       {leaving ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div role="alertdialog" aria-label="Leave practice?" className="w-full max-w-md grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-ink">Leave practice?</h3>
-            <p className="text-sm text-muted">The answers you gave so far are saved.</p>
-            <div className="flex flex-wrap gap-2.5 justify-end mt-2">
-              <button type="button" className="btn btn-quiet" onClick={() => setLeaving(false)}>
+          <div role="alertdialog" aria-label="Leave practice?" className="w-full max-w-sm grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl text-center sm:text-start animate-in fade-in zoom-in-95 duration-150">
+            <div>
+              <h3 className="text-xl font-bold text-ink">Leave practice?</h3>
+              <p className="text-xs sm:text-sm text-muted mt-1">The answers you gave so far are saved.</p>
+            </div>
+            <div className="flex flex-col gap-2.5 pt-1">
+              <button
+                type="button"
+                className="btn btn-primary w-full font-bold cursor-pointer"
+                onClick={() => setLeaving(false)}
+              >
                 Keep practicing
               </button>
               {onChangeLang ? (
                 <button
                   type="button"
-                  className="btn btn-quiet border border-line hover:border-subtitle"
+                  className="btn w-full font-semibold cursor-pointer"
                   onClick={() => {
                     setLeaving(false);
                     onChangeLang();
@@ -381,8 +387,12 @@ export function PracticeSession({
                   Change language
                 </button>
               ) : null}
-              <button type="button" className="btn btn-primary" onClick={() => void leave()}>
-                Leave
+              <button
+                type="button"
+                className="btn btn-quiet text-muted hover:text-bad w-full font-medium cursor-pointer"
+                onClick={() => void leave()}
+              >
+                Leave practice
               </button>
             </div>
           </div>
