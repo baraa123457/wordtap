@@ -19,10 +19,10 @@ type Props = {
 };
 
 const TONE: Record<Phase, string> = {
-  answering: "bg-surface border-line",
-  correct: "bg-ok-soft border-ok",
-  typo: "bg-ok-soft border-ok",
-  wrong: "bg-bad-soft border-bad",
+  answering: "bg-surface/90 border-line",
+  correct: "bg-ok-soft/95 border-ok/40",
+  typo: "bg-ok-soft/95 border-ok/40",
+  wrong: "bg-bad-soft/95 border-bad/40",
 };
 
 export function FeedbackBar({
@@ -77,87 +77,85 @@ export function FeedbackBar({
 
   return (
     <div
-      className={`fixed inset-x-0 bottom-0 border-t-2 z-40 transition-colors duration-150 ${TONE[phase]}`}
+      className={`fixed inset-x-0 bottom-0 border-t z-40 transition-colors duration-200 apple-glass ${TONE[phase]}`}
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-4 px-4 py-4 min-h-[5.5rem]">
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:py-3.5 min-h-[4.5rem]">
         {phase === "answering" ? (
-          <>
-            <button type="button" className="btn btn-quiet" onClick={onSkip}>
+          <div className="flex items-center justify-between gap-3 w-full">
+            <button type="button" className="btn btn-quiet min-h-9 sm:min-h-10 px-3 sm:px-4 text-xs sm:text-sm" onClick={onSkip}>
               I don&apos;t know
             </button>
             <button
               ref={checkRef}
               type="button"
-              className="btn btn-primary min-w-36"
+              className="btn btn-primary min-h-9 sm:min-h-10 min-w-28 sm:min-w-36 text-xs sm:text-sm font-bold shadow-sm"
               disabled={!canCheck}
               onClick={onCheck}
             >
               Check
             </button>
-          </>
+          </div>
         ) : phase === "correct" ? (
-          /* CORRECT: Prompt user self-rating (Hard = practice again, Easy = advance) */
-          <div role="status" aria-live="polite" className="flex flex-wrap items-center justify-between gap-3 text-ok-ink w-full">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ok text-white font-bold text-xl shadow-sm">
+          /* CORRECT: Apple HIG inline toolbar with status on leading side and rating group on trailing side */
+          <div role="status" aria-live="polite" className="flex items-center justify-between gap-2 sm:gap-4 text-ok-ink w-full">
+            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full bg-ok text-white font-bold text-lg sm:text-xl shadow-xs">
                 ✓
               </div>
               <div>
-                <p className="text-xl sm:text-2xl font-bold tracking-tight">Correct</p>
-                <p className="text-xs text-ok-ink/80 font-medium">Was this easy, medium, or hard?</p>
+                <p className="text-lg sm:text-xl font-bold tracking-tight leading-tight">Correct</p>
+                <p className="hidden sm:block text-xs text-ok-ink/80 font-medium">Rate recall</p>
               </div>
             </div>
 
-            {/* Difficulty Rating Buttons: Hard, Medium, Easy */}
-            <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Apple HIG Segmented Rating Controls (Hard / Medium / Easy) on same baseline */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => onContinue("hard")}
-                title="Mark as Hard (will practice again this session) [1 or H]"
-                className="btn min-h-10 px-3 sm:px-3.5 py-2 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                title="Mark as Hard — practice again this session [Key: 1 or H]"
+                className="btn min-h-9 sm:min-h-10 px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
               >
                 <span>😓 Hard</span>
-                <span className="hidden sm:inline text-[11px] text-muted">(Practice more)</span>
               </button>
 
               <button
                 ref={continueRef}
                 type="button"
                 onClick={() => onContinue("medium")}
-                title="Mark as Medium (advance schedule standard) [2, M, or Enter]"
-                className="btn btn-primary min-h-10 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                title="Mark as Medium — advance schedule normally [Key: 2, M, or Enter]"
+                className="btn btn-primary min-h-9 sm:min-h-10 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
               >
                 <span>👌 Medium</span>
-                <span className="text-[11px] opacity-80">(Continue ↵)</span>
+                <span className="text-[10px] sm:text-xs opacity-80">↵</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onContinue("easy")}
-                title="Mark as Easy (mastered, advance faster) [3 or E]"
-                className="btn min-h-10 px-3 sm:px-3.5 py-2 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                title="Mark as Easy — mastered, advance faster [Key: 3 or E]"
+                className="btn min-h-9 sm:min-h-10 px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
               >
                 <span>⚡ Easy</span>
-                <span className="hidden sm:inline text-[11px] text-muted">(Mastered)</span>
               </button>
             </div>
           </div>
         ) : (
-          /* WRONG or TYPO: Keep continue button so learner can review mistake */
-          <>
-            <div role="status" aria-live="polite" className={phase === "wrong" ? "text-bad-ink" : "text-ok-ink"}>
-              <p className="text-lg font-bold">
+          /* WRONG or TYPO: Single baseline layout with Answer and Continue button */
+          <div role="status" aria-live="polite" className="flex items-center justify-between gap-3 w-full min-w-0">
+            <div className={`min-w-0 flex-1 ${phase === "wrong" ? "text-bad-ink" : "text-ok-ink"}`}>
+              <p className="text-base sm:text-lg font-bold leading-tight">
                 {phase === "typo" ? "Almost: watch the spelling" : "Not quite"}
               </p>
-              <p className="text-ink flex items-center gap-2">
-                <span className="text-muted">Answer: </span>
-                <strong dir="auto">{answer}</strong>
+              <div className="text-ink flex items-center gap-2 mt-0.5 text-sm sm:text-base">
+                <span className="text-muted text-xs sm:text-sm shrink-0">Answer: </span>
+                <strong dir="auto" className="font-bold truncate">{answer}</strong>
                 {canSpeak() ? (
                   <button
                     type="button"
                     aria-label={`Hear “${answer}”`}
                     title={`Pronounce “${answer}”`}
-                    className="p-1 rounded-full text-muted hover:text-ink cursor-pointer"
+                    className="p-1 rounded-full text-muted hover:text-ink cursor-pointer shrink-0"
                     onClick={() => {
                       const hasAr = /[\u0600-\u06FF]/.test(answer);
                       speak(answer, hasAr ? "ar" : "en");
@@ -166,9 +164,9 @@ export function FeedbackBar({
                     <SpeakerIcon size={16} />
                   </button>
                 ) : null}
-              </p>
+              </div>
               {sentence ? (
-                <p className="text-xs text-muted max-w-lg italic mt-1 line-clamp-2" dir="auto">
+                <p className="text-xs text-muted max-w-lg italic mt-0.5 line-clamp-1" dir="auto">
                   “{sentence}”
                 </p>
               ) : null}
@@ -177,7 +175,7 @@ export function FeedbackBar({
                   href={sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:underline inline-flex items-center gap-1 mt-0.5"
+                  className="text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:underline inline-flex items-center gap-1 mt-0.5 truncate max-w-xs"
                 >
                   Watch scene from {sourceTitle || "video"} ↗
                 </a>
@@ -186,12 +184,12 @@ export function FeedbackBar({
             <button
               ref={continueRef}
               type="button"
-              className={`btn min-w-36 ${phase === "wrong" ? "btn-bad" : "btn-ok"}`}
+              className={`btn shrink-0 min-h-9 sm:min-h-10 min-w-28 sm:min-w-36 text-xs sm:text-sm font-bold shadow-sm ${phase === "wrong" ? "btn-bad" : "btn-ok"}`}
               onClick={() => onContinue()}
             >
-              Continue
+              Continue ↵
             </button>
-          </>
+          </div>
         )}
       </div>
     </div>

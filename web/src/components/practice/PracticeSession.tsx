@@ -350,7 +350,12 @@ export function PracticeSession({
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-4">
       <header className="flex items-center gap-4 py-5">
-        <button type="button" className="btn btn-quiet min-h-10 px-2" aria-label="Leave practice" onClick={() => setLeaving(true)}>
+        <button
+          type="button"
+          className="btn btn-quiet w-10 h-10 min-h-10 p-0 flex items-center justify-center rounded-full text-muted hover:text-ink active:scale-95 transition-all cursor-pointer shrink-0"
+          aria-label="Leave practice"
+          onClick={() => setLeaving(true)}
+        >
           <CloseIcon />
         </button>
         <div
