@@ -185,18 +185,34 @@ export function PracticeSession({
     }
   }
 
-  const advance = useCallback(() => {
-    setQueue((prev) => {
-      const [head, ...rest] = prev;
-      if (!head) return prev;
-      const requeue = phase === "wrong" && !head.retry;
-      return requeue ? [...rest, { q: head.q, retry: true }] : rest;
-    });
-    setDone((d) => (phase === "wrong" && !current?.retry ? d : d + 1));
-    setPhase("answering");
-    setSelected(null);
-    setTyped("");
-  }, [phase, current]);
+  const advance = useCallback(
+    (difficulty?: "easy" | "hard") => {
+      const isHard = difficulty === "hard";
+
+      if (current && current.q.type !== "match") {
+        const wordId = current.q.wordId;
+        if (isHard) {
+          // If rated Hard, mark as missed so it appears in summary and database interval resets
+          markMissed(wordId);
+          reviewWord(wordId, false).catch(() => setReviewFailed(true));
+          setTally((t) => ({ ...t, right: Math.max(0, t.right - 1) }));
+        }
+      }
+
+      setQueue((prev) => {
+        const [head, ...rest] = prev;
+        if (!head) return prev;
+        const requeue = (phase === "wrong" && !head.retry) || (isHard && !head.retry);
+        return requeue ? [...rest, { q: head.q, retry: true }] : rest;
+      });
+
+      setDone((d) => ((phase === "wrong" || isHard) && !current?.retry ? d : d + 1));
+      setPhase("answering");
+      setSelected(null);
+      setTyped("");
+    },
+    [phase, current, markMissed],
+  );
 
   const completeMatch = useCallback(
     (q: MatchQuestion, mistakes: string[]) => {
