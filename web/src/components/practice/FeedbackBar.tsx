@@ -15,7 +15,7 @@ type Props = {
   canCheck: boolean;
   onCheck: () => void;
   onSkip: () => void;
-  onContinue: (difficulty?: "easy" | "hard") => void;
+  onContinue: (difficulty?: "hard" | "medium" | "easy") => void;
 };
 
 const TONE: Record<Phase, string> = {
@@ -53,14 +53,20 @@ export function FeedbackBar({
     }
   }, [phase, canCheck]);
 
-  // Keyboard shortcut when correct: Enter/Space/2 -> Easy, 1/H -> Hard
+  // Keyboard shortcuts when correct:
+  // 1 or H -> Hard
+  // 2 or M or Space or Enter -> Medium
+  // 3 or E -> Easy
   useEffect(() => {
     if (phase !== "correct") return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "1" || e.key.toLowerCase() === "h") {
         e.preventDefault();
         onContinue("hard");
-      } else if (e.key === "2" || e.key.toLowerCase() === "e" || e.key === "Enter") {
+      } else if (e.key === "2" || e.key.toLowerCase() === "m" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onContinue("medium");
+      } else if (e.key === "3" || e.key.toLowerCase() === "e") {
         e.preventDefault();
         onContinue("easy");
       }
@@ -98,31 +104,41 @@ export function FeedbackBar({
               </div>
               <div>
                 <p className="text-xl sm:text-2xl font-bold tracking-tight">Correct</p>
-                <p className="text-xs text-ok-ink/80 font-medium">Was this easy or hard?</p>
+                <p className="text-xs text-ok-ink/80 font-medium">Was this easy, medium, or hard?</p>
               </div>
             </div>
 
-            {/* Difficulty Rating Buttons: Easy vs Hard */}
-            <div className="flex items-center gap-2.5">
+            {/* Difficulty Rating Buttons: Hard, Medium, Easy */}
+            <div className="flex items-center gap-2 sm:gap-2.5">
               <button
                 type="button"
                 onClick={() => onContinue("hard")}
-                title="Mark as Hard (will practice again this session)"
-                className="btn min-h-10 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                title="Mark as Hard (will practice again this session) [1 or H]"
+                className="btn min-h-10 px-3 sm:px-3.5 py-2 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
               >
                 <span>😓 Hard</span>
-                <span className="text-[11px] text-muted">(Practice more)</span>
+                <span className="hidden sm:inline text-[11px] text-muted">(Practice more)</span>
               </button>
 
               <button
                 ref={continueRef}
                 type="button"
+                onClick={() => onContinue("medium")}
+                title="Mark as Medium (advance schedule standard) [2, M, or Enter]"
+                className="btn btn-primary min-h-10 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+              >
+                <span>👌 Medium</span>
+                <span className="text-[11px] opacity-80">(Continue ↵)</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => onContinue("easy")}
-                title="Mark as Easy (advance schedule)"
-                className="btn btn-primary min-h-10 px-4 sm:px-5 text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                title="Mark as Easy (mastered, advance faster) [3 or E]"
+                className="btn min-h-10 px-3 sm:px-3.5 py-2 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
               >
                 <span>⚡ Easy</span>
-                <span className="text-[11px] opacity-80">(Continue ↵)</span>
+                <span className="hidden sm:inline text-[11px] text-muted">(Mastered)</span>
               </button>
             </div>
           </div>

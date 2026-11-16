@@ -186,16 +186,23 @@ export function PracticeSession({
   }
 
   const advance = useCallback(
-    (difficulty?: "easy" | "hard") => {
+    (difficulty?: "hard" | "medium" | "easy") => {
       const isHard = difficulty === "hard";
+      const isEasy = difficulty === "easy";
 
       if (current && current.q.type !== "match") {
         const wordId = current.q.wordId;
         if (isHard) {
           // If rated Hard, mark as missed so it appears in summary and database interval resets
           markMissed(wordId);
-          reviewWord(wordId, false).catch(() => setReviewFailed(true));
+          reviewWord(wordId, false, 1).catch(() => setReviewFailed(true));
           setTally((t) => ({ ...t, right: Math.max(0, t.right - 1) }));
+        } else if (isEasy) {
+          // If rated Easy, advance schedule with Grade 3 (+2 boxes)
+          reviewWord(wordId, true, 3).catch(() => setReviewFailed(true));
+        } else {
+          // Medium / Default: advance schedule with Grade 2 (+1 box)
+          reviewWord(wordId, true, 2).catch(() => setReviewFailed(true));
         }
       }
 
