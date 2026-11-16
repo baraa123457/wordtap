@@ -14,6 +14,7 @@ type Props = {
   reviewFailed: boolean;
   onRetrySave: () => void;
   onAgain: () => void;
+  onDrillMissed?: () => void;
   remainingCount?: number;
 };
 
@@ -26,6 +27,7 @@ export function Summary({
   reviewFailed,
   onRetrySave,
   onAgain,
+  onDrillMissed,
   remainingCount,
 }: Props) {
   const accuracy = asked === 0 ? 100 : Math.round((right / asked) * 100);
@@ -175,9 +177,9 @@ export function Summary({
             : "Practice again"}
         </button>
         {missed.length > 0 ? (
-          <Link href="/practice?mode=missed" className="btn">
+          <button type="button" className="btn" onClick={onDrillMissed}>
             Drill missed words ({missed.length})
-          </Link>
+          </button>
         ) : null}
         <Link href="/dashboard" className="btn">
           Back to dashboard

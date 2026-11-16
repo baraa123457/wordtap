@@ -51,7 +51,7 @@ export function PracticeSession({
       mode,
     }).map((q) => ({ q, retry: false }));
   });
-  const [total] = useState(() => queue.length);
+  const [total, setTotal] = useState(() => queue.length);
   const [done, setDone] = useState(0);
   const [phase, setPhase] = useState<Phase>("answering");
   const [selected, setSelected] = useState<string | null>(null);
@@ -224,6 +224,72 @@ export function PracticeSession({
     router.push("/dashboard");
   }
 
+  const startDrillMissed = useCallback(
+    (wordsToDrill: Word[]) => {
+      let mode = modeOverride || settings.practiceMode || "mixed";
+      if (!modeOverride && mode !== "dictation") {
+        if (settings.enableChoice === false && settings.enableTyping) mode = "typing";
+        else if (settings.enableTyping === false && settings.enableChoice) mode = "choice";
+        else if (settings.enableChoice && settings.enableTyping) mode = "mixed";
+      }
+
+      const newQueue = buildSession(wordsToDrill, {
+        size: wordsToDrill.length,
+        canSpeak: canSpeak(),
+        mode,
+      }).map((q) => ({ q, retry: false }));
+
+      setQueue(newQueue);
+      setTotal(newQueue.length);
+      setDone(0);
+      setPhase("answering");
+      setSelected(null);
+      setTyped("");
+      setXp(0);
+      setTally({ asked: 0, right: 0 });
+      setMissed([]);
+      setRemainingIds(wordsToDrill.map((w) => w.id));
+      reviewed.current.clear();
+      xpSaved.current = false;
+      setSave("idle");
+      setReviewFailed(false);
+    },
+    [modeOverride, settings],
+  );
+
+  const handleAgain = useCallback(() => {
+    let mode = modeOverride || settings.practiceMode || "mixed";
+    if (!modeOverride && mode !== "dictation") {
+      if (settings.enableChoice === false && settings.enableTyping) mode = "typing";
+      else if (settings.enableTyping === false && settings.enableChoice) mode = "choice";
+      else if (settings.enableChoice && settings.enableTyping) mode = "mixed";
+    }
+
+    const newQueue = buildSession(words, {
+      size: settings.sessionSize || SESSION_WORDS,
+      canSpeak: canSpeak(),
+      mode,
+    }).map((q) => ({ q, retry: false }));
+
+    setQueue(newQueue);
+    setTotal(newQueue.length);
+    setDone(0);
+    setPhase("answering");
+    setSelected(null);
+    setTyped("");
+    setXp(0);
+    setTally({ asked: 0, right: 0 });
+    setMissed([]);
+    reviewed.current.clear();
+    xpSaved.current = false;
+    setSave("idle");
+    setReviewFailed(false);
+
+    if (onAgain) {
+      onAgain();
+    }
+  }, [words, modeOverride, settings, onAgain]);
+
   if (finished) {
     return (
       <Summary
@@ -234,7 +300,8 @@ export function PracticeSession({
         save={save}
         reviewFailed={reviewFailed}
         onRetrySave={retrySave}
-        onAgain={onAgain}
+        onAgain={handleAgain}
+        onDrillMissed={() => startDrillMissed(missed)}
         remainingCount={remainingCount}
       />
     );

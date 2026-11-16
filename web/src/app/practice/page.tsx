@@ -184,5 +184,12 @@ function PracticeLoader() {
   }
 
   // "Practice again" reloads the words, so the next session uses fresh schedules.
-  return <PracticeSession words={filteredWords} onAgain={reload} modeOverride={modeOverride} />;
+  return (
+    <PracticeSession
+      key={`${urlIds || ""}-${urlMode || ""}-${urlPractice || ""}-${selectedLang || ""}`}
+      words={filteredWords}
+      onAgain={reload}
+      modeOverride={modeOverride}
+    />
+  );
 }
