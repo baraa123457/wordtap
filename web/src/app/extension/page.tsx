@@ -91,6 +91,36 @@ export default function ExtensionPage() {
           </div>
         </div>
 
+        {/* Video Demo Section */}
+        <div className="apple-card overflow-hidden p-4 sm:p-6 border border-line bg-surface/90 shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-ok animate-pulse" />
+              <h2 className="text-lg sm:text-xl font-bold text-ink">
+                See WordTap in Action
+              </h2>
+            </div>
+            <span className="text-xs text-muted font-medium bg-black/5 dark:bg-white/10 px-3 py-1 rounded-full border border-line w-fit">
+              YouTube &amp; Netflix Subtitles Demo
+            </span>
+          </div>
+
+          <div className="relative rounded-2xl overflow-hidden bg-black aspect-video border border-line/60 shadow-inner group">
+            <video
+              src="/wordtap-extension-demo.mp4"
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full h-full object-contain"
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+          <p className="text-xs text-muted text-center italic">
+            Watch how tapping any word in video subtitles instantly displays dictionary definitions and saves it to your practice list.
+          </p>
+        </div>
+
         {/* 4 Steps Section */}
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-ink px-1 flex items-center gap-2">

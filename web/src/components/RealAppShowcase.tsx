@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 export function RealAppShowcase({ lang = "en" }: { lang?: "en" | "ar" }) {
   const [tab, setTab] = useState<"practice" | "words" | "subtitles">("practice");
@@ -146,32 +147,29 @@ export function RealAppShowcase({ lang = "en" }: { lang?: "en" | "ar" }) {
         </div>
       )}
 
-      {/* Screen 3: Subtitle Tooltip */}
+      {/* Screen 3: Subtitle Tooltip / Video Demo */}
       {tab === "subtitles" && (
-        <div className="apple-card p-6 space-y-4 border-2 border-line/80 shadow-md animate-in fade-in duration-200">
-          <div className="relative rounded-2xl overflow-hidden bg-black aspect-video max-h-64 flex flex-col justify-end p-6 border border-line">
-            <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent" />
-            
-            {/* Mock Floating Tooltip */}
-            <div className="relative z-10 mx-auto max-w-sm rounded-xl bg-[#0b0e1b] border border-subtitle/40 p-3 shadow-2xl space-y-1">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-white text-sm">Integrity</span>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-subtitle/20 text-subtitle border border-subtitle/30">noun</span>
-                </div>
-                <span className="text-[11px] font-bold text-subtitle bg-subtitle/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  ★ Saved
-                </span>
-              </div>
-              <div className="text-sm font-bold text-white font-arabic">نزاهة</div>
-            </div>
-
-            {/* Subtitle text */}
-            <div className="relative z-10 text-center pt-3">
-              <span className="text-xs sm:text-sm font-semibold bg-black/80 text-white px-3 py-1 rounded-lg">
-                &quot;He is a person of unquestionable <span className="bg-subtitle/40 text-subtitle font-bold px-1 rounded">Integrity</span> in every decision.&quot;
-              </span>
-            </div>
+        <div className="apple-card p-4 sm:p-6 space-y-3 border-2 border-line/80 shadow-md animate-in fade-in duration-200">
+          <div className="relative rounded-2xl overflow-hidden bg-black aspect-video border border-line shadow-inner">
+            <video
+              src="/wordtap-extension-demo.mp4"
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full h-full object-contain"
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+          <div className="flex items-center justify-between text-xs text-muted px-1">
+            <span>
+              {isAr
+                ? "فيديو توضيحي: النقر على الكلمات في ترجمة الفيديو وحفظها تلقائياً"
+                : "Live demo: Tap words in video subtitles to translate & save instantly"}
+            </span>
+            <Link href="/extension" className="font-semibold text-subtitle hover:underline">
+              {isAr ? "صفحة الإضافة ↗" : "Extension details ↗"}
+            </Link>
           </div>
         </div>
       )}
