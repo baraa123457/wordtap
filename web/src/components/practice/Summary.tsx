@@ -15,6 +15,7 @@ type Props = {
   onRetrySave: () => void;
   onAgain: () => void;
   onDrillMissed?: () => void;
+  onChangeLang?: () => void;
   remainingCount?: number;
 };
 
@@ -28,6 +29,7 @@ export function Summary({
   onRetrySave,
   onAgain,
   onDrillMissed,
+  onChangeLang,
   remainingCount,
 }: Props) {
   const accuracy = asked === 0 ? 100 : Math.round((right / asked) * 100);
@@ -179,6 +181,15 @@ export function Summary({
         {missed.length > 0 ? (
           <button type="button" className="btn" onClick={onDrillMissed}>
             Drill missed words ({missed.length})
+          </button>
+        ) : null}
+        {onChangeLang ? (
+          <button
+            type="button"
+            className="btn btn-quiet border border-line hover:border-subtitle"
+            onClick={onChangeLang}
+          >
+            Change language
           </button>
         ) : null}
         <Link href="/dashboard" className="btn">

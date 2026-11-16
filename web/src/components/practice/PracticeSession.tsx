@@ -28,10 +28,12 @@ const SESSION_WORDS = 8;
 export function PracticeSession({
   words,
   onAgain,
+  onChangeLang,
   modeOverride,
 }: {
   words: Word[];
   onAgain: () => void;
+  onChangeLang?: () => void;
   modeOverride?: "mixed" | "typing" | "choice" | "dictation";
 }) {
   const router = useRouter();
@@ -302,6 +304,7 @@ export function PracticeSession({
         onRetrySave={retrySave}
         onAgain={handleAgain}
         onDrillMissed={() => startDrillMissed(missed)}
+        onChangeLang={onChangeLang}
         remainingCount={remainingCount}
       />
     );
@@ -346,10 +349,22 @@ export function PracticeSession({
           <div role="alertdialog" aria-label="Leave practice?" className="w-full max-w-md grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl">
             <h3 className="text-lg font-bold text-ink">Leave practice?</h3>
             <p className="text-sm text-muted">The answers you gave so far are saved.</p>
-            <div className="flex gap-3 justify-end mt-2">
+            <div className="flex flex-wrap gap-2.5 justify-end mt-2">
               <button type="button" className="btn btn-quiet" onClick={() => setLeaving(false)}>
                 Keep practicing
               </button>
+              {onChangeLang ? (
+                <button
+                  type="button"
+                  className="btn btn-quiet border border-line hover:border-subtitle"
+                  onClick={() => {
+                    setLeaving(false);
+                    onChangeLang();
+                  }}
+                >
+                  Change language
+                </button>
+              ) : null}
               <button type="button" className="btn btn-primary" onClick={() => void leave()}>
                 Leave
               </button>

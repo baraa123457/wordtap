@@ -50,7 +50,12 @@ function PracticeLoader() {
   const languages = useMemo(() => {
     if (!words) return [];
     const counts = new Map<string, number>();
-    for (const w of words) {
+    const sourcePool =
+      urlMode === "missed"
+        ? words.filter((w) => (w.wrong_count || 0) > 0)
+        : words;
+
+    for (const w of sourcePool) {
       const code = (w.src_lang || "auto").toLowerCase();
       if (code === "ar") continue;
       counts.set(code, (counts.get(code) || 0) + 1);
@@ -60,7 +65,7 @@ function PracticeLoader() {
       name: LANG_NAMES[code] || code.toUpperCase(),
       count,
     }));
-  }, [words]);
+  }, [words, urlMode]);
 
   if (state.status === "loading") return <LoadingState label="Getting your words ready…" />;
   if (state.status === "error") {
@@ -119,15 +124,22 @@ function PracticeLoader() {
     );
   }
 
-  // If user has multiple languages and hasn't picked one yet (skip picker when drilling missed words):
-  if (!selectedLang && languages.length > 1 && urlMode !== "missed") {
+  // Choose language first before starting practice (unless explicit ?lang= is passed):
+  if (!selectedLang && !urlLang && languages.length > 0) {
+    const totalCount =
+      urlMode === "missed"
+        ? words?.filter((w) => (w.wrong_count || 0) > 0).length || 0
+        : state.data.length;
+
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-12">
         <div className="grid gap-6 rounded-3xl border border-line bg-surface p-6 shadow-sm sm:p-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Choose what to practice</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-ink">Choose what to practice</h1>
             <p className="mt-1 text-sm text-muted">
-              You have words saved in multiple languages. Select one to focus on:
+              {urlMode === "missed"
+                ? "Select a language to drill your tricky/missed words, or drill all languages mixed:"
+                : "Select a language to focus on, or practice all languages mixed:"}
             </p>
           </div>
           <div className="grid gap-3">
@@ -136,7 +148,7 @@ function PracticeLoader() {
                 key={l.id}
                 type="button"
                 onClick={() => setSelectedLang(l.id)}
-                className="btn justify-between py-3.5 text-base"
+                className="btn justify-between py-3.5 text-base cursor-pointer hover:border-subtitle"
               >
                 <span className="font-semibold">{l.name}</span>
                 <span className="rounded-full bg-line px-2.5 py-0.5 text-xs text-muted">
@@ -147,10 +159,10 @@ function PracticeLoader() {
             <button
               type="button"
               onClick={() => setSelectedLang("all")}
-              className="btn btn-quiet justify-between text-base"
+              className="btn btn-quiet justify-between text-base cursor-pointer hover:border-subtitle"
             >
               <span>Practice all languages mixed</span>
-              <span className="text-xs text-muted">{state.data.length} total</span>
+              <span className="text-xs text-muted">{totalCount} total</span>
             </button>
           </div>
         </div>
@@ -189,6 +201,7 @@ function PracticeLoader() {
       key={`${urlIds || ""}-${urlMode || ""}-${urlPractice || ""}-${selectedLang || ""}`}
       words={filteredWords}
       onAgain={reload}
+      onChangeLang={() => setSelectedLang(null)}
       modeOverride={modeOverride}
     />
   );
