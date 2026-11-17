@@ -25,12 +25,12 @@ import { parseImportFile } from "@/lib/import";
 type Filter = "all" | WordStatus;
 type SourceFilter = "all" | "subtitles" | "ocr" | "translator" | "web";
 
-const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
-  { id: "all", label: "All sources" },
-  { id: "subtitles", label: "Subtitles" },
-  { id: "web", label: "Webpages" },
-  { id: "ocr", label: "Screen OCR" },
-  { id: "translator", label: "Translator" },
+const SOURCE_FILTERS: { id: SourceFilter; label: string; shortLabel: string }[] = [
+  { id: "all", label: "All sources", shortLabel: "All" },
+  { id: "subtitles", label: "Subtitles", shortLabel: "Subtitles" },
+  { id: "web", label: "Webpages", shortLabel: "Web" },
+  { id: "ocr", label: "Screen OCR", shortLabel: "OCR" },
+  { id: "translator", label: "Translator", shortLabel: "Translator" },
 ];
 
 function inferWordSource(w: Word): Exclude<SourceFilter, "all"> {
@@ -794,52 +794,57 @@ export default function WordsPage() {
       ) : null}
 
       {languageTabs.length > 1 || sourceCounts.size > 1 ? (
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 max-w-full min-w-0">
           {languageTabs.length > 1 ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-muted">Language:</span>
-              <div className="apple-segmented-container">
-                <button
-                  type="button"
-                  aria-pressed={langFilter === "all"}
-                  onClick={() => setLangFilter("all")}
-                  data-active={langFilter === "all" ? "true" : undefined}
-                  className="apple-segmented-item"
-                >
-                  All ({words?.length || 0})
-                </button>
-                {languageTabs.map((l) => (
+            <div className="flex items-center gap-2 max-w-full min-w-0">
+              <span className="text-xs font-semibold text-muted shrink-0">Language:</span>
+              <div className="overflow-x-auto no-scrollbar py-0.5 scroll-smooth max-w-full min-w-0">
+                <div className="apple-segmented-container">
                   <button
-                    key={l.id}
                     type="button"
-                    aria-pressed={langFilter === l.id}
-                    onClick={() => setLangFilter(l.id)}
-                    data-active={langFilter === l.id ? "true" : undefined}
-                    className="apple-segmented-item"
+                    aria-pressed={langFilter === "all"}
+                    onClick={() => setLangFilter("all")}
+                    data-active={langFilter === "all" ? "true" : undefined}
+                    className="apple-segmented-item whitespace-nowrap"
                   >
-                    {l.label} ({l.count})
+                    All ({words?.length || 0})
                   </button>
-                ))}
+                  {languageTabs.map((l) => (
+                    <button
+                      key={l.id}
+                      type="button"
+                      aria-pressed={langFilter === l.id}
+                      onClick={() => setLangFilter(l.id)}
+                      data-active={langFilter === l.id ? "true" : undefined}
+                      className="apple-segmented-item whitespace-nowrap"
+                    >
+                      {l.label} ({l.count})
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ) : null}
 
           {sourceCounts.size > 1 ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-muted">Source:</span>
-              <div className="apple-segmented-container">
-                {SOURCE_FILTERS.filter((sf) => sf.id === "all" || (sourceCounts.get(sf.id) || 0) > 0).map((sf) => (
-                  <button
-                    key={sf.id}
-                    type="button"
-                    aria-pressed={sourceFilter === sf.id}
-                    onClick={() => setSourceFilter(sf.id)}
-                    data-active={sourceFilter === sf.id ? "true" : undefined}
-                    className="apple-segmented-item"
-                  >
-                    {sf.label}
-                  </button>
-                ))}
+            <div className="flex items-center gap-2 max-w-full min-w-0">
+              <span className="text-xs font-semibold text-muted shrink-0">Source:</span>
+              <div className="overflow-x-auto no-scrollbar py-0.5 scroll-smooth max-w-full min-w-0">
+                <div className="apple-segmented-container">
+                  {SOURCE_FILTERS.filter((sf) => sf.id === "all" || (sourceCounts.get(sf.id) || 0) > 0).map((sf) => (
+                    <button
+                      key={sf.id}
+                      type="button"
+                      aria-pressed={sourceFilter === sf.id}
+                      onClick={() => setSourceFilter(sf.id)}
+                      data-active={sourceFilter === sf.id ? "true" : undefined}
+                      className="apple-segmented-item whitespace-nowrap"
+                    >
+                      <span className="hidden sm:inline">{sf.label}</span>
+                      <span className="sm:hidden">{sf.shortLabel}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ) : null}

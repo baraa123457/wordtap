@@ -456,25 +456,27 @@ export default function SettingsPage() {
         </div>
 
         {/* Daily XP Goal */}
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/50 pt-4">
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center border-t border-line/50 pt-4 max-w-full min-w-0">
           <div>
             <div className="font-semibold text-ink">Daily XP goal</div>
             <div className="text-xs sm:text-sm text-muted">Target XP to complete each day to maintain your streak.</div>
             {goalMessage ? <div className="text-xs font-semibold text-ok mt-1">{goalMessage}</div> : null}
           </div>
-          <div className="apple-segmented-container">
-            {GOALS.map((g) => (
-              <button
-                key={g}
-                type="button"
-                disabled={goalSaving}
-                onClick={() => void handleGoalChange(g)}
-                data-active={dailyGoalVal === g ? "true" : undefined}
-                className="apple-segmented-item"
-              >
-                {g} XP
-              </button>
-            ))}
+          <div className="overflow-x-auto no-scrollbar py-0.5 scroll-smooth max-w-full min-w-0">
+            <div className="apple-segmented-container">
+              {GOALS.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  disabled={goalSaving}
+                  onClick={() => void handleGoalChange(g)}
+                  data-active={dailyGoalVal === g ? "true" : undefined}
+                  className="apple-segmented-item whitespace-nowrap"
+                >
+                  {g} XP
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>
