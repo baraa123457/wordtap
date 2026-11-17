@@ -72,9 +72,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Segmented Navigation Capsule (Row 2 on mobile/tablet, Center on wide desktop) */}
           <nav
             aria-label="Main Navigation"
-            className="order-3 flex w-full shrink-0 items-center justify-center overflow-x-auto no-scrollbar py-0.5 lg:order-2 lg:w-auto lg:py-0 px-2"
+            className="order-3 flex w-full shrink-0 items-center justify-center overflow-x-auto no-scrollbar py-0.5 lg:order-2 lg:w-auto lg:py-0 px-1 sm:px-2"
           >
-            <div className="apple-segmented-container mx-auto flex shrink-0 items-center justify-center">
+            <div className="apple-segmented-container mx-auto flex shrink-0 items-center justify-center px-1 sm:px-1.5">
               {navLinks.map((link) => {
                 const active = pathname === link.href;
                 return (
@@ -83,7 +83,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     href={link.href}
                     aria-current={active ? "page" : undefined}
                     data-active={active ? "true" : undefined}
-                    className="apple-segmented-item whitespace-nowrap text-xs sm:text-sm px-2.5 sm:px-3.5 py-1.5 min-h-[34px] flex items-center justify-center shrink-0"
+                    className="apple-segmented-item whitespace-nowrap text-[11px] sm:text-sm px-2 sm:px-3.5 py-1 sm:py-1.5 min-h-[32px] sm:min-h-[36px] flex items-center justify-center shrink-0"
                   >
                     {link.label === link.shortLabel ? (
                       link.label
