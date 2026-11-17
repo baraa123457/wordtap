@@ -223,6 +223,25 @@ export async function recordPractice(xp: number, today: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export async function syncUserStreak(
+  streak: number,
+  bestStreak: number,
+  lastPracticeDate?: string | null,
+): Promise<void> {
+  const supabase = getSupabase();
+  const updates: Record<string, unknown> = {
+    streak,
+    best_streak: bestStreak,
+  };
+  if (lastPracticeDate) {
+    updates.last_practice_date = lastPracticeDate;
+  }
+  const { error } = await supabase.from("user_stats").update(updates);
+  if (error) {
+    console.warn("Could not sync user streak:", error.message);
+  }
+}
+
 export async function setDailyGoal(goal: number): Promise<void> {
   const { error } = await getSupabase().rpc("set_daily_goal", { p_goal: goal });
   if (error) throw new Error(error.message);

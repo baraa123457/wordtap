@@ -69,6 +69,7 @@ export function PracticeSession({
 
   const reviewed = useRef(new Set<string>());
   const xpSaved = useRef(false);
+  const lastRecordedXp = useRef(0);
   const wordsById = useMemo(() => new Map(words.map((w) => [w.id, w])), [words]);
   const [remainingIds, setRemainingIds] = useState<string[]>(() =>
     words.filter(isPracticableWord).map((w) => w.id),
@@ -138,24 +139,42 @@ export function PracticeSession({
     [wordsById],
   );
 
-  // Save XP and streak once, when the last question is done.
+  // Progressively record XP and maintain streak on every correct answer
+  const syncXpProgress = useCallback((currentTotalXp: number) => {
+    const delta = currentTotalXp - lastRecordedXp.current;
+    if (delta > 0) {
+      lastRecordedXp.current = currentTotalXp;
+      recordPractice(delta, localDateString()).catch((err) => {
+        console.warn("Could not sync incremental practice progress:", err);
+      });
+    }
+  }, []);
+
+  // Save any remaining unsaved XP and confirm streak once the last question is done.
   useEffect(() => {
     if (!finished || xpSaved.current) return;
     xpSaved.current = true;
-    if (xp === 0) {
+    const delta = xp - lastRecordedXp.current;
+    if (delta > 0) {
+      lastRecordedXp.current = xp;
+      setSave("saving");
+      recordPractice(delta, localDateString())
+        .then(() => setSave("saved"))
+        .catch(() => setSave("error"));
+    } else {
       setSave("saved");
-      return;
     }
-    setSave("saving");
-    recordPractice(xp, localDateString())
-      .then(() => setSave("saved"))
-      .catch(() => setSave("error"));
   }, [finished, xp]);
 
   function retrySave() {
     setSave("saving");
-    recordPractice(xp, localDateString())
-      .then(() => setSave("saved"))
+    const delta = xp - lastRecordedXp.current;
+    const toSave = delta > 0 ? delta : xp;
+    recordPractice(toSave, localDateString())
+      .then(() => {
+        lastRecordedXp.current = xp;
+        setSave("saved");
+      })
       .catch(() => setSave("error"));
   }
 
@@ -167,7 +186,14 @@ export function PracticeSession({
       review(current.q.wordId, ok);
       if (!ok) markMissed(current.q.wordId);
     }
-    if (ok) setXp((x) => x + (current.retry ? XP_RETRY : XP_FIRST_TRY));
+    if (ok) {
+      const earned = current.retry ? XP_RETRY : XP_FIRST_TRY;
+      setXp((prev) => {
+        const next = prev + earned;
+        syncXpProgress(next);
+        return next;
+      });
+    }
     setPhase(result);
   }
 
@@ -230,20 +256,29 @@ export function PracticeSession({
       }
       const clean = mistakes.length === 0;
       setTally((t) => ({ asked: t.asked + 1, right: t.right + (clean ? 1 : 0) }));
-      setXp((x) => x + (clean ? XP_FIRST_TRY : XP_RETRY));
+      const earned = clean ? XP_FIRST_TRY : XP_RETRY;
+      setXp((prev) => {
+        const next = prev + earned;
+        syncXpProgress(next);
+        return next;
+      });
       setQueue((prev) => prev.slice(1));
       setDone((d) => d + 1);
     },
-    [review, markMissed],
+    [review, markMissed, syncXpProgress],
   );
 
   async function leave() {
-    if (!xpSaved.current && xp > 0) {
+    if (!xpSaved.current) {
       xpSaved.current = true;
-      try {
-        await recordPractice(xp, localDateString());
-      } catch {
-        // Leaving anyway; reviews already saved one by one.
+      const delta = xp - lastRecordedXp.current;
+      if (delta > 0) {
+        lastRecordedXp.current = xp;
+        try {
+          await recordPractice(delta, localDateString());
+        } catch {
+          // Leaving anyway; reviews already saved one by one.
+        }
       }
     }
     router.push("/dashboard");
@@ -271,6 +306,7 @@ export function PracticeSession({
       setSelected(null);
       setTyped("");
       setXp(0);
+      lastRecordedXp.current = 0;
       setTally({ asked: 0, right: 0 });
       setMissed([]);
       setRemainingIds(wordsToDrill.map((w) => w.id));
@@ -303,6 +339,7 @@ export function PracticeSession({
     setSelected(null);
     setTyped("");
     setXp(0);
+    lastRecordedXp.current = 0;
     setTally({ asked: 0, right: 0 });
     setMissed([]);
     reviewed.current.clear();

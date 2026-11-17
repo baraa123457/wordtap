@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { fetchStats, fetchWords, setDailyGoal } from "@/lib/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { fetchStats, fetchWords, setDailyGoal, syncUserStreak } from "@/lib/api";
 import { effectiveStats, localDateString } from "@/lib/dates";
 import { formatDueIn, isDue } from "@/lib/format";
 import type { Stats, Word } from "@/lib/schemas";
@@ -117,6 +117,37 @@ function GoalDropdown({
 export default function DashboardPage() {
   const { state, reload, setData } = useLoad(loadDashboard);
   const [goalError, setGoalError] = useState<string | null>(null);
+  const now = useMemo(() => new Date(), []);
+  const todayStr = useMemo(() => localDateString(now), [now]);
+
+  const readyData = state.status === "ready" ? state.data : null;
+  const currentWords = readyData?.words;
+  const currentStats = readyData?.stats;
+
+  const eff = useMemo(() => {
+    if (!currentStats || !currentWords) {
+      return { streak: 0, todayXp: 0, practicedToday: false };
+    }
+    return effectiveStats(currentStats, todayStr, currentWords);
+  }, [currentStats, todayStr, currentWords]);
+
+  // Reconcile and persist accurate streak to user_stats if word history proved a higher streak
+  useEffect(() => {
+    if (readyData && currentStats && eff.streak > currentStats.streak) {
+      const targetDate = eff.practicedToday ? todayStr : currentStats.last_practice_date;
+      const newBest = Math.max(currentStats.best_streak, eff.streak);
+      syncUserStreak(eff.streak, newBest, targetDate).catch(() => {});
+      setData({
+        words: readyData.words,
+        stats: {
+          ...currentStats,
+          streak: eff.streak,
+          best_streak: newBest,
+          last_practice_date: targetDate,
+        },
+      });
+    }
+  }, [eff.streak, readyData, currentStats, eff.practicedToday, todayStr, setData]);
 
   if (state.status === "loading") {
     return (
@@ -155,8 +186,6 @@ export default function DashboardPage() {
 
   const { words, stats } = state.data;
 
-  const now = new Date();
-  const eff = effectiveStats(stats, localDateString(now));
   const dueCount = words.filter((w) => isDue(w.next_review, now)).length;
   const mastered = words.filter((w) => w.box >= 4).length;
   const learningCount = words.filter((w) => w.box >= 2 && w.box < 4).length;
@@ -216,7 +245,7 @@ export default function DashboardPage() {
               <>
                 <FireIcon size={17} className="text-orange-500 animate-pulse" />
                 <span className="font-bold text-ink">
-                  {eff.streak}-day streak{eff.practicedToday ? "" : ": practice to keep it"}
+                  {eff.streak}-day streak
                 </span>
               </>
             ) : (
@@ -243,7 +272,9 @@ export default function DashboardPage() {
               {words.length === 0
                 ? "Translate words below or tap subtitles on YouTube & Netflix to start learning."
                 : dueCount > 0
-                ? "Review your words now to reinforce your memory and maintain your streak."
+                ? eff.practicedToday
+                  ? "Streak maintained today! Keep practicing anytime to reinforce more words."
+                  : "Review your words now to reinforce your memory and maintain your streak."
                 : nextDue
                 ? `Next review ${formatDueIn(nextDue, now)}. Keep up the momentum!`
                 : "You have reviewed all available words. Great job!"}
