@@ -120,14 +120,29 @@ html {
   background: var(--bg);
   color: var(--ink);
   overflow-x: hidden;
+  /* Safe area variables */
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
 }
 
 body {
   min-height: 100dvh;
+  min-height: 100vh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* Touch responsiveness: eliminate tap delay & ensure smooth scrolling */
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
 }
 
 /* Explicit Readex Pro typography for Arabic glyphs, RTL text, and bi-directional isolations */
@@ -183,6 +198,22 @@ bdi {
     -ms-overflow-style: none;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+  }
+
+  /* Safe Area Padding Utilities */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right, 0px);
   }
 
   .apple-segmented-container::-webkit-scrollbar {
@@ -326,8 +357,15 @@ bdi {
     border: 1px solid var(--line);
     background: var(--surface);
     color: var(--ink);
-    font-size: 0.9375rem;
+    /* 16px font-size prevents unwanted iOS Safari viewport auto-zooming */
+    font-size: 1rem;
     transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  @media (min-width: 640px) {
+    .field {
+      font-size: 0.9375rem;
+    }
   }
 
   .field::placeholder {

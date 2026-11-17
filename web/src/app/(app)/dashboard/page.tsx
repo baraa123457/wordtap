@@ -231,8 +231,8 @@ export default function DashboardPage() {
       {/* 1. Today's Practice Card - FIRST for habit reinforcement */}
       <section aria-labelledby="today" className="apple-card overflow-hidden w-full min-w-0 transition-all">
         {/* Top bar */}
-        <div className="flex items-center justify-between border-b border-line/60 bg-black/[0.02] dark:bg-white/[0.03] px-5 py-3">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between border-b border-line/60 bg-black/[0.02] dark:bg-white/[0.03] px-4 sm:px-5 py-3">
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <span id="today" className="font-bold text-ink text-sm sm:text-base">Today</span>
             {dueCount > 0 ? (
               <span className="rounded-full bg-subtitle/20 border border-subtitle/30 px-2.5 py-0.5 text-xs font-extrabold text-ink dark:text-subtitle">
@@ -255,9 +255,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Content Area */}
-        <div className="p-5 sm:p-6 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-4 sm:p-6 w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="text-start space-y-1 max-w-lg">
-            <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-ink">
+            <h3 className="text-xl sm:text-3xl font-extrabold tracking-tight text-ink">
               {words.length === 0 ? (
                 "Start building your vocabulary"
               ) : dueCount > 0 ? (
@@ -281,10 +281,10 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="shrink-0 flex items-center justify-start sm:justify-end">
+          <div className="w-full sm:w-auto shrink-0 flex items-center justify-start sm:justify-end">
             <Link
               href={words.length === 0 ? "/extension" : "/practice"}
-              className="btn btn-primary min-h-11 px-6 text-sm sm:text-base font-bold shadow-md hover:scale-105 active:scale-95 transition-all"
+              className="btn btn-primary w-full sm:w-auto text-center justify-center min-h-11 px-6 text-sm sm:text-base font-bold shadow-md hover:scale-105 active:scale-95 transition-all"
             >
               {words.length === 0
                 ? "Get extension"
@@ -296,7 +296,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Bottom Goal Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/60 bg-black/[0.02] dark:bg-white/[0.03] px-5 py-2.5 text-xs sm:text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/60 bg-black/[0.02] dark:bg-white/[0.03] px-4 sm:px-5 py-2.5 text-xs sm:text-sm">
           <span className="flex items-center gap-3 flex-1 min-w-0">
             <span className="text-muted font-medium whitespace-nowrap">
               <strong className="text-ink font-semibold">{eff.todayXp}</strong> of {stats.daily_goal} XP today
@@ -507,11 +507,11 @@ function Stat({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="apple-card p-4 flex flex-col justify-between gap-1 shadow-2xs">
-      <dt className="text-xs font-medium text-muted">{label}</dt>
-      <dd className="flex items-center gap-2 text-2xl font-bold tracking-tight text-ink tabular-nums">
+    <div className="apple-card p-3 sm:p-4 flex flex-col justify-between gap-1 shadow-2xs min-w-0">
+      <dt className="text-xs font-medium text-muted truncate">{label}</dt>
+      <dd className="flex items-center gap-1.5 sm:gap-2 text-xl sm:text-2xl font-bold tracking-tight text-ink tabular-nums">
         {icon}
-        <span>{value.toLocaleString("en")}</span>
+        <span className="truncate">{value.toLocaleString("en")}</span>
       </dd>
     </div>
   );

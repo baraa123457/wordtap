@@ -6,7 +6,9 @@ import { useAuth } from "@/context/AuthContext";
 export function AuthActions({ size = "nav" }: { size?: "nav" | "hero" }) {
   const { state } = useAuth();
   const compact = size === "nav";
-  const sizing = compact ? "min-h-10 px-4 py-1.5 text-sm" : "";
+  const sizing = compact
+    ? "min-h-9 px-3 sm:px-4 py-1 text-xs sm:text-sm font-semibold shrink-0"
+    : "w-full sm:w-auto min-h-12 px-6 text-sm sm:text-base font-bold justify-center shadow-md";
 
   if (state.status === "signed-in") {
     return (
@@ -16,7 +18,7 @@ export function AuthActions({ size = "nav" }: { size?: "nav" | "hero" }) {
     );
   }
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className={`flex flex-wrap items-center gap-2.5 sm:gap-3 ${compact ? "" : "w-full sm:w-auto"}`}>
       {/* In the header on phones only "Sign in" shows; the hero below has both buttons. */}
       <Link href="/signup" className={`btn btn-primary ${sizing} ${compact ? "hidden sm:inline-flex" : ""}`}>
         Create free account

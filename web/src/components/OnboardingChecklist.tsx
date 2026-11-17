@@ -49,19 +49,19 @@ export function OnboardingChecklist({ words }: { words: Word[] }) {
   }
 
   return (
-    <div className="apple-card p-5 sm:p-6 border-2 border-subtitle/40 bg-surface space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-subtitle animate-pulse" />
-          <h2 className="text-base font-extrabold text-ink">Getting Started with WordTap</h2>
-          <span className="text-xs font-bold text-subtitle bg-subtitle/15 px-2 py-0.5 rounded-full">
+    <div className="apple-card p-4 sm:p-6 border-2 border-subtitle/40 bg-surface space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <span className="w-2.5 h-2.5 rounded-full bg-subtitle animate-pulse shrink-0" />
+          <h2 className="text-sm sm:text-base font-extrabold text-ink">Getting Started with WordTap</h2>
+          <span className="text-xs font-bold text-subtitle bg-subtitle/15 px-2 py-0.5 rounded-full shrink-0">
             {completedCount} of 3 done
           </span>
         </div>
         <button
           type="button"
           onClick={handleDismiss}
-          className="text-xs text-muted hover:text-ink cursor-pointer"
+          className="text-xs text-muted hover:text-ink cursor-pointer shrink-0"
         >
           Dismiss
         </button>

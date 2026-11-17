@@ -30,16 +30,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-dvh w-full flex-col">
-      {/* Apple Floating Liquid Glass Header */}
-      <header className="sticky top-0 z-40 w-full apple-glass transition-colors">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2.5 px-4 py-2.5 sm:px-6 md:flex-nowrap md:py-3">
+      {/* Apple Floating Liquid Glass Header with Safe Area support */}
+      <header className="sticky top-0 z-40 w-full apple-glass transition-colors pt-safe">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3.5 py-2 sm:px-6 md:flex-nowrap md:py-3">
           {/* Logo (Left) */}
           <div className="order-1 flex items-center shrink-0">
             <Logo href={logoHref} />
           </div>
 
           {/* User Controls (Row 1 Right on mobile, Far Right on desktop) */}
-          <div className="order-2 flex items-center gap-2 sm:gap-3 shrink-0 md:order-3">
+          <div className="order-2 flex items-center gap-1.5 sm:gap-3 shrink-0 md:order-3">
             <ThemeToggle />
             {isSignedIn && email ? (
               <>
@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </span>
                 <button
                   type="button"
-                  className="btn btn-quiet min-h-8 sm:min-h-9 px-2.5 sm:px-3 py-1 text-xs font-medium cursor-pointer"
+                  className="btn btn-quiet min-h-9 px-2.5 sm:px-3 py-1 text-xs font-medium cursor-pointer"
                   onClick={() => void signOut()}
                 >
                   Sign out
@@ -59,10 +59,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               </>
             ) : (
               <div className="flex items-center gap-1.5 shrink-0">
-                <Link href="/login" className="btn btn-quiet min-h-8 sm:min-h-9 px-2.5 sm:px-3 py-1 text-xs font-medium whitespace-nowrap">
+                <Link href="/login" className="btn btn-quiet min-h-9 px-2.5 sm:px-3 py-1 text-xs font-medium whitespace-nowrap">
                   Sign in
                 </Link>
-                <Link href="/signup" className="btn btn-primary min-h-8 sm:min-h-9 px-2.5 sm:px-3 py-1 text-xs font-semibold whitespace-nowrap">
+                <Link href="/signup" className="btn btn-primary min-h-9 px-2.5 sm:px-3 py-1 text-xs font-semibold whitespace-nowrap">
                   Sign up
                 </Link>
               </div>
@@ -72,9 +72,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Segmented Navigation Capsule (Row 2 Full-Width on mobile, Center on desktop) */}
           <nav
             aria-label="Main Navigation"
-            className="order-3 flex w-full justify-center overflow-x-auto no-scrollbar py-0.5 md:order-2 md:w-auto md:py-0"
+            className="order-3 flex w-full overflow-x-auto no-scrollbar py-1 md:order-2 md:w-auto md:py-0 scroll-smooth px-1"
           >
-            <div className="apple-segmented-container mx-auto flex shrink-0 items-center">
+            <div className="apple-segmented-container m-auto flex shrink-0 items-center">
               {navLinks.map((link) => {
                 const active = pathname === link.href;
                 return (
@@ -83,7 +83,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     href={link.href}
                     aria-current={active ? "page" : undefined}
                     data-active={active ? "true" : undefined}
-                    className="apple-segmented-item whitespace-nowrap text-xs sm:text-sm px-2.5 sm:px-3.5 py-1 sm:py-1.5"
+                    className="apple-segmented-item whitespace-nowrap text-xs sm:text-sm px-2.5 sm:px-3.5 py-1.5 min-h-[36px] flex items-center"
                   >
                     {link.label}
                   </Link>
@@ -95,7 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       {/* Main Content Area */}
-      <main className="mx-auto w-full max-w-5xl min-w-0 flex-1 overflow-x-hidden px-4 pb-16 pt-6 sm:px-6">
+      <main className="mx-auto w-full max-w-5xl min-w-0 flex-1 overflow-x-hidden px-3.5 sm:px-6 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] pt-4 sm:pt-6">
         {children}
       </main>
     </div>

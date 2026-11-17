@@ -96,13 +96,13 @@ function AdminAnalyticsContent() {
   if (loading) return <LoadingState label="Loading analytics funnel…" />;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-4xl flex-col px-4 sm:px-6 py-8 space-y-8">
-      <div className="flex items-center justify-between border-b border-line/60 pb-4">
+    <div className="mx-auto flex min-h-dvh w-full max-w-4xl flex-col px-3.5 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line/60 pb-4">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-subtitle">Admin Overview</span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-ink">WordTap Activation &amp; Funnel</h1>
+          <h1 className="text-xl sm:text-3xl font-extrabold text-ink">WordTap Activation &amp; Funnel</h1>
         </div>
-        <Link href="/dashboard" className="btn btn-quiet text-xs font-semibold">
+        <Link href="/dashboard" className="btn btn-quiet text-xs font-semibold self-start sm:self-auto">
           ← Back to Dashboard
         </Link>
       </div>

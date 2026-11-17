@@ -67,10 +67,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const isLogin = mode === "login";
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4 py-6">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-3.5 sm:px-4 py-4 sm:py-6 pt-safe pb-safe">
       <Logo />
-      <main className="grid flex-1 content-center pb-16">
-        <div className="apple-card p-6 sm:p-8 shadow-sm grid gap-6">
+      <main className="grid flex-1 content-center pb-12 sm:pb-16">
+        <div className="apple-card p-5 sm:p-8 shadow-sm grid gap-5 sm:gap-6">
           {state.status === "error" ? (
             <div role="alert" className="rounded-2xl border-2 border-bad bg-bad-soft p-4 text-ink">
               {state.message}

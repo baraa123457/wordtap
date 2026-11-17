@@ -215,7 +215,7 @@ function LanguageDropdown({
       {open && (
         <div
           role="menu"
-          className={`absolute top-full mt-2 z-50 min-w-[220px] max-h-64 overflow-y-auto rounded-2xl border border-line bg-surface/95 p-1.5 shadow-2xl backdrop-blur-xl ${
+          className={`absolute top-full mt-2 z-50 min-w-[200px] max-w-[calc(100vw-2rem)] max-h-64 overflow-y-auto rounded-2xl border border-line bg-surface/95 p-1.5 shadow-2xl backdrop-blur-xl ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >
@@ -1051,7 +1051,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
       className="apple-card rounded-3xl overflow-hidden transition-all min-w-0"
     >
       {/* Top Header / Language Switcher Bar */}
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-line/60 bg-surface px-2.5 sm:px-4 py-2 sm:py-2.5 gap-1.5 sm:gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-line/60 bg-surface px-2 sm:px-4 py-2 sm:py-2.5 gap-1 sm:gap-2.5">
         {/* Source Language Segmented Control (Left Column) */}
         <div className="flex items-center min-w-0">
           <div className="apple-segmented-container max-w-full overflow-x-auto no-scrollbar">
@@ -1097,7 +1097,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
         </div>
 
         {/* Swap Button ⇄ (Center Column) */}
-        <div className="flex items-center justify-center shrink-0 px-1 sm:px-2 z-10 relative">
+        <div className="flex items-center justify-center shrink-0 px-0.5 sm:px-2 z-10 relative">
           <button
             type="button"
             onClick={handleSwap}
@@ -1120,7 +1120,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
         </div>
 
         {/* Target Language Segmented Control & Save Mode (Right Column) */}
-        <div className="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0">
+        <div className="flex items-center justify-end gap-1 sm:gap-2 min-w-0">
           <div className="apple-segmented-container max-w-full overflow-x-auto no-scrollbar">
             {topTargetLangs.map((code) => {
               const lang = ALL_LANGS.find((l) => l.code === code) || { code, native: code };
@@ -1150,7 +1150,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
           <Link
             href="/settings"
             title="Configure Word Saving in Settings (Auto-save / Manual)"
-            className="h-7 inline-flex items-center gap-1.5 px-2 sm:px-2.5 text-xs font-medium rounded-full bg-black/[0.03] dark:bg-white/[0.06] border border-line text-muted hover:text-ink transition-all shrink-0"
+            className="h-7 inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 text-xs font-medium rounded-full bg-black/[0.03] dark:bg-white/[0.06] border border-line text-muted hover:text-ink transition-all shrink-0"
           >
             {(settings.translateSaveMode || "manual") === "auto" ? (
               <>
@@ -1611,7 +1611,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                 {providerMenuOpen && (
                   <div
                     role="menu"
-                    className="absolute bottom-full mb-1.5 start-0 z-50 min-w-[210px] rounded-2xl border border-line bg-surface/95 p-1.5 shadow-2xl backdrop-blur-xl space-y-1"
+                    className="absolute bottom-full mb-1.5 start-0 z-50 min-w-[200px] max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-surface/95 p-1.5 shadow-2xl backdrop-blur-xl space-y-1"
                   >
                     <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted border-b border-line/40 mb-1">
                       Translation Provider

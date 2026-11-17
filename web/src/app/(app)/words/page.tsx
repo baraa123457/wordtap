@@ -533,12 +533,12 @@ export default function WordsPage() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">
+      <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           My words ({visible.length}
           {langFilter !== "all" ? ` · ${LANG_LABELS[langFilter] || langFilter}` : ""})
         </h1>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {/* Unified Export Menu */}
           <div className="relative" ref={exportMenuRef}>
             <button
@@ -868,7 +868,7 @@ export default function WordsPage() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <div role="group" aria-label="Filter" className="overflow-x-auto py-1">
+        <div role="group" aria-label="Filter" className="overflow-x-auto no-scrollbar py-1 scroll-smooth max-w-full min-w-0">
           <div className="apple-segmented-container">
             {FILTERS.map((f) => (
               <button

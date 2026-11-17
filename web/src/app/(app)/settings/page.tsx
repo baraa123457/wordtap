@@ -445,7 +445,7 @@ export default function SettingsPage() {
           <select
             value={settings.sessionSize}
             onChange={(e) => update({ sessionSize: Number(e.target.value) })}
-            className="field w-44"
+            className="field w-full sm:w-44"
           >
             <option value={5}>5 words (Quick)</option>
             <option value={8}>8 words (Default)</option>
@@ -803,7 +803,7 @@ export default function SettingsPage() {
           <select
             value={settings.targetLang}
             onChange={(e) => update({ targetLang: e.target.value })}
-            className="field w-56"
+            className="field w-full sm:w-56"
           >
             {TARGET_LANGS.map((l) => (
               <option key={l.code} value={l.code}>
@@ -918,7 +918,7 @@ export default function SettingsPage() {
               update({ speechRate: r });
               speak("Pronunciation speed updated", "en-US", { rate: r });
             }}
-            className="field w-44"
+            className="field w-full sm:w-44"
           >
             <option value={0.8}>0.8x (Slow)</option>
             <option value={0.92}>0.92x (Soft & Natural)</option>
@@ -945,7 +945,7 @@ export default function SettingsPage() {
                   speak("Voice locked to this speaker", "en-US", { voiceURI: uri });
                 }
               }}
-              className="field w-72 max-w-full text-xs"
+              className="field w-full sm:w-72 max-w-full text-xs sm:text-sm"
             >
               <option value="">Consistent Best Match for Language &amp; Gender (Recommended)</option>
               {availableVoices

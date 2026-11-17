@@ -51,7 +51,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="h-10 w-10 rounded-xl" aria-hidden />
+      <div className="min-h-10 min-w-10 rounded-xl" aria-hidden />
     );
   }
 
@@ -59,7 +59,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      className="btn btn-quiet min-h-10 w-10 p-0 text-muted hover:text-ink transition-colors"
+      className="btn btn-quiet min-h-10 min-w-10 p-0 text-muted hover:text-ink transition-colors cursor-pointer flex items-center justify-center shrink-0"
       title={isDark ? "Switch to Light mode" : "Switch to Dark mode"}
       aria-label={isDark ? "Switch to Light mode" : "Switch to Dark mode"}
     >

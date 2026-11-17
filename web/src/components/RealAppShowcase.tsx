@@ -10,7 +10,7 @@ export function RealAppShowcase({ lang = "en" }: { lang?: "en" | "ar" }) {
   return (
     <div className="w-full space-y-4">
       {/* Tab controls */}
-      <div className="flex items-center justify-between border-b border-line/60 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line/60 pb-3">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-subtitle">
             {isAr ? "معاينة حية للتطبيق" : "Live App Preview"}
@@ -20,11 +20,11 @@ export function RealAppShowcase({ lang = "en" }: { lang?: "en" | "ar" }) {
           </h2>
         </div>
 
-        <div className="flex rounded-xl bg-surface p-1 border border-line text-xs font-semibold">
+        <div className="flex rounded-xl bg-surface p-1 border border-line text-xs font-semibold overflow-x-auto no-scrollbar scroll-smooth w-full sm:w-auto shrink-0">
           <button
             type="button"
             onClick={() => setTab("practice")}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
+            className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               tab === "practice" ? "bg-subtitle text-subtitle-ink shadow-xs" : "text-muted hover:text-ink"
             }`}
           >
@@ -33,7 +33,7 @@ export function RealAppShowcase({ lang = "en" }: { lang?: "en" | "ar" }) {
           <button
             type="button"
             onClick={() => setTab("words")}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
+            className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               tab === "words" ? "bg-subtitle text-subtitle-ink shadow-xs" : "text-muted hover:text-ink"
             }`}
           >
@@ -42,7 +42,7 @@ export function RealAppShowcase({ lang = "en" }: { lang?: "en" | "ar" }) {
           <button
             type="button"
             onClick={() => setTab("subtitles")}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
+            className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               tab === "subtitles" ? "bg-subtitle text-subtitle-ink shadow-xs" : "text-muted hover:text-ink"
             }`}
           >

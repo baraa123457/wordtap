@@ -385,8 +385,8 @@ export function PracticeSession({
   const sourceUrl = "sourceUrl" in q ? q.sourceUrl : undefined;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-4">
-      <header className="flex items-center gap-4 py-5">
+    <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-3.5 sm:px-4 pt-safe">
+      <header className="flex items-center gap-3 sm:gap-4 py-3.5 sm:py-5">
         <button
           type="button"
           className="btn btn-quiet w-10 h-10 min-h-10 p-0 flex items-center justify-center rounded-full text-muted hover:text-ink active:scale-95 transition-all cursor-pointer shrink-0"
@@ -401,17 +401,17 @@ export function PracticeSession({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={progress}
-          className="h-3 flex-1 overflow-hidden rounded-full bg-line"
+          className="h-2.5 sm:h-3 flex-1 overflow-hidden rounded-full bg-line"
         >
           <div className="h-full rounded-full bg-subtitle transition-[width] duration-300" style={{ width: `${progress}%` }} />
         </div>
-        <span className="min-w-14 text-end text-sm tabular-nums text-muted">{xp} XP</span>
+        <span className="min-w-12 sm:min-w-14 text-end text-xs sm:text-sm tabular-nums text-muted font-bold">{xp} XP</span>
       </header>
 
       {/* Leave Practice Confirmation Modal */}
       {leaving ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div role="alertdialog" aria-label="Leave practice?" className="w-full max-w-sm grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl text-center sm:text-start animate-in fade-in zoom-in-95 duration-150">
+          <div role="alertdialog" aria-label="Leave practice?" className="w-full max-w-sm grid gap-4 rounded-3xl border border-line bg-surface p-5 sm:p-6 shadow-2xl text-center sm:text-start animate-in fade-in zoom-in-95 duration-150">
             <div>
               <h3 className="text-xl font-bold text-ink">Leave practice?</h3>
               <p className="text-xs sm:text-sm text-muted mt-1">The answers you gave so far are saved.</p>

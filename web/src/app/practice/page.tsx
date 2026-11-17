@@ -95,26 +95,26 @@ function PracticeLoader() {
     }
 
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-12">
-        <div className="apple-card p-6 sm:p-8 space-y-6 text-center">
+      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-3.5 sm:px-4 py-8 sm:py-12 pt-safe pb-safe">
+        <div className="apple-card p-5 sm:p-8 space-y-5 sm:space-y-6 text-center">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-subtitle/20 border border-subtitle/30 flex items-center justify-center text-2xl">
             🎬
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-extrabold text-ink">No words to practice yet</h1>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-ink">No words to practice yet</h1>
             <p className="text-xs sm:text-sm text-muted leading-relaxed">
               Words you tap in YouTube or Netflix subtitles appear here automatically. Once saved, you can review them with spaced repetition.
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 pt-2">
-            <Link href="/extension" className="btn btn-primary font-bold py-3">
+          <div className="flex flex-col gap-2.5 sm:gap-3 pt-2">
+            <Link href="/extension" className="btn btn-primary font-bold py-3 text-center justify-center">
               Install Chrome Extension
             </Link>
             <button
               type="button"
               onClick={() => setTrySampleSession(true)}
-              className="btn btn-quiet text-xs font-semibold"
+              className="btn btn-quiet text-xs font-semibold py-2.5"
             >
               Or try a 4-question sample session
             </button>
@@ -132,8 +132,8 @@ function PracticeLoader() {
         : state.data.length;
 
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-12">
-        <div className="grid gap-6 rounded-3xl border border-line bg-surface p-6 shadow-sm sm:p-8">
+      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-3.5 sm:px-4 py-8 sm:py-12 pt-safe pb-safe">
+        <div className="grid gap-5 sm:gap-6 rounded-3xl border border-line bg-surface p-5 sm:p-8 shadow-sm">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-ink">Choose what to practice</h1>
             <p className="mt-1 text-sm text-muted">

@@ -79,8 +79,8 @@ export function SubtitleDemo() {
           {isManual ? "Mode: Manual save ✍️" : "Mode: Auto-save ⚡"}
         </span>
       </div>
-      <div className="frame-stage" style={{ minHeight: "13rem" }}>
-        <p className="sub flex max-w-xl flex-wrap justify-center gap-x-[0.35em] text-3xl sm:text-4xl">
+      <div className="frame-stage" style={{ minHeight: "11rem" }}>
+        <p className="sub flex max-w-xl flex-wrap justify-center gap-x-[0.35em] text-2xl sm:text-3xl md:text-4xl px-2">
           {DEMO_WORDS.map((item, i) => (
             <button
               key={item.word}
@@ -94,10 +94,10 @@ export function SubtitleDemo() {
           ))}
         </p>
       </div>
-      <div className="frame-bar flex-wrap gap-2 items-center justify-between" aria-live="polite" style={{ minHeight: "3rem" }}>
+      <div className="frame-bar flex-wrap gap-2.5 items-center justify-between p-3" aria-live="polite" style={{ minHeight: "3rem" }}>
         {current ? (
           <>
-            <span className="text-base text-white flex items-center gap-2">
+            <span className="text-sm sm:text-base text-white flex items-center gap-2">
               <span className="opacity-70">{current.word}</span>
               <span className="opacity-40">=</span>
               <span dir="rtl" className="font-semibold text-[var(--subtitle)]">

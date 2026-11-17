@@ -192,8 +192,8 @@ export default function HistoryPage() {
       </div>
 
       {/* Search & Source Filter Tabs */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-3 min-w-0 max-w-full">
+        <div className="relative flex-1 min-w-0">
           <svg
             className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none"
             viewBox="0 0 24 24"
@@ -224,7 +224,7 @@ export default function HistoryPage() {
           ) : null}
         </div>
 
-        <div className="overflow-x-auto no-scrollbar py-1">
+        <div className="overflow-x-auto no-scrollbar py-1 scroll-smooth max-w-full min-w-0">
           <div className="apple-segmented-container">
             {(["all", "translator", "subtitle", "selection"] as const).map((src) => {
               const active = sourceFilter === src;

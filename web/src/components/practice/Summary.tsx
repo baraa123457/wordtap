@@ -172,27 +172,27 @@ export function Summary({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-3">
-        <button type="button" className="btn btn-primary" onClick={onAgain}>
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3">
+        <button type="button" className="btn btn-primary w-full sm:w-auto text-center justify-center min-h-11 px-5 font-bold shadow-sm" onClick={onAgain}>
           {typeof remainingCount === "number" && remainingCount > 0
             ? `Practice again (${remainingCount} left)`
             : "Practice again"}
         </button>
         {missed.length > 0 ? (
-          <button type="button" className="btn" onClick={onDrillMissed}>
+          <button type="button" className="btn w-full sm:w-auto text-center justify-center min-h-11 px-5 font-semibold" onClick={onDrillMissed}>
             Drill missed words ({missed.length})
           </button>
         ) : null}
         {onChangeLang ? (
           <button
             type="button"
-            className="btn"
+            className="btn w-full sm:w-auto text-center justify-center min-h-11 px-5 font-semibold"
             onClick={onChangeLang}
           >
             Change language
           </button>
         ) : null}
-        <Link href="/dashboard" className="btn">
+        <Link href="/dashboard" className="btn w-full sm:w-auto text-center justify-center min-h-11 px-5 font-semibold">
           Back to dashboard
         </Link>
       </div>

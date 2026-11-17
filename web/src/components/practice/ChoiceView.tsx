@@ -157,7 +157,7 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
           ) : (
             <>
               <p
-                className={`sub flex items-center justify-center gap-3 text-4xl sm:text-5xl ${
+                className={`sub flex items-center justify-center gap-2 sm:gap-3 text-2xl sm:text-4xl md:text-5xl ${
                   isPromptArabic ? "sub-ar" : ""
                 }`}
                 dir="auto"
@@ -168,7 +168,7 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
                   <button
                     type="button"
                     aria-label="Hear it"
-                    className={`rounded-full p-2 transition-all cursor-pointer ${
+                    className={`rounded-full p-1.5 sm:p-2 transition-all cursor-pointer ${
                       isSpeaking
                         ? "text-subtitle scale-115 drop-shadow-[0_0_10px_rgba(250,204,59,0.8)]"
                         : "text-white/80 hover:text-white"
@@ -182,7 +182,7 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
                       }
                     }}
                   >
-                    <SpeakerIcon size={24} />
+                    <SpeakerIcon size={22} />
                   </button>
                 ) : null}
               </p>

@@ -127,36 +127,36 @@ export function MatchView({ q, onComplete, onDeleteWord }: Props) {
             </span>
           </div>
         </div>
-        <div className="grid gap-3 p-4 sm:grid-cols-2 sm:gap-6 sm:p-6">
-          <div className="grid content-start gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-6 p-3 sm:p-6">
+          <div className="grid content-start gap-2 sm:gap-3">
             {left.map((id) => (
               <button
                 key={id}
                 type="button"
-                className="option"
+                className="option text-xs sm:text-base p-2.5 sm:p-4 min-h-[3rem] sm:min-h-[3.5rem] justify-center text-center"
                 data-state={stateOf(id, "left")}
                 data-flash={flash?.left === id}
                 disabled={matched.has(id)}
                 onClick={() => chooseLeft(id)}
               >
-                <span dir="auto" className="min-w-0 break-words">
+                <span dir="auto" className="min-w-0 break-words font-medium">
                   {pair(id)?.word}
                 </span>
               </button>
             ))}
           </div>
-          <div className="grid content-start gap-3">
+          <div className="grid content-start gap-2 sm:gap-3">
             {right.map((id) => (
               <button
                 key={id}
                 type="button"
-                className="option"
+                className="option text-xs sm:text-base p-2.5 sm:p-4 min-h-[3rem] sm:min-h-[3.5rem] justify-center text-center"
                 data-state={stateOf(id, "right")}
                 data-flash={flash?.right === id}
                 disabled={matched.has(id)}
                 onClick={() => chooseRight(id)}
               >
-                <span dir="auto" className="min-w-0 break-words">
+                <span dir="auto" className="min-w-0 break-words font-medium">
                   {pair(id)?.translation}
                 </span>
               </button>

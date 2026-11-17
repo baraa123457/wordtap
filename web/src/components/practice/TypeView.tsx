@@ -194,8 +194,8 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
         />
 
         {/* Answer length indicator and first-letter hint */}
-        <div className="flex items-center justify-between px-2 text-xs text-muted">
-          <div className="flex items-center gap-1 font-mono tracking-widest select-none">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted">
+          <div className="flex flex-wrap items-center gap-1 font-mono tracking-widest select-none">
             {cleanAnswer.split("").map((ch, idx) => (
               <span
                 key={idx}
@@ -204,7 +204,7 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
                 {hintUsed && idx === 0 ? ch : " "}
               </span>
             ))}
-            <span className="ms-2 font-sans text-xs text-muted/70 tracking-normal">
+            <span className="ms-1.5 font-sans text-xs text-muted/70 tracking-normal whitespace-nowrap">
               ({cleanAnswer.length} letters)
             </span>
           </div>
@@ -212,7 +212,7 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
           {!hintUsed && !locked ? (
             <button
               type="button"
-              className="btn btn-quiet min-h-7 px-2.5 py-0.5 text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:bg-subtitle/10 transition-colors cursor-pointer"
+              className="btn btn-quiet min-h-7 px-2.5 py-0.5 text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:bg-subtitle/10 transition-colors cursor-pointer shrink-0"
               onClick={revealFirstLetter}
             >
               💡 Show first letter
