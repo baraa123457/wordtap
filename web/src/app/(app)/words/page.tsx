@@ -27,10 +27,10 @@ type SourceFilter = "all" | "subtitles" | "ocr" | "translator" | "web";
 
 const SOURCE_FILTERS: { id: SourceFilter; label: string; shortLabel: string }[] = [
   { id: "all", label: "All sources", shortLabel: "All" },
-  { id: "subtitles", label: "Subtitles", shortLabel: "Subtitles" },
+  { id: "subtitles", label: "Subtitles", shortLabel: "Subs" },
   { id: "web", label: "Webpages", shortLabel: "Web" },
   { id: "ocr", label: "Screen OCR", shortLabel: "OCR" },
-  { id: "translator", label: "Translator", shortLabel: "Translator" },
+  { id: "translator", label: "Translator", shortLabel: "Trans" },
 ];
 
 function inferWordSource(w: Word): Exclude<SourceFilter, "all"> {
@@ -309,6 +309,7 @@ export default function WordsPage() {
     return Array.from(counts.entries()).map(([code, count]) => ({
       id: code,
       label: LANG_LABELS[code] || code.toUpperCase(),
+      shortLabel: code.toUpperCase(),
       count,
     }));
   }, [words]);
@@ -794,11 +795,11 @@ export default function WordsPage() {
       ) : null}
 
       {languageTabs.length > 1 || sourceCounts.size > 1 ? (
-        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 max-w-full min-w-0">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4 max-w-full min-w-0">
           {languageTabs.length > 1 ? (
-            <div className="flex items-center gap-2 max-w-full min-w-0">
-              <span className="text-xs font-semibold text-muted shrink-0">Language:</span>
-              <div className="overflow-x-auto no-scrollbar py-0.5 scroll-smooth max-w-full min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 max-w-full min-w-0">
+              <span className="text-[11px] sm:text-xs font-semibold text-muted shrink-0">Language:</span>
+              <div className="overflow-x-auto no-scrollbar py-0.5 px-0.5 scroll-smooth max-w-full min-w-0">
                 <div className="apple-segmented-container">
                   <button
                     type="button"
@@ -818,7 +819,8 @@ export default function WordsPage() {
                       data-active={langFilter === l.id ? "true" : undefined}
                       className="apple-segmented-item whitespace-nowrap"
                     >
-                      {l.label} ({l.count})
+                      <span className="hidden sm:inline">{l.label} ({l.count})</span>
+                      <span className="sm:hidden">{l.shortLabel} ({l.count})</span>
                     </button>
                   ))}
                 </div>
@@ -827,9 +829,9 @@ export default function WordsPage() {
           ) : null}
 
           {sourceCounts.size > 1 ? (
-            <div className="flex items-center gap-2 max-w-full min-w-0">
-              <span className="text-xs font-semibold text-muted shrink-0">Source:</span>
-              <div className="overflow-x-auto no-scrollbar py-0.5 scroll-smooth max-w-full min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 max-w-full min-w-0">
+              <span className="text-[11px] sm:text-xs font-semibold text-muted shrink-0">Source:</span>
+              <div className="overflow-x-auto no-scrollbar py-0.5 px-0.5 scroll-smooth max-w-full min-w-0">
                 <div className="apple-segmented-container">
                   {SOURCE_FILTERS.filter((sf) => sf.id === "all" || (sourceCounts.get(sf.id) || 0) > 0).map((sf) => (
                     <button
@@ -874,7 +876,7 @@ export default function WordsPage() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <div role="group" aria-label="Filter" className="overflow-x-auto no-scrollbar py-1 scroll-smooth max-w-full min-w-0">
+        <div role="group" aria-label="Filter" className="overflow-x-auto no-scrollbar py-1 px-0.5 scroll-smooth max-w-full min-w-0">
           <div className="apple-segmented-container">
             {FILTERS.map((f) => (
               <button
