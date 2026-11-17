@@ -14,10 +14,10 @@ import { addCustomWord, fetchWords } from "@/lib/api";
 import { canSpeak, speak } from "@/lib/speech";
 import { SpeakerIcon } from "@/components/Icons";
 
-const SOURCE_LABELS: Record<HistorySource, { label: string }> = {
-  translator: { label: "Translator" },
-  subtitle: { label: "Subtitles" },
-  selection: { label: "Selected text" },
+const SOURCE_LABELS: Record<HistorySource, { label: string; shortLabel: string }> = {
+  translator: { label: "Translator", shortLabel: "Trans" },
+  subtitle: { label: "Subtitles", shortLabel: "Subs" },
+  selection: { label: "Selected text", shortLabel: "Selected" },
 };
 
 function formatRelativeTime(dateStr: string): string {
@@ -224,7 +224,7 @@ export default function HistoryPage() {
           ) : null}
         </div>
 
-        <div className="overflow-x-auto no-scrollbar py-1 scroll-smooth max-w-full min-w-0">
+        <div className="overflow-x-auto no-scrollbar py-1 px-0.5 scroll-smooth max-w-full min-w-0">
           <div className="apple-segmented-container">
             {(["all", "translator", "subtitle", "selection"] as const).map((src) => {
               const active = sourceFilter === src;
@@ -236,6 +236,10 @@ export default function HistoryPage() {
                 src === "all"
                   ? "All"
                   : SOURCE_LABELS[src]?.label || src;
+              const shortLabel =
+                src === "all"
+                  ? "All"
+                  : SOURCE_LABELS[src]?.shortLabel || label;
               return (
                 <button
                   key={src}
@@ -244,8 +248,9 @@ export default function HistoryPage() {
                   data-active={active ? "true" : undefined}
                   className="apple-segmented-item whitespace-nowrap"
                 >
-                  <span>{label}</span>
-                  <span className="ms-1 text-[11px] opacity-70">({count})</span>
+                  <span className="hidden md:inline">{label}</span>
+                  <span className="md:hidden">{shortLabel}</span>
+                  <span className="ms-1 text-[10px] sm:text-[11px] opacity-70">({count})</span>
                 </button>
               );
             })}

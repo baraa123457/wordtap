@@ -819,8 +819,8 @@ export default function WordsPage() {
                       data-active={langFilter === l.id ? "true" : undefined}
                       className="apple-segmented-item whitespace-nowrap"
                     >
-                      <span className="hidden sm:inline">{l.label} ({l.count})</span>
-                      <span className="sm:hidden">{l.shortLabel} ({l.count})</span>
+                      <span className="hidden md:inline">{l.label} ({l.count})</span>
+                      <span className="md:hidden">{l.shortLabel} ({l.count})</span>
                     </button>
                   ))}
                 </div>
@@ -842,8 +842,8 @@ export default function WordsPage() {
                       data-active={sourceFilter === sf.id ? "true" : undefined}
                       className="apple-segmented-item whitespace-nowrap"
                     >
-                      <span className="hidden sm:inline">{sf.label}</span>
-                      <span className="sm:hidden">{sf.shortLabel}</span>
+                      <span className="hidden md:inline">{sf.label}</span>
+                      <span className="md:hidden">{sf.shortLabel}</span>
                     </button>
                   ))}
                 </div>
@@ -887,8 +887,8 @@ export default function WordsPage() {
                 data-active={filter === f.id ? "true" : undefined}
                 className="apple-segmented-item whitespace-nowrap"
               >
-                <span className="hidden sm:inline">{f.label}</span>
-                <span className="sm:hidden">{f.shortLabel}</span>
+                <span className="hidden md:inline">{f.label}</span>
+                <span className="md:hidden">{f.shortLabel}</span>
               </button>
             ))}
           </div>
