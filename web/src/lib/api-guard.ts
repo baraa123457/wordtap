@@ -27,27 +27,33 @@ export function isAllowedOrigin(req: Request): boolean {
     return true;
   }
 
+  let origUrl: URL;
+  let reqUrl: URL;
   try {
-    const reqUrl = new URL(req.url);
-    const origUrl = new URL(origin);
-    if (origUrl.host === reqUrl.host) return true;
+    reqUrl = new URL(req.url);
+    origUrl = new URL(origin);
   } catch {
     return false;
   }
 
+  if (origUrl.host === reqUrl.host) return true;
+
   const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL;
   if (configuredOrigin) {
     try {
-      if (new URL(configuredOrigin).host === new URL(origin).host) return true;
+      if (new URL(configuredOrigin).host === origUrl.host) return true;
     } catch {
       // ignore invalid env URL
     }
   }
 
-  // Optional authenticated bearer token allows cross-origin clients
-  const auth = req.headers.get("authorization");
-  if (auth && auth.startsWith("Bearer ") && auth.length > 20) {
-    return true;
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl) {
+    try {
+      if (new URL(`https://${vercelUrl}`).host === origUrl.host) return true;
+    } catch {
+      // ignore invalid vercel URL
+    }
   }
 
   return false;

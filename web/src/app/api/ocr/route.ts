@@ -8,6 +8,65 @@ export async function OPTIONS(req: Request) {
 
 const MAX_BASE64_LENGTH = 5_500_000; // ~4 MB decoded image
 
+/**
+ * Validates image magic bytes to verify that the decoded buffer is indeed a valid image
+ * and prevent passing arbitrary binary or malicious payloads to OCR engines.
+ */
+function isValidImageBuffer(buffer: Buffer): boolean {
+  if (!buffer || buffer.length < 4) return false;
+
+  // PNG: 89 50 4E 47
+  if (
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  ) {
+    return true;
+  }
+
+  // JPEG: FF D8 FF
+  if (
+    buffer[0] === 0xff &&
+    buffer[1] === 0xd8 &&
+    buffer[2] === 0xff
+  ) {
+    return true;
+  }
+
+  // GIF: GIF87a or GIF89a (47 49 46 38)
+  if (
+    buffer[0] === 0x47 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x38
+  ) {
+    return true;
+  }
+
+  // WebP: RIFF (52 49 46 46) ... WEBP (57 45 42 50)
+  if (
+    buffer.length >= 12 &&
+    buffer[0] === 0x52 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x46 &&
+    buffer[8] === 0x57 &&
+    buffer[9] === 0x45 &&
+    buffer[10] === 0x42 &&
+    buffer[11] === 0x50
+  ) {
+    return true;
+  }
+
+  // BMP: BM (42 4D)
+  if (buffer[0] === 0x42 && buffer[1] === 0x4d) {
+    return true;
+  }
+
+  return false;
+}
+
 const TESSERACT_LANG_MAP: Record<string, string> = {
   en: "eng",
   de: "deu",
@@ -162,6 +221,13 @@ export async function POST(req: Request) {
     if (buffer.length === 0) {
       return NextResponse.json(
         { ok: false, error: "Image data is empty" },
+        { status: 400, headers: corsHeaders },
+      );
+    }
+
+    if (!isValidImageBuffer(buffer)) {
+      return NextResponse.json(
+        { ok: false, error: "Invalid image format. Supported formats: PNG, JPEG, WebP, GIF, BMP." },
         { status: 400, headers: corsHeaders },
       );
     }

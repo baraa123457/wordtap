@@ -1,12 +1,36 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
+
+function isAuthorizedCron(req: Request): boolean {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    // In production, reject if CRON_SECRET is not configured to prevent unauthenticated execution
+    if (process.env.NODE_ENV === "production") {
+      return false;
+    }
+    return true;
+  }
+
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return false;
+  }
+
+  const expectedToken = `Bearer ${cronSecret}`;
+  // Constant-time comparison using fixed-size SHA-256 hashes to prevent timing attacks
+  const hashActual = crypto.createHash("sha256").update(authHeader).digest();
+  const hashExpected = crypto.createHash("sha256").update(expectedToken).digest();
+
+  return crypto.timingSafeEqual(hashActual, hashExpected);
+}
 
 async function handleReminders(req: Request) {
   try {
-    const authHeader = req.headers.get("authorization");
-    // Verify cron authorization header if CRON_SECRET is configured
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!isAuthorizedCron(req)) {
+      return NextResponse.json(
+        { error: "Unauthorized. Valid Bearer CRON_SECRET is required." },
+        { status: 401 }
+      );
     }
 
     const resendApiKey = process.env.RESEND_API_KEY;
