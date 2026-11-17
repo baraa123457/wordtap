@@ -25,12 +25,12 @@ import { parseImportFile } from "@/lib/import";
 type Filter = "all" | WordStatus;
 type SourceFilter = "all" | "subtitles" | "ocr" | "translator" | "web";
 
-const SOURCE_FILTERS: { id: SourceFilter; label: string; shortLabel: string }[] = [
-  { id: "all", label: "All sources", shortLabel: "All" },
-  { id: "subtitles", label: "Subtitles", shortLabel: "Subs" },
-  { id: "web", label: "Webpages", shortLabel: "Web" },
-  { id: "ocr", label: "Screen OCR", shortLabel: "OCR" },
-  { id: "translator", label: "Translator", shortLabel: "Trans" },
+const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "subtitles", label: "Subtitles" },
+  { id: "web", label: "Web" },
+  { id: "ocr", label: "OCR" },
+  { id: "translator", label: "Translator" },
 ];
 
 function inferWordSource(w: Word): Exclude<SourceFilter, "all"> {
@@ -795,10 +795,10 @@ export default function WordsPage() {
       ) : null}
 
       {languageTabs.length > 1 || sourceCounts.size > 1 ? (
-        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4 max-w-full min-w-0">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 max-w-full min-w-0">
           {languageTabs.length > 1 ? (
-            <div className="flex items-center gap-1.5 sm:gap-2 max-w-full min-w-0">
-              <span className="text-[11px] sm:text-xs font-semibold text-muted shrink-0">Language:</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 max-w-full min-w-0">
+              <span className="text-xs font-semibold text-muted shrink-0">Language:</span>
               <div className="overflow-x-auto no-scrollbar py-0.5 px-0.5 scroll-smooth max-w-full min-w-0">
                 <div className="apple-segmented-container">
                   <button
@@ -819,8 +819,7 @@ export default function WordsPage() {
                       data-active={langFilter === l.id ? "true" : undefined}
                       className="apple-segmented-item whitespace-nowrap"
                     >
-                      <span className="hidden md:inline">{l.label} ({l.count})</span>
-                      <span className="md:hidden">{l.shortLabel} ({l.count})</span>
+                      {l.label} ({l.count})
                     </button>
                   ))}
                 </div>
@@ -829,8 +828,8 @@ export default function WordsPage() {
           ) : null}
 
           {sourceCounts.size > 1 ? (
-            <div className="flex items-center gap-1.5 sm:gap-2 max-w-full min-w-0">
-              <span className="text-[11px] sm:text-xs font-semibold text-muted shrink-0">Source:</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 max-w-full min-w-0">
+              <span className="text-xs font-semibold text-muted shrink-0">Source:</span>
               <div className="overflow-x-auto no-scrollbar py-0.5 px-0.5 scroll-smooth max-w-full min-w-0">
                 <div className="apple-segmented-container">
                   {SOURCE_FILTERS.filter((sf) => sf.id === "all" || (sourceCounts.get(sf.id) || 0) > 0).map((sf) => (
@@ -842,8 +841,7 @@ export default function WordsPage() {
                       data-active={sourceFilter === sf.id ? "true" : undefined}
                       className="apple-segmented-item whitespace-nowrap"
                     >
-                      <span className="hidden md:inline">{sf.label}</span>
-                      <span className="md:hidden">{sf.shortLabel}</span>
+                      {sf.label}
                     </button>
                   ))}
                 </div>

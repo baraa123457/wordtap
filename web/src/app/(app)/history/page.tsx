@@ -14,10 +14,10 @@ import { addCustomWord, fetchWords } from "@/lib/api";
 import { canSpeak, speak } from "@/lib/speech";
 import { SpeakerIcon } from "@/components/Icons";
 
-const SOURCE_LABELS: Record<HistorySource, { label: string; shortLabel: string }> = {
-  translator: { label: "Translator", shortLabel: "Trans" },
-  subtitle: { label: "Subtitles", shortLabel: "Subs" },
-  selection: { label: "Selected text", shortLabel: "Selected" },
+const SOURCE_LABELS: Record<HistorySource, { label: string }> = {
+  translator: { label: "Translator" },
+  subtitle: { label: "Subtitles" },
+  selection: { label: "Selection" },
 };
 
 function formatRelativeTime(dateStr: string): string {
@@ -236,10 +236,6 @@ export default function HistoryPage() {
                 src === "all"
                   ? "All"
                   : SOURCE_LABELS[src]?.label || src;
-              const shortLabel =
-                src === "all"
-                  ? "All"
-                  : SOURCE_LABELS[src]?.shortLabel || label;
               return (
                 <button
                   key={src}
@@ -248,9 +244,8 @@ export default function HistoryPage() {
                   data-active={active ? "true" : undefined}
                   className="apple-segmented-item whitespace-nowrap"
                 >
-                  <span className="hidden md:inline">{label}</span>
-                  <span className="md:hidden">{shortLabel}</span>
-                  <span className="ms-1 text-[10px] sm:text-[11px] opacity-70">({count})</span>
+                  <span>{label}</span>
+                  <span className="ms-1 text-xs opacity-70">({count})</span>
                 </button>
               );
             })}
