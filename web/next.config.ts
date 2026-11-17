@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/:path*",
+        source: "/((?!_next/static|_next/image|favicon.ico).*)",
         headers: [
           {
             key: "Content-Security-Policy",
