@@ -48,9 +48,13 @@ export function exportWordsToCsv(words: Word[]): string {
 /**
  * Triggers a browser download of the CSV data.
  */
-export function downloadCsvFile(csvContent: string, filename = "wordtap-vocabulary.csv"): void {
+export function downloadCsvFile(
+  csvContent: string,
+  filename = "wordtap-vocabulary.csv",
+  mime = "text/csv;charset=utf-8;",
+): void {
   // UTF-8 BOM so Excel on Windows handles Arabic/UTF-8 correctly
-  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob(["\uFEFF" + csvContent], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { guardApiRequest } from "@/lib/api-guard";
+import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
+
+export async function OPTIONS(req: Request) {
+  return handleCorsPreflight(req);
+}
 
 type SubtitleHealthPayload = {
   platform: string;
@@ -19,12 +23,14 @@ export async function POST(req: Request) {
   const blocked = guardApiRequest(req, "telemetry-subtitle-health", 60);
   if (blocked) return blocked;
 
+  const corsHeaders = getCorsHeaders(req);
+
   try {
     const body = (await req.json()) as SubtitleHealthPayload;
     if (!body || !body.platform || !body.status) {
       return NextResponse.json(
         { ok: false, error: "platform and status are required" },
-        { status: 400 },
+        { status: 400, headers: corsHeaders },
       );
     }
 
@@ -47,17 +53,18 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true, received: true });
+    return NextResponse.json({ ok: true, received: true }, { headers: corsHeaders });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to parse telemetry";
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return NextResponse.json({ ok: false, error: message }, { status: 400, headers: corsHeaders });
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const corsHeaders = getCorsHeaders(req);
   const summary: Record<string, SubtitleHealthPayload> = {};
   for (const [platform, data] of latestPlatformHealth.entries()) {
     summary[platform] = data;
   }
-  return NextResponse.json({ ok: true, health: summary });
+  return NextResponse.json({ ok: true, health: summary }, { headers: corsHeaders });
 }

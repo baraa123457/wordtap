@@ -7,6 +7,8 @@ describe("dates and streak calculations", () => {
     expect(previousDay("2026-11-16")).toBe("2026-11-15");
     expect(previousDay("2026-11-01")).toBe("2026-10-31");
     expect(previousDay("2026-01-01")).toBe("2025-12-31");
+    expect(previousDay("")).toBe("");
+    expect(previousDay("invalid-date")).toBe("");
   });
 
   it("calculates 3-day streak when words were practiced on 3 consecutive days", () => {

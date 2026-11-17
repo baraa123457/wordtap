@@ -20,7 +20,16 @@ export function MatchView({ q, onComplete, onDeleteWord }: Props) {
   const [matched, setMatched] = useState<ReadonlySet<string>>(new Set());
   const [mistakes, setMistakes] = useState<ReadonlySet<string>>(new Set());
   const [flash, setFlash] = useState<{ left: string; right: string } | null>(null);
+  const flashTimeoutRef = useRef<number | null>(null);
   const completed = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (flashTimeoutRef.current !== null) {
+        window.clearTimeout(flashTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Sync left and right arrays if q.pairs changes (e.g. when a word is deleted)
   useEffect(() => {
@@ -57,10 +66,14 @@ export function MatchView({ q, onComplete, onDeleteWord }: Props) {
     }
     setMistakes((prev) => new Set(prev).add(l));
     setFlash({ left: l, right: r });
-    window.setTimeout(() => {
+    if (flashTimeoutRef.current !== null) {
+      window.clearTimeout(flashTimeoutRef.current);
+    }
+    flashTimeoutRef.current = window.setTimeout(() => {
       setFlash(null);
       setPickedLeft(null);
       setPickedRight(null);
+      flashTimeoutRef.current = null;
     }, 450);
   }
 

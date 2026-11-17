@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createWorker, type Worker } from "tesseract.js";
-import { guardApiRequest } from "@/lib/api-guard";
+import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
+
+export async function OPTIONS(req: Request) {
+  return handleCorsPreflight(req);
+}
 
 const MAX_BASE64_LENGTH = 5_500_000; // ~4 MB decoded image
 
@@ -56,7 +60,6 @@ function getWorker(langs: string): Promise<Worker> {
 async function runCloudOcr(imageBase64: string, lang: string): Promise<string> {
   const keys = [
     process.env.OCR_SPACE_API_KEY,
-    "K84725916788957",
     "helloworld",
   ].filter(Boolean) as string[];
 
@@ -134,20 +137,22 @@ export async function POST(req: Request) {
   const blocked = guardApiRequest(req, "ocr", 20);
   if (blocked) return blocked;
 
+  const corsHeaders = getCorsHeaders(req);
+
   try {
     const body = (await req.json()) as { image?: unknown; lang?: unknown };
     const imageBase64 = body.image;
     if (!imageBase64 || typeof imageBase64 !== "string") {
       return NextResponse.json(
         { ok: false, error: "Image data URL is required" },
-        { status: 400 },
+        { status: 400, headers: corsHeaders },
       );
     }
 
     if (imageBase64.length > MAX_BASE64_LENGTH) {
       return NextResponse.json(
         { ok: false, error: "Image is too large (max 4 MB)" },
-        { status: 413 },
+        { status: 413, headers: corsHeaders },
       );
     }
 
@@ -157,7 +162,7 @@ export async function POST(req: Request) {
     if (buffer.length === 0) {
       return NextResponse.json(
         { ok: false, error: "Image data is empty" },
-        { status: 400 },
+        { status: 400, headers: corsHeaders },
       );
     }
 
@@ -172,7 +177,10 @@ export async function POST(req: Request) {
     if (isVercelServerless) {
       text = await runCloudOcr(imageBase64, rawLang);
       if (text) {
-        return NextResponse.json({ ok: true, text, confidence: 95, provider: "cloud-engine-2" });
+        return NextResponse.json(
+          { ok: true, text, confidence: 95, provider: "cloud-engine-2" },
+          { headers: corsHeaders },
+        );
       }
       // If Cloud OCR returned empty or errored, try Tesseract with a safe timeout
       try {
@@ -203,10 +211,10 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, text, confidence });
+    return NextResponse.json({ ok: true, text, confidence }, { headers: corsHeaders });
   } catch (err: unknown) {
     console.error("OCR API Error:", err);
     const message = err instanceof Error && err.message ? err.message : "Failed to process image OCR";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: message }, { status: 500, headers: corsHeaders });
   }
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+async function handleReminders(req: Request) {
   try {
     const authHeader = req.headers.get("authorization");
     // Verify cron authorization header if CRON_SECRET is configured
@@ -33,4 +33,12 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(req: Request) {
+  return handleReminders(req);
+}
+
+export async function POST(req: Request) {
+  return handleReminders(req);
 }

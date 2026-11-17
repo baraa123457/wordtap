@@ -55,15 +55,16 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
   // Auto-play the English word pronunciation with safe delay and speech cleanup
   useEffect(() => {
     if (!q.speak || !canSpeak()) return;
+    let stopTimer: ReturnType<typeof setTimeout> | null = null;
     const timer = setTimeout(() => {
       setIsSpeaking(true);
       speak(q.speak!.text, q.speak!.lang);
-      const stopTimer = setTimeout(() => setIsSpeaking(false), 1400);
-      return () => clearTimeout(stopTimer);
+      stopTimer = setTimeout(() => setIsSpeaking(false), 1400);
     }, 70);
 
     return () => {
       clearTimeout(timer);
+      if (stopTimer) clearTimeout(stopTimer);
       cancelSpeech();
     };
   }, [q.id, q.speak]);

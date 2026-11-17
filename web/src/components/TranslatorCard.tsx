@@ -488,6 +488,7 @@ export function TranslatorCard({
           cleanTrans,
           finalSrcLang,
           target,
+          "Translator",
         );
         savedWordsInSession.current.add(`${cleanWord.toLowerCase()}:::${cleanTrans.toLowerCase()}`);
         markHistoryItemSaved(cleanWord, finalSrcLang, target);
@@ -743,6 +744,7 @@ export function TranslatorCard({
         cleanTrans,
         finalSrcLang,
         targetLang,
+        "Translator",
       );
 
       savedWordsInSession.current.add(`${cleanWord.toLowerCase()}:::${cleanTrans.toLowerCase()}`);

@@ -35,7 +35,23 @@ function AdminAnalyticsContent() {
         setLoading(true);
         const supabase = getSupabase();
 
-        // Query real aggregated counts from public.analytics_events
+        // 1. Try aggregated security definer RPC first (migration 008)
+        const { data: rpcData, error: rpcError } = await supabase.rpc("get_funnel_analytics");
+        if (!rpcError && rpcData && typeof rpcData === "object") {
+          const res = rpcData as Partial<FunnelCounts>;
+          setCounts({
+            signups: Number(res.signups || 0),
+            extensionConnected: Number(res.extensionConnected || 0),
+            firstWordSaved: Number(res.firstWordSaved || 0),
+            firstPracticeCompleted: Number(res.firstPracticeCompleted || 0),
+            day2Return: Number(res.day2Return || 0),
+            day7Return: Number(res.day7Return || 0),
+            activePracticers3Days: Number(res.activePracticers3Days || 0),
+          });
+          return;
+        }
+
+        // 2. Query real counts from public.analytics_events
         const { data, error: queryError } = await supabase
           .from("analytics_events")
           .select("event_name, user_id, created_at");

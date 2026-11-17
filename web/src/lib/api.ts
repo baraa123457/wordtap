@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import { trackEvent } from "./analytics";
 import {
   EMPTY_STATS,
   STATS_COLUMNS,
@@ -229,6 +230,19 @@ export async function syncUserStreak(
   lastPracticeDate?: string | null,
 ): Promise<void> {
   const supabase = getSupabase();
+
+  // 1. Prefer atomic SECURITY DEFINER RPC (migration 008)
+  const { error: rpcError } = await supabase.rpc("sync_user_streak", {
+    p_streak: streak,
+    p_best_streak: bestStreak,
+    p_last_practice_date: lastPracticeDate || null,
+  });
+  if (!rpcError) return;
+
+  // 2. Fallback to direct table update with user_id targeting
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
   const updates: Record<string, unknown> = {
     streak,
     best_streak: bestStreak,
@@ -236,7 +250,11 @@ export async function syncUserStreak(
   if (lastPracticeDate) {
     updates.last_practice_date = lastPracticeDate;
   }
-  const { error } = await supabase.from("user_stats").update(updates);
+  const { error } = await supabase
+    .from("user_stats")
+    .update(updates)
+    .eq("user_id", user.id);
+
   if (error) {
     console.warn("Could not sync user streak:", error.message);
   }
@@ -359,18 +377,19 @@ export async function addCustomWord(
   const supabase = getSupabase();
 
   // 1. Try full save_word signature including p_sentence (migration 006)
-  if (sentence) {
-    const res0 = await supabase.rpc("save_word", {
-      p_text: tagged,
-      p_translation: norm.translation,
-      p_src_lang: finalSrc,
-      p_target_lang: finalTarget,
-      p_source_title: sourceTitle,
-      p_source_url: sourceUrl,
-      p_times: 1,
-      p_sentence: sentence,
-    });
-    if (!res0.error) return res0.data as string;
+  const res0 = await supabase.rpc("save_word", {
+    p_text: tagged,
+    p_translation: norm.translation,
+    p_src_lang: finalSrc,
+    p_target_lang: finalTarget,
+    p_source_title: sourceTitle,
+    p_source_url: sourceUrl,
+    p_times: 1,
+    p_sentence: sentence || "",
+  });
+  if (!res0.error && res0.data) {
+    void trackEvent("first_word_saved", { text: norm.text, src: finalSrc });
+    return res0.data as string;
   }
 
   // 2. Try save_word with p_src_lang (migration 001/002)
@@ -382,7 +401,10 @@ export async function addCustomWord(
     p_source_title: sourceTitle,
     p_source_url: sourceUrl,
   });
-  if (!res1.error) return res1.data as string;
+  if (!res1.error && res1.data) {
+    void trackEvent("first_word_saved", { text: norm.text, src: finalSrc });
+    return res1.data as string;
+  }
 
   // 3. Try save_word without p_src_lang (legacy database schema)
   const res2 = await supabase.rpc("save_word", {
@@ -390,7 +412,10 @@ export async function addCustomWord(
     p_translation: norm.translation,
     p_target_lang: finalTarget,
   });
-  if (!res2.error) return res2.data as string;
+  if (!res2.error && res2.data) {
+    void trackEvent("first_word_saved", { text: norm.text, src: finalSrc });
+    return res2.data as string;
+  }
 
   // 4. Try direct table insert
   const res3 = await supabase
@@ -405,9 +430,12 @@ export async function addCustomWord(
     })
     .select("id")
     .maybeSingle<{ id: string }>();
-  if (!res3.error && res3.data) return res3.data.id;
+  if (!res3.error && res3.data) {
+    void trackEvent("first_word_saved", { text: norm.text, src: finalSrc });
+    return res3.data.id;
+  }
 
-  throw new Error(res1.error.message || res2.error?.message || "Failed to save word");
+  throw new Error(res0.error?.message || res1.error?.message || res2.error?.message || res3.error?.message || "Failed to save word");
 }
 
 export async function deleteAccount(): Promise<void> {

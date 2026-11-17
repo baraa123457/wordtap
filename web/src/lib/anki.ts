@@ -24,5 +24,5 @@ export function exportWordsToAnki(words: Word[]): string {
 }
 
 export function downloadAnkiFile(content: string, filename = "wordtap-anki-deck.txt"): void {
-  downloadCsvFile(content, filename);
+  downloadCsvFile(content, filename, "text/plain;charset=utf-8;");
 }

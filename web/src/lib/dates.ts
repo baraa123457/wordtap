@@ -9,9 +9,14 @@ export function localDateString(d: Date = new Date()): string {
 }
 
 export function previousDay(date: string): string {
-  const [y, m, d] = date.split("-").map(Number);
+  if (!date || typeof date !== "string" || !date.includes("-")) return "";
+  const parts = date.split("-").map(Number);
+  const y = parts[0];
+  const m = parts[1];
+  const d = parts[2];
+  if (!y || !m || !d || isNaN(y) || isNaN(m) || isNaN(d)) return "";
   // Using noon (12:00) prevents daylight saving shifts from rolling back an extra day
-  const prev = new Date(y ?? 1970, (m ?? 1) - 1, (d ?? 1) - 1, 12, 0, 0);
+  const prev = new Date(y, m - 1, d - 1, 12, 0, 0);
   return localDateString(prev);
 }
 

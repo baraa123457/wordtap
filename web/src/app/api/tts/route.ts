@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
-import { guardApiRequest } from "@/lib/api-guard";
+import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
+
+export async function OPTIONS(req: Request) {
+  return handleCorsPreflight(req);
+}
 
 export async function GET(req: Request) {
   const blocked = guardApiRequest(req, "tts", 60);
   if (blocked) return blocked;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const url = new URL(req.url);
@@ -11,7 +17,7 @@ export async function GET(req: Request) {
     const lang = (url.searchParams.get("lang") || "ar").trim();
 
     if (!text) {
-      return NextResponse.json({ error: "Missing text" }, { status: 400 });
+      return NextResponse.json({ error: "Missing text" }, { status: 400, headers: corsHeaders });
     }
 
     const prefix = lang.replace(/[^a-zA-Z-]/g, "").slice(0, 5).toLowerCase() || "en";
@@ -30,7 +36,7 @@ export async function GET(req: Request) {
     if (!res.ok) {
       return NextResponse.json(
         { error: "Failed to fetch speech audio" },
-        { status: res.status },
+        { status: res.status, headers: corsHeaders },
       );
     }
 
@@ -40,11 +46,12 @@ export async function GET(req: Request) {
       headers: {
         "Content-Type": "audio/mpeg",
         "Cache-Control": "public, max-age=86400, s-maxage=86400",
+        ...corsHeaders,
       },
     });
   } catch (err: unknown) {
     console.error("TTS API error:", err);
     const message = err instanceof Error && err.message ? err.message : "TTS failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500, headers: corsHeaders });
   }
 }

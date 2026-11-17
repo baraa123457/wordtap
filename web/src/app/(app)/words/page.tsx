@@ -227,8 +227,9 @@ export default function WordsPage() {
             translation,
             src_lang,
             target_lang,
-            row.sentence,
-            row.source_title
+            row.source_title || "Imported deck",
+            "",
+            row.sentence || ""
           );
           successCount++;
         } catch {

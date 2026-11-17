@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { Logo } from "@/components/Logo";
 import { getSupabase, isSupabaseConfigured, sanitizeNextPath } from "@/lib/supabase";
+import { trackEvent } from "@/lib/analytics";
 
 const EMAIL_OTP_TYPES = new Set<EmailOtpType>([
   "signup",
@@ -69,6 +70,7 @@ function CallbackContent() {
           if (active) setError(exchangeError.message);
           return;
         }
+        if (rawType === "signup") void trackEvent("signup");
         if (active) router.replace(nextPath);
         return;
       }
@@ -82,6 +84,7 @@ function CallbackContent() {
           if (active) setError(otpError.message);
           return;
         }
+        if (rawType === "signup") void trackEvent("signup");
         if (active) router.replace(nextPath);
         return;
       }

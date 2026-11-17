@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { deleteWord, recordPractice, reviewWord } from "@/lib/api";
 import { localDateString } from "@/lib/dates";
+import { trackEvent } from "@/lib/analytics";
 import type { Word } from "@/lib/schemas";
 import { buildSession, isPracticableWord, type MatchQuestion, type Question } from "@/lib/session";
 import { getStoredSettings } from "@/lib/settings";
@@ -154,6 +155,7 @@ export function PracticeSession({
   useEffect(() => {
     if (!finished || xpSaved.current) return;
     xpSaved.current = true;
+    void trackEvent("first_practice_completed", { xp, questions: tally.asked });
     const delta = xp - lastRecordedXp.current;
     if (delta > 0) {
       lastRecordedXp.current = xp;
@@ -164,7 +166,7 @@ export function PracticeSession({
     } else {
       setSave("saved");
     }
-  }, [finished, xp]);
+  }, [finished, xp, tally.asked]);
 
   function retrySave() {
     setSave("saving");
@@ -183,8 +185,11 @@ export function PracticeSession({
     const ok = result !== "wrong";
     if (!current.retry) {
       setTally((t) => ({ asked: t.asked + 1, right: t.right + (ok ? 1 : 0) }));
-      review(current.q.wordId, ok);
-      if (!ok) markMissed(current.q.wordId);
+      // Only record immediate failure to DB when wrong; correct/typo ratings wait for advance(difficulty)
+      if (!ok) {
+        review(current.q.wordId, false);
+        markMissed(current.q.wordId);
+      }
     }
     if (ok) {
       const earned = current.retry ? XP_RETRY : XP_FIRST_TRY;
@@ -218,6 +223,11 @@ export function PracticeSession({
 
       if (current && current.q.type !== "match") {
         const wordId = current.q.wordId;
+        if (!reviewed.current.has(wordId)) {
+          reviewed.current.add(wordId);
+          setRemainingIds((prev) => prev.filter((id) => id !== wordId));
+        }
+
         if (isHard) {
           // If rated Hard, mark as missed so it appears in summary and database interval resets
           markMissed(wordId);

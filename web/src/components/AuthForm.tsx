@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { trackEvent } from "@/lib/analytics";
 import { Logo } from "./Logo";
 
 type Mode = "login" | "signup";
@@ -39,8 +40,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
         if (message) setError(message);
       } else {
         const result = await signUp(email.trim(), password);
-        if (result.error) setError(result.error);
-        else if (result.needsConfirmation) setConfirmSent(true);
+        if (result.error) {
+          setError(result.error);
+        } else {
+          void trackEvent("signup", { emailDomain: email.split("@")[1] || "unknown" });
+          if (result.needsConfirmation) setConfirmSent(true);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not reach the server. Check your connection and try again.");

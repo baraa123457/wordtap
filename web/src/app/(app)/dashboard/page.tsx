@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchStats, fetchWords, setDailyGoal, syncUserStreak } from "@/lib/api";
+import { trackEvent } from "@/lib/analytics";
 import { effectiveStats, localDateString } from "@/lib/dates";
 import { formatDueIn, isDue } from "@/lib/format";
 import type { Stats, Word } from "@/lib/schemas";
@@ -133,19 +134,28 @@ export default function DashboardPage() {
 
   // Reconcile and persist accurate streak to user_stats if word history proved a higher streak
   useEffect(() => {
-    if (readyData && currentStats && eff.streak > currentStats.streak) {
-      const targetDate = eff.practicedToday ? todayStr : currentStats.last_practice_date;
-      const newBest = Math.max(currentStats.best_streak, eff.streak);
-      syncUserStreak(eff.streak, newBest, targetDate).catch(() => {});
-      setData({
-        words: readyData.words,
-        stats: {
-          ...currentStats,
-          streak: eff.streak,
-          best_streak: newBest,
-          last_practice_date: targetDate,
-        },
-      });
+    if (readyData && currentStats) {
+      if (eff.streak >= 2 && eff.practicedToday) {
+        void trackEvent("day2_return", { streak: eff.streak });
+      }
+      if (eff.streak >= 7 && eff.practicedToday) {
+        void trackEvent("day7_return", { streak: eff.streak });
+      }
+
+      if (eff.streak > currentStats.streak) {
+        const targetDate = eff.practicedToday ? todayStr : currentStats.last_practice_date;
+        const newBest = Math.max(currentStats.best_streak, eff.streak);
+        syncUserStreak(eff.streak, newBest, targetDate).catch(() => {});
+        setData({
+          words: readyData.words,
+          stats: {
+            ...currentStats,
+            streak: eff.streak,
+            best_streak: newBest,
+            last_practice_date: targetDate,
+          },
+        });
+      }
     }
   }, [eff.streak, readyData, currentStats, eff.practicedToday, todayStr, setData]);
 

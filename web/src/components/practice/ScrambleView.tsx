@@ -31,15 +31,16 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
     setPlacedTileIds([]);
     setHintUsed(false);
     if (!q.speak || !canSpeak()) return;
+    let stopTimer: ReturnType<typeof setTimeout> | null = null;
     const timer = setTimeout(() => {
       setIsSpeaking(true);
       speak(q.speak!.text, q.speak!.lang);
-      const stopTimer = setTimeout(() => setIsSpeaking(false), 1400);
-      return () => clearTimeout(stopTimer);
+      stopTimer = setTimeout(() => setIsSpeaking(false), 1400);
     }, 70);
 
     return () => {
       clearTimeout(timer);
+      if (stopTimer) clearTimeout(stopTimer);
       cancelSpeech();
     };
   }, [q.id, q.speak]);

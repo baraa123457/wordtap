@@ -14,7 +14,7 @@ function getClientIp(req: Request): string {
   return req.headers.get("x-real-ip") || "local";
 }
 
-function isAllowedOrigin(req: Request): boolean {
+export function isAllowedOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");
   if (!origin) return true; // Same-origin navigations or server-side fetches
 
@@ -53,13 +53,44 @@ function isAllowedOrigin(req: Request): boolean {
   return false;
 }
 
+export function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin");
+  if (!origin) {
+    return {};
+  }
+
+  if (isAllowedOrigin(req)) {
+    return {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+      "Access-Control-Max-Age": "86400",
+    };
+  }
+
+  return {};
+}
+
+export function handleCorsPreflight(req: Request): NextResponse {
+  if (!isAllowedOrigin(req)) {
+    return NextResponse.json({ error: "Origin not allowed" }, { status: 403 });
+  }
+
+  return new NextResponse(null, {
+    status: 204,
+    headers: getCorsHeaders(req),
+  });
+}
+
 export function guardApiRequest(
   req: Request,
   routeKey: string,
   maxPerMinute = 60,
 ): NextResponse | null {
+  const cors = getCorsHeaders(req);
+
   if (!isAllowedOrigin(req)) {
-    return NextResponse.json({ error: "Origin not allowed" }, { status: 403 });
+    return NextResponse.json({ error: "Origin not allowed" }, { status: 403, headers: cors });
   }
 
   const now = Date.now();
@@ -68,8 +99,17 @@ export function guardApiRequest(
 
   if (!bucket || now >= bucket.resetAt) {
     if (buckets.size >= MAX_BUCKETS) {
-      const oldestKey = buckets.keys().next().value;
-      if (oldestKey) buckets.delete(oldestKey);
+      // Prune expired buckets first
+      for (const [k, b] of buckets.entries()) {
+        if (now >= b.resetAt) {
+          buckets.delete(k);
+        }
+      }
+      // If still overflowing, evict oldest
+      if (buckets.size >= MAX_BUCKETS) {
+        const oldestKey = buckets.keys().next().value;
+        if (oldestKey) buckets.delete(oldestKey);
+      }
     }
     bucket = { count: 0, resetAt: now + 60_000 };
     buckets.set(key, bucket);
@@ -82,7 +122,10 @@ export function guardApiRequest(
       { error: "Rate limit exceeded. Please wait a moment." },
       {
         status: 429,
-        headers: { "Retry-After": String(retryAfter) },
+        headers: {
+          "Retry-After": String(retryAfter),
+          ...cors,
+        },
       },
     );
   }

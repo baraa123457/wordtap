@@ -59,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
       setState(session ? { status: "signed-in", user: session.user } : { status: "signed-out" });
     });
 

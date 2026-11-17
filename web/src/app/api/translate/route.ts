@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
-import { guardApiRequest } from "@/lib/api-guard";
+import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
 import { getVerbConjugation } from "@/lib/verbs";
+
+export async function OPTIONS(req: Request) {
+  return handleCorsPreflight(req);
+}
 
 const MAX_TRANSLATE_CHARS = 2000;
 
@@ -20,19 +24,21 @@ export async function GET(req: Request) {
   const blocked = guardApiRequest(req, "translate", 60);
   if (blocked) return blocked;
 
+  const corsHeaders = getCorsHeaders(req);
   const url = new URL(req.url);
   const text = (url.searchParams.get("text") || "").trim().slice(0, MAX_TRANSLATE_CHARS);
   const src = url.searchParams.get("src") || "auto";
   const target = url.searchParams.get("target") || "ar";
   const forceExact = url.searchParams.get("forceExact") === "true";
   const provider = (url.searchParams.get("provider") || "google").toLowerCase();
-  return handleTranslate(text, src, target, forceExact, provider);
+  return handleTranslate(text, src, target, forceExact, provider, corsHeaders);
 }
 
 export async function POST(req: Request) {
   const blocked = guardApiRequest(req, "translate", 60);
   if (blocked) return blocked;
 
+  const corsHeaders = getCorsHeaders(req);
   try {
     const body = (await req.json()) as {
       text?: string;
@@ -46,11 +52,11 @@ export async function POST(req: Request) {
     const target = body.target || "ar";
     const forceExact = Boolean(body.forceExact);
     const provider = (body.provider || "google").toLowerCase();
-    return handleTranslate(text, src, target, forceExact, provider);
+    return handleTranslate(text, src, target, forceExact, provider, corsHeaders);
   } catch (err: unknown) {
     return NextResponse.json(
       { error: getErrorMessage(err, "Invalid JSON") },
-      { status: 400 },
+      { status: 400, headers: corsHeaders },
     );
   }
 }
@@ -189,20 +195,24 @@ async function handleTranslate(
   target: string,
   forceExact = false,
   provider = "google",
+  corsHeaders: Record<string, string> = {},
 ) {
   try {
     if (!text) {
-      return NextResponse.json({
-        text: "",
-        translation: "",
-        detectedSrcLang: src === "auto" ? "en" : src,
-        sourcePronunciation: "",
-        targetPronunciation: "",
-        definitions: [],
-        sourceDefinitions: [],
-        correction: null,
-        provider,
-      });
+      return NextResponse.json(
+        {
+          text: "",
+          translation: "",
+          detectedSrcLang: src === "auto" ? "en" : src,
+          sourcePronunciation: "",
+          targetPronunciation: "",
+          definitions: [],
+          sourceDefinitions: [],
+          correction: null,
+          provider,
+        },
+        { headers: corsHeaders },
+      );
     }
 
     // -------------------------------------------------------------------------
@@ -385,21 +395,24 @@ async function handleTranslate(
           if (verbInfo) posSet.add("verb");
           const partsOfSpeech = Array.from(posSet);
 
-          return NextResponse.json({
-            text,
-            translation: translation || text,
-            detectedSrcLang: src === "auto" ? "en" : src,
-            sourcePronunciation,
-            targetPronunciation: "",
-            definitions: targetAlternatives,
-            sourceDefinitions,
-            partsOfSpeech,
-            primaryPartOfSpeech: partsOfSpeech[0] || null,
-            correction,
-            verbInfo,
-            examples,
-            provider: "udictionary",
-          });
+          return NextResponse.json(
+            {
+              text,
+              translation: translation || text,
+              detectedSrcLang: src === "auto" ? "en" : src,
+              sourcePronunciation,
+              targetPronunciation: "",
+              definitions: targetAlternatives,
+              sourceDefinitions,
+              partsOfSpeech,
+              primaryPartOfSpeech: partsOfSpeech[0] || null,
+              correction,
+              verbInfo,
+              examples,
+              provider: "udictionary",
+            },
+            { headers: corsHeaders },
+          );
         }
       } catch (uErr) {
         console.warn("U-Dictionary lookup failed, falling back to Google:", uErr);
@@ -738,20 +751,23 @@ async function handleTranslate(
       const partsOfSpeech = Array.from(posSet);
       const primaryPartOfSpeech = partsOfSpeech[0] || null;
 
-      return NextResponse.json({
-        text,
-        translation: translation || text,
-        detectedSrcLang,
-        sourcePronunciation,
-        targetPronunciation,
-        definitions,
-        sourceDefinitions,
-        partsOfSpeech,
-        primaryPartOfSpeech,
-        correction,
-        verbInfo,
-        provider: "google",
-      });
+      return NextResponse.json(
+        {
+          text,
+          translation: translation || text,
+          detectedSrcLang,
+          sourcePronunciation,
+          targetPronunciation,
+          definitions,
+          sourceDefinitions,
+          partsOfSpeech,
+          primaryPartOfSpeech,
+          correction,
+          verbInfo,
+          provider: "google",
+        },
+        { headers: corsHeaders },
+      );
     }
 
     // Secondary fallback: Free Google GTX single endpoint
@@ -764,16 +780,19 @@ async function handleTranslate(
       const translation = Array.isArray(gtxData?.[0])
         ? gtxData[0].map((p: [string]) => p[0]).join("")
         : text;
-      return NextResponse.json({
-        text,
-        translation,
-        detectedSrcLang: src === "auto" ? "en" : src,
-        sourcePronunciation: "",
-        targetPronunciation: "",
-        definitions: [],
-        sourceDefinitions: [],
-        correction: null,
-      });
+      return NextResponse.json(
+        {
+          text,
+          translation,
+          detectedSrcLang: src === "auto" ? "en" : src,
+          sourcePronunciation: "",
+          targetPronunciation: "",
+          definitions: [],
+          sourceDefinitions: [],
+          correction: null,
+        },
+        { headers: corsHeaders },
+      );
     }
 
     throw new Error("All translation providers failed");
@@ -781,7 +800,7 @@ async function handleTranslate(
     console.error("Translation API error:", err);
     return NextResponse.json(
       { error: getErrorMessage(err, "Translation failed") },
-      { status: 500 },
+      { status: 500, headers: corsHeaders },
     );
   }
 }
