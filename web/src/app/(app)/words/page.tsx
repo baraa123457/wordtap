@@ -105,11 +105,11 @@ function exportWordsAnkiTsv(list: Word[]) {
   );
 }
 
-const FILTERS: { id: Filter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "due", label: "Ready to review" },
-  { id: "learning", label: "Learning" },
-  { id: "mastered", label: "Mastered" },
+const FILTERS: { id: Filter; label: string; shortLabel: string }[] = [
+  { id: "all", label: "All", shortLabel: "All" },
+  { id: "due", label: "Ready to review", shortLabel: "Due" },
+  { id: "learning", label: "Learning", shortLabel: "Learning" },
+  { id: "mastered", label: "Mastered", shortLabel: "Mastered" },
 ];
 
 const LANG_LABELS: Record<string, string> = {
@@ -885,7 +885,8 @@ export default function WordsPage() {
                 data-active={filter === f.id ? "true" : undefined}
                 className="apple-segmented-item whitespace-nowrap"
               >
-                {f.label}
+                <span className="hidden sm:inline">{f.label}</span>
+                <span className="sm:hidden">{f.shortLabel}</span>
               </button>
             ))}
           </div>
