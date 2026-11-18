@@ -748,6 +748,95 @@ async function handleTranslate(
           }
         }
       }
+
+      // Enrich parts of speech & dictionary alternatives when Google omits dictionary POS
+      // (e.g. colloquial Arabic spelling like "مظبوط" -> standard "مضبوط", or single-word EN translations)
+      if (posSet.size === 0 && !/\s/.test(text.trim())) {
+        const cleanSingle = text.trim();
+        const isArabicSingle = /[\u0600-\u06FF]/.test(cleanSingle);
+
+        if (isArabicSingle) {
+          const arVariants: string[] = [];
+          if (cleanSingle.includes("ظ")) arVariants.push(cleanSingle.replace(/ظ/g, "ض"));
+          if (cleanSingle.endsWith("ه") && cleanSingle.length >= 3) {
+            arVariants.push(cleanSingle.slice(0, -1) + "ة");
+          }
+          if (cleanSingle.endsWith("ى") && cleanSingle.length >= 3) {
+            arVariants.push(cleanSingle.slice(0, -1) + "ي");
+          }
+          for (const variant of arVariants) {
+            if (posSet.size > 0) break;
+            try {
+              const vUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=${encodeURIComponent(
+                target,
+              )}&dt=bd&dt=md&q=${encodeURIComponent(variant)}`;
+              const vRes = await fetch(vUrl, { signal: AbortSignal.timeout(2500) });
+              if (!vRes.ok) continue;
+              const vData = (await vRes.json()) as GoogleTranslateData;
+              if (Array.isArray(vData[1])) {
+                for (const entry of vData[1]) {
+                  if (Array.isArray(entry) && typeof entry[0] === "string" && Array.isArray(entry[1])) {
+                    const normPos = normalizePartOfSpeech(entry[0]);
+                    if (normPos) posSet.add(normPos);
+                    const meanings = entry[1]
+                      .filter((m: unknown): m is string => typeof m === "string" && m.trim().length > 0)
+                      .slice(0, 6);
+                    if (meanings.length > 0) {
+                      definitions.push({
+                        partOfSpeech: normPos || entry[0].toLowerCase(),
+                        meanings,
+                      });
+                    }
+                  }
+                }
+              }
+            } catch {
+              // ignore enrichment timeout
+            }
+          }
+        }
+
+        // General single-word English POS fallback (e.g. translating into a single English word)
+        if (posSet.size === 0) {
+          const englishCandidate =
+            target.toLowerCase().startsWith("en") && /^[A-Za-z][A-Za-z'-]{1,30}$/.test(translation.trim())
+              ? translation.trim()
+              : detectedSrcLang.toLowerCase().startsWith("en") && /^[A-Za-z][A-Za-z'-]{1,30}$/.test(cleanSingle)
+              ? cleanSingle
+              : null;
+
+          if (englishCandidate) {
+            try {
+              const eUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ar&dt=bd&dt=md&q=${encodeURIComponent(
+                englishCandidate,
+              )}`;
+              const eRes = await fetch(eUrl, { signal: AbortSignal.timeout(2500) });
+              if (eRes.ok) {
+                const eData = (await eRes.json()) as GoogleTranslateData;
+                if (Array.isArray(eData[1])) {
+                  for (const entry of eData[1]) {
+                    if (Array.isArray(entry) && typeof entry[0] === "string") {
+                      const normPos = normalizePartOfSpeech(entry[0]);
+                      if (normPos) posSet.add(normPos);
+                    }
+                  }
+                }
+                if (Array.isArray(eData[12])) {
+                  for (const group of eData[12]) {
+                    if (Array.isArray(group) && typeof group[0] === "string") {
+                      const normPos = normalizePartOfSpeech(group[0]);
+                      if (normPos) posSet.add(normPos);
+                    }
+                  }
+                }
+              }
+            } catch {
+              // ignore enrichment timeout
+            }
+          }
+        }
+      }
+
       const partsOfSpeech = Array.from(posSet);
       const primaryPartOfSpeech = partsOfSpeech[0] || null;
 
