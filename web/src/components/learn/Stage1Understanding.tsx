@@ -125,7 +125,7 @@ export function Stage1Understanding({
   const correctOption = question.options.find((o) => o.id === question.correctOptionId);
 
   return (
-    <section aria-labelledby="stage1-heading" className="apple-card p-5 sm:p-8 grid gap-6 min-w-0">
+    <section aria-labelledby="stage1-heading" className="apple-card w-full max-w-full p-4 sm:p-8 flex flex-col gap-5 sm:gap-6 min-w-0">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1.5 min-w-0">

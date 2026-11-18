@@ -184,15 +184,15 @@ export function ContextualLearningStage({
   return (
     <section
       aria-labelledby="stage2-heading"
-      className="apple-card w-full max-w-full overflow-x-clip p-4 sm:p-7 grid gap-5 min-w-0"
+      className="apple-card w-full max-w-full overflow-x-clip p-4 sm:p-7 flex flex-col gap-5 min-w-0"
     >
       {/* HEADER: Stage progress, non-spoiler prompt & real example count */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
         <div className="space-y-1 min-w-0">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-xs font-bold text-ink">
             Stage 2 · Contextual Learning
           </span>
-          <h2 id="stage2-heading" className="text-lg sm:text-2xl font-extrabold text-ink">
+          <h2 id="stage2-heading" className="text-lg sm:text-2xl font-extrabold text-ink break-words">
             {solvedCurrent || solvedAny
               ? `You practiced “${word.text}” in context`
               : activeClip
@@ -204,12 +204,12 @@ export function ContextualLearningStage({
         {videos.length > 0 ? (
           <span
             data-testid="video-example-badge"
-            className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-bold text-ink tabular-nums"
+            className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-bold text-ink tabular-nums shrink-0"
           >
             Example {videoIndex + 1} of {videos.length}
           </span>
         ) : fallbackList.length > 1 ? (
-          <span className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-bold text-ink tabular-nums">
+          <span className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-bold text-ink tabular-nums shrink-0">
             Text Example {fallbackIndex + 1} of {fallbackList.length}
           </span>
         ) : null}
@@ -223,7 +223,7 @@ export function ContextualLearningStage({
 
       {/* VIDEO: Custom WordTap YouTube Player + Navigation (when verified videos exist) */}
       {activeClip ? (
-        <div className="grid gap-3 min-w-0">
+        <div className="flex flex-col gap-3 w-full min-w-0 max-w-full">
           <WordTabVideoPlayer
             ref={playerRef}
             clip={activeClip}

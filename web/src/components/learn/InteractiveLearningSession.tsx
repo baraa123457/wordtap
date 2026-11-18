@@ -439,14 +439,17 @@ function SequentialInitialLearningSession({
       ) : null}
 
       {/* Strict 4-Stage Sequential Stepper */}
-      <nav aria-label="Learning stages" className="mb-4 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
+      <nav
+        aria-label="Learning stages"
+        className="mb-4 grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2 py-0.5 min-w-0 max-w-full"
+      >
         {ALL_INITIAL_STAGES.map((st) => {
           const isCurrent = st === currentStage;
           const isDone = activeProgress?.completedStages.includes(st) || st < currentStage;
           return (
             <div
               key={st}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`inline-flex items-center justify-center sm:justify-start gap-1.5 rounded-full border px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold min-w-0 transition-all ${
                 isCurrent
                   ? "border-subtitle bg-subtitle/20 text-ink font-bold"
                   : isDone
@@ -454,8 +457,8 @@ function SequentialInitialLearningSession({
                   : "border-line bg-surface text-muted"
               }`}
             >
-              <span className="font-mono text-[10px]">{isDone ? "✓" : st}</span>
-              <span>{STAGE_LABELS[st]}</span>
+              <span className="font-mono text-[10px] shrink-0">{isDone ? "✓" : st}</span>
+              <span className="truncate">{STAGE_LABELS[st]}</span>
             </div>
           );
         })}

@@ -466,13 +466,11 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
       return () => window.removeEventListener("keydown", onKeyDown);
     }, [ready, embedError, togglePlayInternal, replayInternal, rewindInternal]);
 
-    const containerStyle =
-      isDirectVideo && nativeRatio
-        ? {
-            aspectRatio: `${nativeRatio}`,
-            maxWidth: `min(100%, ${Math.round(440 * nativeRatio)}px)`,
-          }
-        : undefined;
+    const activeRatio = isDirectVideo && nativeRatio ? nativeRatio : 16 / 9;
+    const containerStyle: React.CSSProperties = {
+      aspectRatio: `${activeRatio}`,
+      maxWidth: `min(100%, ${Math.round(440 * activeRatio)}px)`,
+    };
 
     const sourceLabel = formatSourceLabel(clip.source);
     const channelText = clip.channelName || "Video";
@@ -481,17 +479,15 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
       clip.source !== "wikimedia_commons";
 
     return (
-      <div className="grid gap-2.5 min-w-0 w-full">
+      <div className="flex flex-col gap-2.5 min-w-0 w-full max-w-full">
         {/* Responsive Exact-Aspect-Ratio Custom WordTap Video Container */}
         <div
           data-testid="wordtab-video-player"
           style={containerStyle}
-          className={`relative mx-auto w-full overflow-hidden rounded-2xl border border-line bg-black shadow-md ${
-            containerStyle ? "" : "aspect-video"
-          }`}
+          className="relative mx-auto w-full max-w-full overflow-hidden rounded-2xl border border-line bg-black shadow-md"
         >
           {embedError ? (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center text-white/90">
+            <div className="absolute inset-0 flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center text-white/90">
               <p className="text-sm font-semibold">{embedError}</p>
               {total > 1 && onSkipNext ? (
                 <button
@@ -522,7 +518,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                   aria-label="Play video clip"
                   className="absolute inset-0 z-10 flex items-center justify-center bg-black/25 transition hover:bg-black/35 cursor-pointer"
                 >
-                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-subtitle text-subtitle-ink shadow-lg text-xl font-black pl-1">
+                  <span className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-subtitle text-subtitle-ink shadow-lg text-lg sm:text-xl font-black pl-1">
                     ▶
                   </span>
                 </button>
@@ -555,7 +551,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                   setEmbedError("This video stream could not be loaded.");
                   onUnavailable?.(clipRef.current);
                 }}
-                className="block h-full w-full object-contain bg-black cursor-pointer"
+                className="absolute inset-0 block h-full w-full object-contain bg-black cursor-pointer"
               />
             </>
           ) : (

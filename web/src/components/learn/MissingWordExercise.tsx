@@ -84,7 +84,7 @@ export function MissingWordExercise({
   return (
     <div
       data-testid="stage2-caption-exercise"
-      className="rounded-2xl border border-line bg-surface p-4 sm:p-5 grid gap-4"
+      className="rounded-2xl border border-line bg-surface p-4 sm:p-5 flex flex-col gap-4 min-w-0 w-full max-w-full"
     >
       <ContextCaption
         masked={masked}

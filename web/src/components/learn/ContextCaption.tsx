@@ -165,7 +165,7 @@ export function ContextCaption({
   };
 
   return (
-    <div className="grid gap-3">
+    <div className="flex flex-col gap-3 min-w-0 w-full max-w-full">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs font-semibold text-muted">{label}</span>
         <div className="flex items-center gap-2">
@@ -238,7 +238,7 @@ export function ContextCaption({
               <span
                 data-testid="stage2-missing-placeholder"
                 aria-label={`${masked.letterCount} missing letters`}
-                className="inline-block rounded-lg border-b-2 border-subtitle bg-subtitle/10 px-2 py-0.5 font-mono font-bold tracking-[0.2em] text-ink"
+                className="inline-block max-w-full break-all rounded-lg border-b-2 border-subtitle bg-subtitle/10 px-2 py-0.5 font-mono font-bold tracking-[0.12em] sm:tracking-[0.2em] text-ink"
               >
                 {hint || masked.placeholder}
               </span>

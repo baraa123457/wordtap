@@ -41,7 +41,7 @@ export function VideoExampleNavigation({
     <div
       role="toolbar"
       aria-label="Video playback and example navigation"
-      className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-3 py-2"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-2.5 sm:px-3 py-2 w-full min-w-0 max-w-full"
     >
       {/* Playback Controls */}
       <div className="flex flex-wrap items-center gap-1.5">

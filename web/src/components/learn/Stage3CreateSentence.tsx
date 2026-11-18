@@ -67,7 +67,7 @@ export function Stage3CreateSentence({
   const canContinue = Boolean(evaluation && (evaluation.isCorrect || attempts >= 2));
 
   return (
-    <section aria-labelledby="stage3-heading" className="apple-card p-5 sm:p-8 grid gap-5 min-w-0">
+    <section aria-labelledby="stage3-heading" className="apple-card w-full max-w-full p-4 sm:p-8 flex flex-col gap-5 min-w-0">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1.5 min-w-0">

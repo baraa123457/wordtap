@@ -72,7 +72,7 @@ export function Stage4SpacedRepetition({
   }, [onRate, previews, saving]);
 
   return (
-    <section aria-labelledby="stage4-heading" className="apple-card p-5 sm:p-8 grid gap-6 min-w-0">
+    <section aria-labelledby="stage4-heading" className="apple-card w-full max-w-full p-4 sm:p-8 flex flex-col gap-5 sm:gap-6 min-w-0">
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-xs font-bold text-ink">
