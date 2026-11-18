@@ -8,6 +8,7 @@ import {
 } from "@/lib/learn-api";
 import { canSpeak, speak } from "@/lib/speech";
 import { SpeakerIcon } from "@/components/Icons";
+import { POS_BADGES } from "@/components/TranslatorCard";
 
 export function Stage1Understanding({
   word,
@@ -129,9 +130,28 @@ export function Stage1Understanding({
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1.5 min-w-0">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-xs font-bold text-ink">
-            Stage 1 · Understanding
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-xs font-bold text-ink">
+              Stage 1 · Understanding
+            </span>
+            {(question.partOfSpeech || word.part_of_speech) ? (() => {
+              const rawPos = (question.partOfSpeech || word.part_of_speech || "").toLowerCase().trim();
+              const meta = POS_BADGES[rawPos];
+              const badgeCls =
+                meta?.badge ||
+                "bg-subtitle/15 text-amber-800 dark:text-subtitle border-subtitle/35";
+              return (
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold ${badgeCls}`}
+                >
+                  <span className="capitalize">{meta?.en || rawPos}</span>
+                  {meta?.ar ? (
+                    <span className="opacity-80 font-medium text-[11px]">· {meta.ar}</span>
+                  ) : null}
+                </span>
+              );
+            })() : null}
+          </div>
           <div className="flex flex-wrap items-center gap-2.5 pt-1">
             <h2
               id="stage1-heading"

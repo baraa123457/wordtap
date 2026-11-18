@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Word } from "@/lib/schemas";
 import {
   evaluateUserSentence,
   saveUserSentence,
   type SentenceEvaluation,
 } from "@/lib/learn-api";
+import { POS_BADGES } from "@/components/TranslatorCard";
+
+function normalizePosList(raw: string | string[] | undefined): string[] {
+  const arr = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  const cleaned = arr
+    .map((p) => p.toLowerCase().trim())
+    .filter((p) => p && p !== "def" && p !== "alternatives" && p !== "undefined");
+  return Array.from(new Set(cleaned));
+}
 
 export function Stage3CreateSentence({
   word,
@@ -28,6 +37,40 @@ export function Stage3CreateSentence({
   const [evaluation, setEvaluation] = useState<SentenceEvaluation | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [attempts, setAttempts] = useState(0);
+  const [posList, setPosList] = useState<string[]>(() =>
+    normalizePosList(partOfSpeech || word.part_of_speech || ""),
+  );
+
+  // Auto-resolve Part of Speech (Noun / Verb / Adjective / Adverb) from dictionary if missing
+  useEffect(() => {
+    const initial = normalizePosList(partOfSpeech || word.part_of_speech || "");
+    if (initial.length > 0) {
+      setPosList(initial);
+      return;
+    }
+    let active = true;
+    fetch(
+      `/api/translate?text=${encodeURIComponent(word.text)}&src=${encodeURIComponent(word.src_lang || "en")}&target=ar`,
+    )
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!active || !data) return;
+        const resolved = normalizePosList(
+          Array.isArray(data.partsOfSpeech) && data.partsOfSpeech.length > 0
+            ? data.partsOfSpeech
+            : data.primaryPartOfSpeech,
+        );
+        if (resolved.length > 0) {
+          setPosList(resolved.slice(0, 2));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [word.text, word.src_lang, word.part_of_speech, partOfSpeech]);
+
+  const primaryPos = posList[0] || partOfSpeech || word.part_of_speech || "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +84,7 @@ export function Stage3CreateSentence({
         word: word.text,
         sentence: trimmed,
         definition: definition || word.definition || "",
-        partOfSpeech: partOfSpeech || word.part_of_speech || "",
+        partOfSpeech: primaryPos,
       });
       setEvaluation(evalRes);
       setAttempts((a) => a + 1);
@@ -71,9 +114,28 @@ export function Stage3CreateSentence({
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1.5 min-w-0">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-xs font-bold text-ink">
-            Stage 3 · Create Your Own Sentence
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-xs font-bold text-ink">
+              Stage 3 · Create Your Own Sentence
+            </span>
+            {posList.map((pos) => {
+              const meta = POS_BADGES[pos];
+              const badgeCls =
+                meta?.badge ||
+                "bg-subtitle/15 text-amber-800 dark:text-subtitle border-subtitle/35";
+              return (
+                <span
+                  key={pos}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold ${badgeCls}`}
+                >
+                  <span className="capitalize">{meta?.en || pos}</span>
+                  {meta?.ar ? (
+                    <span className="opacity-80 font-medium text-[11px]">· {meta.ar}</span>
+                  ) : null}
+                </span>
+              );
+            })}
+          </div>
           <h2 id="stage3-heading" className="text-xl sm:text-2xl font-extrabold text-ink break-words">
             Can you write your own sentence using &ldquo;<span className="underline decoration-subtitle decoration-4 underline-offset-4">{word.text}</span>&rdquo;?
           </h2>
@@ -96,7 +158,7 @@ export function Stage3CreateSentence({
       {showHint ? (
         <div className="rounded-xl border border-line bg-black/[0.02] dark:bg-white/[0.03] px-4 py-3 text-xs sm:text-sm text-muted">
           <strong className="text-ink">{word.text}</strong>
-          {partOfSpeech || word.part_of_speech ? ` (${partOfSpeech || word.part_of_speech})` : ""}:{" "}
+          {primaryPos ? ` (${POS_BADGES[primaryPos]?.en || primaryPos})` : ""}:{" "}
           {definition || word.definition || word.translation}
         </div>
       ) : null}
