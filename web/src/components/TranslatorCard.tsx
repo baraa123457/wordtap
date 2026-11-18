@@ -157,14 +157,18 @@ function LanguageDropdown({
   current,
   onSelect,
   align = "left",
+  includeAuto = false,
+  mobileLabel,
 }: {
   current: string;
   onSelect: (code: string) => void;
   align?: "left" | "right";
+  includeAuto?: boolean;
+  mobileLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -172,14 +176,29 @@ function LanguageDropdown({
     const updatePosition = () => {
       const rect = ref.current?.getBoundingClientRect();
       if (!rect) return;
-      const menuW = Math.min(220, window.innerWidth - 24);
+      const menuW = Math.min(230, window.innerWidth - 24);
       const rawLeft = align === "right" ? rect.right - menuW : rect.left;
       const clampedLeft = Math.max(12, Math.min(rawLeft, window.innerWidth - menuW - 12));
-      setMenuPos({ top: rect.bottom + 8, left: clampedLeft });
+      const spaceBelow = window.innerHeight - rect.bottom - 16;
+      const spaceAbove = rect.top - 16;
+      if (spaceBelow >= 180 || spaceBelow >= spaceAbove) {
+        setMenuPos({
+          top: rect.bottom + 8,
+          left: clampedLeft,
+          maxHeight: Math.max(160, Math.min(280, spaceBelow)),
+        });
+      } else {
+        const h = Math.max(160, Math.min(280, spaceAbove));
+        setMenuPos({
+          top: Math.max(12, rect.top - h - 8),
+          left: clampedLeft,
+          maxHeight: h,
+        });
+      }
     };
     updatePosition();
 
-    function handleClickOutside(e: MouseEvent) {
+    function handlePointerDown(e: MouseEvent | TouchEvent) {
       const target = e.target as Node;
       if (
         ref.current &&
@@ -192,36 +211,45 @@ function LanguageDropdown({
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown, { passive: true });
     document.addEventListener("keydown", handleKeyDown);
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
   }, [open, align]);
 
+  const options = includeAuto
+    ? [{ code: "auto", name: "Auto-detect", native: "Detect language" }, ...ALL_LANGS]
+    : ALL_LANGS;
+
   return (
-    <div className="relative inline-block" ref={ref}>
+    <div className="relative inline-block max-w-full" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        title="More languages"
-        aria-label="More languages"
+        title="Change language"
+        aria-label={mobileLabel ? `Change language (${mobileLabel})` : "Change language"}
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`h-8 min-h-8 px-2 sm:px-2.5 rounded-lg flex items-center justify-center gap-1 text-xs font-medium transition-all cursor-pointer select-none ${
+        className={`h-8 min-h-8 max-w-full px-2.5 rounded-full sm:rounded-lg flex items-center justify-center gap-1.5 text-xs font-semibold sm:font-medium transition-all cursor-pointer select-none ${
           open
-            ? "bg-black/10 dark:bg-white/15 text-ink"
-            : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10"
+            ? "bg-surface sm:bg-black/10 dark:sm:bg-white/15 text-ink shadow-xs sm:shadow-none"
+            : "bg-surface sm:bg-transparent text-ink sm:text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 shadow-xs sm:shadow-none border border-line sm:border-transparent"
         }`}
       >
+        {mobileLabel ? (
+          <span className="sm:hidden truncate max-w-[100px]">{mobileLabel}</span>
+        ) : null}
         <span className="hidden sm:inline">More</span>
         <svg
-          className={`w-3.5 h-3.5 transition-transform duration-200 ${
+          className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${
             open ? "rotate-180" : "opacity-70"
           }`}
           viewBox="0 0 24 24"
@@ -240,13 +268,13 @@ function LanguageDropdown({
             <div
               ref={menuRef}
               role="menu"
-              style={{ top: menuPos.top, left: menuPos.left }}
-              className="fixed z-[100] w-[min(220px,calc(100vw-1.5rem))] max-h-64 overflow-y-auto rounded-2xl border border-line bg-surface/95 p-1.5 shadow-2xl backdrop-blur-xl"
+              style={{ top: menuPos.top, left: menuPos.left, maxHeight: menuPos.maxHeight }}
+              className="fixed z-[100] w-[min(230px,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-line bg-surface/95 p-1.5 shadow-2xl backdrop-blur-xl"
             >
               <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted border-b border-line/40 mb-1">
                 Languages
               </div>
-              {ALL_LANGS.map((lang) => {
+              {options.map((lang) => {
                 const isSelected = current === lang.code;
                 return (
                   <button
@@ -257,14 +285,14 @@ function LanguageDropdown({
                       onSelect(lang.code);
                       setOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 min-h-9 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                       isSelected
-                        ? "bg-black/5 dark:bg-white/10 text-ink font-semibold"
+                        ? "bg-subtitle/20 text-ink font-semibold"
                         : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/5"
                     }`}
                   >
-                    <span>{lang.native}</span>
-                    <span className={`text-xs ${isSelected ? "text-ink font-semibold" : "text-muted"}`}>
+                    <span className="truncate">{lang.native}</span>
+                    <span className={`text-xs shrink-0 ${isSelected ? "text-ink font-semibold" : "text-muted"}`}>
                       {lang.name} {isSelected && "✓"}
                     </span>
                   </button>
@@ -1083,20 +1111,17 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
       className="apple-card rounded-3xl overflow-x-clip transition-all min-w-0"
     >
       {/* Top Header / Language Switcher Bar */}
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center border-b border-line/60 bg-surface px-2 sm:px-4 py-2 sm:py-2.5 gap-1.5 sm:gap-2.5">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-line/60 bg-surface px-2 sm:px-4 py-2 sm:py-2.5 gap-1.5 sm:gap-2.5">
         {/* Source Language Segmented Control (Left Column) */}
-        <div className="flex items-center min-w-0 overflow-hidden">
+        <div className="flex items-center min-w-0">
           <div className="apple-segmented-container max-w-full overflow-x-auto no-scrollbar">
             <button
               type="button"
               onClick={() => selectSrcLang("auto")}
               data-active={srcLang === "auto" ? "true" : undefined}
-              className={`apple-segmented-item whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 ${
-                srcLang === "auto" ? "inline-flex" : "hidden sm:inline-flex"
-              }`}
+              className="apple-segmented-item whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 hidden sm:inline-flex"
             >
-              <span className="hidden sm:inline">Detect language</span>
-              <span className="sm:hidden">Detect</span>
+              <span>Detect language</span>
               {detectedLabel ? (
                 <span className="opacity-75 font-normal ms-1 text-[11px] sm:text-xs">
                   {detectedLabel}
@@ -1113,7 +1138,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                   onClick={() => selectSrcLang(code)}
                   data-active={isActive ? "true" : undefined}
                   className={`apple-segmented-item whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 ${
-                    isActive ? "inline-flex" : "hidden xl:inline-flex"
+                    isActive ? "hidden sm:inline-flex" : "hidden xl:inline-flex"
                   }`}
                 >
                   {lang.native}
@@ -1124,6 +1149,14 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
               current={srcLang}
               onSelect={selectSrcLang}
               align="left"
+              includeAuto
+              mobileLabel={
+                srcLang === "auto"
+                  ? detectedLabel
+                    ? `Detect ${detectedLabel}`
+                    : "Detect"
+                  : ALL_LANGS.find((l) => l.code === srcLang)?.native || srcLang
+              }
             />
           </div>
         </div>
@@ -1152,7 +1185,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
         </div>
 
         {/* Target Language Segmented Control & Save Mode (Right Column) */}
-        <div className="flex items-center justify-end gap-1 sm:gap-2 min-w-0 overflow-hidden">
+        <div className="flex items-center justify-end gap-1 sm:gap-2 min-w-0">
           <div className="apple-segmented-container max-w-full overflow-x-auto no-scrollbar">
             {topTargetLangs.map((code) => {
               const lang = ALL_LANGS.find((l) => l.code === code) || { code, native: code };
@@ -1164,7 +1197,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                   onClick={() => selectTargetLang(code)}
                   data-active={isActive ? "true" : undefined}
                   className={`apple-segmented-item whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 ${
-                    isActive ? "inline-flex" : "hidden xl:inline-flex"
+                    isActive ? "hidden sm:inline-flex" : "hidden xl:inline-flex"
                   }`}
                 >
                   {lang.native}
@@ -1175,6 +1208,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
               current={targetLang}
               onSelect={selectTargetLang}
               align="right"
+              mobileLabel={ALL_LANGS.find((l) => l.code === targetLang)?.native || targetLang}
             />
           </div>
 
