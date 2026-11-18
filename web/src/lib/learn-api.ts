@@ -25,7 +25,12 @@ export type VerifiedVideoClip = {
   youtubeVideoId: string;
   videoTitle: string;
   channelName: string;
-  source: "youtube_supadata" | "youtube_filmot" | "user_subtitle" | "user_contributed";
+  source:
+    | "youtube_supadata"
+    | "youtube_transcriptapi"
+    | "youtube_filmot"
+    | "user_subtitle"
+    | "user_contributed";
   timestampSeconds: number;
   verifiedTranscript: string;
   contextSentence: string;
@@ -34,18 +39,34 @@ export type VerifiedVideoClip = {
   videoAvailable: boolean;
 };
 
+export type FallbackContextItem = {
+  sentence: string;
+  sourceLabel: string;
+  pronunciation?: string;
+};
+
 export type VideoDiscoveryResponse = {
   word: string;
   videos: VerifiedVideoClip[];
   verifiedCount: number;
-  fallbackContext: {
-    sentence: string;
-    sourceLabel: string;
-    pronunciation?: string;
-  } | null;
+  fallbackContext: FallbackContextItem | null;
+  fallbackContexts?: FallbackContextItem[];
+  diagnostics?: {
+    status:
+      | "verified"
+      | "missing_credentials"
+      | "missing_transcript_provider"
+      | "no_matches"
+      | "provider_error";
+    message: string;
+    missingEnvVars: string[];
+    providersAttempted: string[];
+    cacheStatus: "memory_hit" | "db_hit" | "fresh_discovery" | "empty";
+  };
   capabilities: {
     youtubeApiConfigured: boolean;
     supadataConfigured: boolean;
+    transcriptApiConfigured?: boolean;
     filmotConfigured: boolean;
   };
 };
@@ -99,13 +120,28 @@ export async function fetchUnderstandingQuestion(
   return data;
 }
 
-export async function fetchVerifiedVideos(word: Word): Promise<VideoDiscoveryResponse> {
+export async function fetchVerifiedVideos(
+  word: Word,
+  options?: { refresh?: boolean },
+): Promise<VideoDiscoveryResponse> {
   const params = new URLSearchParams({ word: word.text });
   if (word.source_url) params.set("sourceUrl", word.source_url);
   if (word.sentence) params.set("sentence", word.sentence);
   if (word.source_title) params.set("sourceTitle", word.source_title);
+  if (options?.refresh) params.set("refresh", "1");
 
-  const res = await fetch(`/api/learn/videos?${params.toString()}`);
+  // Forward authenticated session token so server-side Supabase cache reads work under RLS
+  const headers: Record<string, string> = {};
+  try {
+    const { data } = await getSupabase().auth.getSession();
+    if (data.session?.access_token) {
+      headers.Authorization = `Bearer ${data.session.access_token}`;
+    }
+  } catch {
+    // Continue unauthenticated if Supabase isn't initialized (e.g. demo)
+  }
+
+  const res = await fetch(`/api/learn/videos?${params.toString()}`, { headers });
   const data = (await res.json()) as VideoDiscoveryResponse & { error?: string };
   if (!res.ok) {
     throw new Error(data.error || "Could not search verified videos.");

@@ -5,6 +5,7 @@ import type { Word } from "@/lib/schemas";
 import {
   contributeVerifiedVideo,
   fetchVerifiedVideos,
+  type FallbackContextItem,
   type VerifiedVideoClip,
   type VideoDiscoveryResponse,
 } from "@/lib/learn-api";
@@ -31,6 +32,7 @@ export function Stage2ContextualVideo({
   const [discovery, setDiscovery] = useState<VideoDiscoveryResponse | null>(null);
   const [clips, setClips] = useState<VerifiedVideoClip[]>([]);
   const [clipIndex, setClipIndex] = useState(0);
+  const [fallbackIndex, setFallbackIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +43,7 @@ export function Stage2ContextualVideo({
   const [completedAnyClip, setCompletedAnyClip] = useState(false);
   const [firstTryPassed, setFirstTryPassed] = useState(true);
 
-  // Optional user-contributed YouTube clip verification form
+  // Supplementary user-contributed YouTube clip verification form
   const [showAddClip, setShowAddClip] = useState(false);
   const [contribUrl, setContribUrl] = useState("");
   const [contribTime, setContribTime] = useState("0");
@@ -56,6 +58,7 @@ export function Stage2ContextualVideo({
     setLoading(true);
     setError(null);
     setClipIndex(0);
+    setFallbackIndex(0);
     setAnswer("");
     setAttempts(0);
     setExerciseState("answering");
@@ -80,8 +83,16 @@ export function Stage2ContextualVideo({
     };
   }, [word]);
 
+  const fallbackList: FallbackContextItem[] = useMemo(() => {
+    if (discovery?.fallbackContexts && discovery.fallbackContexts.length > 0) {
+      return discovery.fallbackContexts;
+    }
+    return discovery?.fallbackContext ? [discovery.fallbackContext] : [];
+  }, [discovery]);
+
   const activeClip = clips[clipIndex] || null;
-  const activeSentence = activeClip?.contextSentence || discovery?.fallbackContext?.sentence || "";
+  const activeFallback = !activeClip ? fallbackList[fallbackIndex] || null : null;
+  const activeSentence = activeClip?.contextSentence || activeFallback?.sentence || "";
 
   const masked = useMemo(
     () => (activeSentence ? maskWordInSentence(activeSentence, word.text) : null),
@@ -93,7 +104,7 @@ export function Stage2ContextualVideo({
     [masked, attempts],
   );
 
-  const resetExerciseForClip = () => {
+  const resetExercise = () => {
     setAnswer("");
     setAttempts(0);
     setExerciseState("answering");
@@ -102,13 +113,19 @@ export function Stage2ContextualVideo({
   const handlePrevClip = () => {
     if (clips.length <= 1) return;
     setClipIndex((i) => (i - 1 + clips.length) % clips.length);
-    resetExerciseForClip();
+    resetExercise();
   };
 
   const handleNextClip = () => {
     if (clips.length <= 1) return;
     setClipIndex((i) => (i + 1) % clips.length);
-    resetExerciseForClip();
+    resetExercise();
+  };
+
+  const handleNextFallback = () => {
+    if (fallbackList.length <= 1) return;
+    setFallbackIndex((i) => (i + 1) % fallbackList.length);
+    resetExercise();
   };
 
   const handleUnavailableClip = (clipId: string) => {
@@ -149,7 +166,7 @@ export function Stage2ContextualVideo({
       });
       setClips((prev) => [newClip, ...prev]);
       setClipIndex(0);
-      resetExerciseForClip();
+      resetExercise();
       setShowAddClip(false);
       setContribUrl("");
       setContribTime("0");
@@ -161,13 +178,24 @@ export function Stage2ContextualVideo({
     }
   };
 
+  // Explicit, informative loading experience
   if (loading) {
     return (
-      <div className="apple-card p-5 sm:p-8 grid gap-4 animate-pulse">
-        <div className="h-4 w-48 rounded bg-line/60" />
-        <div className="aspect-video w-full rounded-2xl bg-line/50" />
-        <div className="h-14 w-full rounded-2xl bg-line/40" />
-      </div>
+      <section aria-busy="true" className="apple-card p-6 sm:p-8 grid gap-5">
+        <div className="flex items-center gap-3">
+          <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-subtitle border-t-transparent shrink-0" />
+          <div className="space-y-0.5">
+            <p className="text-sm sm:text-base font-bold text-ink">
+              Finding real conversations using this word...
+            </p>
+            <p className="text-xs text-muted">
+              Searching verified transcripts and timestamps for &ldquo;{word.text}&rdquo;
+            </p>
+          </div>
+        </div>
+        <div className="aspect-video w-full rounded-2xl bg-line/40 animate-pulse" />
+        <div className="h-14 w-full rounded-2xl bg-line/30 animate-pulse" />
+      </section>
     );
   }
 
@@ -179,15 +207,17 @@ export function Stage2ContextualVideo({
           <span className="inline-flex items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-xs font-bold text-ink">
             Stage 2 · Contextual Learning
           </span>
-          <div className="flex items-center gap-2">
-            <h2 id="stage2-heading" className="text-lg sm:text-2xl font-extrabold text-ink">
-              Hear &amp; complete in real context
-            </h2>
-          </div>
+          <h2 id="stage2-heading" className="text-lg sm:text-2xl font-extrabold text-ink">
+            Hear &amp; complete &ldquo;{word.text}&rdquo; in context
+          </h2>
         </div>
         {clips.length > 0 ? (
           <span className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-bold text-ink tabular-nums">
             Video {clipIndex + 1} of {clips.length}
+          </span>
+        ) : fallbackList.length > 1 ? (
+          <span className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-bold text-ink tabular-nums">
+            Example {fallbackIndex + 1} of {fallbackList.length}
           </span>
         ) : null}
       </div>
@@ -198,7 +228,7 @@ export function Stage2ContextualVideo({
         </p>
       ) : null}
 
-      {/* MIDDLE: Responsive YouTube Player (if verified video clips exist) OR Honest Graceful Fallback */}
+      {/* MIDDLE: Responsive YouTube Player (when verified clips exist) OR Clean Non-Blocking Notice */}
       {activeClip ? (
         <YouTubeClipPlayer
           clip={activeClip}
@@ -209,100 +239,38 @@ export function Stage2ContextualVideo({
           onUnavailable={handleUnavailableClip}
         />
       ) : (
-        <div className="rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] p-4 sm:p-5 grid gap-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-1 min-w-0 flex-1">
-              <p className="text-sm font-bold text-ink">
-                No verified YouTube caption clip cached for &ldquo;{word.text}&rdquo; yet
-              </p>
-              <p className="text-xs text-muted leading-relaxed">
-                WordTap never fabricates fake video clips or timestamps.{" "}
-                {discovery?.capabilities &&
-                !discovery.capabilities.filmotConfigured &&
-                !(discovery.capabilities.youtubeApiConfigured && discovery.capabilities.supadataConfigured)
-                  ? "Configure YouTube + Supadata (or Filmot) API keys for automatic real-time video discovery, save this word while watching YouTube with the extension, or attach a verified clip below."
-                  : "You can still hear real pronunciation on YouGlish or attach a verified YouTube clip below."}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <a
-                href={`https://youglish.com/pronounce/${encodeURIComponent(word.text)}/english`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn min-h-9 px-3 text-xs font-semibold"
-              >
-                Hear on YouGlish ↗
-              </a>
-              <button
-                type="button"
-                onClick={() => setShowAddClip((s) => !s)}
-                className="btn btn-quiet min-h-9 px-3 text-xs font-semibold cursor-pointer"
-              >
-                {showAddClip ? "Close" : "+ Attach YouTube clip"}
-              </button>
-            </div>
+        <div className="rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-0.5 min-w-0 flex-1">
+            <p className="text-sm font-bold text-ink">
+              We couldn&apos;t find a verified video for this word yet.
+            </p>
+            <p className="text-xs text-muted">
+              {masked
+                ? "Complete the real contextual listening exercise below to continue smoothly to Stage 3."
+                : "You can continue directly to Stage 3 to practice using this word in your own sentence."}
+            </p>
           </div>
-
-          {showAddClip ? (
-            <form
-              onSubmit={(e) => void handleContributeClip(e)}
-              className="grid gap-3 border-t border-line pt-3"
+          {canSpeak() && activeSentence ? (
+            <button
+              type="button"
+              onClick={() => speak(activeSentence, word.src_lang || "en")}
+              className="btn btn-primary min-h-9 px-3.5 text-xs font-bold inline-flex items-center gap-1.5 shrink-0 cursor-pointer"
             >
-              <div className="grid gap-2 sm:grid-cols-[1fr_130px]">
-                <input
-                  type="url"
-                  required
-                  value={contribUrl}
-                  onChange={(e) => setContribUrl(e.target.value)}
-                  placeholder="YouTube URL (e.g. https://youtube.com/watch?v=...)"
-                  className="field text-xs sm:text-sm"
-                />
-                <input
-                  type="number"
-                  min={0}
-                  required
-                  value={contribTime}
-                  onChange={(e) => setContribTime(e.target.value)}
-                  placeholder="Start (sec)"
-                  aria-label="Timestamp in seconds"
-                  className="field text-xs sm:text-sm"
-                />
-              </div>
-              <input
-                type="text"
-                required
-                value={contribTranscript}
-                onChange={(e) => setContribTranscript(e.target.value)}
-                placeholder={`Exact spoken sentence containing "${word.text}"`}
-                className="field text-xs sm:text-sm"
-              />
-              {contribError ? (
-                <p role="alert" className="text-xs font-medium text-bad">
-                  {contribError}
-                </p>
-              ) : null}
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={contribBusy}
-                  className="btn btn-primary min-h-9 px-4 text-xs font-bold cursor-pointer"
-                >
-                  {contribBusy ? "Verifying embed & transcript…" : "Verify & Add Clip"}
-                </button>
-              </div>
-            </form>
+              <SpeakerIcon size={15} />
+              <span>Play audio context</span>
+            </button>
           ) : null}
         </div>
       )}
 
-      {/* BOTTOM: Interactive Missing-Word Completion Exercise (1 dot = 1 exact missing letter) */}
+      {/* BOTTOM: Primary Interactive Missing-Word Completion Exercise (1 dot = 1 exact missing letter) */}
       {masked ? (
         <div className="rounded-2xl border border-line bg-surface p-4 sm:p-5 grid gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-semibold text-muted">
               {activeClip
                 ? "Type the missing word spoken in the clip:"
-                : discovery?.fallbackContext?.sourceLabel || "Complete the real context sentence:"}
+                : activeFallback?.sourceLabel || "Complete the authentic context sentence:"}
             </span>
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-black/5 dark:bg-white/10 px-2.5 py-0.5 text-[11px] font-bold text-muted tabular-nums">
@@ -371,7 +339,7 @@ export function Stage2ContextualVideo({
 
           {exerciseState === "wrong" ? (
             <div role="alert" className="rounded-xl border border-bad/30 bg-bad-soft px-3.5 py-2.5 text-xs sm:text-sm text-bad font-medium">
-              Not quite! Listen closely to the sentence and count the dots ({masked.letterCount} letters).
+              Not quite! Listen closely and count the dots ({masked.letterCount} letters).
               {hint ? (
                 <span className="block mt-1 text-ink">
                   Hint: <span className="font-mono font-bold tracking-widest">{hint}</span>
@@ -391,8 +359,10 @@ export function Stage2ContextualVideo({
                 </p>
                 <p className="text-xs text-muted mt-0.5">
                   {clips.length > 1
-                    ? "Explore another real video example or move on to Stage 3."
-                    : "Now try using this word in your own original sentence."}
+                    ? "Explore another verified video example or continue to Stage 3."
+                    : fallbackList.length > 1
+                    ? "Try another real sentence example or continue to Stage 3."
+                    : "Now write your own original sentence in Stage 3."}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -403,6 +373,14 @@ export function Stage2ContextualVideo({
                     className="btn min-h-10 px-4 text-xs sm:text-sm font-semibold cursor-pointer"
                   >
                     Another video →
+                  </button>
+                ) : fallbackList.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={handleNextFallback}
+                    className="btn min-h-10 px-4 text-xs sm:text-sm font-semibold cursor-pointer"
+                  >
+                    Another example →
                   </button>
                 ) : null}
                 <button
@@ -425,9 +403,9 @@ export function Stage2ContextualVideo({
       ) : (
         <div className="rounded-2xl border border-line bg-surface p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1">
-            <p className="text-sm font-bold text-ink">Ready to practice &ldquo;{word.text}&rdquo; in context</p>
+            <p className="text-sm font-bold text-ink">Continue learning &ldquo;{word.text}&rdquo;</p>
             <p className="text-xs text-muted">
-              No verified caption sentence was found for this rare term yet. Attach a YouTube clip above or proceed directly to creating your own sentence.
+              Proceed to Stage 3 to practice using &ldquo;{word.text}&rdquo; in your own sentence.
             </p>
           </div>
           <button
@@ -446,7 +424,7 @@ export function Stage2ContextualVideo({
         </div>
       )}
 
-      {/* Allow advancing after completing at least one clip even if user explored a 2nd clip */}
+      {/* Allow advancing after completing at least one clip even if user explored another */}
       {completedAnyClip && exerciseState !== "correct" ? (
         <div className="flex justify-end">
           <button
@@ -464,6 +442,80 @@ export function Stage2ContextualVideo({
           </button>
         </div>
       ) : null}
+
+      {/* Supplementary Options (Secondary footer — never blocks primary workflow) */}
+      <div className="border-t border-line/60 pt-3 grid gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+          <span>Extra pronunciation &amp; video tools</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`https://youglish.com/pronounce/${encodeURIComponent(word.text)}/english`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-quiet min-h-8 px-2.5 py-1 text-xs font-semibold"
+            >
+              Hear on YouGlish ↗
+            </a>
+            <button
+              type="button"
+              onClick={() => setShowAddClip((s) => !s)}
+              className="btn btn-quiet min-h-8 px-2.5 py-1 text-xs font-semibold cursor-pointer"
+            >
+              {showAddClip ? "Close form" : "+ Attach YouTube clip"}
+            </button>
+          </div>
+        </div>
+
+        {showAddClip ? (
+          <form
+            onSubmit={(e) => void handleContributeClip(e)}
+            className="rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] p-3.5 grid gap-2.5"
+          >
+            <div className="grid gap-2 sm:grid-cols-[1fr_130px]">
+              <input
+                type="url"
+                required
+                value={contribUrl}
+                onChange={(e) => setContribUrl(e.target.value)}
+                placeholder="YouTube URL (e.g. https://youtube.com/watch?v=...)"
+                className="field text-xs sm:text-sm"
+              />
+              <input
+                type="number"
+                min={0}
+                required
+                value={contribTime}
+                onChange={(e) => setContribTime(e.target.value)}
+                placeholder="Start (sec)"
+                aria-label="Timestamp in seconds"
+                className="field text-xs sm:text-sm"
+              />
+            </div>
+            <input
+              type="text"
+              required
+              value={contribTranscript}
+              onChange={(e) => setContribTranscript(e.target.value)}
+              placeholder={`Exact spoken sentence containing "${word.text}"`}
+              className="field text-xs sm:text-sm"
+            />
+            {contribError ? (
+              <p role="alert" className="text-xs font-medium text-bad">
+                {contribError}
+              </p>
+            ) : null}
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={contribBusy}
+                className="btn btn-primary min-h-9 px-4 text-xs font-bold cursor-pointer"
+              >
+                {contribBusy ? "Verifying embed & transcript…" : "Verify & Add Clip"}
+              </button>
+            </div>
+          </form>
+        ) : null}
+      </div>
     </section>
   );
 }
