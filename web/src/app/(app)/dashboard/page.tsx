@@ -465,15 +465,23 @@ export default function DashboardPage() {
               <div>
                 <h2 className="text-sm font-bold text-ink">Daily Learning Session</h2>
                 <p className="text-xs text-muted">
-                  4-stage flow: Understanding → Real Videos → Your Sentence → Spaced Review
+                  Strict sequential learning for new words, separate spaced review for due words
                 </p>
               </div>
-              <Link
-                href="/practice?mode=daily"
-                className="btn btn-primary min-h-9 px-4 py-1.5 text-xs font-bold shrink-0"
-              >
-                Start daily session
-              </Link>
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <Link
+                  href="/practice?mode=learn"
+                  className="btn btn-primary min-h-9 px-4 py-1.5 text-xs font-bold shrink-0"
+                >
+                  Learn new words
+                </Link>
+                <Link
+                  href="/practice?mode=review"
+                  className="btn min-h-9 px-3.5 py-1.5 text-xs font-semibold shrink-0"
+                >
+                  Spaced review ({dueCount})
+                </Link>
+              </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -577,7 +585,7 @@ export default function DashboardPage() {
                 </p>
               </div>
               <Link
-                href="/practice?mode=new"
+                href="/practice?mode=learn"
                 className="btn min-h-8 px-3 py-1 text-xs font-semibold"
               >
                 Learn new words

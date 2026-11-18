@@ -7,6 +7,7 @@ import {
   WORD_COLUMNS,
   WORD_COLUMNS_LEGACY,
   WORD_COLUMNS_V2,
+  WORD_COLUMNS_V3,
   statsSchema,
   wordsSchema,
   type Stats,
@@ -76,13 +77,23 @@ export function normalizeWordPair(w: {
 
 export async function fetchWords(): Promise<Word[]> {
   const supabase = getSupabase();
-  const v2 = await supabase
+  const v3 = await supabase
     .from("words")
-    .select(WORD_COLUMNS_V2)
+    .select(WORD_COLUMNS_V3)
     .order("created_at", { ascending: false });
 
-  let rows: unknown = v2.data;
-  let error = v2.error;
+  let rows: unknown = v3.data;
+  let error = v3.error;
+
+  // Fallback gracefully if migration 011 hasn't been applied yet
+  if (error && /column|does not exist|schema cache/i.test(error.message)) {
+    const v2 = await supabase
+      .from("words")
+      .select(WORD_COLUMNS_V2)
+      .order("created_at", { ascending: false });
+    rows = v2.data;
+    error = v2.error;
+  }
 
   // Fallback gracefully if migration 010 hasn't been applied yet
   if (error && /column|does not exist|schema cache/i.test(error.message)) {

@@ -116,7 +116,7 @@ function PracticeLoader() {
             words={SAMPLE_WORDS}
             newLimit={4}
             reviewLimit={0}
-            mode="new"
+            mode="learn"
             onReload={() => setTrySampleSession(false)}
           />
         </div>
@@ -235,15 +235,16 @@ function PracticeLoader() {
     );
   }
 
-  const sessionMode: "daily" | "new" | "review" | "missed" =
-    urlMode === "new" || urlMode === "review" || urlMode === "missed" ? urlMode : "daily";
+  const sessionMode: "learn" | "review" | "missed" =
+    urlMode === "review" || urlMode === "missed" ? urlMode : "learn";
 
   return (
     <InteractiveLearningSession
-      key={`learn-${sessionMode}-${urlIds || ""}-${selectedLang || ""}-${dailyNewLimit}-${dailyReviewLimit}`}
+      key={`learn-${sessionMode}-${urlIds || ""}-${selectedLang || "all"}-${dailyNewLimit}-${dailyReviewLimit}`}
       words={filteredWords}
       newLimit={dailyNewLimit}
       reviewLimit={dailyReviewLimit}
+      langFilter={selectedLang || "all"}
       mode={sessionMode}
       onReload={reload}
     />
