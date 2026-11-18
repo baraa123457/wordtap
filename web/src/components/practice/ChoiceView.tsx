@@ -236,25 +236,37 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
       <div role="radiogroup" aria-label="Answers" className="grid gap-3 sm:grid-cols-2">
         {q.options.map((option, i) => (
           <div key={option} className="group relative flex items-stretch min-w-0">
-            <button
-              type="button"
+            <div
               role="radio"
+              tabIndex={locked ? -1 : 0}
               aria-checked={option === selected}
-              className={`option flex-1 min-w-0 flex items-center justify-between ${canSpeak() ? "pr-11" : ""}`}
+              aria-disabled={locked || undefined}
+              className={`option flex-1 min-w-0 flex items-center justify-between select-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-subtitle ${
+                canSpeak() ? "pr-11" : ""
+              } ${locked ? "cursor-text" : "cursor-pointer"}`}
               data-state={stateOf(option)}
               data-flash={locked && option === selected && option !== q.answer}
-              disabled={locked}
-              onClick={() => handleSelect(option)}
+              onClick={() => {
+                if (locked) return;
+                if (typeof window !== "undefined" && window.getSelection()?.toString().trim()) return;
+                handleSelect(option);
+              }}
+              onKeyDown={(e) => {
+                if (!locked && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  handleSelect(option);
+                }
+              }}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <span className="kbd shrink-0" aria-hidden>
                   {i + 1}
                 </span>
-                <span dir="auto" className="min-w-0 break-words text-start">
+                <span dir="auto" className="min-w-0 break-words text-start select-text">
                   {option}
                 </span>
               </div>
-            </button>
+            </div>
 
             {canSpeak() ? (
               <button

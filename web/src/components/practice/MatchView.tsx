@@ -142,38 +142,70 @@ export function MatchView({ q, onComplete, onDeleteWord }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-2 sm:gap-6 p-3 sm:p-6">
           <div className="grid content-start gap-2 sm:gap-3 min-w-0">
-            {left.map((id) => (
-              <button
-                key={id}
-                type="button"
-                className="option w-full min-w-0 text-xs sm:text-base p-2.5 sm:p-4 min-h-[3rem] sm:min-h-[3.5rem] justify-center text-center"
-                data-state={stateOf(id, "left")}
-                data-flash={flash?.left === id}
-                disabled={matched.has(id)}
-                onClick={() => chooseLeft(id)}
-              >
-                <span dir="auto" className="min-w-0 break-words font-medium">
-                  {pair(id)?.word}
-                </span>
-              </button>
-            ))}
+            {left.map((id) => {
+              const isMatched = matched.has(id);
+              return (
+                <div
+                  key={id}
+                  role="button"
+                  tabIndex={isMatched ? -1 : 0}
+                  aria-disabled={isMatched || undefined}
+                  className={`option w-full min-w-0 text-xs sm:text-base p-2.5 sm:p-4 min-h-[3rem] sm:min-h-[3.5rem] justify-center text-center select-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-subtitle ${
+                    isMatched ? "cursor-text" : "cursor-pointer"
+                  }`}
+                  data-state={stateOf(id, "left")}
+                  data-flash={flash?.left === id}
+                  onClick={() => {
+                    if (isMatched) return;
+                    if (typeof window !== "undefined" && window.getSelection()?.toString().trim()) return;
+                    chooseLeft(id);
+                  }}
+                  onKeyDown={(e) => {
+                    if (!isMatched && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      chooseLeft(id);
+                    }
+                  }}
+                >
+                  <span dir="auto" className="min-w-0 break-words font-medium select-text">
+                    {pair(id)?.word}
+                  </span>
+                </div>
+              );
+            })}
           </div>
           <div className="grid content-start gap-2 sm:gap-3 min-w-0">
-            {right.map((id) => (
-              <button
-                key={id}
-                type="button"
-                className="option w-full min-w-0 text-xs sm:text-base p-2.5 sm:p-4 min-h-[3rem] sm:min-h-[3.5rem] justify-center text-center"
-                data-state={stateOf(id, "right")}
-                data-flash={flash?.right === id}
-                disabled={matched.has(id)}
-                onClick={() => chooseRight(id)}
-              >
-                <span dir="auto" className="min-w-0 break-words font-medium">
-                  {pair(id)?.translation}
-                </span>
-              </button>
-            ))}
+            {right.map((id) => {
+              const isMatched = matched.has(id);
+              return (
+                <div
+                  key={id}
+                  role="button"
+                  tabIndex={isMatched ? -1 : 0}
+                  aria-disabled={isMatched || undefined}
+                  className={`option w-full min-w-0 text-xs sm:text-base p-2.5 sm:p-4 min-h-[3rem] sm:min-h-[3.5rem] justify-center text-center select-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-subtitle ${
+                    isMatched ? "cursor-text" : "cursor-pointer"
+                  }`}
+                  data-state={stateOf(id, "right")}
+                  data-flash={flash?.right === id}
+                  onClick={() => {
+                    if (isMatched) return;
+                    if (typeof window !== "undefined" && window.getSelection()?.toString().trim()) return;
+                    chooseRight(id);
+                  }}
+                  onKeyDown={(e) => {
+                    if (!isMatched && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      chooseRight(id);
+                    }
+                  }}
+                >
+                  <span dir="auto" className="min-w-0 break-words font-medium select-text">
+                    {pair(id)?.translation}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

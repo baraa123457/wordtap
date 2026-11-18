@@ -185,24 +185,36 @@ export function Stage1Understanding({
           }
 
           return (
-            <button
+            <div
               key={opt.id}
-              type="button"
               role="radio"
+              tabIndex={status === "correct" ? -1 : 0}
               aria-checked={isSelected}
-              disabled={status === "correct"}
-              onClick={() => handleSelect(opt.id)}
-              className={`flex items-start gap-3.5 rounded-2xl border p-3.5 sm:p-4 text-start transition-all cursor-pointer disabled:cursor-default ${cardStyle}`}
+              aria-disabled={status === "correct" || undefined}
+              onClick={() => {
+                if (status === "correct") return;
+                if (typeof window !== "undefined" && window.getSelection()?.toString().trim()) return;
+                handleSelect(opt.id);
+              }}
+              onKeyDown={(e) => {
+                if (status !== "correct" && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  handleSelect(opt.id);
+                }
+              }}
+              className={`flex items-start gap-3.5 rounded-2xl border p-3.5 sm:p-4 text-start transition-all select-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-subtitle ${
+                status === "correct" ? "cursor-text" : "cursor-pointer"
+              } ${cardStyle}`}
             >
               <span
                 className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${badgeStyle}`}
               >
                 {opt.id}
               </span>
-              <span className="text-sm sm:text-base font-medium leading-snug text-ink pt-0.5 break-words min-w-0">
+              <span className="text-sm sm:text-base font-medium leading-snug text-ink pt-0.5 break-words min-w-0 select-text">
                 {opt.text}
               </span>
-            </button>
+            </div>
           );
         })}
       </div>

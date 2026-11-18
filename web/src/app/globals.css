@@ -120,11 +120,23 @@ html {
   background: var(--bg);
   color: var(--ink);
   overflow-x: clip;
+  -webkit-user-select: text;
+  user-select: text;
   /* Safe area variables */
   --sat: env(safe-area-inset-top, 0px);
   --sar: env(safe-area-inset-right, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
+}
+
+/* Allow highlighting/selecting any text across the site (including buttons & cards) for browser extensions */
+button,
+[role="button"],
+[role="radio"],
+.btn,
+.option {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 body {
@@ -499,11 +511,11 @@ bdi {
                 box-shadow 140ms ease;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   }
-  .option:hover:not(:disabled) {
+  .option:hover:not(:disabled):not([aria-disabled="true"]) {
     border-color: var(--subtitle-edge);
     background: color-mix(in srgb, var(--surface) 94%, var(--subtitle));
   }
-  .option:active:not(:disabled) {
+  .option:active:not(:disabled):not([aria-disabled="true"]) {
     transform: scale(0.99);
   }
   .option[data-state="selected"] {

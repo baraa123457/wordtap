@@ -359,7 +359,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => toggleQuestionType("choice")}
-              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-text ${
                 isChoiceActive
                   ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
                   : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
@@ -394,7 +394,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => toggleQuestionType("typing")}
-              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-text ${
                 isTypingActive
                   ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
                   : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
@@ -428,7 +428,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => toggleQuestionType("dictation")}
-              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-text ${
                 isDictationMode
                   ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
                   : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
@@ -529,7 +529,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => update({ translationProvider: "google" })}
-              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-text ${
                 (settings.translationProvider || "google") === "google"
                   ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
                   : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
@@ -561,7 +561,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => update({ translationProvider: "udictionary" })}
-              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-text ${
                 settings.translationProvider === "udictionary"
                   ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
                   : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
@@ -605,7 +605,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => update({ translateSaveMode: "manual" })}
-              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-text ${
                 (settings.translateSaveMode || "manual") === "manual"
                   ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
                   : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
@@ -641,7 +641,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => update({ translateSaveMode: "subtitles_only" })}
-              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-text ${
                 settings.translateSaveMode === "subtitles_only"
                   ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
                   : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
@@ -677,7 +677,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => update({ translateSaveMode: "auto" })}
-              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-text ${
                 settings.translateSaveMode === "auto"
                   ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
                   : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
@@ -723,7 +723,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => update({ selectionMode: "immediate" })}
-              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-text ${
                 (settings.selectionMode || "immediate") === "immediate"
                   ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
                   : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
@@ -757,7 +757,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => update({ selectionMode: "icon" })}
-              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-text ${
                 settings.selectionMode === "icon"
                   ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
                   : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
@@ -793,7 +793,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => update({ selectionMode: "alt" })}
-              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-none ${
+              className={`flex items-start gap-3.5 p-4 rounded-2xl border text-start transition-all cursor-pointer select-text ${
                 settings.selectionMode === "alt"
                   ? "border-subtitle bg-subtitle/10 text-ink ring-2 ring-subtitle shadow-xs"
                   : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
