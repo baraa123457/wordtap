@@ -515,7 +515,7 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
         fetch(
           `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(
             fileParam,
-          )}&prop=imageinfo&iiprop=url|mime|duration|size|extmetadata&format=json&formatversion=2`,
+          )}&prop=imageinfo&iiprop=url|mime|duration|size|dimensions|extmetadata&format=json&formatversion=2`,
           {
             headers: { "User-Agent": WIKIMEDIA_USER_AGENT },
             signal: AbortSignal.timeout(8000),
@@ -545,6 +545,8 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
               mime?: string;
               duration?: number;
               size?: number;
+              width?: number;
+              height?: number;
               extmetadata?: {
                 LicenseShortName?: { value?: string };
                 Artist?: { value?: string };
@@ -570,6 +572,8 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
           mime: string;
           duration: number;
           size: number;
+          width: number;
+          height: number;
           license: string;
           artist: string;
         }
@@ -597,6 +601,8 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
           mime,
           duration: Number(info.duration) || 0,
           size: Number(info.size) || 0,
+          width: Number(info.width) || 0,
+          height: Number(info.height) || 0,
           license,
           artist,
         });
@@ -621,8 +627,12 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
         });
         if (!match) continue;
 
-        // Slight quality boost for concise, clear clips (< 150MB)
+        // Prefer modern 16:9 widescreen clips & concise file sizes
         const sizeBonus = fileInfo.size > 0 && fileInfo.size < 150_000_000 ? 6 : 0;
+        const widescreenBonus =
+          fileInfo.width >= 640 && fileInfo.height > 0 && fileInfo.width / fileInfo.height >= 1.5
+            ? 8
+            : 0;
         const videoKey = makeWikimediaVideoKey(pair.fileTitle);
         const channelLabel = fileInfo.artist
           ? `${fileInfo.artist} · Wikimedia Commons (${fileInfo.license})`
@@ -648,7 +658,7 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
           transcriptVerified: true,
           captionAvailable: true,
           videoAvailable: true,
-          qualityScore: match.qualityScore + sizeBonus,
+          qualityScore: match.qualityScore + sizeBonus + widescreenBonus,
           discoveredAt: nowIso,
         });
       }

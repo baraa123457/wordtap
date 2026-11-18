@@ -170,6 +170,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
     const [ready, setReady] = useState(false);
     const [playing, setPlaying] = useState(false);
     const [embedError, setEmbedError] = useState<string | null>(null);
+    const [nativeRatio, setNativeRatio] = useState<number | null>(null);
 
     const isDirectVideo = clip.mediaType === "direct_video";
 
@@ -287,6 +288,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
     useEffect(() => {
       if (!isDirectVideo) return;
       setEmbedError(null);
+      setNativeRatio(null);
       notifyReady(false);
       notifyPlaying(false);
       onTimeUpdate?.(clip.timestampSeconds);
@@ -449,12 +451,29 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
       return () => window.removeEventListener("keydown", onKeyDown);
     }, [ready, embedError, togglePlayInternal, replayInternal, rewindInternal]);
 
+    const containerStyle =
+      isDirectVideo && nativeRatio
+        ? {
+            aspectRatio: `${nativeRatio}`,
+            maxWidth: `min(100%, ${Math.round(440 * nativeRatio)}px)`,
+          }
+        : undefined;
+
+    const sourceLabel = formatSourceLabel(clip.source);
+    const channelText = clip.channelName || "Video";
+    const showSeparateSource =
+      !channelText.toLowerCase().includes("wikimedia commons") ||
+      clip.source !== "wikimedia_commons";
+
     return (
-      <div className="grid gap-2.5 min-w-0">
-        {/* Responsive 16:9 Custom WordTap Video Container */}
+      <div className="grid gap-2.5 min-w-0 w-full">
+        {/* Responsive Exact-Aspect-Ratio Custom WordTap Video Container */}
         <div
           data-testid="wordtab-video-player"
-          className="relative aspect-video w-full overflow-hidden rounded-2xl border border-line bg-black shadow-md"
+          style={containerStyle}
+          className={`relative mx-auto w-full overflow-hidden rounded-2xl border border-line bg-black shadow-md ${
+            containerStyle ? "" : "aspect-video"
+          }`}
         >
           {embedError ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center text-white/90">
@@ -502,6 +521,9 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                 onClick={togglePlayInternal}
                 onLoadedMetadata={(e) => {
                   const v = e.currentTarget;
+                  if (v.videoWidth > 0 && v.videoHeight > 0) {
+                    setNativeRatio(v.videoWidth / v.videoHeight);
+                  }
                   v.playbackRate = speedRef.current;
                   if (clipRef.current.timestampSeconds > 0 && v.duration > clipRef.current.timestampSeconds) {
                     v.currentTime = clipRef.current.timestampSeconds;
@@ -518,7 +540,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                   setEmbedError("This video stream could not be loaded.");
                   onUnavailable?.(clipRef.current);
                 }}
-                className="h-full w-full object-contain bg-black cursor-pointer"
+                className="block h-full w-full object-cover bg-black cursor-pointer"
               />
             </>
           ) : (
@@ -543,16 +565,17 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
         </div>
 
         {/* Video Metadata Strip */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-0.5 text-xs text-muted">
-          <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-0.5 text-xs text-muted min-w-0 w-full">
+          <div className="min-w-0 flex-1 basis-48">
             <p className="truncate font-semibold text-ink">{clip.videoTitle}</p>
             <p className="truncate text-[11px] text-muted">
-              {clip.channelName || "Video"} · {formatSourceLabel(clip.source)} · Clip starts at{" "}
+              {channelText}
+              {showSeparateSource ? ` · ${sourceLabel}` : ""} · Starts at{" "}
               {formatClipTime(clip.timestampSeconds)}
             </p>
           </div>
           <span className="shrink-0 rounded-full bg-ok/10 border border-ok/25 px-2.5 py-0.5 text-[11px] font-semibold text-ok">
-            ✓ Verified transcript
+            ✓ Verified
           </span>
         </div>
       </div>
