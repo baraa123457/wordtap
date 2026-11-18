@@ -104,4 +104,22 @@ describe("Grammar & Determiner Checker", () => {
     const withVerb = detectFragmentIssue("i studied a large portion of the lesson");
     expect(withVerb).toBeNull();
   });
+
+  it("accepts 'I accumulated a lot of English vocabulary last Thursday' as a 100% valid sentence", () => {
+    const fragment = detectFragmentIssue(
+      "I accumulated a lot of English vocabulary last Thursday",
+      "accumulated",
+      "Verb · فعل",
+    );
+    expect(fragment).toBeNull();
+
+    const result = evaluateGrammarLocally({
+      sentence: "I accumulated a lot of English vocabulary last Thursday",
+      word: "accumulated",
+      partOfSpeech: "Verb · فعل",
+    });
+    expect(result.hasStructuralErrors).toBe(false);
+    expect(result.scorePenalty).toBe(0);
+    expect(result.grammarCorrections).toHaveLength(0);
+  });
 });

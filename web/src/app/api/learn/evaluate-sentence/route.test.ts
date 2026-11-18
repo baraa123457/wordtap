@@ -64,4 +64,24 @@ describe("POST /api/learn/evaluate-sentence", () => {
     expect(data.grammarScore).toBe(100);
     expect(data.grammarCorrections).toHaveLength(0);
   });
+
+  it("accepts 'I accumulated a lot of English vocabulary last Thursday' with 100/100", async () => {
+    const req = new Request("http://localhost:3000/api/learn/evaluate-sentence", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        word: "accumulated",
+        sentence: "I accumulated a lot of English vocabulary last Thursday",
+        partOfSpeech: "Verb · فعل",
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+
+    expect(data.isCorrect).toBe(true);
+    expect(data.grammarScore).toBe(100);
+    expect(data.grammarCorrections).toHaveLength(0);
+  });
 });

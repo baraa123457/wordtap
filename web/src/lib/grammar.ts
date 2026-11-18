@@ -358,6 +358,15 @@ export const IDIOMATIC_BARE_PATTERNS = [
 const SCAN_STOPPER_RE =
   /^(will|shall|can|could|would|should|may|might|must|study|eat|read|write|have|has|had|take|took|make|made|is|are|was|were|see|saw|of|in|on|at|from|to|with|for|about|into|onto|through|without|by|because|and|or|but|if|that|when|while|since|although)$/i;
 
+const AUX_AND_MODALS_RE =
+  /\b(is|are|was|were|am|be|been|being|have|has|had|having|do|does|did|done|will|would|shall|should|can|could|may|might|must|wanna|gonna|gotta)\b/i;
+
+const PRONOUN_SUBJECT_RE =
+  /\b(i|you|he|she|we|they|it)\s+(?:(?:really|always|never|often|usually|already|just|probably|definitely|gladly|hardly|simply)\s+)?([a-z]+)\b/i;
+
+const VERB_INFLECTION_RE =
+  /\b[a-z]{3,}(?:ed|ing|ize|ized|izes|ate|ated|ates|ify|ified|ifies)\b/i;
+
 const COMMON_VERB_RE =
   /\b(is|are|was|were|am|be|been|being|have|has|had|having|do|does|did|done|will|would|shall|should|can|could|may|might|must|study|studied|studies|studying|learn|learned|learns|learning|read|reads|reading|write|wrote|written|writing|eat|ate|eaten|eating|take|took|taken|taking|make|made|makes|making|give|gave|given|giving|see|saw|seen|seeing|look|looked|looks|looking|watch|watched|watches|watching|go|went|gone|going|goes|come|came|comes|coming|get|got|gotten|getting|gets|put|puts|tell|told|tells|telling|ask|asked|asks|asking|work|worked|works|working|feel|felt|feels|feeling|try|tried|tries|trying|use|used|uses|using|find|found|finds|finding|know|knew|known|knows|knowing|think|thought|thinks|thinking|need|needed|needs|needing|want|wanted|wants|wanting|wanna|gonna|gotta|help|helped|helps|helping|buy|bought|buys|buying|play|played|plays|playing|run|ran|runs|running|walk|walked|walks|walking|speak|spoke|spoken|speaks|speaking|talk|talked|talks|talking|show|showed|shown|shows|showing|call|called|calls|calling|keep|kept|keeps|keeping|leave|left|leaves|leaving|bring|brought|brings|bringing|begin|began|begun|begins|beginning|start|started|starts|starting|stand|stood|stands|standing|hear|heard|hears|hearing|let|lets|letting|mean|meant|means|meaning|set|sets|setting|meet|met|meets|meeting|pay|paid|pays|paying|sit|sat|sits|sitting|grow|grew|grown|grows|growing|lose|lost|loses|losing|fall|fell|fallen|falls|falling|send|sent|sends|sending|build|built|builds|building|understand|understood|understands|understanding|draw|drew|drawn|draws|drawing|break|broke|broken|breaks|breaking|spend|spent|spends|spending|cut|cuts|cutting|rise|rose|risen|rises|rising|drive|drove|driven|drives|driving|wear|wore|worn|wears|wearing|choose|chose|chosen|chooses|choosing|eliminate|eliminated|eliminates|eliminating|contain|contained|contains|containing|include|included|includes|including|provide|provided|provides|providing|require|required|requires|requiring|reduce|reduced|reduces|reducing|increase|increased|increases|increasing|improve|improved|improves|improving)\b/i;
 
@@ -512,16 +521,39 @@ export function buildNaturalAlternative(sentence: string, issues: DeterminerIssu
   return result;
 }
 
-export function detectFragmentIssue(sentence: string): string | null {
+export function detectFragmentIssue(
+  sentence: string,
+  targetWord?: string,
+  partOfSpeech?: string,
+): string | null {
   const clean = sentence.replace(/\s+/g, " ").trim();
   const tokens = clean.split(/\s+/).filter(Boolean);
   if (tokens.length < 3) return null;
 
-  // If sentence has no finite verb, auxiliary, or modal, it is likely a fragment
-  if (!COMMON_VERB_RE.test(clean)) {
-    return 'Your sentence appears to be missing a main verb (action or linking verb, such as "is", "was", or "studied").';
+  // 1. If target word is practiced as a verb or appears in verb form in the sentence
+  const isPosVerb = Boolean(partOfSpeech && /verb/i.test(partOfSpeech));
+  if (isPosVerb && targetWord) {
+    const targetClean = targetWord.toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+    if (targetClean.length > 0) {
+      const targetReg = new RegExp(`\\b${targetClean}(?:ed|ing|s|es)?\\b`, "i");
+      if (targetReg.test(clean)) return null;
+    }
   }
-  return null;
+
+  // 2. Auxiliary, modal, or copula
+  if (AUX_AND_MODALS_RE.test(clean)) return null;
+
+  // 3. Subject pronoun followed by action word (e.g. "I accumulated", "they study")
+  if (PRONOUN_SUBJECT_RE.test(clean)) return null;
+
+  // 4. Regular verb inflections (-ed, -ing, -ize, -ate, -ify)
+  if (VERB_INFLECTION_RE.test(clean)) return null;
+
+  // 5. Common verbs list
+  if (COMMON_VERB_RE.test(clean)) return null;
+
+  // If none of the above are present, it is a noun phrase fragment (e.g. "a large portion of the lesson")
+  return 'Your sentence appears to be missing a main verb (action or linking verb, such as "is", "was", or "studied").';
 }
 
 export function evaluateGrammarLocally(params: {
@@ -531,7 +563,7 @@ export function evaluateGrammarLocally(params: {
 }): LocalGrammarResult {
   const { sentence, word, partOfSpeech } = params;
   const determinerIssues = detectDeterminerIssues(sentence, word, partOfSpeech);
-  const fragmentIssue = detectFragmentIssue(sentence);
+  const fragmentIssue = detectFragmentIssue(sentence, word, partOfSpeech);
 
   const grammarCorrections: string[] = [];
   let scorePenalty = 0;
