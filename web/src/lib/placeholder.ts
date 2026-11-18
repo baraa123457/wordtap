@@ -108,6 +108,93 @@ export function validateMissingWordAnswer(
   return input === normalize(hiddenWord) || input === normalize(canonicalWord);
 }
 
+export type ParsedYouGlishCaption = {
+  plainSentence: string;
+  masked: MaskedSentence | null;
+  hasExplicitMarker: boolean;
+};
+
+/**
+ * Safely decodes a raw caption string returned by YouGlish's official onCaptionChange(event) callback.
+ * Handles URL-encoding (e.g. %20, +, %5B%5B%5B...%5D%5D%5D), HTML entities, and extra whitespace.
+ */
+export function decodeYouGlishCaptionText(rawCaption: string): string {
+  let decoded = rawCaption;
+  try {
+    decoded = decodeURIComponent(rawCaption.replace(/\+/g, " "));
+  } catch {
+    decoded = rawCaption.replace(/\+/g, " ");
+  }
+
+  return decoded
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Parses an official YouGlish onCaptionChange caption string where the target word is delimited
+ * with triple square brackets: [[[target word]]].
+ *
+ * Example:
+ *   "On now-[[[crowded]]] commuter trains, a frequent conversation topic..."
+ *   -> hiddenWord: "crowded", placeholder: ".......", letterCount: 7
+ *
+ * Never fabricates a sentence or match. Returns masked: null if the target word is not present.
+ */
+export function parseYouGlishCaption(
+  rawCaption: string,
+  targetWord?: string,
+): ParsedYouGlishCaption {
+  const decoded = decodeYouGlishCaptionText(rawCaption);
+  if (!decoded) {
+    return { plainSentence: "", masked: null, hasExplicitMarker: false };
+  }
+
+  const markerMatch = /\[\[\[([\s\S]+?)\]\]\]/.exec(decoded);
+  if (markerMatch && markerMatch.index !== undefined) {
+    const rawMarked = markerMatch[1]!.trim();
+    const before = decoded.slice(0, markerMatch.index).replace(/\[\[\[|\]\]\]/g, "");
+    const after = decoded
+      .slice(markerMatch.index + markerMatch[0].length)
+      .replace(/\[\[\[|\]\]\]/g, "");
+    const plainSentence = `${before}${rawMarked}${after}`.replace(/\s+/g, " ").trim();
+
+    if (rawMarked) {
+      const placeholder = buildExactDotPlaceholder(rawMarked);
+      const letterCount = Array.from(placeholder).filter((c) => c === ".").length;
+      if (letterCount > 0) {
+        return {
+          plainSentence,
+          hasExplicitMarker: true,
+          masked: {
+            before,
+            hiddenWord: rawMarked,
+            placeholder,
+            after,
+            position: before.length,
+            letterCount,
+          },
+        };
+      }
+    }
+  }
+
+  const plainSentence = decoded.replace(/\[\[\[|\]\]\]/g, "").replace(/\s+/g, " ").trim();
+  const fallbackMasked = targetWord ? maskWordInSentence(plainSentence, targetWord) : null;
+  return {
+    plainSentence,
+    masked: fallbackMasked,
+    hasExplicitMarker: false,
+  };
+}
+
 /**
  * Generates a progressive hint after repeated failed attempts without immediately revealing the full word.
  *  - attempts < 2: no letters revealed (pure dots)

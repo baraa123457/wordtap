@@ -297,6 +297,7 @@ function SequentialInitialLearningSession({
       partOfSpeech?: string;
       userSentence?: string;
       usedVideo?: boolean;
+      stageAttempts?: number;
     },
   ) => {
     if (lockRef.current) return;
@@ -486,7 +487,7 @@ function SequentialInitialLearningSession({
                 res.typedAnswer,
                 res.passedFirstTry,
                 res.passedFirstTry ? 15 : 8,
-                { usedVideo: res.usedVideo },
+                { usedVideo: res.usedVideo, stageAttempts: res.attempts },
               )
             }
           />

@@ -3,6 +3,7 @@ import {
   buildExactDotPlaceholder,
   buildProgressiveHint,
   maskWordInSentence,
+  parseYouGlishCaption,
   validateMissingWordAnswer,
 } from "./placeholder";
 
@@ -48,5 +49,46 @@ describe("Stage 2 exact 1-dot-per-character placeholder rule", () => {
     expect(buildProgressiveHint("reluctant", 1)).toBeNull();
     expect(buildProgressiveHint("reluctant", 2)).toBe("r........");
     expect(buildProgressiveHint("reluctant", 3)).toBe("r.......t");
+  });
+
+  it("parses official YouGlish [[[target word]]] markers accurately", () => {
+    const raw =
+      "On%20now-%5B%5B%5Bcrowded%5D%5D%5D%20commuter%20trains%2C%20a%20frequent%20conversation%20topic%20is%20where%20to%20find%20the%20cheapest%20gas.";
+    const parsed = parseYouGlishCaption(raw, "crowded");
+    expect(parsed.hasExplicitMarker).toBe(true);
+    expect(parsed.plainSentence).toBe(
+      "On now-crowded commuter trains, a frequent conversation topic is where to find the cheapest gas.",
+    );
+    expect(parsed.masked?.before).toBe("On now-");
+    expect(parsed.masked?.hiddenWord).toBe("crowded");
+    expect(parsed.masked?.placeholder).toBe(".......");
+    expect(parsed.masked?.letterCount).toBe(7);
+    expect(parsed.masked?.after).toBe(
+      " commuter trains, a frequent conversation topic is where to find the cheapest gas.",
+    );
+  });
+
+  it("verifies exact dot counts for all mandatory Stage 2 test words", () => {
+    const cases: Array<[string, number]> = [
+      ["crowded", 7],
+      ["reluctant", 9],
+      ["embarrassed", 11],
+      ["exhausted", 9],
+      ["probably", 8],
+    ];
+    for (const [word, expectedLen] of cases) {
+      const parsed = parseYouGlishCaption(`People often feel [[[${word}]]] during busy days.`, word);
+      expect(parsed.hasExplicitMarker).toBe(true);
+      expect(parsed.masked?.hiddenWord).toBe(word);
+      expect(parsed.masked?.letterCount).toBe(expectedLen);
+      expect(parsed.masked?.placeholder).toBe(".".repeat(expectedLen));
+    }
+  });
+
+  it("returns masked: null when a YouGlish caption does not contain the target word", () => {
+    const parsed = parseYouGlishCaption("Welcome back to today's episode everyone.", "crowded");
+    expect(parsed.hasExplicitMarker).toBe(false);
+    expect(parsed.masked).toBeNull();
+    expect(parsed.plainSentence).toBe("Welcome back to today's episode everyone.");
   });
 });

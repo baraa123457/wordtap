@@ -15,6 +15,7 @@ export type WordStagePayload = {
   partOfSpeech?: string;
   userSentence?: string;
   usedVideo?: boolean;
+  stageAttempts?: number;
 };
 
 export type WordStageProgress = {
@@ -551,7 +552,7 @@ export function transitionAdvanceStage(
     ...prevProg,
     currentStage: nextStage,
     completedStages: mergedStages,
-    attempts: prevProg.attempts + 1,
+    attempts: prevProg.attempts + Math.max(1, params.payload?.stageAttempts ?? 1),
     answers: {
       ...prevProg.answers,
       [params.completedStage]: {

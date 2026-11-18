@@ -1,22 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Word } from "@/lib/schemas";
 import {
-  contributeVerifiedVideo,
-  fetchVerifiedVideos,
-  type FallbackContextItem,
-  type VerifiedVideoClip,
-  type VideoDiscoveryResponse,
-} from "@/lib/learn-api";
-import {
   buildProgressiveHint,
-  maskWordInSentence,
+  parseYouGlishCaption,
   validateMissingWordAnswer,
+  type MaskedSentence,
 } from "@/lib/placeholder";
-import { canSpeak, speak } from "@/lib/speech";
-import { SpeakerIcon } from "@/components/Icons";
-import { YouTubeClipPlayer } from "./YouTubeClipPlayer";
+import {
+  mapWordLangToYouGlish,
+  readYouGlishCookieConsent,
+  writeYouGlishCookieConsent,
+  YOUGLISH_WIDGET_ENABLED,
+  YouGlishWidget,
+  type YouGlishCaptionChangeEvent,
+  type YouGlishErrorCode,
+  type YouGlishFetchEvent,
+  type YouGlishVideoChangeEvent,
+  type YouGlishWidgetHandle,
+} from "./YouGlishWidget";
+
+type LockedCaptionExercise = {
+  captionId: number;
+  plainSentence: string;
+  masked: MaskedSentence;
+  hasExplicitMarker: boolean;
+};
 
 export function Stage2ContextualVideo({
   word,
@@ -27,495 +37,665 @@ export function Stage2ContextualVideo({
     passedFirstTry: boolean;
     typedAnswer: string;
     usedVideo: boolean;
+    attempts: number;
   }) => void;
 }) {
-  const [discovery, setDiscovery] = useState<VideoDiscoveryResponse | null>(null);
-  const [clips, setClips] = useState<VerifiedVideoClip[]>([]);
-  const [clipIndex, setClipIndex] = useState(0);
-  const [fallbackIndex, setFallbackIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Missing-word exercise state
-  const [answer, setAnswer] = useState("");
-  const [attempts, setAttempts] = useState(0);
-  const [exerciseState, setExerciseState] = useState<"answering" | "wrong" | "correct">("answering");
-  const [completedAnyClip, setCompletedAnyClip] = useState(false);
-  const [firstTryPassed, setFirstTryPassed] = useState(true);
-
-  // Supplementary user-contributed YouTube clip verification form
-  const [showAddClip, setShowAddClip] = useState(false);
-  const [contribUrl, setContribUrl] = useState("");
-  const [contribTime, setContribTime] = useState("0");
-  const [contribTranscript, setContribTranscript] = useState("");
-  const [contribBusy, setContribBusy] = useState(false);
-  const [contribError, setContribError] = useState<string | null>(null);
-
+  const widgetRef = useRef<YouGlishWidgetHandle>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const query = word.text.trim();
+  const ygLang = useMemo(() => mapWordLangToYouGlish(word.src_lang), [word.src_lang]);
+
+  // Cookie consent state (respects third-party YouGlish/YouTube embed cookie preferences)
+  const [cookieConsent, setCookieConsent] = useState<"granted" | "denied" | "prompt">("granted");
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(null);
-    setClipIndex(0);
-    setFallbackIndex(0);
+    setCookieConsent(readYouGlishCookieConsent());
+  }, []);
+
+  // Official YouGlish Widget state (synchronized strictly from widget events)
+  const [reloadNonce, setReloadNonce] = useState(0);
+  const [fetchInfo, setFetchInfo] = useState<YouGlishFetchEvent | null>(null);
+  const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
+  const [trackNumber, setTrackNumber] = useState<number>(0);
+  const [playerReady, setPlayerReady] = useState(false);
+  const [playerState, setPlayerState] = useState<number>(-1);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
+  const [widgetError, setWidgetError] = useState<{
+    code: YouGlishErrorCode;
+    message: string;
+  } | null>(null);
+
+  // Actual YouGlish captions received via onCaptionChange
+  const [livePlainCaption, setLivePlainCaption] = useState<string>("");
+  const [exerciseCaption, setExerciseCaption] = useState<LockedCaptionExercise | null>(null);
+
+  // Interactive missing-word exercise state
+  const [answer, setAnswer] = useState("");
+  const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [totalSubmits, setTotalSubmits] = useState(0);
+  const [exerciseState, setExerciseState] = useState<"answering" | "wrong" | "correct">("answering");
+  const [completedAnyExample, setCompletedAnyExample] = useState(false);
+  const [firstTryPassed, setFirstTryPassed] = useState(true);
+
+  // Reset all Stage 2 state cleanly whenever the active vocabulary word changes
+  useEffect(() => {
+    setFetchInfo(null);
+    setCurrentVideoId(null);
+    setTrackNumber(0);
+    setPlayerReady(false);
+    setPlayerState(-1);
+    setPlaybackSpeed(1);
+    setWidgetError(null);
+    setLivePlainCaption("");
+    setExerciseCaption(null);
     setAnswer("");
-    setAttempts(0);
+    setWrongAttempts(0);
+    setTotalSubmits(0);
     setExerciseState("answering");
-    setCompletedAnyClip(false);
+    setCompletedAnyExample(false);
     setFirstTryPassed(true);
+  }, [word.id, query]);
 
-    fetchVerifiedVideos(word)
-      .then((res) => {
-        if (!active) return;
-        setDiscovery(res);
-        setClips(res.videos);
-      })
-      .catch((e) => {
-        if (active) setError(e instanceof Error ? e.message : "Could not load video examples.");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [word]);
-
-  const fallbackList: FallbackContextItem[] = useMemo(() => {
-    if (discovery?.fallbackContexts && discovery.fallbackContexts.length > 0) {
-      return discovery.fallbackContexts;
-    }
-    return discovery?.fallbackContext ? [discovery.fallbackContext] : [];
-  }, [discovery]);
-
-  const activeClip = clips[clipIndex] || null;
-  const activeFallback = !activeClip ? fallbackList[fallbackIndex] || null : null;
-  const activeSentence = activeClip?.contextSentence || activeFallback?.sentence || "";
-
-  const masked = useMemo(
-    () => (activeSentence ? maskWordInSentence(activeSentence, word.text) : null),
-    [activeSentence, word.text],
-  );
-
-  const hint = useMemo(
-    () => (masked ? buildProgressiveHint(masked.hiddenWord, attempts) : null),
-    [masked, attempts],
-  );
-
-  const resetExercise = () => {
+  const resetExerciseForTrack = useCallback(() => {
+    setLivePlainCaption("");
+    setExerciseCaption(null);
     setAnswer("");
-    setAttempts(0);
+    setWrongAttempts(0);
     setExerciseState("answering");
+  }, []);
+
+  const handleFetchDone = useCallback((event: YouGlishFetchEvent) => {
+    setFetchInfo(event);
+    setWidgetError(null);
+    if (event.totalResult > 0) {
+      setTrackNumber((prev) => (prev > 0 ? prev : 1));
+    } else {
+      setTrackNumber(0);
+    }
+  }, []);
+
+  const handleVideoChange = useCallback(
+    (event: YouGlishVideoChangeEvent) => {
+      setCurrentVideoId(event.video || null);
+      setTrackNumber(event.trackNumber);
+      setWidgetError(null);
+      resetExerciseForTrack();
+    },
+    [resetExerciseForTrack],
+  );
+
+  const handleCaptionChange = useCallback(
+    (event: YouGlishCaptionChangeEvent) => {
+      const parsed = parseYouGlishCaption(event.caption, query);
+      if (parsed.plainSentence) {
+        setLivePlainCaption(parsed.plainSentence);
+      }
+      if (!parsed.masked) return;
+
+      setExerciseCaption((prev) => {
+        // Prefer captions where YouGlish explicitly marked [[[target word]]]
+        if (prev && prev.hasExplicitMarker && !parsed.hasExplicitMarker) {
+          return prev;
+        }
+        if (prev && prev.captionId === event.id && prev.plainSentence === parsed.plainSentence) {
+          return prev;
+        }
+        return {
+          captionId: event.id,
+          plainSentence: parsed.plainSentence,
+          masked: parsed.masked!,
+          hasExplicitMarker: parsed.hasExplicitMarker,
+        };
+      });
+    },
+    [query],
+  );
+
+  const handlePlayerReady = useCallback(() => {
+    setPlayerReady(true);
+  }, []);
+
+  const handlePlayerStateChange = useCallback((state: number) => {
+    setPlayerState(state);
+    if (state === 1 || state === 2 || state === 5) {
+      setPlayerReady(true);
+    }
+  }, []);
+
+  const handleSpeedChange = useCallback((speed: number) => {
+    if (Number.isFinite(speed) && speed > 0) {
+      setPlaybackSpeed(speed);
+    }
+  }, []);
+
+  const handleError = useCallback((code: YouGlishErrorCode, message: string) => {
+    setWidgetError({ code, message });
+  }, []);
+
+  const handleRetryWidget = () => {
+    setWidgetError(null);
+    setFetchInfo(null);
+    setTrackNumber(0);
+    setPlayerReady(false);
+    resetExerciseForTrack();
+    setReloadNonce((n) => n + 1);
   };
 
-  const handlePrevClip = () => {
-    if (clips.length <= 1) return;
-    setClipIndex((i) => (i - 1 + clips.length) % clips.length);
-    resetExercise();
+  const handleGrantCookies = () => {
+    writeYouGlishCookieConsent("granted");
+    setCookieConsent("granted");
   };
 
-  const handleNextClip = () => {
-    if (clips.length <= 1) return;
-    setClipIndex((i) => (i + 1) % clips.length);
-    resetExercise();
+  const handleRevokeCookies = () => {
+    writeYouGlishCookieConsent("denied");
+    setCookieConsent("denied");
+    setFetchInfo(null);
+    setTrackNumber(0);
+    setPlayerReady(false);
+    resetExerciseForTrack();
   };
 
-  const handleNextFallback = () => {
-    if (fallbackList.length <= 1) return;
-    setFallbackIndex((i) => (i + 1) % fallbackList.length);
-    resetExercise();
+  const masked = exerciseCaption?.masked ?? null;
+  const hint = useMemo(
+    () => (masked ? buildProgressiveHint(masked.hiddenWord, wrongAttempts) : null),
+    [masked, wrongAttempts],
+  );
+
+  const isPlaying = playerState === 1;
+  const totalResult = fetchInfo?.totalResult ?? 0;
+  const hasFetched = fetchInfo !== null;
+  const noResults = hasFetched && totalResult === 0;
+  const canRenderWidget = YOUGLISH_WIDGET_ENABLED && cookieConsent === "granted";
+
+  const handleTogglePlay = () => {
+    if (isPlaying) {
+      widgetRef.current?.pause();
+    } else {
+      widgetRef.current?.play();
+    }
   };
 
-  const handleUnavailableClip = (clipId: string) => {
-    setClips((prev) => {
-      const next = prev.filter((c) => c.id !== clipId);
-      setClipIndex((idx) => (next.length === 0 ? 0 : idx % next.length));
-      return next;
-    });
+  const handleToggleSpeed = () => {
+    const target = playbackSpeed < 0.9 ? 1 : 0.75;
+    widgetRef.current?.setSpeed(target);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!masked || !answer.trim()) return;
 
+    setTotalSubmits((c) => c + 1);
     const ok = validateMissingWordAnswer(answer, masked.hiddenWord, word.text);
     if (ok) {
       setExerciseState("correct");
-      setCompletedAnyClip(true);
+      setCompletedAnyExample(true);
     } else {
-      setAttempts((a) => a + 1);
+      setWrongAttempts((a) => a + 1);
       setFirstTryPassed(false);
       setExerciseState("wrong");
       inputRef.current?.focus();
     }
   };
 
-  const handleContributeClip = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setContribError(null);
-    setContribBusy(true);
-    try {
-      const seconds = Math.max(0, Math.floor(Number(contribTime) || 0));
-      const newClip = await contributeVerifiedVideo({
-        word: word.text,
-        youtubeUrl: contribUrl,
-        timestampSeconds: seconds,
-        transcript: contribTranscript,
-      });
-      setClips((prev) => [newClip, ...prev]);
-      setClipIndex(0);
-      resetExercise();
-      setShowAddClip(false);
-      setContribUrl("");
-      setContribTime("0");
-      setContribTranscript("");
-    } catch (err) {
-      setContribError(err instanceof Error ? err.message : "Could not verify clip.");
-    } finally {
-      setContribBusy(false);
-    }
+  const finishStage = (usedVideo: boolean) => {
+    onComplete({
+      passedFirstTry: firstTryPassed,
+      typedAnswer: masked?.hiddenWord || word.text,
+      usedVideo,
+      attempts: Math.max(1, totalSubmits),
+    });
   };
 
-  // Explicit, informative loading experience
-  if (loading) {
-    return (
-      <section aria-busy="true" className="apple-card p-6 sm:p-8 grid gap-5">
-        <div className="flex items-center gap-3">
-          <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-subtitle border-t-transparent shrink-0" />
-          <div className="space-y-0.5">
-            <p className="text-sm sm:text-base font-bold text-ink">
-              Finding real conversations using this word...
-            </p>
-            <p className="text-xs text-muted">
-              Searching verified transcripts and timestamps for &ldquo;{word.text}&rdquo;
-            </p>
-          </div>
-        </div>
-        <div className="aspect-video w-full rounded-2xl bg-line/40 animate-pulse" />
-        <div className="h-14 w-full rounded-2xl bg-line/30 animate-pulse" />
-      </section>
-    );
-  }
-
   return (
-    <section aria-labelledby="stage2-heading" className="apple-card p-4 sm:p-7 grid gap-5 min-w-0">
-      {/* TOP: Target word & clip count */}
+    <section
+      aria-labelledby="stage2-heading"
+      className="apple-card w-full max-w-full overflow-x-hidden p-4 sm:p-7 grid gap-5 min-w-0"
+    >
+      {/* 1. Stage Header, Current Vocabulary Word & Real YouGlish Example Count */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="space-y-1 min-w-0">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-xs font-bold text-ink">
             Stage 2 · Contextual Learning
           </span>
           <h2 id="stage2-heading" className="text-lg sm:text-2xl font-extrabold text-ink">
-            Hear &amp; complete &ldquo;{word.text}&rdquo; in context
+            Hear &amp; complete &ldquo;{word.text}&rdquo; in real videos
           </h2>
         </div>
-        {clips.length > 0 ? (
-          <span className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-bold text-ink tabular-nums">
-            Video {clipIndex + 1} of {clips.length}
-          </span>
-        ) : fallbackList.length > 1 ? (
-          <span className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-bold text-ink tabular-nums">
-            Example {fallbackIndex + 1} of {fallbackList.length}
+
+        {hasFetched && totalResult > 0 ? (
+          <span
+            data-testid="youglish-result-count"
+            className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-bold text-ink tabular-nums"
+          >
+            Example {Math.max(1, trackNumber).toLocaleString()} of {totalResult.toLocaleString()}
           </span>
         ) : null}
       </div>
 
-      {error ? (
-        <p role="alert" className="rounded-xl bg-bad-soft px-4 py-3 text-xs sm:text-sm text-bad">
-          {error}
-        </p>
-      ) : null}
-
-      {/* MIDDLE: Responsive YouTube Player (when verified clips exist) OR Clean Non-Blocking Notice */}
-      {activeClip ? (
-        <YouTubeClipPlayer
-          clip={activeClip}
-          index={clipIndex}
-          total={clips.length}
-          onPrev={handlePrevClip}
-          onNext={handleNextClip}
-          onUnavailable={handleUnavailableClip}
-        />
-      ) : (
-        <div className="rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-0.5 min-w-0 flex-1">
-            <p className="text-sm font-bold text-ink">
-              We couldn&apos;t find a verified video for this word yet.
-            </p>
-            <p className="text-xs text-muted">
-              {masked
-                ? "Complete the real contextual listening exercise below to continue smoothly to Stage 3."
-                : "You can continue directly to Stage 3 to practice using this word in your own sentence."}
-            </p>
-          </div>
-          {canSpeak() && activeSentence ? (
+      {/* 2. Embedded Official YouGlish Widget OR Explicit Policy/Consent/Disabled State */}
+      {!YOUGLISH_WIDGET_ENABLED ? (
+        <div className="rounded-2xl border border-line bg-surface p-5 grid gap-3">
+          <p className="text-sm font-bold text-ink">
+            YouGlish embedded video player is currently disabled.
+          </p>
+          <p className="text-xs sm:text-sm text-muted leading-relaxed">
+            Set <code className="font-mono text-xs">NEXT_PUBLIC_YOUGLISH_WIDGET_ENABLED=true</code> once
+            commercial licensing is active, or continue directly to Stage 3 without losing your progress.
+          </p>
+          <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => speak(activeSentence, word.src_lang || "en")}
-              className="btn btn-primary min-h-9 px-3.5 text-xs font-bold inline-flex items-center gap-1.5 shrink-0 cursor-pointer"
+              onClick={() => finishStage(false)}
+              className="btn btn-primary min-h-10 px-5 text-xs sm:text-sm font-bold cursor-pointer"
             >
-              <SpeakerIcon size={15} />
-              <span>Play audio context</span>
+              Continue to Stage 3 →
             </button>
-          ) : null}
+          </div>
         </div>
-      )}
+      ) : cookieConsent !== "granted" ? (
+        <div className="rounded-2xl border border-line bg-surface p-5 grid gap-3">
+          <p className="text-sm font-bold text-ink">
+            Allow embedded YouGlish &amp; YouTube video playback?
+          </p>
+          <p className="text-xs sm:text-sm text-muted leading-relaxed">
+            Stage 2 embeds real spoken English videos using the official{" "}
+            <a
+              href="https://youglish.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-semibold text-ink"
+            >
+              YouGlish.com
+            </a>{" "}
+            widget and YouTube player, which may set third-party cookies governed by the{" "}
+            <a
+              href="https://www.youtube.com/t/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-semibold text-ink"
+            >
+              YouTube Terms of Service
+            </a>{" "}
+            and{" "}
+            <a
+              href="https://policies.google.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-semibold text-ink"
+            >
+              Google Privacy Policy
+            </a>
+            .
+          </p>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleGrantCookies}
+              className="btn btn-primary min-h-10 px-4 text-xs sm:text-sm font-bold cursor-pointer"
+            >
+              Enable YouGlish videos
+            </button>
+            <button
+              type="button"
+              onClick={() => finishStage(false)}
+              className="btn btn-quiet min-h-10 px-4 text-xs sm:text-sm font-semibold cursor-pointer"
+            >
+              Continue to Stage 3 without video →
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Official YouGlish Embedded Widget (Main Element) */}
+          <YouGlishWidget
+            ref={widgetRef}
+            query={query}
+            lang={ygLang}
+            reloadNonce={reloadNonce}
+            onFetchDone={handleFetchDone}
+            onVideoChange={handleVideoChange}
+            onCaptionChange={handleCaptionChange}
+            onPlayerReady={handlePlayerReady}
+            onPlayerStateChange={handlePlayerStateChange}
+            onSpeedChange={handleSpeedChange}
+            onError={handleError}
+          />
 
-      {/* BOTTOM: Primary Interactive Missing-Word Completion Exercise (1 dot = 1 exact missing letter) */}
-      {masked ? (
-        <div className="rounded-2xl border border-line bg-surface p-4 sm:p-5 grid gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-muted">
-              {activeClip
-                ? "Type the missing word spoken in the clip:"
-                : activeFallback?.sourceLabel || "Complete the authentic context sentence:"}
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-black/5 dark:bg-white/10 px-2.5 py-0.5 text-[11px] font-bold text-muted tabular-nums">
-                {masked.letterCount} {masked.letterCount === 1 ? "letter" : "letters"}
-              </span>
-              {canSpeak() ? (
+          {/* Official Widget Playback & Navigation Controls (Synchronized with YG.Widget API) */}
+          {totalResult > 0 && !widgetError ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-3 py-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => speak(activeSentence, word.src_lang || "en")}
-                  className="btn btn-quiet min-h-8 px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
-                  title="Listen to sentence"
+                  onClick={handleTogglePlay}
+                  disabled={!playerReady && !currentVideoId}
+                  className="btn btn-primary min-h-9 px-3.5 text-xs font-bold cursor-pointer disabled:opacity-50"
                 >
-                  <SpeakerIcon size={14} />
-                  <span>Listen</span>
+                  {isPlaying ? "Pause" : "Play clip"}
                 </button>
-              ) : null}
-            </div>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => widgetRef.current?.replay()}
+                  disabled={!playerReady && !currentVideoId}
+                  title="Replay current spoken sentence"
+                  className="btn min-h-9 px-3 text-xs font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  ↺ Replay
+                </button>
+                <button
+                  type="button"
+                  onClick={() => widgetRef.current?.move(-3)}
+                  disabled={!playerReady && !currentVideoId}
+                  title="Rewind 3 seconds"
+                  className="btn btn-quiet min-h-9 px-2.5 text-xs font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  -3s
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleSpeed}
+                  disabled={!playerReady && !currentVideoId}
+                  title="Toggle slower speed for listening clarity"
+                  className="btn btn-quiet min-h-9 px-2.5 text-xs font-semibold tabular-nums cursor-pointer disabled:opacity-50"
+                >
+                  {playbackSpeed}x
+                </button>
+              </div>
 
-          {/* Sentence with exact 1-dot-per-character placeholder */}
-          <blockquote className="text-base sm:text-xl font-medium leading-relaxed text-ink">
-            &ldquo;
-            {masked.before}
-            {exerciseState === "correct" ? (
-              <mark className="rounded-lg bg-subtitle/35 px-2 py-0.5 font-extrabold text-ink">
-                {masked.hiddenWord}
-              </mark>
-            ) : (
-              <span
-                aria-label={`${masked.letterCount} missing letters`}
-                className="inline-block rounded-lg border-b-2 border-subtitle bg-subtitle/10 px-2 py-0.5 font-mono font-bold tracking-[0.2em] text-ink"
-              >
-                {hint || masked.placeholder}
-              </span>
-            )}
-            {masked.after}
-            &rdquo;
-          </blockquote>
-
-          {exerciseState !== "correct" ? (
-            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2.5">
-              <input
-                ref={inputRef}
-                type="text"
-                value={answer}
-                onChange={(e) => {
-                  setAnswer(e.target.value);
-                  if (exerciseState === "wrong") setExerciseState("answering");
-                }}
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                placeholder={`Type the ${masked.letterCount}-letter word…`}
-                aria-label="Type the missing word"
-                className="field flex-1 text-base font-semibold"
-              />
-              <button
-                type="submit"
-                disabled={!answer.trim()}
-                className="btn btn-primary min-h-11 px-6 text-sm font-bold cursor-pointer disabled:opacity-50"
-              >
-                Submit
-              </button>
-            </form>
-          ) : null}
-
-          {exerciseState === "wrong" ? (
-            <div role="alert" className="rounded-xl border border-bad/30 bg-bad-soft px-3.5 py-2.5 text-xs sm:text-sm text-bad font-medium">
-              Not quite! Listen closely and count the dots ({masked.letterCount} letters).
-              {hint ? (
-                <span className="block mt-1 text-ink">
-                  Hint: <span className="font-mono font-bold tracking-widest">{hint}</span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => widgetRef.current?.previous()}
+                  disabled={trackNumber <= 1}
+                  aria-label="Previous YouGlish video example"
+                  className="btn min-h-9 px-3 text-xs font-semibold cursor-pointer disabled:opacity-40"
+                >
+                  ← Prev
+                </button>
+                <span className="px-1.5 text-xs font-bold tabular-nums text-muted">
+                  {Math.max(1, trackNumber).toLocaleString()} / {totalResult.toLocaleString()}
                 </span>
-              ) : null}
+                <button
+                  type="button"
+                  onClick={() => widgetRef.current?.next()}
+                  disabled={trackNumber >= totalResult}
+                  aria-label="Next YouGlish video example"
+                  className="btn min-h-9 px-3 text-xs font-semibold cursor-pointer disabled:opacity-40"
+                >
+                  Next →
+                </button>
+              </div>
             </div>
           ) : null}
 
-          {exerciseState === "correct" ? (
+          {/* Error Recovery (never breaks sequential learning session) */}
+          {widgetError ? (
             <div
-              role="status"
-              className="rounded-2xl border border-ok/30 bg-ok/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-150"
+              role="alert"
+              className="rounded-2xl border border-bad/30 bg-bad-soft p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
             >
-              <div>
-                <p className="text-sm font-bold text-ok">
-                  Spot on! &ldquo;{masked.hiddenWord}&rdquo; fits naturally here.
-                </p>
-                <p className="text-xs text-muted mt-0.5">
-                  {clips.length > 1
-                    ? "Explore another verified video example or continue to Stage 3."
-                    : fallbackList.length > 1
-                    ? "Try another real sentence example or continue to Stage 3."
-                    : "Now write your own original sentence in Stage 3."}
-                </p>
+              <div className="space-y-0.5">
+                <p className="text-sm font-bold text-bad">YouGlish player could not load</p>
+                <p className="text-xs text-ink/80">{widgetError.message}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2 shrink-0">
-                {clips.length > 1 ? (
-                  <button
-                    type="button"
-                    onClick={handleNextClip}
-                    className="btn min-h-10 px-4 text-xs sm:text-sm font-semibold cursor-pointer"
-                  >
-                    Another video →
-                  </button>
-                ) : fallbackList.length > 1 ? (
-                  <button
-                    type="button"
-                    onClick={handleNextFallback}
-                    className="btn min-h-10 px-4 text-xs sm:text-sm font-semibold cursor-pointer"
-                  >
-                    Another example →
-                  </button>
-                ) : null}
                 <button
                   type="button"
-                  onClick={() =>
-                    onComplete({
-                      passedFirstTry: firstTryPassed,
-                      typedAnswer: masked.hiddenWord,
-                      usedVideo: Boolean(activeClip),
-                    })
-                  }
-                  className="btn btn-primary min-h-10 px-5 text-xs sm:text-sm font-bold cursor-pointer"
+                  onClick={handleRetryWidget}
+                  className="btn min-h-9 px-3.5 text-xs font-bold cursor-pointer"
+                >
+                  Retry
+                </button>
+                <button
+                  type="button"
+                  onClick={() => finishStage(false)}
+                  className="btn btn-primary min-h-9 px-4 text-xs font-bold cursor-pointer"
                 >
                   Continue to Stage 3 →
                 </button>
               </div>
             </div>
           ) : null}
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-line bg-surface p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <p className="text-sm font-bold text-ink">Continue learning &ldquo;{word.text}&rdquo;</p>
-            <p className="text-xs text-muted">
-              Proceed to Stage 3 to practice using &ldquo;{word.text}&rdquo; in your own sentence.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() =>
-              onComplete({
-                passedFirstTry: true,
-                typedAnswer: word.text,
-                usedVideo: false,
-              })
-            }
-            className="btn btn-primary shrink-0 min-h-10 px-5 text-xs sm:text-sm font-bold cursor-pointer"
-          >
-            Continue to Stage 3 →
-          </button>
-        </div>
-      )}
 
-      {/* Allow advancing after completing at least one clip even if user explored another */}
-      {completedAnyClip && exerciseState !== "correct" ? (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() =>
-              onComplete({
-                passedFirstTry: firstTryPassed,
-                typedAnswer: masked?.hiddenWord || word.text,
-                usedVideo: Boolean(activeClip),
-              })
-            }
-            className="btn btn-primary min-h-10 px-5 text-xs sm:text-sm font-bold cursor-pointer"
-          >
-            Continue to Stage 3 →
-          </button>
-        </div>
-      ) : null}
-
-      {/* Supplementary Options (Secondary footer — never blocks primary workflow) */}
-      <div className="border-t border-line/60 pt-3 grid gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-          <span>Extra pronunciation &amp; video tools</span>
-          <div className="flex flex-wrap items-center gap-2">
-            <a
-              href={`https://youglish.com/pronounce/${encodeURIComponent(word.text)}/english`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-quiet min-h-8 px-2.5 py-1 text-xs font-semibold"
-            >
-              Hear on YouGlish ↗
-            </a>
-            <button
-              type="button"
-              onClick={() => setShowAddClip((s) => !s)}
-              className="btn btn-quiet min-h-8 px-2.5 py-1 text-xs font-semibold cursor-pointer"
-            >
-              {showAddClip ? "Close form" : "+ Attach YouTube clip"}
-            </button>
-          </div>
-        </div>
-
-        {showAddClip ? (
-          <form
-            onSubmit={(e) => void handleContributeClip(e)}
-            className="rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] p-3.5 grid gap-2.5"
-          >
-            <div className="grid gap-2 sm:grid-cols-[1fr_130px]">
-              <input
-                type="url"
-                required
-                value={contribUrl}
-                onChange={(e) => setContribUrl(e.target.value)}
-                placeholder="YouTube URL (e.g. https://youtube.com/watch?v=...)"
-                className="field text-xs sm:text-sm"
-              />
-              <input
-                type="number"
-                min={0}
-                required
-                value={contribTime}
-                onChange={(e) => setContribTime(e.target.value)}
-                placeholder="Start (sec)"
-                aria-label="Timestamp in seconds"
-                className="field text-xs sm:text-sm"
-              />
-            </div>
-            <input
-              type="text"
-              required
-              value={contribTranscript}
-              onChange={(e) => setContribTranscript(e.target.value)}
-              placeholder={`Exact spoken sentence containing "${word.text}"`}
-              className="field text-xs sm:text-sm"
-            />
-            {contribError ? (
-              <p role="alert" className="text-xs font-medium text-bad">
-                {contribError}
-              </p>
-            ) : null}
-            <div className="flex justify-end">
+          {/* Zero Search Results Handling */}
+          {noResults && !widgetError ? (
+            <div className="rounded-2xl border border-line bg-surface p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-ink">
+                  No YouGlish videos were found for &ldquo;{word.text}&rdquo;
+                </p>
+                <p className="text-xs text-muted">
+                  YouGlish returned 0 matching clips for this word in {ygLang}. Continue to Stage 3
+                  to practice using &ldquo;{word.text}&rdquo; in your own sentence.
+                </p>
+              </div>
               <button
-                type="submit"
-                disabled={contribBusy}
-                className="btn btn-primary min-h-9 px-4 text-xs font-bold cursor-pointer"
+                type="button"
+                onClick={() => finishStage(false)}
+                className="btn btn-primary shrink-0 min-h-10 px-5 text-xs sm:text-sm font-bold cursor-pointer"
               >
-                {contribBusy ? "Verifying embed & transcript…" : "Verify & Add Clip"}
+                Continue to Stage 3 →
               </button>
             </div>
-          </form>
+          ) : null}
+
+          {/* 3. Actual Caption & Interactive Missing-Word Exercise (Strictly from onCaptionChange) */}
+          {!noResults && !widgetError ? (
+            masked ? (
+              <div
+                data-testid="stage2-caption-exercise"
+                className="rounded-2xl border border-line bg-surface p-4 sm:p-5 grid gap-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-muted">
+                    {exerciseState === "correct"
+                      ? "Actual YouGlish caption (target word highlighted):"
+                      : "Listen to the video and type the missing word from the actual caption:"}
+                  </span>
+                  <span
+                    data-testid="stage2-letter-count"
+                    className="rounded-full bg-black/5 dark:bg-white/10 px-2.5 py-0.5 text-[11px] font-bold text-muted tabular-nums"
+                  >
+                    {masked.letterCount} {masked.letterCount === 1 ? "letter" : "letters"}
+                  </span>
+                </div>
+
+                {/* Actual YouGlish Caption: exact 1-dot-per-character placeholder before solve, highlighted target word after solve */}
+                <blockquote
+                  data-testid="stage2-caption-quote"
+                  className="text-base sm:text-xl font-medium leading-relaxed text-ink"
+                >
+                  &ldquo;
+                  {masked.before}
+                  {exerciseState === "correct" ? (
+                    <mark className="rounded-lg bg-subtitle/40 px-2 py-0.5 font-extrabold text-ink">
+                      {masked.hiddenWord}
+                    </mark>
+                  ) : (
+                    <span
+                      data-testid="stage2-missing-placeholder"
+                      aria-label={`${masked.letterCount} missing letters`}
+                      className="inline-block rounded-lg border-b-2 border-subtitle bg-subtitle/10 px-2 py-0.5 font-mono font-bold tracking-[0.2em] text-ink"
+                    >
+                      {hint || masked.placeholder}
+                    </span>
+                  )}
+                  {masked.after}
+                  &rdquo;
+                </blockquote>
+
+                {exerciseState !== "correct" ? (
+                  <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2.5">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={answer}
+                      onChange={(e) => {
+                        setAnswer(e.target.value);
+                        if (exerciseState === "wrong") setExerciseState("answering");
+                      }}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      placeholder={`Type the ${masked.letterCount}-letter word…`}
+                      aria-label="Type the missing word"
+                      className="field flex-1 text-base font-semibold"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!answer.trim()}
+                      className="btn btn-primary min-h-11 px-6 text-sm font-bold cursor-pointer disabled:opacity-50"
+                    >
+                      Submit
+                    </button>
+                  </form>
+                ) : null}
+
+                {exerciseState === "wrong" ? (
+                  <div
+                    role="alert"
+                    className="rounded-xl border border-bad/30 bg-bad-soft px-3.5 py-2.5 text-xs sm:text-sm text-bad font-medium"
+                  >
+                    Not quite! Replay the clip and count the dots ({masked.letterCount} letters).
+                    {hint ? (
+                      <span className="block mt-1 text-ink">
+                        Hint:{" "}
+                        <span className="font-mono font-bold tracking-widest">{hint}</span>
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {exerciseState === "correct" ? (
+                  <div
+                    role="status"
+                    className="rounded-2xl border border-ok/30 bg-ok/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-150"
+                  >
+                    <div>
+                      <p className="text-sm font-bold text-ok">
+                        Spot on! &ldquo;{masked.hiddenWord}&rdquo; matches the spoken caption.
+                      </p>
+                      <p className="text-xs text-muted mt-0.5">
+                        Replay the clip, explore another real YouGlish example, or continue to Stage 3.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => widgetRef.current?.replay()}
+                        className="btn min-h-10 px-3.5 text-xs sm:text-sm font-semibold cursor-pointer"
+                      >
+                        ↺ Replay
+                      </button>
+                      {trackNumber < totalResult ? (
+                        <button
+                          type="button"
+                          onClick={() => widgetRef.current?.next()}
+                          className="btn min-h-10 px-3.5 text-xs sm:text-sm font-semibold cursor-pointer"
+                        >
+                          Next video →
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => finishStage(true)}
+                        className="btn btn-primary min-h-10 px-5 text-xs sm:text-sm font-bold cursor-pointer"
+                      >
+                        Continue to Stage 3 →
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : hasFetched && totalResult > 0 ? (
+              /* Waiting strictly for a real onCaptionChange containing [[[target word]]] — NEVER fabricates */
+              <div className="rounded-2xl border border-line bg-surface p-4 sm:p-5 grid gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-ink">
+                      Play the clip to load the real caption for &ldquo;{word.text}&rdquo;
+                    </p>
+                    <p className="text-xs text-muted">
+                      Your fill-in-the-blank exercise is generated strictly from the actual spoken
+                      caption as soon as YouGlish plays the sentence containing &ldquo;{word.text}&rdquo;.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleTogglePlay}
+                    className="btn btn-primary shrink-0 min-h-10 px-4 text-xs sm:text-sm font-bold cursor-pointer"
+                  >
+                    {isPlaying ? "Pause clip" : "Play clip"}
+                  </button>
+                </div>
+                {livePlainCaption ? (
+                  <p className="rounded-xl bg-black/[0.03] dark:bg-white/[0.04] px-3 py-2 text-xs text-muted italic">
+                    Live caption: &ldquo;{livePlainCaption}&rdquo;
+                  </p>
+                ) : null}
+              </div>
+            ) : null
+          ) : null}
+
+          {/* Allow advancing if user already solved one example and browsed to another track */}
+          {completedAnyExample && exerciseState !== "correct" ? (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => finishStage(true)}
+                className="btn btn-primary min-h-10 px-5 text-xs sm:text-sm font-bold cursor-pointer"
+              >
+                Continue to Stage 3 →
+              </button>
+            </div>
+          ) : null}
+        </>
+      )}
+
+      {/* 4. Required Attribution, YouTube ToS, Google Privacy Policy & Cookie Consent Controls */}
+      <footer className="border-t border-line/60 pt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <span>
+            Powered by{" "}
+            <a
+              href="https://youglish.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-ink underline decoration-line underline-offset-2 hover:decoration-ink"
+            >
+              YouGlish.com
+            </a>
+          </span>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://www.youtube.com/t/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline decoration-line underline-offset-2 hover:text-ink"
+          >
+            YouTube Terms of Service
+          </a>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://policies.google.com/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline decoration-line underline-offset-2 hover:text-ink"
+          >
+            Google Privacy Policy
+          </a>
+        </div>
+
+        {YOUGLISH_WIDGET_ENABLED ? (
+          <button
+            type="button"
+            onClick={canRenderWidget ? handleRevokeCookies : handleGrantCookies}
+            className="underline decoration-line underline-offset-2 hover:text-ink cursor-pointer"
+          >
+            {canRenderWidget ? "Disable video cookies" : "Enable video cookies"}
+          </button>
         ) : null}
-      </div>
+      </footer>
     </section>
   );
 }

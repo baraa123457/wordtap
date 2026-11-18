@@ -2,16 +2,16 @@ import type { NextConfig } from "next";
 
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com;
+  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com https://youglish.com https://*.youglish.com;
   style-src 'self' 'unsafe-inline';
   img-src 'self' blob: data: https:;
   font-src 'self' data:;
-  frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com;
+  frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://youglish.com https://*.youglish.com;
   object-src 'none';
   base-uri 'self';
   form-action 'self';
   frame-ancestors 'none';
-  connect-src 'self' https://*.supabase.co wss://*.supabase.co https://translate.googleapis.com https://api.ocr.space https://www.youtube.com;
+  connect-src 'self' https://*.supabase.co wss://*.supabase.co https://translate.googleapis.com https://api.ocr.space https://www.youtube.com https://youglish.com https://*.youglish.com;
   media-src 'self' blob: data:;
 `
   .replace(/\s{2,}/g, " ")
