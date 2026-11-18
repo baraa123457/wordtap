@@ -392,9 +392,28 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
       }
     }, [speed, ready, isDirectVideo]);
 
-    // Real-time playback time sync for YouTube IFrame Player
+    // High-frequency real-time playback sync (~20fps for HTML5 video, ~13fps for YouTube)
+    // so each word highlights immediately as the speaker says it
     useEffect(() => {
-      if (isDirectVideo || !playing || !ready) return;
+      if (!playing || !ready) return;
+
+      if (isDirectVideo) {
+        let rafId = 0;
+        let lastEmit = 0;
+        const tick = (now: number) => {
+          if (now - lastEmit >= 45) {
+            const cur = htmlVideoRef.current?.currentTime;
+            if (typeof cur === "number" && Number.isFinite(cur)) {
+              onTimeUpdate?.(cur);
+            }
+            lastEmit = now;
+          }
+          rafId = window.requestAnimationFrame(tick);
+        };
+        rafId = window.requestAnimationFrame(tick);
+        return () => window.cancelAnimationFrame(rafId);
+      }
+
       const timer = window.setInterval(() => {
         try {
           const cur = ytPlayerRef.current?.getCurrentTime?.();
@@ -404,7 +423,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
         } catch {
           // ignore
         }
-      }, 250);
+      }, 75);
       return () => window.clearInterval(timer);
     }, [isDirectVideo, playing, ready, onTimeUpdate]);
 
