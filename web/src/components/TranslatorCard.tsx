@@ -1293,7 +1293,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
               onBlur={() => {
                 handleImmediateAutoSave();
               }}
-              placeholder="Enter text to translate or paste / drop an image..."
+              placeholder="Enter text to translate"
               dir={isRTL ? "rtl" : "ltr"}
               className={`w-full bg-transparent resize-none text-lg sm:text-2xl font-medium text-ink placeholder:text-muted/50 focus:outline-none border-0 py-0 leading-relaxed ${
                 isRTL ? "pl-11 pr-2 text-right" : "pr-11 pl-2 text-left"
