@@ -2,6 +2,16 @@ import { getSupabase } from "./supabase";
 import { reviewWord } from "./api";
 import type { FsrsRating, FsrsScheduleResult } from "./fsrs";
 import type { Word } from "./schemas";
+import type { VideoDiscoveryResponse } from "./video/types";
+
+export type {
+  CaptionCue,
+  FallbackContextExample,
+  VerifiedVideoExample,
+  VideoDiscoveryDiagnostics,
+  VideoDiscoveryResponse,
+  VideoDiscoverySource,
+} from "./video/types";
 
 export type UnderstandingOption = {
   id: "A" | "B" | "C" | "D";
@@ -67,6 +77,58 @@ export async function fetchUnderstandingQuestion(
     throw new Error(data.error || "Could not load understanding question.");
   }
   return data;
+}
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const { data } = await getSupabase().auth.getSession();
+    if (data.session?.access_token) {
+      return { Authorization: `Bearer ${data.session.access_token}` };
+    }
+  } catch {
+    // Continue unauthenticated if Supabase isn't initialized
+  }
+  return {};
+}
+
+export async function fetchContextualVideos(
+  word: Word,
+  options?: { refresh?: boolean },
+): Promise<VideoDiscoveryResponse> {
+  const params = new URLSearchParams({
+    word: word.text,
+    lang: word.src_lang || "en",
+  });
+  if (word.id && !word.id.startsWith("sample-")) params.set("wordId", word.id);
+  if (word.source_url) params.set("sourceUrl", word.source_url);
+  if (word.sentence) params.set("sentence", word.sentence);
+  if (word.source_title) params.set("sourceTitle", word.source_title);
+  if (options?.refresh) params.set("refresh", "1");
+
+  const headers = await getAuthHeaders();
+  const res = await fetch(`/api/learn/videos?${params.toString()}`, { headers });
+  const data = (await res.json()) as VideoDiscoveryResponse & { error?: string };
+  if (!res.ok) {
+    throw new Error(data.error || "Could not search verified videos.");
+  }
+  return data;
+}
+
+export async function markVideoUnavailable(youtubeVideoId: string): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{11}$/.test(youtubeVideoId)) return;
+  try {
+    const headers = await getAuthHeaders();
+    await fetch("/api/learn/videos", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+      },
+      body: JSON.stringify({ youtubeVideoId }),
+    });
+  } catch {
+    // Best-effort flag
+  }
 }
 
 export async function evaluateUserSentence(params: {
