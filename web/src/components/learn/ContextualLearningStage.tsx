@@ -286,6 +286,9 @@ export function ContextualLearningStage({
           fullSentence={activeSentence}
           targetWord={word.text}
           srcLang={word.src_lang || "en"}
+          targetLang={word.target_lang || undefined}
+          sourceTitle={activeClip?.videoTitle || activeFallback?.sourceLabel || "Stage 2 Context"}
+          sourceUrl={activeClip?.youtubeUrl || ""}
           captionLabel={
             activeClip
               ? "Listen to the clip and type the missing word:"
@@ -295,6 +298,7 @@ export function ContextualLearningStage({
           currentTimeSec={activeClip ? currentTimeSec : undefined}
           isVideoMode={Boolean(activeClip)}
           hasMoreExamples={activeClip ? videos.length > 1 : fallbackList.length > 1}
+          onWordLookupOpen={activeClip ? () => playerRef.current?.pause() : undefined}
           onReplay={activeClip ? () => playerRef.current?.replay() : undefined}
           onNextExample={activeClip ? handleNextVideo : handleNextFallback}
           onSolved={handleSolved}

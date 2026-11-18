@@ -16,11 +16,15 @@ export function MissingWordExercise({
   fullSentence,
   targetWord,
   srcLang,
+  targetLang,
+  sourceTitle,
+  sourceUrl,
   captionLabel,
   captionCues,
   currentTimeSec,
   isVideoMode,
   hasMoreExamples,
+  onWordLookupOpen,
   onReplay,
   onNextExample,
   onSolved,
@@ -30,11 +34,15 @@ export function MissingWordExercise({
   fullSentence: string;
   targetWord: string;
   srcLang: string;
+  targetLang?: string;
+  sourceTitle?: string;
+  sourceUrl?: string;
   captionLabel: string;
   captionCues?: CaptionCue[];
   currentTimeSec?: number;
   isVideoMode: boolean;
   hasMoreExamples: boolean;
+  onWordLookupOpen?: () => void;
   onReplay?: () => void;
   onNextExample?: () => void;
   onSolved: (details: { hiddenWord: string; attempts: number; passedFirstTry: boolean }) => void;
@@ -80,11 +88,17 @@ export function MissingWordExercise({
     >
       <ContextCaption
         masked={masked}
+        fullSentence={fullSentence}
         targetWord={targetWord}
+        srcLang={srcLang}
+        targetLang={targetLang}
+        sourceTitle={sourceTitle}
+        sourceUrl={sourceUrl}
         revealed={state === "correct"}
         hint={hint}
         captionCues={captionCues}
         currentTimeSec={currentTimeSec}
+        onWordLookupOpen={onWordLookupOpen}
         label={
           state === "correct"
             ? isVideoMode
