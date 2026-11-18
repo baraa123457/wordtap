@@ -7,12 +7,13 @@ import {
   type UnderstandingQuestion,
 } from "@/lib/learn-api";
 import { canSpeak, speak } from "@/lib/speech";
-import { SpeakerIcon } from "@/components/Icons";
+import { SpeakerIcon, TrashIcon } from "@/components/Icons";
 import { POS_BADGES } from "@/components/TranslatorCard";
 
 export function Stage1Understanding({
   word,
   onComplete,
+  onDeleteWord,
 }: {
   word: Word;
   onComplete: (result: {
@@ -22,6 +23,7 @@ export function Stage1Understanding({
     pronunciation: string;
     partOfSpeech: string;
   }) => void;
+  onDeleteWord?: (word: Word) => void;
 }) {
   const [question, setQuestion] = useState<UnderstandingQuestion | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,12 +31,14 @@ export function Stage1Understanding({
   const [selectedId, setSelectedId] = useState<"A" | "B" | "C" | "D" | null>(null);
   const [status, setStatus] = useState<"answering" | "wrong" | "correct">("answering");
   const [hadWrongAttempt, setHadWrongAttempt] = useState(false);
+  const [showDefinition, setShowDefinition] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setError(null);
     setSelectedId(null);
     setStatus("answering");
+    setShowDefinition(false);
     try {
       const q = await fetchUnderstandingQuestion(word);
       setQuestion(q);
@@ -64,6 +68,7 @@ export function Stage1Understanding({
   const handleRetry = () => {
     setSelectedId(null);
     setStatus("answering");
+    setShowDefinition(false);
   };
 
   // Keyboard shortcuts (1-4 or A-D to select, Enter to continue when correct)
@@ -171,17 +176,67 @@ export function Stage1Understanding({
               </button>
             ) : null}
           </div>
-          {status === "correct" && (question.pronunciation || question.partOfSpeech) ? (
-            <p className="text-xs sm:text-sm text-muted">
-              {question.partOfSpeech ? (
-                <span className="font-semibold capitalize">{question.partOfSpeech}</span>
-              ) : null}
-              {question.partOfSpeech && question.pronunciation ? " · " : ""}
-              {question.pronunciation ? <span className="font-mono">{question.pronunciation}</span> : null}
-            </p>
+          {question.pronunciation ? (
+            <p className="text-xs sm:text-sm text-muted font-mono">{question.pronunciation}</p>
+          ) : null}
+        </div>
+
+        {/* Action controls: Show Definition & Delete Word */}
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+          {(question.definition || word.definition || word.translation) ? (
+            <button
+              type="button"
+              onClick={() => setShowDefinition((v) => !v)}
+              aria-expanded={showDefinition}
+              className="btn btn-quiet min-h-10 px-3 py-1.5 text-xs font-semibold text-amber-800 dark:text-subtitle border border-subtitle/35 bg-subtitle/10 hover:bg-subtitle/20 cursor-pointer"
+            >
+              💡 {showDefinition ? "Hide definition" : "Definition"}
+            </button>
+          ) : null}
+          {onDeleteWord ? (
+            <button
+              type="button"
+              onClick={() => onDeleteWord(word)}
+              title={`Delete "${word.text}" from your words`}
+              aria-label={`Delete ${word.text}`}
+              className="btn btn-quiet min-h-10 px-3 py-1.5 text-xs font-semibold text-muted hover:text-bad hover:bg-bad/10 inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <TrashIcon size={14} />
+              <span>Delete</span>
+            </button>
           ) : null}
         </div>
       </div>
+
+      {/* On-demand Definition & Saved Meaning Panel */}
+      {showDefinition ? (
+        <div className="rounded-2xl border border-subtitle/35 bg-subtitle/10 px-4 py-3 text-xs sm:text-sm grid gap-1.5 animate-in fade-in duration-150">
+          {(question.definition || word.definition) ? (
+            <p className="text-ink leading-relaxed break-words">
+              <strong className="text-amber-800 dark:text-subtitle">Definition:</strong>{" "}
+              {question.definition || word.definition}
+            </p>
+          ) : null}
+          {word.translation ? (
+            <p dir="auto" className="text-ink font-semibold break-words">
+              <span className="text-muted font-medium">Meaning: </span>
+              {word.translation}
+            </p>
+          ) : null}
+          {word.sentence ? (
+            <p dir="auto" className="text-xs text-muted italic border-t border-line/40 pt-1.5 break-words">
+              &ldquo;{word.sentence}&rdquo;
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Saved subtitle context preview (if available and definition panel is collapsed) */}
+      {!showDefinition && word.sentence ? (
+        <p dir="auto" className="rounded-xl border border-line/70 bg-black/[0.02] dark:bg-white/[0.03] px-3.5 py-2 text-xs sm:text-sm text-muted italic break-words">
+          Context: &ldquo;{word.sentence}&rdquo;
+        </p>
+      ) : null}
 
       {/* Prompt */}
       <p className="text-base sm:text-lg font-semibold text-ink">{question.question}</p>
@@ -245,9 +300,20 @@ export function Stage1Understanding({
           role="alert"
           className="rounded-2xl border border-bad/30 bg-bad-soft p-4 grid gap-3 animate-in fade-in duration-150"
         >
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <p className="text-sm font-bold text-bad-ink">Not quite — here&apos;s what it means:</p>
-            <p className="text-sm text-ink leading-relaxed break-words">{question.explanation}</p>
+            {question.definition ? (
+              <p className="text-sm text-ink leading-relaxed break-words">
+                <strong>Definition:</strong> {question.definition}
+              </p>
+            ) : null}
+            {word.translation ? (
+              <p dir="auto" className="text-sm font-semibold text-ink break-words">
+                <span className="text-muted font-medium">Meaning: </span>
+                {word.translation}
+              </p>
+            ) : null}
+            <p className="text-xs sm:text-sm text-muted leading-relaxed break-words">{question.explanation}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -266,9 +332,20 @@ export function Stage1Understanding({
           role="status"
           className="rounded-2xl border border-ok/30 bg-ok/10 p-4 grid gap-3 animate-in fade-in duration-150"
         >
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <p className="text-sm font-bold text-ok">Correct! You understand this word.</p>
-            <p className="text-sm text-ink leading-relaxed">{question.explanation}</p>
+            {question.definition ? (
+              <p className="text-sm text-ink leading-relaxed break-words">
+                <strong>Definition:</strong> {question.definition}
+              </p>
+            ) : null}
+            {word.translation ? (
+              <p dir="auto" className="text-sm font-semibold text-ink break-words">
+                <span className="text-muted font-medium">Meaning: </span>
+                {word.translation}
+              </p>
+            ) : null}
+            <p className="text-xs sm:text-sm text-muted leading-relaxed break-words">{question.explanation}</p>
           </div>
           <div className="flex justify-end">
             <button

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { recordPractice } from "@/lib/api";
+import { deleteWord, deleteWordByText, recordPractice } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
 import { localDateString } from "@/lib/dates";
 import {
@@ -22,13 +22,14 @@ import {
   persistStageAdvanceRemote,
   transitionAdvanceStage,
   transitionCompleteWord,
+  transitionRemoveWord,
   upsertRemoteLearningSession,
   type LearningSessionState,
   type LearningStage,
   type SpacedReviewQueueItem,
 } from "@/lib/learning-session-manager";
 import type { Word } from "@/lib/schemas";
-import { CloseIcon } from "@/components/Icons";
+import { CloseIcon, TrashIcon } from "@/components/Icons";
 import { Stage1Understanding } from "./Stage1Understanding";
 import { Stage2ContextualVideo } from "./Stage2ContextualVideo";
 import { Stage3CreateSentence } from "./Stage3CreateSentence";
@@ -114,6 +115,8 @@ function SequentialInitialLearningSession({
   const [initializing, setInitializing] = useState(true);
   const [savingStage, setSavingStage] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Word | null>(null);
+  const [deletingWord, setDeletingWord] = useState(false);
   const [completedSummary, setCompletedSummary] = useState<
     Array<{ word: string; nextLabel: string; status: string; sentence?: string }>
   >([]);
@@ -378,6 +381,41 @@ function SequentialInitialLearningSession({
     }
   };
 
+  const handleConfirmDeleteWord = async () => {
+    if (!deleteTarget || deletingWord) return;
+    setDeletingWord(true);
+    setTransitionError(null);
+    try {
+      await deleteWord(deleteTarget.id);
+      await deleteWordByText(deleteTarget.text, deleteTarget.src_lang).catch(() => {});
+
+      // Sync deletion tombstone to Chrome extension
+      try {
+        const raw = localStorage.getItem("wordtap_deleted_words");
+        const list = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(list)) {
+          list.push({ text: deleteTarget.text, srcLang: deleteTarget.src_lang });
+          localStorage.setItem("wordtap_deleted_words", JSON.stringify(list.slice(-200)));
+        }
+      } catch {}
+      if (typeof window !== "undefined") {
+        window.postMessage(
+          { type: "wordtap:word-deleted", text: deleteTarget.text, srcLang: deleteTarget.src_lang },
+          "*",
+        );
+      }
+
+      const next = transitionRemoveWord(session, deleteTarget.id);
+      setSession(next);
+      void upsertRemoteLearningSession(next);
+      setDeleteTarget(null);
+    } catch (err) {
+      setTransitionError(err instanceof Error ? err.message : "Could not delete the word.");
+    } finally {
+      setDeletingWord(false);
+    }
+  };
+
   const totalSteps = session.wordIds.length * 4;
   const completedSteps = session.completedWordIds.length * 4 + (currentStage - 1);
   const progressPct = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
@@ -385,7 +423,7 @@ function SequentialInitialLearningSession({
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-3.5 sm:px-5 pt-safe pb-12">
       {/* Top Progress Header */}
-      <header className="flex items-center gap-3 sm:gap-4 py-3.5 sm:py-5">
+      <header className="flex items-center gap-2.5 sm:gap-4 py-3.5 sm:py-5">
         <button
           type="button"
           onClick={() => setLeaving(true)}
@@ -396,7 +434,7 @@ function SequentialInitialLearningSession({
         </button>
 
         <div className="flex-1 grid gap-1.5 min-w-0">
-          <div className="flex items-center justify-between text-[11px] sm:text-xs font-semibold text-muted">
+          <div className="flex items-center justify-between gap-2 text-[11px] sm:text-xs font-semibold text-muted">
             <span className="truncate">
               Word {session.currentWordIndex + 1} of {session.wordIds.length} ·{" "}
               <span className="text-ink font-bold">Sequential Learning</span>
@@ -417,6 +455,17 @@ function SequentialInitialLearningSession({
             />
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setDeleteTarget(activeWord)}
+          title={`Delete "${activeWord.text}" from My Words`}
+          aria-label={`Delete ${activeWord.text}`}
+          className="btn btn-quiet min-h-10 px-2.5 sm:px-3 py-1 text-xs font-semibold text-muted hover:text-bad hover:bg-bad/10 inline-flex items-center gap-1.5 rounded-full cursor-pointer shrink-0"
+        >
+          <TrashIcon size={15} />
+          <span className="hidden sm:inline">Delete word</span>
+        </button>
       </header>
 
       {/* Resumed Progress Indicator */}
@@ -470,6 +519,7 @@ function SequentialInitialLearningSession({
           <Stage1Understanding
             key={`seq-s1-${activeWord.id}`}
             word={activeWord}
+            onDeleteWord={(w) => setDeleteTarget(w)}
             onComplete={(res) =>
               void handleStageAdvance(
                 1,
@@ -525,6 +575,54 @@ function SequentialInitialLearningSession({
           />
         )}
       </main>
+
+      {/* Delete Word Confirmation Modal */}
+      {deleteTarget ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deletingWord) setDeleteTarget(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !deletingWord) setDeleteTarget(null);
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-learn-word-title"
+            className="w-full max-w-sm grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl"
+          >
+            <div>
+              <h3 id="delete-learn-word-title" className="text-xl font-bold text-ink">
+                Delete &ldquo;{deleteTarget.text}&rdquo;?
+              </h3>
+              <p className="text-xs sm:text-sm text-muted mt-1">
+                This permanently removes the word from your saved vocabulary and skips straight to the next word.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                autoFocus
+                disabled={deletingWord}
+                onClick={() => setDeleteTarget(null)}
+                className="btn btn-quiet cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingWord}
+                onClick={() => void handleConfirmDeleteWord()}
+                className="btn btn-bad font-bold cursor-pointer"
+              >
+                {deletingWord ? "Deleting…" : "Yes, delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Leave Confirmation Modal */}
       {leaving ? (
@@ -594,9 +692,16 @@ function SpacedRepetitionReviewSession({
   const { state: authState } = useAuth();
   const userId = authState.status === "signed-in" ? authState.user.id : "demo";
 
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
+  const [deleteTarget, setDeleteTarget] = useState<Word | null>(null);
+  const [deletingWord, setDeletingWord] = useState(false);
+
   const queue: SpacedReviewQueueItem[] = useMemo(
-    () => buildSpacedRepetitionQueue(words, { userId, limit: reviewLimit, missedOnly }),
-    [words, userId, reviewLimit, missedOnly],
+    () =>
+      buildSpacedRepetitionQueue(words, { userId, limit: reviewLimit, missedOnly }).filter(
+        (item) => !deletedIds.has(item.word.id),
+      ),
+    [words, userId, reviewLimit, missedOnly, deletedIds],
   );
 
   const [index, setIndex] = useState(0);
@@ -607,6 +712,37 @@ function SpacedRepetitionReviewSession({
   const [saving, setSaving] = useState(false);
   const [xp, setXp] = useState(0);
   const [doneItems, setDoneItems] = useState<Array<{ word: string; nextLabel: string; status: string }>>([]);
+
+  const handleConfirmDeleteReviewWord = async () => {
+    if (!deleteTarget || deletingWord) return;
+    setDeletingWord(true);
+    try {
+      await deleteWord(deleteTarget.id);
+      await deleteWordByText(deleteTarget.text, deleteTarget.src_lang).catch(() => {});
+      try {
+        const raw = localStorage.getItem("wordtap_deleted_words");
+        const list = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(list)) {
+          list.push({ text: deleteTarget.text, srcLang: deleteTarget.src_lang });
+          localStorage.setItem("wordtap_deleted_words", JSON.stringify(list.slice(-200)));
+        }
+      } catch {}
+      if (typeof window !== "undefined") {
+        window.postMessage(
+          { type: "wordtap:word-deleted", text: deleteTarget.text, srcLang: deleteTarget.src_lang },
+          "*",
+        );
+      }
+      setDeletedIds((prev) => new Set(prev).add(deleteTarget.id));
+      setPhase("exercise");
+      setLastAnswer("");
+      setLastPassed(true);
+      setLastSentence("");
+      setDeleteTarget(null);
+    } finally {
+      setDeletingWord(false);
+    }
+  };
 
   const current = queue[index];
 
@@ -716,7 +852,7 @@ function SpacedRepetitionReviewSession({
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-3.5 sm:px-5 pt-safe pb-12">
-      <header className="flex items-center gap-3 sm:gap-4 py-3.5 sm:py-5">
+      <header className="flex items-center gap-2.5 sm:gap-4 py-3.5 sm:py-5">
         <button
           type="button"
           onClick={() => router.push("/dashboard")}
@@ -726,11 +862,11 @@ function SpacedRepetitionReviewSession({
           <CloseIcon />
         </button>
         <div className="flex-1 grid gap-1.5 min-w-0">
-          <div className="flex items-center justify-between text-[11px] sm:text-xs font-semibold text-muted">
-            <span>
+          <div className="flex items-center justify-between gap-2 text-[11px] sm:text-xs font-semibold text-muted">
+            <span className="truncate">
               Review {index + 1} of {queue.length} · <strong className="text-ink">Spaced Repetition</strong>
             </span>
-            <span className="tabular-nums">{xp} XP</span>
+            <span className="tabular-nums shrink-0">{xp} XP</span>
           </div>
           <div
             role="progressbar"
@@ -743,6 +879,16 @@ function SpacedRepetitionReviewSession({
             <div className="h-full rounded-full bg-ok transition-[width] duration-300" style={{ width: `${progressPct}%` }} />
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setDeleteTarget(current.word)}
+          title={`Delete "${current.word.text}" from My Words`}
+          aria-label={`Delete ${current.word.text}`}
+          className="btn btn-quiet min-h-10 px-2.5 sm:px-3 py-1 text-xs font-semibold text-muted hover:text-bad hover:bg-bad/10 inline-flex items-center gap-1.5 rounded-full cursor-pointer shrink-0"
+        >
+          <TrashIcon size={15} />
+          <span className="hidden sm:inline">Delete word</span>
+        </button>
       </header>
 
       <main className="flex-1 min-w-0">
@@ -751,6 +897,7 @@ function SpacedRepetitionReviewSession({
             <Stage1Understanding
               key={`rev-s1-${current.word.id}`}
               word={current.word}
+              onDeleteWord={(w) => setDeleteTarget(w)}
               onComplete={(res) => {
                 setLastAnswer(res.selectedAnswer);
                 setLastPassed(res.passedFirstTry);
@@ -789,6 +936,53 @@ function SpacedRepetitionReviewSession({
           />
         )}
       </main>
+
+      {deleteTarget ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deletingWord) setDeleteTarget(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !deletingWord) setDeleteTarget(null);
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-review-word-title"
+            className="w-full max-w-sm grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl"
+          >
+            <div>
+              <h3 id="delete-review-word-title" className="text-xl font-bold text-ink">
+                Delete &ldquo;{deleteTarget.text}&rdquo;?
+              </h3>
+              <p className="text-xs sm:text-sm text-muted mt-1">
+                This permanently removes the word from your saved vocabulary and skips to the next word.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                autoFocus
+                disabled={deletingWord}
+                onClick={() => setDeleteTarget(null)}
+                className="btn btn-quiet cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingWord}
+                onClick={() => void handleConfirmDeleteReviewWord()}
+                className="btn btn-bad font-bold cursor-pointer"
+              >
+                {deletingWord ? "Deleting…" : "Yes, delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

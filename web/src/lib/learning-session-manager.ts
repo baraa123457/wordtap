@@ -672,6 +672,52 @@ export function transitionCompleteWord(
 }
 
 /**
+ * Removes a deleted word from the active learning session and advances cleanly
+ * to the next remaining uncompleted word (or completes the session if none remain).
+ */
+export function transitionRemoveWord(
+  session: LearningSessionState,
+  wordId: string,
+  store: KeyValueStore | null = getDefaultStore(),
+): LearningSessionState {
+  const nextWordIds = session.wordIds.filter((id) => id !== wordId);
+  const nextCompletedIds = session.completedWordIds.filter((id) => id !== wordId);
+  const completedSet = new Set(nextCompletedIds);
+
+  const nextWordProgress: Record<string, WordStageProgress> = {};
+  for (const [id, prog] of Object.entries(session.wordProgress)) {
+    if (id !== wordId) nextWordProgress[id] = prog;
+  }
+
+  const nextIndex = nextWordIds.findIndex((id) => !completedSet.has(id));
+  const nextWordId = nextIndex !== -1 ? nextWordIds[nextIndex]! : null;
+  let nextStage: LearningStage = 1;
+  if (nextWordId) {
+    const np = nextWordProgress[nextWordId];
+    nextStage = np ? computeNextSequentialStage(np.completedStages) : 1;
+    if (np) {
+      nextWordProgress[nextWordId] = { ...np, currentStage: nextStage };
+    }
+  }
+
+  const nextSession: LearningSessionState = {
+    ...session,
+    wordIds: nextWordIds,
+    completedWordIds: nextCompletedIds,
+    currentWordIndex: nextIndex !== -1 ? nextIndex : nextWordIds.length,
+    currentWordId: nextWordId,
+    currentStage: nextWordId ? nextStage : 4,
+    wordProgress: nextWordProgress,
+    status: nextWordId ? "in_progress" : "completed",
+    resumed: false,
+    updatedAt: new Date().toISOString(),
+  };
+
+  saveLocalSession(nextSession, store);
+  return nextSession;
+}
+
+/**
  * SEPARATE SPACED REPETITION SESSION BUILDER:
  * Strictly independent from Initial Learning!
  * - Only includes words that have ALREADY completed initial learning.
