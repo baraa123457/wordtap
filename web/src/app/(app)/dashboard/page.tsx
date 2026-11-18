@@ -378,29 +378,30 @@ export default function DashboardPage() {
         </div>
 
         {/* Bottom Goal Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/60 bg-black/[0.02] dark:bg-white/[0.03] px-4 sm:px-5 py-2.5 text-xs sm:text-sm">
-          <span className="flex items-center gap-3 flex-1 min-w-0">
-            <span className="text-muted font-medium whitespace-nowrap">
-              <strong className="text-ink font-semibold">{eff.todayXp}</strong> of {stats.daily_goal} XP today
-            </span>
-            <span
-              role="progressbar"
-              aria-label="Daily goal"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={goalPct}
-              className="h-2 flex-1 min-w-16 max-w-36 overflow-hidden rounded-full bg-black/10 dark:bg-white/10"
-            >
-              <span className="block h-full bg-subtitle rounded-full transition-all duration-300" style={{ width: `${goalPct}%` }} />
-            </span>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] sm:flex sm:items-center sm:justify-between gap-x-3 sm:gap-x-4 gap-y-2.5 border-t border-line/60 bg-black/[0.02] dark:bg-white/[0.03] px-4 sm:px-5 py-3 text-xs sm:text-sm rounded-b-[inherit]">
+          <span className="order-1 text-muted font-medium whitespace-nowrap min-w-0 truncate">
+            <strong className="text-ink font-semibold tabular-nums">{eff.todayXp}</strong> of {stats.daily_goal} XP today
           </span>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-muted">Daily goal</span>
+          <div className="order-2 sm:order-3 flex items-center justify-end gap-2 shrink-0">
+            <span className="text-xs text-muted whitespace-nowrap">Daily goal</span>
             <GoalDropdown
               value={stats.daily_goal}
               onChange={(goal) => void changeGoal(goal)}
             />
           </div>
+          <span
+            role="progressbar"
+            aria-label="Daily goal progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={goalPct}
+            className="order-3 col-span-2 sm:order-2 sm:col-span-1 sm:flex-1 sm:max-w-48 h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10"
+          >
+            <span
+              className="block h-full bg-subtitle rounded-full transition-all duration-300"
+              style={{ width: `${goalPct}%` }}
+            />
+          </span>
         </div>
       </section>
 
