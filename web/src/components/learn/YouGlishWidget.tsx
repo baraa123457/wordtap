@@ -16,6 +16,8 @@ export const YOUGLISH_WIDGET_ENABLED =
 export const YOUGLISH_REQUIRE_COOKIE_CONSENT =
   process.env.NEXT_PUBLIC_YOUGLISH_REQUIRE_COOKIE_CONSENT === "true";
 
+const YOUGLISH_PARTNER_KEY = (process.env.NEXT_PUBLIC_YOUGLISH_PARTNER_KEY || "").trim();
+
 const COOKIE_CONSENT_KEY = "wordtap_youglish_cookie_consent_v1";
 
 export type YouGlishFetchEvent = {
@@ -120,6 +122,8 @@ declare global {
         OUTDATED_BROWSER: number;
         TIMEOUT: number;
       };
+      // Official YouGlish widget.js method name (note upstream spelling: setParnterKey)
+      setParnterKey?: (key: string) => void;
     };
     onYouglishAPIReady?: () => void;
   }
@@ -371,7 +375,19 @@ export const YouGlishWidget = forwardRef<YouGlishWidgetHandle, YouGlishWidgetPro
 
     useEffect(() => {
       let active = true;
+      let observer: MutationObserver | null = null;
       setLoadingApi(true);
+
+      const stripMicrophonePermissions = () => {
+        const iframes = hostRef.current?.querySelectorAll("iframe");
+        if (!iframes) return;
+        iframes.forEach((iframe) => {
+          const allow = iframe.getAttribute("allow") || "";
+          if (/\b(microphone|camera)\b/i.test(allow)) {
+            iframe.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture");
+          }
+        });
+      };
 
       const closeExisting = () => {
         if (widgetRef.current) {
@@ -393,6 +409,20 @@ export const YouGlishWidget = forwardRef<YouGlishWidgetHandle, YouGlishWidgetPro
           const mountEl = document.createElement("div");
           mountEl.id = mountId;
           hostRef.current.appendChild(mountEl);
+
+          if (YOUGLISH_PARTNER_KEY && typeof window.YG.setParnterKey === "function") {
+            window.YG.setParnterKey(YOUGLISH_PARTNER_KEY);
+          }
+
+          // Enforce zero microphone/camera permission delegation on the embedded iframe
+          // (in addition to WordTap's HTTP Permissions-Policy: microphone=(), camera=() header).
+          observer = new MutationObserver(() => stripMicrophonePermissions());
+          observer.observe(hostRef.current, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["allow"],
+          });
 
           const isDark =
             typeof document !== "undefined" &&
@@ -474,6 +504,7 @@ export const YouGlishWidget = forwardRef<YouGlishWidgetHandle, YouGlishWidgetPro
 
           widgetRef.current = widget;
           widget.fetch(query, lang);
+          stripMicrophonePermissions();
         })
         .catch((err) => {
           if (!active) return;
@@ -487,6 +518,8 @@ export const YouGlishWidget = forwardRef<YouGlishWidgetHandle, YouGlishWidgetPro
 
       return () => {
         active = false;
+        observer?.disconnect();
+        observer = null;
         closeExisting();
       };
     }, [query, lang, reloadNonce, mountId]);
