@@ -3,6 +3,11 @@ import { z } from "zod";
 import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
 import { callAiJson } from "@/lib/ai-server";
 import { buildTargetWordPattern } from "@/lib/placeholder";
+import {
+  evaluateGrammarLocally,
+  detectDeterminerIssues,
+  buildNaturalAlternative,
+} from "@/lib/grammar";
 
 export async function OPTIONS(req: Request) {
   return handleCorsPreflight(req);
@@ -256,6 +261,7 @@ CRITICAL FAIRNESS & LENIENCY RULES:
 - COMPLETELY IGNORE capitalization (e.g., lowercase "i", lowercase sentence start, or mixed case). NEVER deduct points or mention capitalization.
 - COMPLETELY IGNORE informal / conversational English (e.g., "wanna", "gonna", "gotta", "kinda", "dunno", casual phrasing). Everyday spoken English is 100% valid and correct.
 - COMPLETELY IGNORE punctuation marks (e.g., missing period, question mark, exclamation mark, commas, or missing apostrophes like "dont"/"im"/"cant"). NEVER deduct points or mention punctuation.
+- MISSING ARTICLES & DETERMINERS ARE REAL GRAMMAR ERRORS: Singular countable nouns require an article or determiner (e.g. 'a portion of the lesson', NOT 'study portion of lesson'; 'have a car', NOT 'have car'). If a singular countable noun lacks an article/determiner, you MUST flag it in grammarCorrections, deduct grammar points (grammarScore < 75), and set isCorrect to false.
 - Do NOT reject a valid sentence simply because it is casual or differs from a textbook example. Accept any natural context where the target word is used accurately.
 
 Return ONLY valid JSON with these exact keys:
@@ -275,10 +281,30 @@ Return ONLY valid JSON with these exact keys:
     if (aiRes) {
       const checked = aiEvalSchema.safeParse(aiRes.data);
       if (checked.success) {
+        const evalData = checked.data;
+        // Verify against structural determiner errors in case AI was overly lenient or missed missing articles
+        const determinerIssues = detectDeterminerIssues(cleanSentence, word, partOfSpeech);
+        if (determinerIssues.length > 0) {
+          const displayTarget = word.toLowerCase();
+          for (const issue of determinerIssues) {
+            const correction = issue.isTarget
+              ? `Add an article before "${word}": try "a ${displayTarget}" or "the ${displayTarget}".`
+              : `Add an article before "${issue.word}": try "the ${issue.word}" or "a ${issue.word}".`;
+            if (!evalData.grammarCorrections.some((c) => c.toLowerCase().includes(issue.word.toLowerCase()))) {
+              evalData.grammarCorrections.unshift(correction);
+            }
+          }
+          evalData.grammarScore = Math.min(evalData.grammarScore, 65);
+          evalData.isCorrect = false;
+          if (!evalData.naturalAlternative) {
+            evalData.naturalAlternative = buildNaturalAlternative(cleanSentence, determinerIssues);
+          }
+        }
+
         return NextResponse.json(
           {
-            ...checked.data,
-            grammarScore: Math.round(checked.data.grammarScore),
+            ...evalData,
+            grammarScore: Math.round(evalData.grammarScore),
             provider: aiRes.provider,
           },
           { headers: corsHeaders },
@@ -286,11 +312,17 @@ Return ONLY valid JSON with these exact keys:
       }
     }
 
-    // 2. Legitimate Fallback: LanguageTool real grammar API (filtering out casing, informal, & punctuation)
+    // 2. Legitimate Fallback: LanguageTool real grammar API + local structural grammar checks
     const normalizedForLt = normalizeForGrammarCheck(cleanSentence);
     const ltMatches = await checkWithLanguageTool(cleanSentence);
-    const grammarCorrections: string[] = [];
-    let penalty = 0;
+    const localGrammar = evaluateGrammarLocally({
+      sentence: cleanSentence,
+      word,
+      partOfSpeech,
+    });
+
+    const grammarCorrections: string[] = [...localGrammar.grammarCorrections];
+    let penalty = localGrammar.scorePenalty;
 
     if (ltMatches && ltMatches.length > 0) {
       for (const m of ltMatches.slice(0, 4)) {
@@ -301,17 +333,31 @@ Return ONLY valid JSON with these exact keys:
             ? normalizedForLt.slice(m.offset, m.offset + m.length)
             : "";
 
-        if (snippet && suggestion) {
-          grammarCorrections.push(`${msg}: try "${suggestion}" instead of "${snippet}".`);
-        } else {
-          grammarCorrections.push(msg);
+        const formatted =
+          snippet && suggestion
+            ? `${msg}: try "${suggestion}" instead of "${snippet}".`
+            : msg;
+
+        // Avoid duplicate messages
+        if (!grammarCorrections.some((c) => c.toLowerCase().includes(msg.toLowerCase()))) {
+          grammarCorrections.push(formatted);
+          penalty += m.rule?.category?.id === "TYPOS" ? 10 : 15;
         }
-        penalty += m.rule?.category?.id === "TYPOS" ? 10 : 15;
       }
     }
 
     const grammarScore = Math.max(30, Math.min(100, 100 - penalty));
-    const isCorrect = containsTargetWord && grammarScore >= 75;
+    const isCorrect = containsTargetWord && grammarScore >= 75 && !localGrammar.hasStructuralErrors;
+
+    const naturalAlternative = localGrammar.naturalAlternative;
+    const naturalnessFeedback = isCorrect
+      ? `Nice work! Your sentence uses "${word}" in a complete structure.`
+      : localGrammar.naturalnessFeedback ||
+        "Review the grammar notes below and try rewriting for an even smoother sentence.";
+    const explanation = isCorrect
+      ? `Your sentence is clear and grammatically sound (${grammarScore}/100).`
+      : localGrammar.explanation ||
+        `Good effort using "${word}"! Fix the suggested grammar points and try again to strengthen your mastery.`;
 
     return NextResponse.json(
       {
@@ -319,13 +365,9 @@ Return ONLY valid JSON with these exact keys:
         usageCorrect: containsTargetWord,
         grammarScore,
         grammarCorrections,
-        naturalAlternative: null,
-        naturalnessFeedback: isCorrect
-          ? `Nice work! Your sentence uses "${word}" in a complete structure.`
-          : "Review the grammar notes below and try rewriting for an even smoother sentence.",
-        explanation: isCorrect
-          ? `Your sentence is clear and grammatically sound (${grammarScore}/100).`
-          : `Good effort using "${word}"! Fix the suggested grammar points and try again to strengthen your mastery.`,
+        naturalAlternative,
+        naturalnessFeedback,
+        explanation,
         provider: ltMatches !== null ? "languagetool" : "validator",
       },
       { headers: corsHeaders },
