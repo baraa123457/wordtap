@@ -118,9 +118,9 @@ export function MatchView({ q, onComplete, onDeleteWord }: Props) {
   return (
     <div className="grid gap-6">
       <div className="frame">
-        <div className="frame-bar">
+        <div className="frame-bar flex flex-wrap items-center justify-between gap-2">
           <span>Match each word with its translation</span>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {(pickedLeft || pickedRight) && onDeleteWord && (
               <button
                 type="button"
@@ -141,12 +141,12 @@ export function MatchView({ q, onComplete, onDeleteWord }: Props) {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:gap-6 p-3 sm:p-6">
-          <div className="grid content-start gap-2 sm:gap-3">
+          <div className="grid content-start gap-2 sm:gap-3 min-w-0">
             {left.map((id) => (
               <button
                 key={id}
                 type="button"
-                className="option text-xs sm:text-base p-2.5 sm:p-4 min-h-[3rem] sm:min-h-[3.5rem] justify-center text-center"
+                className="option w-full min-w-0 text-xs sm:text-base p-2.5 sm:p-4 min-h-[3rem] sm:min-h-[3.5rem] justify-center text-center"
                 data-state={stateOf(id, "left")}
                 data-flash={flash?.left === id}
                 disabled={matched.has(id)}
@@ -158,12 +158,12 @@ export function MatchView({ q, onComplete, onDeleteWord }: Props) {
               </button>
             ))}
           </div>
-          <div className="grid content-start gap-2 sm:gap-3">
+          <div className="grid content-start gap-2 sm:gap-3 min-w-0">
             {right.map((id) => (
               <button
                 key={id}
                 type="button"
-                className="option text-xs sm:text-base p-2.5 sm:p-4 min-h-[3rem] sm:min-h-[3.5rem] justify-center text-center"
+                className="option w-full min-w-0 text-xs sm:text-base p-2.5 sm:p-4 min-h-[3rem] sm:min-h-[3.5rem] justify-center text-center"
                 data-state={stateOf(id, "right")}
                 data-flash={flash?.right === id}
                 disabled={matched.has(id)}

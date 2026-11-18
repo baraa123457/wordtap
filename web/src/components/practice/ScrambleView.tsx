@@ -106,6 +106,11 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
     if (locked) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
 
       if (e.key === "Backspace") {
         e.preventDefault();
@@ -166,13 +171,13 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
         </div>
         <div className="frame-stage gap-3" style={{ minHeight: "12rem" }}>
           <p
-            className={`sub flex items-center justify-center gap-3 text-4xl sm:text-5xl ${
+            className={`sub flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-2xl sm:text-4xl md:text-5xl break-words max-w-full ${
               isPromptArabic ? "sub-ar" : ""
             }`}
             dir="auto"
             lang={isPromptArabic ? "ar" : "en"}
           >
-            <span className="sub-hl">{q.prompt}</span>
+            <span className="sub-hl break-words">{q.prompt}</span>
             {canSpeak() ? (
               <button
                 type="button"
@@ -196,8 +201,8 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
             </p>
           ) : null}
         </div>
-        <div className="frame-bar flex items-center justify-between gap-2">
-          <span className="truncate">
+        <div className="frame-bar flex flex-wrap items-center justify-between gap-2">
+          <span className="truncate min-w-0">
             {q.sourceUrl ? (
               <a
                 href={q.sourceUrl}
@@ -219,7 +224,7 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
               type="button"
               title="Delete this word from My Words (saved by accident)"
               aria-label="Delete word"
-              className="inline-flex items-center gap-1.5 text-xs text-white/60 hover:text-red-400 py-1 px-2.5 rounded-lg hover:bg-white/10 transition-colors shrink-0 ms-auto cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs text-white/60 hover:text-red-400 min-h-9 py-1 px-2.5 rounded-lg hover:bg-white/10 transition-colors shrink-0 ms-auto cursor-pointer"
               onClick={() => onDeleteWord(q.wordId)}
             >
               <TrashIcon size={14} />
@@ -231,14 +236,14 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
 
       {/* Answer Slots Row */}
       <div className="apple-card p-4 sm:p-5 bg-surface border border-line flex flex-col items-center gap-3">
-        <div className="w-full flex items-center justify-between text-xs text-muted px-1">
+        <div className="w-full flex flex-wrap items-center justify-between gap-2 text-xs text-muted px-1">
           <span>Formed word ({placedTileIds.length}/{totalTiles}):</span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {!hintUsed && placedTileIds.length === 0 && !locked ? (
               <button
                 type="button"
                 onClick={useHint}
-                className="btn btn-quiet min-h-7 px-2.5 py-0.5 text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:bg-subtitle/10 cursor-pointer"
+                className="btn btn-quiet min-h-9 px-3 py-1 text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:bg-subtitle/10 cursor-pointer"
               >
                 💡 Hint (first letter)
               </button>
@@ -248,14 +253,14 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
                 <button
                   type="button"
                   onClick={undoLast}
-                  className="btn btn-quiet min-h-7 px-2.5 py-0.5 text-xs text-muted hover:text-ink cursor-pointer"
+                  className="btn btn-quiet min-h-9 px-3 py-1 text-xs text-muted hover:text-ink cursor-pointer"
                 >
                   ⌫ Undo
                 </button>
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="btn btn-quiet min-h-7 px-2.5 py-0.5 text-xs text-muted hover:text-ink cursor-pointer"
+                  className="btn btn-quiet min-h-9 px-3 py-1 text-xs text-muted hover:text-ink cursor-pointer"
                 >
                   Clear
                 </button>

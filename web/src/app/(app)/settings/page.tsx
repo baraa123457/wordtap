@@ -105,15 +105,40 @@ export default function SettingsPage() {
       .then((s) => setDailyGoalVal(s.daily_goal))
       .catch(() => {});
 
+    let cleanupVoices: (() => void) | undefined;
     if (canSpeak() && typeof window !== "undefined" && "speechSynthesis" in window) {
       const loadVoices = () => {
         const v = window.speechSynthesis.getVoices();
         if (v && v.length > 0) setAvailableVoices(v);
       };
       loadVoices();
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+      window.speechSynthesis.addEventListener?.("voiceschanged", loadVoices);
+      cleanupVoices = () => {
+        window.speechSynthesis.removeEventListener?.("voiceschanged", loadVoices);
+      };
     }
+
+    const syncSettings = () => setSettings(getStoredSettings());
+    window.addEventListener("wordtap_theme_changed", syncSettings);
+    window.addEventListener("wordtap_settings_changed", syncSettings);
+
+    return () => {
+      cleanupVoices?.();
+      window.removeEventListener("wordtap_theme_changed", syncSettings);
+      window.removeEventListener("wordtap_settings_changed", syncSettings);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!showDeleteModal) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && !deleteBusy) {
+        setShowDeleteModal(false);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showDeleteModal, deleteBusy]);
 
   function update(partial: Partial<UserSettings>) {
     const updated = saveStoredSettings(partial);
@@ -311,11 +336,12 @@ export default function SettingsPage() {
           <label className="relative inline-flex cursor-pointer items-center shrink-0">
             <input
               type="checkbox"
+              aria-label="Auto-advance on correct answers"
               checked={settings.autoAdvance}
               onChange={(e) => update({ autoAdvance: e.target.checked })}
               className="peer sr-only"
             />
-            <div className="peer h-6 w-11 rounded-full bg-line after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-subtitle peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none shadow-2xs" />
+            <div className="peer h-6 w-11 rounded-full bg-line after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-subtitle peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus-visible:ring-2 peer-focus-visible:ring-subtitle peer-focus-visible:ring-offset-2 shadow-2xs" />
           </label>
         </div>
 
@@ -443,6 +469,7 @@ export default function SettingsPage() {
             <div className="text-xs sm:text-sm text-muted">Number of words to review in each study round.</div>
           </div>
           <select
+            aria-label="Words per practice session"
             value={settings.sessionSize}
             onChange={(e) => update({ sessionSize: Number(e.target.value) })}
             className="field w-full sm:w-44"
@@ -462,8 +489,8 @@ export default function SettingsPage() {
             <div className="text-xs sm:text-sm text-muted">Target XP to complete each day to maintain your streak.</div>
             {goalMessage ? <div className="text-xs font-semibold text-ok mt-1">{goalMessage}</div> : null}
           </div>
-          <div className="overflow-x-auto no-scrollbar py-0.5 scroll-smooth max-w-full min-w-0">
-            <div className="apple-segmented-container">
+          <div className="py-0.5 max-w-full min-w-0">
+            <div className="apple-segmented-container apple-segmented-fit">
               {GOALS.map((g) => (
                 <button
                   key={g}
@@ -803,6 +830,7 @@ export default function SettingsPage() {
             <div className="text-xs sm:text-sm text-muted">The language you want words translated into.</div>
           </div>
           <select
+            aria-label="Default translation language"
             value={settings.targetLang}
             onChange={(e) => update({ targetLang: e.target.value })}
             className="field w-full sm:w-56"
@@ -914,6 +942,7 @@ export default function SettingsPage() {
             <div className="text-xs sm:text-sm text-muted">Adjust the playback rate for spoken words.</div>
           </div>
           <select
+            aria-label="Pronunciation speed"
             value={settings.speechRate}
             onChange={(e) => {
               const r = Number(e.target.value);
@@ -939,6 +968,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <select
+              aria-label="Lock specific browser voice"
               value={settings.voiceURI || ""}
               onChange={(e) => {
                 const uri = e.target.value;
@@ -947,7 +977,7 @@ export default function SettingsPage() {
                   speak("Voice locked to this speaker", "en-US", { voiceURI: uri });
                 }
               }}
-              className="field w-full sm:w-72 max-w-full text-xs sm:text-sm"
+              className="field w-full sm:w-72 max-w-full text-base sm:text-sm"
             >
               <option value="">Consistent Best Match for Language &amp; Gender (Recommended)</option>
               {availableVoices
@@ -991,6 +1021,8 @@ export default function SettingsPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <input
               type="password"
+              aria-label="New password"
+              autoComplete="new-password"
               placeholder="New password (min. 6 chars)"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -999,6 +1031,8 @@ export default function SettingsPage() {
             />
             <input
               type="password"
+              aria-label="Confirm new password"
+              autoComplete="new-password"
               placeholder="Confirm new password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -1014,12 +1048,12 @@ export default function SettingsPage() {
           </div>
         </form>
 
-        <div className="flex items-center justify-between border-t border-line/50 pt-4">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/50 pt-4">
+          <div className="min-w-0">
             <div className="font-semibold text-ink">Sign out</div>
             <div className="text-xs sm:text-sm text-muted">Sign out of your WordTap session on this device.</div>
           </div>
-          <button type="button" onClick={() => void signOut()} className="btn btn-quiet min-w-28 text-xs font-medium">
+          <button type="button" onClick={() => void signOut()} className="btn btn-quiet min-w-28 text-xs font-medium shrink-0">
             Sign out
           </button>
         </div>
@@ -1027,21 +1061,21 @@ export default function SettingsPage() {
         {/* Your Data: Export */}
         <div className="border-t border-line/50 pt-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <div className="font-semibold text-ink">Your data (Export CSV &amp; Anki)</div>
               <div className="text-xs sm:text-sm text-muted">
                 Download your saved vocabulary with full subtitle sentences for offline use or Anki flashcards.
               </div>
               {exportMessage ? (
-                <div className="text-xs font-semibold text-subtitle mt-1">{exportMessage}</div>
+                <div className="text-xs font-semibold text-amber-700 dark:text-subtitle mt-1">{exportMessage}</div>
               ) : null}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <button
                 type="button"
                 disabled={exportBusy}
                 onClick={() => void handleExportCsv()}
-                className="btn btn-secondary text-xs font-semibold flex items-center justify-center gap-2"
+                className="btn text-xs font-semibold flex items-center justify-center gap-2"
               >
                 <span>Export CSV</span>
               </button>
@@ -1049,7 +1083,7 @@ export default function SettingsPage() {
                 type="button"
                 disabled={exportBusy}
                 onClick={() => void handleExportAnki()}
-                className="btn btn-secondary text-xs font-semibold flex items-center justify-center gap-2"
+                className="btn text-xs font-semibold flex items-center justify-center gap-2"
               >
                 <span>Export Anki Deck</span>
               </button>
@@ -1079,11 +1113,22 @@ export default function SettingsPage() {
 
       {/* Confirmation Modal */}
       {showDeleteModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-2xl border-2 border-bad bg-surface p-6 shadow-2xl grid gap-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 text-bad font-bold text-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => {
+            if (!deleteBusy) setShowDeleteModal(false);
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-account-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl border-2 border-bad bg-surface p-6 shadow-2xl grid gap-4 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <h2 id="delete-account-title" className="flex items-center gap-3 text-bad font-bold text-xl">
               <span>Delete Account?</span>
-            </div>
+            </h2>
             <p className="text-sm text-ink leading-relaxed">
               Are you sure you want to permanently delete your account? This action <strong>cannot be undone</strong>. All your saved vocabulary, Leitner boxes, XP, and streak will be permanently erased.
             </p>

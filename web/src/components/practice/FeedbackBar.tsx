@@ -60,6 +60,7 @@ export function FeedbackBar({
   useEffect(() => {
     if (phase !== "correct") return;
     function onKeyDown(e: KeyboardEvent) {
+      if (document.querySelector('[aria-modal="true"]')) return;
       if (e.key === "1" || e.key.toLowerCase() === "h") {
         e.preventDefault();
         onContinue("hard");
@@ -83,13 +84,13 @@ export function FeedbackBar({
       <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3.5 min-h-[4rem] sm:min-h-[4.5rem]">
         {phase === "answering" ? (
           <div className="flex items-center justify-between gap-3 w-full">
-            <button type="button" className="btn btn-quiet min-h-9 sm:min-h-10 px-3 sm:px-4 text-xs sm:text-sm" onClick={onSkip}>
+            <button type="button" className="btn btn-quiet min-h-10 px-3 sm:px-4 text-xs sm:text-sm" onClick={onSkip}>
               I don&apos;t know
             </button>
             <button
               ref={checkRef}
               type="button"
-              className="btn btn-primary min-h-9 sm:min-h-10 min-w-24 sm:min-w-36 text-xs sm:text-sm font-bold shadow-sm"
+              className="btn btn-primary min-h-10 min-w-24 sm:min-w-36 text-xs sm:text-sm font-bold shadow-sm"
               disabled={!canCheck}
               onClick={onCheck}
             >
@@ -98,8 +99,8 @@ export function FeedbackBar({
           </div>
         ) : phase === "correct" ? (
           /* CORRECT: Apple HIG inline toolbar with status on leading side and rating group on trailing side */
-          <div role="status" aria-live="polite" className="flex items-center justify-between gap-1.5 sm:gap-4 text-ok-ink w-full min-w-0">
-            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <div role="status" aria-live="polite" className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 text-ok-ink w-full min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full bg-ok text-white font-bold text-base sm:text-xl shadow-xs">
                 ✓
               </div>
@@ -109,13 +110,13 @@ export function FeedbackBar({
               </div>
             </div>
 
-            {/* Apple HIG Segmented Rating Controls (Hard / Medium / Easy) on same baseline */}
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* Apple HIG Segmented Rating Controls (Hard / Medium / Easy) */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => onContinue("hard")}
                 title="Mark as Hard — practice again this session [Key: 1 or H]"
-                className="btn min-h-9 sm:min-h-10 px-2 sm:px-3.5 py-1 sm:py-1.5 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                className="btn min-h-10 px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
               >
                 <span>😓 Hard</span>
               </button>
@@ -125,9 +126,9 @@ export function FeedbackBar({
                 type="button"
                 onClick={() => onContinue("medium")}
                 title="Mark as Medium — advance schedule normally [Key: 2, M, or Enter]"
-                className="btn btn-primary min-h-9 sm:min-h-10 px-2.5 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-1 sm:gap-1.5 active:scale-95 cursor-pointer"
+                className="btn btn-primary min-h-10 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-1 sm:gap-1.5 active:scale-95 cursor-pointer"
               >
-                <span>👌 Mid<span className="hidden xs:inline">ium</span></span>
+                <span>👌 Medium</span>
                 <span className="text-[10px] sm:text-xs opacity-80">↵</span>
               </button>
 
@@ -135,7 +136,7 @@ export function FeedbackBar({
                 type="button"
                 onClick={() => onContinue("easy")}
                 title="Mark as Easy — mastered, advance faster [Key: 3 or E]"
-                className="btn min-h-9 sm:min-h-10 px-2 sm:px-3.5 py-1 sm:py-1.5 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                className="btn min-h-10 px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
               >
                 <span>⚡ Easy</span>
               </button>
@@ -143,12 +144,12 @@ export function FeedbackBar({
           </div>
         ) : (
           /* WRONG or TYPO: Single baseline layout with Answer and Continue button */
-          <div role="status" aria-live="polite" className="flex items-center justify-between gap-2.5 sm:gap-3 w-full min-w-0">
+          <div role="status" aria-live="polite" className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3 w-full min-w-0">
             <div className={`min-w-0 flex-1 ${phase === "wrong" ? "text-bad-ink" : "text-ok-ink"}`}>
               <p className="text-sm sm:text-lg font-bold leading-tight">
                 {phase === "typo" ? "Almost: watch the spelling" : "Not quite"}
               </p>
-              <div className="text-ink flex items-center gap-1.5 sm:gap-2 mt-0.5 text-xs sm:text-base">
+              <div className="text-ink flex items-center gap-1.5 sm:gap-2 mt-0.5 text-xs sm:text-base min-w-0">
                 <span className="text-muted text-xs sm:text-sm shrink-0">Answer: </span>
                 <strong dir="auto" className="font-bold truncate">{answer}</strong>
                 {canSpeak() ? (
@@ -156,7 +157,7 @@ export function FeedbackBar({
                     type="button"
                     aria-label={`Hear “${answer}”`}
                     title={`Pronounce “${answer}”`}
-                    className="p-1 rounded-full text-muted hover:text-ink cursor-pointer shrink-0"
+                    className="p-1.5 rounded-full text-muted hover:text-ink cursor-pointer shrink-0"
                     onClick={() => {
                       const hasAr = /[\u0600-\u06FF]/.test(answer);
                       speak(answer, hasAr ? "ar" : "en");
@@ -176,7 +177,7 @@ export function FeedbackBar({
                   href={sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:underline inline-flex items-center gap-1 mt-0.5 truncate max-w-xs"
+                  className="text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:underline inline-flex items-center gap-1 mt-0.5 truncate max-w-full sm:max-w-xs"
                 >
                   Watch scene from {sourceTitle || "video"} ↗
                 </a>
@@ -185,7 +186,7 @@ export function FeedbackBar({
             <button
               ref={continueRef}
               type="button"
-              className={`btn shrink-0 min-h-9 sm:min-h-10 min-w-24 sm:min-w-36 px-3 sm:px-4 text-xs sm:text-sm font-bold shadow-sm ${phase === "wrong" ? "btn-bad" : "btn-ok"}`}
+              className={`btn shrink-0 min-h-10 min-w-24 sm:min-w-36 px-3 sm:px-4 text-xs sm:text-sm font-bold shadow-sm ${phase === "wrong" ? "btn-bad" : "btn-ok"}`}
               onClick={() => onContinue()}
             >
               Continue ↵

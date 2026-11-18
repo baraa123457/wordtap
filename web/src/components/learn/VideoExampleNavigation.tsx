@@ -50,7 +50,7 @@ export function VideoExampleNavigation({
           onClick={onTogglePlay}
           disabled={!ready}
           aria-label={playing ? "Pause video" : "Play video clip"}
-          className="btn btn-primary min-h-9 px-3.5 text-xs font-bold cursor-pointer disabled:opacity-50"
+          className="btn btn-primary min-h-10 px-3.5 text-xs font-bold cursor-pointer disabled:opacity-50"
         >
           {playing ? "Pause" : "Play clip"}
         </button>
@@ -60,7 +60,7 @@ export function VideoExampleNavigation({
           disabled={!ready}
           title={`Replay from ${formatClipTime(timestampSeconds)} (Shortcut: R)`}
           aria-label={`Replay clip from ${formatClipTime(timestampSeconds)}`}
-          className="btn min-h-9 px-3 text-xs font-semibold cursor-pointer disabled:opacity-50"
+          className="btn min-h-10 px-3 text-xs font-semibold cursor-pointer disabled:opacity-50"
         >
           ↺ Replay ({formatClipTime(timestampSeconds)})
         </button>
@@ -70,7 +70,7 @@ export function VideoExampleNavigation({
           disabled={!ready}
           title="Rewind 3 seconds (Shortcut: J)"
           aria-label="Rewind 3 seconds"
-          className="btn btn-quiet min-h-9 px-2.5 text-xs font-semibold cursor-pointer disabled:opacity-50"
+          className="btn btn-quiet min-h-10 px-2.5 text-xs font-semibold cursor-pointer disabled:opacity-50"
         >
           -3s
         </button>
@@ -80,7 +80,7 @@ export function VideoExampleNavigation({
           disabled={!ready}
           title="Cycle playback speed (0.75x / 1x / 1.25x)"
           aria-label={`Playback speed ${speed}x`}
-          className="btn btn-quiet min-h-9 px-2.5 text-xs font-semibold tabular-nums cursor-pointer disabled:opacity-50"
+          className="btn btn-quiet min-h-10 px-2.5 text-xs font-semibold tabular-nums cursor-pointer disabled:opacity-50"
         >
           {speed}x
         </button>
@@ -93,7 +93,7 @@ export function VideoExampleNavigation({
           onClick={onPrev}
           disabled={total <= 1}
           aria-label="Previous video example"
-          className="btn min-h-9 px-3 text-xs font-semibold cursor-pointer disabled:opacity-40"
+          className="btn min-h-10 px-3 text-xs font-semibold cursor-pointer disabled:opacity-40"
         >
           ← Prev
         </button>
@@ -108,7 +108,7 @@ export function VideoExampleNavigation({
           onClick={onNext}
           disabled={total <= 1}
           aria-label="Next video example"
-          className="btn min-h-9 px-3 text-xs font-semibold cursor-pointer disabled:opacity-40"
+          className="btn min-h-10 px-3 text-xs font-semibold cursor-pointer disabled:opacity-40"
         >
           Next →
         </button>

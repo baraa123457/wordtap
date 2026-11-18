@@ -29,19 +29,21 @@ function wordClassForState(state: WordSpeechState, isSelected: boolean): string 
 }
 
 function targetBlankClassForState(state: WordSpeechState): string {
+  const layout =
+    "inline-block max-w-full break-all rounded-lg border-b-2 px-2 py-0.5 font-mono tracking-[0.12em] sm:tracking-[0.2em]";
   switch (state) {
     case "speaking":
-      return "inline-block rounded-lg border-b-2 border-amber-600 bg-subtitle px-2 py-0.5 font-mono font-extrabold tracking-[0.2em] text-ink ring-2 ring-amber-400/70 shadow-sm transition-all duration-75";
+      return `${layout} border-amber-600 bg-subtitle font-extrabold text-subtitle-ink ring-2 ring-amber-400/70 shadow-sm transition-all duration-75`;
     case "spoken":
-      return "inline-block rounded-lg border-b-2 border-amber-500 bg-amber-500/20 px-2 py-0.5 font-mono font-bold tracking-[0.2em] text-amber-800 dark:text-amber-200 transition-all duration-100";
+      return `${layout} border-amber-500 bg-amber-500/20 font-bold text-amber-800 dark:text-amber-200 transition-all duration-100`;
     default:
-      return "inline-block rounded-lg border-b-2 border-subtitle bg-subtitle/10 px-2 py-0.5 font-mono font-bold tracking-[0.2em] text-ink transition-all duration-100";
+      return `${layout} border-subtitle bg-subtitle/10 font-bold text-ink transition-all duration-100`;
   }
 }
 
 function revealedTargetClassForState(state: WordSpeechState): string {
   if (state === "speaking") {
-    return "rounded-lg bg-subtitle px-2 py-0.5 font-extrabold text-ink ring-2 ring-amber-500/70 shadow-sm transition-all duration-75";
+    return "rounded-lg bg-subtitle px-2 py-0.5 font-extrabold text-subtitle-ink ring-2 ring-amber-500/70 shadow-sm transition-all duration-75";
   }
   return "rounded-lg bg-subtitle/40 px-2 py-0.5 font-extrabold text-ink transition-all duration-100";
 }

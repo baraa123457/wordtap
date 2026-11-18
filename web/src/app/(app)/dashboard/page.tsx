@@ -189,8 +189,8 @@ export default function DashboardPage() {
             <div className="h-4 w-28 bg-line/40 rounded-md" />
           </div>
           <div className="space-y-2">
-            <div className="h-7 w-56 bg-line/60 rounded-lg" />
-            <div className="h-4 w-72 bg-line/40 rounded-md" />
+            <div className="h-7 w-full max-w-56 bg-line/60 rounded-lg" />
+            <div className="h-4 w-full max-w-72 bg-line/40 rounded-md" />
           </div>
           <div className="h-4 w-40 bg-line/40 rounded-md" />
         </div>
@@ -311,9 +311,9 @@ export default function DashboardPage() {
       <OnboardingChecklist words={words} />
 
       {/* 1. Today's Practice Card - FIRST for habit reinforcement */}
-      <section aria-labelledby="today" className="apple-card overflow-hidden w-full min-w-0 transition-all">
+      <section aria-labelledby="today" className="apple-card w-full min-w-0 transition-all">
         {/* Top bar */}
-        <div className="flex items-center justify-between border-b border-line/60 bg-black/[0.02] dark:bg-white/[0.03] px-4 sm:px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-[inherit] border-b border-line/60 bg-black/[0.02] dark:bg-white/[0.03] px-4 sm:px-5 py-3">
           <div className="flex items-center gap-2 sm:gap-2.5">
             <span id="today" className="font-bold text-ink text-sm sm:text-base">Today</span>
             {dueCount > 0 ? (
@@ -366,7 +366,7 @@ export default function DashboardPage() {
           <div className="w-full sm:w-auto shrink-0 flex items-center justify-start sm:justify-end">
             <Link
               href={words.length === 0 ? "/extension" : "/practice"}
-              className="btn btn-primary w-full sm:w-auto text-center justify-center min-h-11 px-6 text-sm sm:text-base font-bold shadow-md hover:scale-105 active:scale-95 transition-all"
+              className="btn btn-primary w-full sm:w-auto text-center justify-center min-h-11 px-6 text-sm sm:text-base font-bold shadow-md sm:hover:scale-[1.02] active:scale-95 transition-all"
             >
               {words.length === 0
                 ? "Get extension"
@@ -682,31 +682,33 @@ export default function DashboardPage() {
       ) : null}
 
       {/* 4. Latest Words */}
-      <section aria-labelledby="recent" className="grid gap-3 min-w-0">
-        <div className="flex items-baseline justify-between px-1">
-          <h2 id="recent" className="text-lg font-semibold text-ink">
-            Latest words
-          </h2>
-          <Link href="/words" className="text-xs font-semibold text-muted hover:text-ink transition-colors">
-            View all {words.length} →
-          </Link>
-        </div>
-        <ul className="apple-card divide-y divide-line/50 overflow-hidden min-w-0">
-          {words.slice(0, 5).map((w) => (
-            <li key={w.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3.5 min-w-0 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors">
-              <span dir="auto" className="truncate font-semibold text-ink min-w-0 text-sm sm:text-base">
-                {w.text}
-              </span>
-              <span dir="auto" className="truncate text-muted min-w-0 text-xs sm:text-sm">
-                {w.translation}
-              </span>
-              <div className="shrink-0">
-                <MasteryDots box={w.box} />
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {words.length > 0 ? (
+        <section aria-labelledby="recent" className="grid gap-3 min-w-0">
+          <div className="flex items-baseline justify-between px-1">
+            <h2 id="recent" className="text-lg font-semibold text-ink">
+              Latest words
+            </h2>
+            <Link href="/words" className="text-xs font-semibold text-muted hover:text-ink transition-colors py-1">
+              View all {words.length} →
+            </Link>
+          </div>
+          <ul className="apple-card divide-y divide-line/50 overflow-hidden min-w-0">
+            {words.slice(0, 5).map((w) => (
+              <li key={w.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-3 sm:gap-4 px-4 py-3.5 min-w-0 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors">
+                <span dir="auto" className="truncate font-semibold text-ink min-w-0 text-sm sm:text-base">
+                  {w.text}
+                </span>
+                <span dir="auto" className="truncate text-muted min-w-0 text-xs sm:text-sm">
+                  {w.translation}
+                </span>
+                <div className="shrink-0">
+                  <MasteryDots box={w.box} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }

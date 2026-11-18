@@ -34,7 +34,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   practiceMode: "mixed",
   enableChoice: true,
   enableTyping: true,
-  speechRate: 0.95,
+  speechRate: 0.92,
   voiceGender: "female",
   voiceTone: "soft",
   voiceURI: "",

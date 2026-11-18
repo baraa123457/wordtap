@@ -22,7 +22,7 @@ function highlightInSentence(sentence: string, targetWord: string) {
   const parts = sentence.split(regex);
   if (parts.length === 1) return sentence;
   return parts.map((part, i) =>
-    regex.test(part) ? (
+    i % 2 === 1 ? (
       <mark
         key={i}
         className="bg-subtitle/30 text-subtitle font-bold px-1 rounded-sm not-italic border-b-2 border-subtitle"
@@ -96,6 +96,11 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
     if (locked) return;
     function onKey(e: KeyboardEvent) {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
       const index = Number(e.key) - 1;
       const option = q.options[index];
       if (option !== undefined) handleSelect(option);
@@ -158,13 +163,13 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
           ) : (
             <>
               <p
-                className={`sub flex items-center justify-center gap-2 sm:gap-3 text-2xl sm:text-4xl md:text-5xl ${
+                className={`sub flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-2xl sm:text-4xl md:text-5xl break-words max-w-full ${
                   isPromptArabic ? "sub-ar" : ""
                 }`}
                 dir="auto"
                 lang={isPromptArabic ? "ar" : q.speak?.lang || "en"}
               >
-                <span className="sub-hl">{q.prompt}</span>
+                <span className="sub-hl break-words">{q.prompt}</span>
                 {speakable && q.speak ? (
                   <button
                     type="button"
@@ -195,8 +200,8 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
             </>
           )}
         </div>
-        <div className="frame-bar flex items-center justify-between gap-2">
-          <span className="truncate">
+        <div className="frame-bar flex flex-wrap items-center justify-between gap-2">
+          <span className="truncate min-w-0">
             {q.sourceUrl ? (
               <a
                 href={q.sourceUrl}
@@ -218,7 +223,7 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
               type="button"
               title="Delete this word from My Words (saved by accident)"
               aria-label="Delete word"
-              className="inline-flex items-center gap-1.5 text-xs text-white/60 hover:text-red-400 py-1 px-2.5 rounded-lg hover:bg-white/10 transition-colors shrink-0 ms-auto cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs text-white/60 hover:text-red-400 min-h-9 py-1 px-2.5 rounded-lg hover:bg-white/10 transition-colors shrink-0 ms-auto cursor-pointer"
               onClick={() => onDeleteWord(q.wordId)}
             >
               <TrashIcon size={14} />
@@ -230,42 +235,39 @@ export function ChoiceView({ q, selected, phase, onSelect, onDeleteWord }: Props
 
       <div role="radiogroup" aria-label="Answers" className="grid gap-3 sm:grid-cols-2">
         {q.options.map((option, i) => (
-          <button
-            key={option}
-            type="button"
-            role="radio"
-            aria-checked={option === selected}
-            className="option group relative flex items-center justify-between"
-            data-state={stateOf(option)}
-            data-flash={locked && option === selected && option !== q.answer}
-            disabled={locked}
-            onClick={() => handleSelect(option)}
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="kbd shrink-0" aria-hidden>
-                {i + 1}
-              </span>
-              <span dir="auto" className="min-w-0 break-words text-start">
-                {option}
-              </span>
-            </div>
+          <div key={option} className="group relative flex items-stretch min-w-0">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={option === selected}
+              className={`option flex-1 min-w-0 flex items-center justify-between ${canSpeak() ? "pr-11" : ""}`}
+              data-state={stateOf(option)}
+              data-flash={locked && option === selected && option !== q.answer}
+              disabled={locked}
+              onClick={() => handleSelect(option)}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="kbd shrink-0" aria-hidden>
+                  {i + 1}
+                </span>
+                <span dir="auto" className="min-w-0 break-words text-start">
+                  {option}
+                </span>
+              </div>
+            </button>
 
             {canSpeak() ? (
-              <span
-                role="button"
-                tabIndex={-1}
+              <button
+                type="button"
                 aria-label={`Hear “${option}”`}
                 title={`Pronounce “${option}”`}
-                className="p-1 rounded-full text-muted hover:text-ink hover:bg-black/10 dark:hover:bg-white/10 shrink-0 transition-opacity opacity-60 group-hover:opacity-100 cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  speakOption(option);
-                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 min-h-9 min-w-9 inline-flex items-center justify-center rounded-full text-muted hover:text-ink hover:bg-black/10 dark:hover:bg-white/10 transition-opacity opacity-70 group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer"
+                onClick={() => speakOption(option)}
               >
                 <SpeakerIcon size={18} />
-              </span>
+              </button>
             ) : null}
-          </button>
+          </div>
         ))}
       </div>
     </div>

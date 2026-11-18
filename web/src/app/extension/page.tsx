@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { trackEvent } from "@/lib/analytics";
 
@@ -14,7 +15,7 @@ const STEPS = [
           href="/wordtap-extension.zip"
           download
           onClick={() => void trackEvent("extension_connected")}
-          className="font-bold text-subtitle hover:underline underline-offset-4"
+          className="font-bold text-amber-700 dark:text-subtitle hover:underline underline-offset-4"
         >
           wordtap-extension.zip
         </a>{" "}
@@ -189,9 +190,9 @@ export default function ExtensionPage() {
           <div>
             <strong className="text-ink">100% Privacy-respecting.</strong> We only read subtitles when you click a word. No browsing history tracking.
           </div>
-          <div className="flex gap-4 shrink-0 font-medium">
-            <a href="/privacy" className="hover:text-ink underline underline-offset-4">Privacy Policy</a>
-            <a href="/terms" className="hover:text-ink underline underline-offset-4">Terms of Service</a>
+          <div className="flex flex-wrap gap-4 shrink-0 font-medium">
+            <Link href="/privacy" className="hover:text-ink underline underline-offset-4">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-ink underline underline-offset-4">Terms of Service</Link>
           </div>
         </div>
       </div>

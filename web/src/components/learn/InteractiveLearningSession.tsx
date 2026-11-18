@@ -228,10 +228,10 @@ function SequentialInitialLearningSession({
           {completedSummary.length > 0 ? (
             <ul className="divide-y divide-line/60 rounded-2xl border border-line bg-surface text-start overflow-hidden">
               {completedSummary.map((item, idx) => (
-                <li key={`${item.word}-${idx}`} className="p-3.5 grid gap-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-bold text-ink text-sm sm:text-base">{item.word}</span>
-                    <div className="flex items-center gap-2 text-xs">
+                <li key={`${item.word}-${idx}`} className="p-3.5 grid gap-1 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
+                    <span className="font-bold text-ink text-sm sm:text-base break-words">{item.word}</span>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span className="rounded-full bg-black/5 dark:bg-white/10 px-2.5 py-0.5 capitalize text-muted font-semibold">
                         {item.status}
                       </span>
@@ -390,7 +390,7 @@ function SequentialInitialLearningSession({
           type="button"
           onClick={() => setLeaving(true)}
           aria-label="Leave learning session"
-          className="btn btn-quiet w-10 h-10 min-h-10 p-0 flex items-center justify-center rounded-full text-muted hover:text-ink cursor-pointer shrink-0"
+          className="btn btn-quiet w-11 h-11 min-h-11 p-0 flex items-center justify-center rounded-full text-muted hover:text-ink cursor-pointer shrink-0"
         >
           <CloseIcon />
         </button>
@@ -525,9 +525,18 @@ function SequentialInitialLearningSession({
 
       {/* Leave Confirmation Modal */}
       {leaving ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setLeaving(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setLeaving(false);
+          }}
+        >
           <div
             role="alertdialog"
+            aria-modal="true"
             aria-label="Pause learning session?"
             className="w-full max-w-sm grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl"
           >
@@ -540,6 +549,7 @@ function SequentialInitialLearningSession({
             <div className="flex flex-col gap-2.5">
               <button
                 type="button"
+                autoFocus
                 onClick={() => setLeaving(false)}
                 className="btn btn-primary w-full font-bold cursor-pointer"
               >
@@ -708,7 +718,7 @@ function SpacedRepetitionReviewSession({
           type="button"
           onClick={() => router.push("/dashboard")}
           aria-label="Back to dashboard"
-          className="btn btn-quiet w-10 h-10 min-h-10 p-0 flex items-center justify-center rounded-full text-muted hover:text-ink cursor-pointer shrink-0"
+          className="btn btn-quiet w-11 h-11 min-h-11 p-0 flex items-center justify-center rounded-full text-muted hover:text-ink cursor-pointer shrink-0"
         >
           <CloseIcon />
         </button>
@@ -719,7 +729,14 @@ function SpacedRepetitionReviewSession({
             </span>
             <span className="tabular-nums">{xp} XP</span>
           </div>
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-line">
+          <div
+            role="progressbar"
+            aria-label="Spaced repetition review progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progressPct}
+            className="h-2.5 w-full overflow-hidden rounded-full bg-line"
+          >
             <div className="h-full rounded-full bg-ok transition-[width] duration-300" style={{ width: `${progressPct}%` }} />
           </div>
         </div>

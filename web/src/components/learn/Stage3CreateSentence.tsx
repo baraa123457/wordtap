@@ -74,7 +74,7 @@ export function Stage3CreateSentence({
           <span className="inline-flex items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-xs font-bold text-ink">
             Stage 3 · Create Your Own Sentence
           </span>
-          <h2 id="stage3-heading" className="text-xl sm:text-2xl font-extrabold text-ink">
+          <h2 id="stage3-heading" className="text-xl sm:text-2xl font-extrabold text-ink break-words">
             Can you write your own sentence using &ldquo;<span className="underline decoration-subtitle decoration-4 underline-offset-4">{word.text}</span>&rdquo;?
           </h2>
           <p className="text-xs sm:text-sm text-muted">
@@ -86,7 +86,7 @@ export function Stage3CreateSentence({
           <button
             type="button"
             onClick={() => setShowHint((s) => !s)}
-            className="btn btn-quiet min-h-8 px-3 py-1 text-xs font-semibold cursor-pointer shrink-0"
+            className="btn btn-quiet min-h-10 px-3 py-1.5 text-xs font-semibold cursor-pointer shrink-0"
           >
             {showHint ? "Hide meaning" : "Meaning reminder"}
           </button>
@@ -116,22 +116,22 @@ export function Stage3CreateSentence({
           }}
           placeholder={`Example structure: Write a natural sentence with "${word.text}"…`}
           aria-label={`Write your own sentence using ${word.text}`}
-          className="field min-h-[104px] resize-y text-sm sm:text-base leading-relaxed disabled:opacity-75"
+          className="field min-h-[104px] resize-y text-base leading-relaxed disabled:opacity-75"
         />
 
         {error ? (
-          <p role="alert" className="rounded-xl bg-bad-soft px-3.5 py-2.5 text-xs sm:text-sm text-bad font-medium">
+          <p role="alert" className="rounded-xl bg-bad-soft px-3.5 py-2.5 text-xs sm:text-sm text-bad-ink font-medium break-words">
             {error}
           </p>
         ) : null}
 
         {!evaluation ? (
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[11px] text-muted">Tip: Press Ctrl+Enter to submit</span>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="hidden sm:inline text-[11px] text-muted">Tip: Press Ctrl+Enter to submit</span>
             <button
               type="submit"
               disabled={submitting || !sentence.trim()}
-              className="btn btn-primary min-h-11 px-6 text-sm font-bold cursor-pointer disabled:opacity-50"
+              className="btn btn-primary w-full sm:w-auto ms-auto min-h-11 px-6 text-sm font-bold cursor-pointer disabled:opacity-50"
             >
               {submitting ? "Evaluating your sentence…" : "Evaluate Sentence"}
             </button>
@@ -164,15 +164,15 @@ export function Stage3CreateSentence({
                   : "Good try — let's polish a few details"}
               </h3>
             </div>
-            <div className="flex items-center gap-2 text-xs font-bold">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
               <span className="rounded-full bg-surface border border-line px-2.5 py-0.5 text-ink tabular-nums">
                 Grammar: {evaluation.grammarScore}/100
               </span>
               <span
                 className={`rounded-full px-2.5 py-0.5 ${
                   evaluation.usageCorrect
-                    ? "bg-ok/15 text-ok"
-                    : "bg-bad-soft text-bad"
+                    ? "bg-ok/15 text-ok-ink"
+                    : "bg-bad-soft text-bad-ink"
                 }`}
               >
                 {evaluation.usageCorrect ? "Word used correctly" : "Check word usage"}
@@ -180,10 +180,10 @@ export function Stage3CreateSentence({
             </div>
           </div>
 
-          <p className="text-sm text-ink leading-relaxed">{evaluation.explanation}</p>
+          <p className="text-sm text-ink leading-relaxed break-words">{evaluation.explanation}</p>
 
           {evaluation.naturalnessFeedback ? (
-            <p className="text-xs sm:text-sm text-muted">
+            <p className="text-xs sm:text-sm text-muted break-words">
               <strong className="text-ink">Naturalness:</strong> {evaluation.naturalnessFeedback}
             </p>
           ) : null}
@@ -191,7 +191,7 @@ export function Stage3CreateSentence({
           {evaluation.grammarCorrections.length > 0 ? (
             <div className="rounded-xl border border-line bg-surface p-3 grid gap-1.5">
               <p className="text-xs font-bold text-ink">Suggestions to improve:</p>
-              <ul className="list-disc ps-5 text-xs sm:text-sm text-muted space-y-1">
+              <ul className="list-disc ps-5 text-xs sm:text-sm text-muted space-y-1 break-words">
                 {evaluation.grammarCorrections.map((c, idx) => (
                   <li key={idx}>{c}</li>
                 ))}
@@ -202,7 +202,7 @@ export function Stage3CreateSentence({
           {evaluation.naturalAlternative ? (
             <div className="rounded-xl border border-line bg-surface p-3 grid gap-1">
               <p className="text-xs font-bold text-ink">Even more natural alternative:</p>
-              <p className="text-sm text-ink italic">&ldquo;{evaluation.naturalAlternative}&rdquo;</p>
+              <p className="text-sm text-ink italic break-words">&ldquo;{evaluation.naturalAlternative}&rdquo;</p>
             </div>
           ) : null}
 

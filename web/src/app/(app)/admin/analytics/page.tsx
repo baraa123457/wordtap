@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
-import { RequireAuth } from "@/components/RequireAuth";
 import { LoadingState } from "@/components/StateViews";
 import { useAuth } from "@/context/AuthContext";
 
@@ -18,11 +17,7 @@ type FunnelCounts = {
 };
 
 export default function AdminAnalyticsPage() {
-  return (
-    <RequireAuth>
-      <AdminAnalyticsContent />
-    </RequireAuth>
-  );
+  return <AdminAnalyticsContent />;
 }
 
 function AccessDeniedView() {
@@ -137,10 +132,10 @@ function AdminAnalyticsContent() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-4xl flex-col px-3.5 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+    <div className="mx-auto flex w-full max-w-4xl flex-col space-y-6 sm:space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line/60 pb-4">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-subtitle">Admin Overview</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-subtitle">Admin Overview</span>
           <h1 className="text-xl sm:text-3xl font-extrabold text-ink">WordTap Activation &amp; Funnel</h1>
         </div>
         <Link href="/dashboard" className="btn btn-quiet text-xs font-semibold self-start sm:self-auto">
@@ -178,21 +173,21 @@ function AdminAnalyticsContent() {
           <div className="apple-card p-6 space-y-4">
             <h2 className="text-lg font-bold text-ink">Retention &amp; Habit Formation</h2>
             <div className="divide-y divide-line/40 text-sm">
-              <div className="py-3 flex items-center justify-between">
+              <div className="py-3 flex items-center justify-between gap-3">
                 <span className="text-muted">First practice session completed:</span>
-                <span className="font-bold text-ink">{counts.firstPracticeCompleted}</span>
+                <span className="font-bold text-ink shrink-0 tabular-nums">{counts.firstPracticeCompleted}</span>
               </div>
-              <div className="py-3 flex items-center justify-between">
+              <div className="py-3 flex items-center justify-between gap-3">
                 <span className="text-muted">Day-2 return:</span>
-                <span className="font-bold text-ink">{counts.day2Return}</span>
+                <span className="font-bold text-ink shrink-0 tabular-nums">{counts.day2Return}</span>
               </div>
-              <div className="py-3 flex items-center justify-between">
+              <div className="py-3 flex items-center justify-between gap-3">
                 <span className="text-muted">Day-7 return:</span>
-                <span className="font-bold text-ink">{counts.day7Return}</span>
+                <span className="font-bold text-ink shrink-0 tabular-nums">{counts.day7Return}</span>
               </div>
-              <div className="py-3 flex items-center justify-between bg-subtitle/10 -mx-6 px-6 rounded-b-xl border-t border-subtitle/30">
+              <div className="py-3 flex items-center justify-between gap-3 bg-subtitle/10 -mx-6 px-6 rounded-b-xl border-t border-subtitle/30">
                 <span className="font-semibold text-ink">Learners practicing on 3+ distinct days:</span>
-                <span className="font-extrabold text-subtitle text-base">{counts.activePracticers3Days}</span>
+                <span className="font-extrabold text-amber-700 dark:text-subtitle text-base shrink-0 tabular-nums">{counts.activePracticers3Days}</span>
               </div>
             </div>
           </div>

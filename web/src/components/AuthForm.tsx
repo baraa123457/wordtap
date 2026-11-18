@@ -139,9 +139,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
                   />
                 </label>
                 {!forgotMode ? (
-                  <label className="grid gap-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-xs sm:text-sm text-ink">Password</span>
+                  <div className="grid gap-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <label htmlFor="auth-password" className="font-medium text-xs sm:text-sm text-ink">
+                        Password
+                      </label>
                       {isLogin ? (
                         <button
                           type="button"
@@ -150,7 +152,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
                             setError(null);
                             setStatusMessage(null);
                           }}
-                          className="text-xs font-semibold text-muted hover:text-ink underline underline-offset-4 cursor-pointer"
+                          className="text-xs font-semibold text-muted hover:text-ink underline underline-offset-4 py-1.5 cursor-pointer"
                         >
                           Forgot password?
                         </button>
@@ -158,7 +160,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
                     </div>
                     <div className="relative">
                       <input
-                        className="field w-full pr-10"
+                        id="auth-password"
+                        className="field w-full pr-11"
                         type={showPassword ? "text" : "password"}
                         autoComplete={isLogin ? "current-password" : "new-password"}
                         required
@@ -187,17 +190,17 @@ export function AuthForm({ mode }: { mode: Mode }) {
                       </button>
                     </div>
                     {!isLogin ? <span className="text-xs text-muted">At least 6 characters.</span> : null}
-                  </label>
+                  </div>
                 ) : null}
 
                 {statusMessage ? (
-                  <p role="status" className="rounded-xl bg-ok-soft border border-ok/30 px-4 py-3 text-xs sm:text-sm text-ok font-medium">
+                  <p role="status" className="rounded-xl bg-ok-soft border border-ok/30 px-4 py-3 text-xs sm:text-sm text-ok-ink font-medium">
                     {statusMessage}
                   </p>
                 ) : null}
 
                 {error ? (
-                  <p role="alert" className="rounded-xl bg-bad-soft border border-bad/30 px-4 py-3 text-xs sm:text-sm text-bad font-medium">
+                  <p role="alert" className="rounded-xl bg-bad-soft border border-bad/30 px-4 py-3 text-xs sm:text-sm text-bad-ink font-medium">
                     {error}
                   </p>
                 ) : null}

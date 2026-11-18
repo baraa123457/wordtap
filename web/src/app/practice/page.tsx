@@ -102,15 +102,17 @@ function PracticeLoader() {
     if (trySampleSession) {
       return (
         <div className="space-y-2">
-          <div className="mx-auto max-w-3xl mt-3 px-4 py-2 bg-subtitle/15 border border-subtitle/30 rounded-xl text-xs font-semibold text-ink flex items-center justify-between gap-2">
-            <span>Demo Mode: Experiencing the 4-Stage Learning System on sample words.</span>
-            <button
-              type="button"
-              onClick={() => setTrySampleSession(false)}
-              className="text-muted hover:text-ink underline text-[11px] shrink-0 cursor-pointer"
-            >
-              Exit demo
-            </button>
+          <div className="mx-auto max-w-3xl px-3.5 sm:px-5 pt-3">
+            <div className="px-4 py-2 bg-subtitle/15 border border-subtitle/30 rounded-xl text-xs font-semibold text-ink flex flex-wrap items-center justify-between gap-2">
+              <span>Demo Mode: Experiencing the 4-Stage Learning System on sample words.</span>
+              <button
+                type="button"
+                onClick={() => setTrySampleSession(false)}
+                className="text-muted hover:text-ink underline text-[11px] shrink-0 cursor-pointer"
+              >
+                Exit demo
+              </button>
+            </div>
           </div>
           <InteractiveLearningSession
             words={SAMPLE_WORDS}

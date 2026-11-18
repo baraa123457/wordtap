@@ -39,6 +39,8 @@ declare global {
         element: HTMLElement | string,
         options: {
           videoId: string;
+          width?: string | number;
+          height?: string | number;
           playerVars?: Record<string, string | number>;
           events?: {
             onReady?: (event: { target: YTPlayerInstance }) => void;
@@ -331,6 +333,8 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
 
           ytPlayerRef.current = new window.YT.Player(el, {
             videoId: clip.youtubeVideoId,
+            width: "100%",
+            height: "100%",
             playerVars: {
               start: clip.timestampSeconds,
               autoplay: 0,
@@ -429,11 +433,22 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
       return () => window.clearInterval(timer);
     }, [isDirectVideo, playing, ready, onTimeUpdate]);
 
-    // Keyboard shortcuts (Space/K = play/pause, R = replay, J = -3s when not typing in an input)
+    // Keyboard shortcuts (Space/K = play/pause, R = replay, J = -3s when not focused on an interactive control)
     useEffect(() => {
       const onKeyDown = (e: KeyboardEvent) => {
-        const tag = (e.target as HTMLElement | null)?.tagName;
-        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        const target = e.target as HTMLElement | null;
+        const tag = target?.tagName;
+        if (
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT" ||
+          tag === "BUTTON" ||
+          tag === "A" ||
+          target?.isContentEditable ||
+          document.querySelector('[aria-modal="true"]')
+        ) {
+          return;
+        }
         if (e.metaKey || e.ctrlKey || e.altKey || !ready || embedError) return;
 
         if (e.key === " " || e.key.toLowerCase() === "k") {
@@ -507,7 +522,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                   aria-label="Play video clip"
                   className="absolute inset-0 z-10 flex items-center justify-center bg-black/25 transition hover:bg-black/35 cursor-pointer"
                 >
-                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-subtitle text-ink shadow-lg text-xl font-black pl-1">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-subtitle text-subtitle-ink shadow-lg text-xl font-black pl-1">
                     ▶
                   </span>
                 </button>
@@ -540,7 +555,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                   setEmbedError("This video stream could not be loaded.");
                   onUnavailable?.(clipRef.current);
                 }}
-                className="block h-full w-full object-cover bg-black cursor-pointer"
+                className="block h-full w-full object-contain bg-black cursor-pointer"
               />
             </>
           ) : (
@@ -558,7 +573,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
               ) : null}
               <div
                 ref={ytMountRef}
-                className="h-full w-full [&>iframe]:h-full [&>iframe]:w-full"
+                className="absolute inset-0 h-full w-full [&>iframe]:h-full [&>iframe]:w-full"
               />
             </>
           )}

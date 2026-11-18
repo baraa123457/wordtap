@@ -72,15 +72,15 @@ export default function TermsPage() {
 
           <section className="space-y-3">
             <h2 className="text-lg font-bold">7. Contact</h2>
-            <div className="p-4 rounded-xl border border-line bg-surface/50 text-xs sm:text-sm text-muted">
-              <p><strong>Entity:</strong> [LEGAL_ENTITY_NAME_PLACEHOLDER: WordTap]</p>
-              <p><strong>Email:</strong> [CONTACT_EMAIL_PLACEHOLDER: support@wordtap.app]</p>
+            <div className="p-4 rounded-xl border border-line bg-surface/50 text-xs sm:text-sm text-muted space-y-1">
+              <p><strong>Entity:</strong> WordTap</p>
+              <p><strong>Email:</strong> <a href="mailto:support@wordtap.app" className="underline underline-offset-4">support@wordtap.app</a></p>
             </div>
           </section>
         </div>
       </main>
 
-      <footer className="border-t border-line/60 py-6 text-xs text-muted flex items-center justify-between">
+      <footer className="border-t border-line/60 py-6 text-xs text-muted flex flex-wrap items-center justify-between gap-2">
         <span>© {new Date().getFullYear()} WordTap. All rights reserved.</span>
         <div className="flex gap-4">
           <Link href="/privacy" className="hover:text-ink">Privacy Policy</Link>

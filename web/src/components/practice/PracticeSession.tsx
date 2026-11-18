@@ -216,29 +216,43 @@ export function PracticeSession({
     }
   }
 
+  // Escape closes confirmation modals
+  useEffect(() => {
+    if (!leaving && !deleteConfirmId) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (deleteConfirmId && !isDeleting) setDeleteConfirmId(null);
+        else if (leaving) setLeaving(false);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [leaving, deleteConfirmId, isDeleting]);
+
   const advance = useCallback(
     (difficulty?: "hard" | "medium" | "easy") => {
       const isHard = difficulty === "hard";
       const isEasy = difficulty === "easy";
 
-      if (current && current.q.type !== "match") {
+      if (current && current.q.type !== "match" && phase !== "wrong") {
         const wordId = current.q.wordId;
-        if (!reviewed.current.has(wordId)) {
+        const alreadyReviewed = reviewed.current.has(wordId);
+        if (!alreadyReviewed) {
           reviewed.current.add(wordId);
           setRemainingIds((prev) => prev.filter((id) => id !== wordId));
-        }
 
-        if (isHard) {
-          // If rated Hard, mark as missed so it appears in summary and database interval resets
-          markMissed(wordId);
-          reviewWord(wordId, false, 1).catch(() => setReviewFailed(true));
-          setTally((t) => ({ ...t, right: Math.max(0, t.right - 1) }));
-        } else if (isEasy) {
-          // If rated Easy, advance schedule with Grade 3 (+2 boxes)
-          reviewWord(wordId, true, 3).catch(() => setReviewFailed(true));
-        } else {
-          // Medium / Default: advance schedule with Grade 2 (+1 box)
-          reviewWord(wordId, true, 2).catch(() => setReviewFailed(true));
+          if (isHard) {
+            // If rated Hard, mark as missed so it appears in summary and database interval resets
+            markMissed(wordId);
+            reviewWord(wordId, false, 1).catch(() => setReviewFailed(true));
+            setTally((t) => ({ ...t, right: Math.max(0, t.right - 1) }));
+          } else if (isEasy) {
+            // If rated Easy, advance schedule with Grade 3 (+2 boxes)
+            reviewWord(wordId, true, 3).catch(() => setReviewFailed(true));
+          } else {
+            // Medium / Default: advance schedule with Grade 2 (+1 box)
+            reviewWord(wordId, true, 2).catch(() => setReviewFailed(true));
+          }
         }
       }
 
@@ -376,6 +390,7 @@ export function PracticeSession({
         onDrillMissed={() => startDrillMissed(missed)}
         onChangeLang={onChangeLang}
         remainingCount={remainingCount}
+        sessionSize={settings.sessionSize || SESSION_WORDS}
       />
     );
   }
@@ -399,7 +414,7 @@ export function PracticeSession({
       <header className="flex items-center gap-3 sm:gap-4 py-3.5 sm:py-5">
         <button
           type="button"
-          className="btn btn-quiet w-10 h-10 min-h-10 p-0 flex items-center justify-center rounded-full text-muted hover:text-ink active:scale-95 transition-all cursor-pointer shrink-0"
+          className="btn btn-quiet w-11 h-11 min-h-11 p-0 flex items-center justify-center rounded-full text-muted hover:text-ink active:scale-95 transition-all cursor-pointer shrink-0"
           aria-label="Leave practice"
           onClick={() => setLeaving(true)}
         >
@@ -420,15 +435,25 @@ export function PracticeSession({
 
       {/* Leave Practice Confirmation Modal */}
       {leaving ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div role="alertdialog" aria-label="Leave practice?" className="w-full max-w-sm grid gap-4 rounded-3xl border border-line bg-surface p-5 sm:p-6 shadow-2xl text-center sm:text-start animate-in fade-in zoom-in-95 duration-150">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={() => setLeaving(false)}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="leave-practice-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm grid gap-4 rounded-3xl border border-line bg-surface p-5 sm:p-6 shadow-2xl text-center sm:text-start animate-in fade-in zoom-in-95 duration-150"
+          >
             <div>
-              <h3 className="text-xl font-bold text-ink">Leave practice?</h3>
+              <h3 id="leave-practice-title" className="text-xl font-bold text-ink">Leave practice?</h3>
               <p className="text-xs sm:text-sm text-muted mt-1">The answers you gave so far are saved.</p>
             </div>
             <div className="flex flex-col gap-2.5 pt-1">
               <button
                 type="button"
+                autoFocus
                 className="btn btn-primary w-full font-bold cursor-pointer"
                 onClick={() => setLeaving(false)}
               >
@@ -460,13 +485,26 @@ export function PracticeSession({
 
       {/* Delete Word Confirmation Modal */}
       {deleteConfirmId ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div role="alertdialog" aria-label="Delete word?" className="w-full max-w-md grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-ink">Delete this word?</h3>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={() => {
+            if (!isDeleting) setDeleteConfirmId(null);
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-word-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl"
+          >
+            <h3 id="delete-word-title" className="text-lg font-bold text-ink">Delete this word?</h3>
             <p className="text-sm text-muted">It will be permanently deleted from your saved words so you won&apos;t practice it again.</p>
             <div className="flex gap-3 justify-end mt-2">
               <button
                 type="button"
+                autoFocus
+                disabled={isDeleting}
                 className="btn btn-quiet"
                 onClick={() => setDeleteConfirmId(null)}
               >

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { speak } from "@/lib/speech";
 import { addCustomWord, deleteWord } from "@/lib/api";
 import { getStoredSettings, type UserSettings, type TranslationProvider } from "@/lib/settings";
@@ -59,7 +60,7 @@ function renderHighlightedSentence(sentence: string, targetWord: string) {
   const parts = clean.split(regex);
 
   return parts.map((part, i) => {
-    if (regex.test(part)) {
+    if (i % 2 === 1) {
       return (
         <span
           key={i}
@@ -163,25 +164,45 @@ function LanguageDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!open) return;
+    const updatePosition = () => {
+      const rect = ref.current?.getBoundingClientRect();
+      if (!rect) return;
+      const menuW = Math.min(220, window.innerWidth - 24);
+      const rawLeft = align === "right" ? rect.right - menuW : rect.left;
+      const clampedLeft = Math.max(12, Math.min(rawLeft, window.innerWidth - menuW - 12));
+      setMenuPos({ top: rect.bottom + 8, left: clampedLeft });
+    };
+    updatePosition();
+
     function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        ref.current &&
+        !ref.current.contains(target) &&
+        (!menuRef.current || !menuRef.current.contains(target))
+      ) {
         setOpen(false);
       }
     }
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
-    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [open]);
+  }, [open, align]);
 
   return (
     <div className="relative inline-block" ref={ref}>
@@ -190,7 +211,9 @@ function LanguageDropdown({
         onClick={() => setOpen((prev) => !prev)}
         title="More languages"
         aria-label="More languages"
-        className={`h-7 px-2 sm:px-2.5 rounded-lg flex items-center justify-center gap-1 text-xs font-medium transition-all cursor-pointer select-none ${
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`h-8 min-h-8 px-2 sm:px-2.5 rounded-lg flex items-center justify-center gap-1 text-xs font-medium transition-all cursor-pointer select-none ${
           open
             ? "bg-black/10 dark:bg-white/15 text-ink"
             : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10"
@@ -212,42 +235,45 @@ function LanguageDropdown({
         </svg>
       </button>
 
-      {open && (
-        <div
-          role="menu"
-          className={`absolute top-full mt-2 z-50 min-w-[200px] max-w-[calc(100vw-2rem)] max-h-64 overflow-y-auto rounded-2xl border border-line bg-surface/95 p-1.5 shadow-2xl backdrop-blur-xl ${
-            align === "right" ? "right-0" : "left-0"
-          }`}
-        >
-          <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted border-b border-line/40 mb-1">
-            Languages
-          </div>
-          {ALL_LANGS.map((lang) => {
-            const isSelected = current === lang.code;
-            return (
-              <button
-                key={lang.code}
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onSelect(lang.code);
-                  setOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
-                  isSelected
-                    ? "bg-black/5 dark:bg-white/10 text-ink font-semibold"
-                    : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/5"
-                }`}
-              >
-                <span>{lang.native}</span>
-                <span className={`text-xs ${isSelected ? "text-ink font-semibold" : "text-muted"}`}>
-                  {lang.name} {isSelected && "✓"}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {open && menuPos && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              ref={menuRef}
+              role="menu"
+              style={{ top: menuPos.top, left: menuPos.left }}
+              className="fixed z-[100] w-[min(220px,calc(100vw-1.5rem))] max-h-64 overflow-y-auto rounded-2xl border border-line bg-surface/95 p-1.5 shadow-2xl backdrop-blur-xl"
+            >
+              <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted border-b border-line/40 mb-1">
+                Languages
+              </div>
+              {ALL_LANGS.map((lang) => {
+                const isSelected = current === lang.code;
+                return (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onSelect(lang.code);
+                      setOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-black/5 dark:bg-white/10 text-ink font-semibold"
+                        : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/5"
+                    }`}
+                  >
+                    <span>{lang.native}</span>
+                    <span className={`text-xs ${isSelected ? "text-ink font-semibold" : "text-muted"}`}>
+                      {lang.name} {isSelected && "✓"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
@@ -687,17 +713,21 @@ export function TranslatorCard({
 
   // Swap Languages
   function handleSwap() {
-    const currentDetected = result?.detectedSrcLang || "en";
-    const nextSrc = srcLang === "auto" ? targetLang : targetLang;
-    const nextTarget = srcLang === "auto" ? currentDetected : srcLang;
+    const fallbackDetected = targetLang === "en" ? "ar" : "en";
+    const currentDetected = result?.detectedSrcLang || fallbackDetected;
+    const nextSrc = targetLang;
+    const nextTarget =
+      srcLang === "auto"
+        ? currentDetected === nextSrc
+          ? fallbackDetected
+          : currentDetected
+        : srcLang;
 
     selectSrcLang(nextSrc);
     selectTargetLang(nextTarget);
 
     if (result?.translation) {
-      const prevTrans = result.translation;
-      setInputText(prevTrans);
-      void fetchTranslation(prevTrans, nextSrc, nextTarget);
+      setInputText(result.translation);
     }
   }
 
@@ -1050,7 +1080,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
   return (
     <section
       aria-label="Google Translate tool"
-      className="apple-card rounded-3xl overflow-hidden transition-all min-w-0"
+      className="apple-card rounded-3xl overflow-x-clip transition-all min-w-0"
     >
       {/* Top Header / Language Switcher Bar */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center border-b border-line/60 bg-surface px-2 sm:px-4 py-2 sm:py-2.5 gap-1.5 sm:gap-2.5">
@@ -1197,6 +1227,8 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
             <textarea
               ref={textareaRef}
               rows={4}
+              maxLength={2000}
+              aria-label="Enter text to translate"
               value={inputText}
               onChange={(e) => {
                 if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
@@ -1441,7 +1473,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
               <div className="mt-3 p-3 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-2 text-xs sm:text-sm text-red-400 shadow-sm">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="shrink-0 text-base">⚠️</span>
-                  <span className="truncate">{ocrError}</span>
+                  <span className="break-words">{ocrError}</span>
                 </div>
                 <button
                   type="button"
@@ -1475,7 +1507,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
             {/* Speech Recognition Error Banner */}
             {speechError ? (
               <div className="mt-3 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2 text-xs text-amber-500 shadow-sm">
-                <span className="truncate">🎙️ {speechError}</span>
+                <span className="break-words">🎙️ {speechError}</span>
                 <button
                   type="button"
                   onClick={() => setSpeechError(null)}
@@ -1501,7 +1533,8 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                 }
                 disabled={!inputText}
                 title="Listen"
-                className="p-2 rounded-xl text-muted hover:text-ink hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                aria-label="Listen to source text"
+                className="p-2 min-h-10 min-w-10 rounded-xl text-muted hover:text-ink hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all inline-flex items-center justify-center"
               >
                 <SpeakerIcon size={19} />
               </button>
@@ -1510,7 +1543,8 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                 onClick={() => handleCopy(inputText, "src")}
                 disabled={!inputText}
                 title={copiedSrc ? "Copied!" : "Copy text"}
-                className="p-2 rounded-xl text-muted hover:text-ink hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all relative"
+                aria-label="Copy source text"
+                className="p-2 min-h-10 min-w-10 rounded-xl text-muted hover:text-ink hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all relative inline-flex items-center justify-center"
               >
                 {copiedSrc ? (
                   <span className="text-xs font-bold text-subtitle">✓</span>
@@ -1650,7 +1684,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
             </div>
 
             <span className="text-xs text-muted/60 font-mono">
-              {inputText.length} / 5000
+              {inputText.length} / 2000
             </span>
           </div>
         </div>
@@ -1801,7 +1835,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex items-center justify-between pt-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                       <button
                         type="button"
                         onClick={() => {
@@ -1855,7 +1889,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 xl:grid-cols-5 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {/* V1 Present */}
                       <button
                         type="button"
@@ -2089,7 +2123,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                           key={`ex-${exIdx}`}
                           className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.04] border border-line text-xs sm:text-sm text-ink leading-relaxed space-y-1"
                         >
-                          <p className="font-serif italic text-muted-ink">
+                          <p className="font-serif italic text-ink/90 break-words">
                             {renderHighlightedSentence(ex.sentence, inputText)}
                           </p>
                           {ex.source ? (
@@ -2118,7 +2152,8 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                 onClick={() => handleSpeak(baseTranslation, targetLang)}
                 disabled={!result?.translation}
                 title="Listen translation"
-                className="p-2 rounded-xl text-muted hover:text-ink hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                aria-label="Listen to translation"
+                className="p-2 min-h-10 min-w-10 rounded-xl text-muted hover:text-ink hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all inline-flex items-center justify-center"
               >
                 <SpeakerIcon size={19} />
               </button>
@@ -2127,7 +2162,8 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                 onClick={() => handleCopy(effectiveTranslation, "target")}
                 disabled={!result?.translation}
                 title={copiedTarget ? "Copied!" : "Copy translation"}
-                className="p-2 rounded-xl text-muted hover:text-ink hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all relative"
+                aria-label="Copy translation"
+                className="p-2 min-h-10 min-w-10 rounded-xl text-muted hover:text-ink hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all relative inline-flex items-center justify-center"
               >
                 {copiedTarget ? (
                   <span className="text-xs font-bold text-subtitle">✓</span>

@@ -69,6 +69,7 @@ export function Stage1Understanding({
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (!question) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const key = e.key.toUpperCase();
       if (status !== "correct") {
@@ -76,7 +77,8 @@ export function Stage1Understanding({
         else if (key === "2" || key === "B") handleSelect("B");
         else if (key === "3" || key === "C") handleSelect("C");
         else if (key === "4" || key === "D") handleSelect("D");
-      } else if (e.key === "Enter") {
+      } else if (e.key === "Enter" && !(e.target instanceof HTMLButtonElement)) {
+        e.preventDefault();
         const correctOpt = question.options.find((o) => o.id === question.correctOptionId);
         onComplete({
           passedFirstTry: !hadWrongAttempt,
@@ -134,7 +136,7 @@ export function Stage1Understanding({
             <h2
               id="stage1-heading"
               dir="auto"
-              className="text-2xl sm:text-4xl font-extrabold tracking-tight text-ink uppercase"
+              className="text-2xl sm:text-4xl font-extrabold tracking-tight text-ink uppercase break-words"
             >
               {word.text}
             </h2>
@@ -143,7 +145,7 @@ export function Stage1Understanding({
                 type="button"
                 onClick={() => speak(word.text, word.src_lang || "en")}
                 aria-label={`Pronounce ${word.text}`}
-                className="btn btn-quiet w-9 h-9 min-h-9 p-0 rounded-full flex items-center justify-center cursor-pointer"
+                className="btn btn-quiet w-11 h-11 min-h-11 p-0 rounded-full flex items-center justify-center cursor-pointer"
               >
                 <SpeakerIcon size={18} />
               </button>
@@ -197,7 +199,7 @@ export function Stage1Understanding({
               >
                 {opt.id}
               </span>
-              <span className="text-sm sm:text-base font-medium leading-snug text-ink pt-0.5">
+              <span className="text-sm sm:text-base font-medium leading-snug text-ink pt-0.5 break-words min-w-0">
                 {opt.text}
               </span>
             </button>
@@ -212,8 +214,8 @@ export function Stage1Understanding({
           className="rounded-2xl border border-bad/30 bg-bad-soft p-4 grid gap-3 animate-in fade-in duration-150"
         >
           <div className="space-y-1">
-            <p className="text-sm font-bold text-bad">Not quite — here&apos;s what it means:</p>
-            <p className="text-sm text-ink leading-relaxed">{question.explanation}</p>
+            <p className="text-sm font-bold text-bad-ink">Not quite — here&apos;s what it means:</p>
+            <p className="text-sm text-ink leading-relaxed break-words">{question.explanation}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button

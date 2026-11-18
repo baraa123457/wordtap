@@ -149,6 +149,7 @@ export default function WordsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newText, setNewText] = useState("");
   const [newTranslation, setNewTranslation] = useState("");
+  const manualTranslationRef = useRef(false);
   const [newLang, setNewLang] = useState("en");
   const [detectedPos, setDetectedPos] = useState<string | null>(null);
   const [addBusy, setAddBusy] = useState(false);
@@ -254,18 +255,19 @@ export default function WordsPage() {
       setDetectedPos(null);
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(async () => {
       try {
         const target = getStoredSettings().targetLang || "ar";
         const res = await fetch(
           `/api/translate?text=${encodeURIComponent(newText.trim())}&src=${newLang}&target=${encodeURIComponent(target)}`,
         );
-        if (res.ok) {
+        if (res.ok && !cancelled) {
           const data = await res.json();
           if (data.primaryPartOfSpeech) {
             setDetectedPos(data.primaryPartOfSpeech);
           }
-          if (data.translation && !newTranslation) {
+          if (data.translation && !manualTranslationRef.current) {
             setNewTranslation(data.translation);
           }
         }
@@ -273,8 +275,11 @@ export default function WordsPage() {
         // ignore auto-detect error
       }
     }, 350);
-    return () => clearTimeout(timer);
-  }, [newText, newLang, showAddForm, newTranslation]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [newText, newLang, showAddForm]);
 
   const words = state.status === "ready" ? state.data : null;
 
@@ -347,21 +352,6 @@ export default function WordsPage() {
   if (state.status === "error") return <ErrorState message={state.message} onRetry={reload} />;
 
   const all = state.data;
-
-  if (all.length === 0) {
-    return (
-      <EmptyState
-        title="No words yet"
-        action={
-          <Link href="/extension" className="btn btn-primary">
-            Set up the extension
-          </Link>
-        }
-      >
-        Words you tap in subtitles appear here automatically.
-      </EmptyState>
-    );
-  }
 
   async function remove(word: Word) {
     setBusyId(word.id);
@@ -484,6 +474,7 @@ export default function WordsPage() {
       await addCustomWord(wordToSave, transToSave, srcLangToSave, target);
       setNewText("");
       setNewTranslation("");
+      manualTranslationRef.current = false;
       setShowAddForm(false);
       await reload();
     } catch (err) {
@@ -542,55 +533,63 @@ export default function WordsPage() {
         </h1>
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {/* Unified Export Menu */}
-          <div className="relative" ref={exportMenuRef}>
-            <button
-              type="button"
-              onClick={() => {
-                setShowExportMenu((v) => !v);
-                setShowImportMenu(false);
-              }}
-              className="btn min-h-9 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
-              title="Export your vocabulary"
-              aria-expanded={showExportMenu}
-            >
-              <span>Export</span>
-              <svg
-                className={`w-3 h-3 text-muted transition-transform duration-150 ${showExportMenu ? "rotate-180" : ""}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+          {all.length > 0 ? (
+            <div className="relative" ref={exportMenuRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExportMenu((v) => !v);
+                  setShowImportMenu(false);
+                }}
+                className="btn min-h-9 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
+                title="Export your vocabulary"
+                aria-haspopup="menu"
+                aria-expanded={showExportMenu}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+                <span>Export</span>
+                <svg
+                  className={`w-3 h-3 text-muted transition-transform duration-150 ${showExportMenu ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
-            {showExportMenu && (
-              <div className="absolute left-0 mt-1.5 w-44 rounded-xl border border-line bg-surface p-1 shadow-xl z-30 animate-in fade-in zoom-in-95">
-                <button
-                  type="button"
-                  onClick={() => {
-                    exportWordsCsv(exportSource);
-                    setShowExportMenu(false);
-                  }}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left"
+              {showExportMenu && (
+                <div
+                  role="menu"
+                  className="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-44 max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-surface p-1 shadow-xl z-30 animate-in fade-in zoom-in-95"
                 >
-                  <span className="font-semibold">.csv</span>
-                  <span className="text-[11px] text-muted">Spreadsheet</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    exportWordsAnkiTsv(exportSource);
-                    setShowExportMenu(false);
-                  }}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left"
-                >
-                  <span className="font-semibold">.tsv</span>
-                  <span className="text-[11px] text-muted">Anki Deck</span>
-                </button>
-              </div>
-            )}
-          </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      exportWordsCsv(exportSource);
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left"
+                  >
+                    <span className="font-semibold">.csv</span>
+                    <span className="text-[11px] text-muted">Spreadsheet</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      exportWordsAnkiTsv(exportSource);
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left"
+                  >
+                    <span className="font-semibold">.tsv</span>
+                    <span className="text-[11px] text-muted">Anki Deck</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : null}
 
           {/* Unified Import Menu */}
           <div className="relative" ref={importMenuRef}>
@@ -610,6 +609,7 @@ export default function WordsPage() {
               }}
               className="btn min-h-9 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
               title="Import vocabulary from file"
+              aria-haspopup="menu"
               aria-expanded={showImportMenu}
             >
               <span>{importBusy ? "Importing…" : "Import"}</span>
@@ -624,9 +624,13 @@ export default function WordsPage() {
             </button>
 
             {showImportMenu && (
-              <div className="absolute left-0 mt-1.5 w-44 rounded-xl border border-line bg-surface p-1 shadow-xl z-30 animate-in fade-in zoom-in-95">
+              <div
+                role="menu"
+                className="absolute right-0 sm:left-auto sm:right-0 mt-1.5 w-44 max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-surface p-1 shadow-xl z-30 animate-in fade-in zoom-in-95"
+              >
                 <button
                   type="button"
+                  role="menuitem"
                   onClick={() => {
                     if (fileInputRef.current) {
                       fileInputRef.current.accept = ".csv";
@@ -641,6 +645,7 @@ export default function WordsPage() {
                 </button>
                 <button
                   type="button"
+                  role="menuitem"
                   onClick={() => {
                     if (fileInputRef.current) {
                       fileInputRef.current.accept = ".tsv,.txt";
@@ -656,29 +661,36 @@ export default function WordsPage() {
               </div>
             )}
           </div>
+          {all.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectMode((v) => !v);
+                setSelectedIds(new Set());
+              }}
+              className={`btn min-h-9 px-3 py-1.5 text-xs font-semibold ${selectMode ? "bg-subtitle/15 border-subtitle text-ink" : ""}`}
+            >
+              {selectMode ? "Done selecting" : "Select"}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
-              setSelectMode((v) => !v);
-              setSelectedIds(new Set());
+              setShowAddForm((prev) => !prev);
+              manualTranslationRef.current = false;
             }}
-            className={`btn min-h-9 px-3 py-1.5 text-xs font-semibold ${selectMode ? "bg-subtitle/15 border-subtitle text-ink" : ""}`}
-          >
-            {selectMode ? "Done selecting" : "Select"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowAddForm(!showAddForm)}
             className="btn"
           >
             {showAddForm ? "Cancel" : "+ Add word"}
           </button>
-          <Link
-            href={langFilter !== "all" ? `/practice?lang=${langFilter}` : "/practice"}
-            className="btn btn-primary"
-          >
-            {langFilter !== "all" ? `Practice ${LANG_LABELS[langFilter] || langFilter}` : "Start practice"}
-          </Link>
+          {all.length > 0 ? (
+            <Link
+              href={langFilter !== "all" ? `/practice?lang=${langFilter}` : "/practice"}
+              className="btn btn-primary"
+            >
+              {langFilter !== "all" ? `Practice ${LANG_LABELS[langFilter] || langFilter}` : "Start practice"}
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -744,21 +756,32 @@ export default function WordsPage() {
             <input
               className="field"
               type="text"
+              aria-label="New word"
               placeholder="Word (e.g. breadth or inherit)"
               value={newText}
-              onChange={(e) => setNewText(e.target.value)}
+              onChange={(e) => {
+                setNewText(e.target.value);
+                if (!e.target.value.trim()) {
+                  manualTranslationRef.current = false;
+                }
+              }}
               required
             />
             <input
               className="field"
               type="text"
+              aria-label="Translation"
               placeholder="Translation (e.g. اتساع or يرث)"
               value={newTranslation}
-              onChange={(e) => setNewTranslation(e.target.value)}
+              onChange={(e) => {
+                manualTranslationRef.current = e.target.value.trim().length > 0;
+                setNewTranslation(e.target.value);
+              }}
               required
             />
             <select
               className="field"
+              aria-label="Source language"
               value={newLang}
               onChange={(e) => setNewLang(e.target.value)}
             >
@@ -830,8 +853,8 @@ export default function WordsPage() {
           {sourceCounts.size > 1 ? (
             <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 max-w-full min-w-0">
               <span className="text-xs font-semibold text-muted shrink-0">Source:</span>
-              <div className="overflow-x-auto no-scrollbar py-0.5 px-0.5 scroll-smooth max-w-full min-w-0">
-                <div className="apple-segmented-container">
+              <div className="py-0.5 max-w-full min-w-0">
+                <div className="apple-segmented-container apple-segmented-fit">
                   {SOURCE_FILTERS.filter((sf) => sf.id === "all" || (sourceCounts.get(sf.id) || 0) > 0).map((sf) => (
                     <button
                       key={sf.id}
@@ -851,47 +874,50 @@ export default function WordsPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-        <div className="relative">
-          <svg
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-          <input
-            className="field pl-10"
-            type="search"
-            placeholder="Search words or translations..."
-            aria-label="Search words"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        <div role="group" aria-label="Filter" className="overflow-x-auto no-scrollbar py-1 px-0.5 scroll-smooth max-w-full min-w-0">
-          <div className="apple-segmented-container">
-            {FILTERS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                aria-pressed={filter === f.id}
-                onClick={() => setFilter(f.id)}
-                data-active={filter === f.id ? "true" : undefined}
-                className="apple-segmented-item whitespace-nowrap"
-              >
-                <span className="hidden md:inline">{f.label}</span>
-                <span className="md:hidden">{f.shortLabel}</span>
-              </button>
-            ))}
+      {all.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+          <div className="relative">
+            <svg
+              aria-hidden="true"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              className="field pl-10"
+              type="search"
+              placeholder="Search words or translations..."
+              aria-label="Search words"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <div role="group" aria-label="Filter" className="py-1 max-w-full min-w-0">
+            <div className="apple-segmented-container apple-segmented-fit">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  aria-pressed={filter === f.id}
+                  onClick={() => setFilter(f.id)}
+                  data-active={filter === f.id ? "true" : undefined}
+                  className="apple-segmented-item whitespace-nowrap"
+                >
+                  <span className="hidden md:inline">{f.label}</span>
+                  <span className="md:hidden">{f.shortLabel}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {actionError ? (
         <p role="alert" className="rounded-xl bg-bad-soft px-4 py-3 text-bad">
@@ -899,7 +925,27 @@ export default function WordsPage() {
         </p>
       ) : null}
 
-      {visible.length === 0 ? (
+      {all.length === 0 ? (
+        <EmptyState
+          title="No words yet"
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAddForm(true)}
+                className="btn btn-primary"
+              >
+                + Add your first word
+              </button>
+              <Link href="/extension" className="btn">
+                Set up the extension
+              </Link>
+            </div>
+          }
+        >
+          Words you tap in subtitles appear here automatically — or add and import words anytime above.
+        </EmptyState>
+      ) : visible.length === 0 ? (
         <EmptyState title="No matches">Try a different search or filter.</EmptyState>
       ) : (
         <>
@@ -910,7 +956,7 @@ export default function WordsPage() {
               return (
                 <li
                   key={w.id}
-                  className={`grid gap-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_14rem] sm:items-center sm:gap-6 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors ${
+                  className={`grid gap-2 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_14rem] lg:items-center lg:gap-6 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors ${
                     isChecked ? "bg-subtitle/10" : ""
                   }`}
                 >
@@ -974,8 +1020,8 @@ export default function WordsPage() {
                     {w.times_seen > 1 ? ` · tapped ${w.times_seen} times` : ""}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
-                  <span className="grid justify-items-start gap-1 text-sm text-muted sm:justify-items-end">
+                <div className="flex flex-wrap items-center justify-between gap-3 lg:justify-end">
+                  <span className="grid justify-items-start gap-1 text-sm text-muted lg:justify-items-end">
                     <MasteryDots box={w.box} />
                     <span>
                       {status === "due"
@@ -1007,16 +1053,16 @@ export default function WordsPage() {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <Link
                         href={`/practice?wordId=${encodeURIComponent(w.id)}`}
-                        className="btn btn-primary min-h-8 px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer"
+                        className="btn btn-primary min-h-9 px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer"
                         title={`Learn "${w.text}" (4-Stage Interactive Flow)`}
                       >
                         Learn
                       </Link>
                       <button
                         type="button"
-                        className={`btn min-h-8 px-2.5 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+                        className={`btn min-h-9 px-2.5 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
                           editingId === w.id
-                            ? "bg-subtitle text-black font-semibold shadow-xs"
+                            ? "bg-subtitle text-subtitle-ink font-semibold shadow-xs"
                             : "btn-quiet text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10"
                         }`}
                         title={`Edit “${w.text}”`}
@@ -1038,7 +1084,7 @@ export default function WordsPage() {
                       </button>
                       <button
                         type="button"
-                        className="btn btn-quiet min-h-8 px-2.5 py-1 text-xs font-medium text-muted hover:text-bad hover:bg-bad/10 rounded-lg cursor-pointer"
+                        className="btn btn-quiet min-h-9 px-2.5 py-1 text-xs font-medium text-muted hover:text-bad hover:bg-bad/10 rounded-lg cursor-pointer"
                         aria-label={`Delete “${w.text}”`}
                         onClick={() => setConfirmId(w.id)}
                       >
@@ -1051,15 +1097,16 @@ export default function WordsPage() {
                 {/* Inline Edit Panel when user clicks Edit */}
                 {editingId === w.id ? (
                   <div className="col-span-full mt-2 p-3.5 rounded-2xl bg-surface-elevated/90 border border-subtitle/40 shadow-md space-y-3 animate-in fade-in">
-                    <div className="flex items-center justify-between text-xs font-bold text-subtitle border-b border-line/30 pb-2">
-                      <div className="flex items-center gap-1.5">
-                        <span>✏️ Edit Word & Translation</span>
+                    <div className="flex items-center justify-between gap-2 text-xs font-bold text-amber-700 dark:text-subtitle border-b border-line/30 pb-2">
+                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                        <span>✏️ Edit Word &amp; Translation</span>
                         <span className="text-muted font-normal">(تعديل الكلمة والترجمة أو الملاحظات)</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setEditingId(null)}
-                        className="text-muted hover:text-ink p-1 cursor-pointer"
+                        aria-label="Close edit panel"
+                        className="text-muted hover:text-ink p-1.5 cursor-pointer shrink-0"
                         title="Close"
                       >
                         ✕
@@ -1068,14 +1115,15 @@ export default function WordsPage() {
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="block text-[11px] font-semibold text-muted mb-1">
+                        <label htmlFor={`edit-word-${w.id}`} className="block text-[11px] font-semibold text-muted mb-1">
                           Word (الكلمة الأصلية):
                         </label>
                         <input
+                          id={`edit-word-${w.id}`}
                           type="text"
                           value={editText}
                           onChange={(e) => setEditText(e.target.value)}
-                          className="field py-1.5 px-3 text-sm w-full font-medium"
+                          className="field py-1.5 px-3 text-base sm:text-sm w-full font-medium"
                           placeholder="e.g. Humble"
                           autoFocus
                           onKeyDown={(e) => {
@@ -1085,15 +1133,16 @@ export default function WordsPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-muted mb-1">
-                          Translation & Notes (الترجمة والملاحظات):
+                        <label htmlFor={`edit-trans-${w.id}`} className="block text-[11px] font-semibold text-muted mb-1">
+                          Translation &amp; Notes (الترجمة والملاحظات):
                         </label>
                         <input
+                          id={`edit-trans-${w.id}`}
                           type="text"
                           dir="auto"
                           value={editTranslation}
                           onChange={(e) => setEditTranslation(e.target.value)}
-                          className="field py-1.5 px-3 text-sm w-full font-medium"
+                          className="field py-1.5 px-3 text-base sm:text-sm w-full font-medium"
                           placeholder="e.g. متواضع (ملاحظة...)"
                           onKeyDown={(e) => {
                             if (e.key === "Enter") void handleSaveWordDetails(w);

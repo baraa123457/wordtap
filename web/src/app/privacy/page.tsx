@@ -92,16 +92,16 @@ export default function PrivacyPage() {
             <p className="text-muted">
               If you have any questions about this Privacy Policy or how your data is handled, please reach out:
             </p>
-            <div className="p-4 rounded-xl border border-line bg-surface/50 text-xs sm:text-sm text-muted">
-              <p><strong>Entity:</strong> [LEGAL_ENTITY_NAME_PLACEHOLDER: WordTap]</p>
-              <p><strong>Contact Email:</strong> [CONTACT_EMAIL_PLACEHOLDER: privacy@wordtap.app]</p>
+            <div className="p-4 rounded-xl border border-line bg-surface/50 text-xs sm:text-sm text-muted space-y-1">
+              <p><strong>Entity:</strong> WordTap</p>
+              <p><strong>Contact Email:</strong> <a href="mailto:privacy@wordtap.app" className="underline underline-offset-4">privacy@wordtap.app</a></p>
               <p><strong>Website:</strong> <a href="https://wordtap.vercel.app" className="underline underline-offset-4">https://wordtap.vercel.app</a></p>
             </div>
           </section>
         </div>
       </main>
 
-      <footer className="border-t border-line/60 py-6 text-xs text-muted flex items-center justify-between">
+      <footer className="border-t border-line/60 py-6 text-xs text-muted flex flex-wrap items-center justify-between gap-2">
         <span>© {new Date().getFullYear()} WordTap. All rights reserved.</span>
         <div className="flex gap-4">
           <Link href="/terms" className="hover:text-ink">Terms of Service</Link>

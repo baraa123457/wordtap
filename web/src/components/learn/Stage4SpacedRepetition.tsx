@@ -60,6 +60,7 @@ export function Stage4SpacedRepetition({
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (saving) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "1") onRate(1, previews[1].result);
       else if (e.key === "2") onRate(2, previews[2].result);
@@ -91,22 +92,22 @@ export function Stage4SpacedRepetition({
       </div>
 
       {/* Quick Recap Box */}
-      <div className="rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] p-4 grid gap-2 text-sm">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="text-lg font-extrabold text-ink">{word.text}</span>
+      <div className="rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] p-4 grid gap-2 text-sm min-w-0">
+        <div className="flex flex-wrap items-baseline justify-between gap-2 min-w-0">
+          <span className="text-lg font-extrabold text-ink break-words">{word.text}</span>
           {word.translation ? (
-            <span dir="auto" className="text-sm font-semibold text-muted">
+            <span dir="auto" className="text-sm font-semibold text-muted break-words">
               {word.translation}
             </span>
           ) : null}
         </div>
         {definition || word.definition ? (
-          <p className="text-xs sm:text-sm text-muted leading-relaxed">
+          <p className="text-xs sm:text-sm text-muted leading-relaxed break-words">
             {definition || word.definition}
           </p>
         ) : null}
         {userSentence ? (
-          <p className="text-xs sm:text-sm text-ink border-t border-line/60 pt-2 italic">
+          <p className="text-xs sm:text-sm text-ink border-t border-line/60 pt-2 italic break-words">
             Your sentence: &ldquo;{userSentence}&rdquo;
           </p>
         ) : null}

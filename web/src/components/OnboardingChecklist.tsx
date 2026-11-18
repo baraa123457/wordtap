@@ -54,14 +54,14 @@ export function OnboardingChecklist({ words }: { words: Word[] }) {
         <div className="flex flex-wrap items-center gap-2 min-w-0">
           <span className="w-2.5 h-2.5 rounded-full bg-subtitle animate-pulse shrink-0" />
           <h2 className="text-sm sm:text-base font-extrabold text-ink">Getting Started with WordTap</h2>
-          <span className="text-xs font-bold text-subtitle bg-subtitle/15 px-2 py-0.5 rounded-full shrink-0">
+          <span className="text-xs font-bold text-amber-800 dark:text-subtitle bg-subtitle/20 px-2.5 py-0.5 rounded-full shrink-0">
             {completedCount} of 3 done
           </span>
         </div>
         <button
           type="button"
           onClick={handleDismiss}
-          className="text-xs text-muted hover:text-ink cursor-pointer shrink-0"
+          className="text-xs text-muted hover:text-ink min-h-10 px-2.5 cursor-pointer shrink-0"
         >
           Dismiss
         </button>
@@ -80,7 +80,7 @@ export function OnboardingChecklist({ words }: { words: Word[] }) {
             Add WordTap to Chrome or Edge to tap subtitle words.
           </p>
           {!isExtensionInstalled && (
-            <Link href="/extension" className="text-xs font-bold text-subtitle underline">
+            <Link href="/extension" className="text-xs font-bold text-amber-800 dark:text-subtitle underline">
               Download extension →
             </Link>
           )}

@@ -17,6 +17,7 @@ type Props = {
   onDrillMissed?: () => void;
   onChangeLang?: () => void;
   remainingCount?: number;
+  sessionSize?: number;
 };
 
 export function Summary({
@@ -31,13 +32,15 @@ export function Summary({
   onDrillMissed,
   onChangeLang,
   remainingCount,
+  sessionSize = 8,
 }: Props) {
   const accuracy = asked === 0 ? 100 : Math.round((right / asked) * 100);
+  const nextBatchCount = typeof remainingCount === "number" ? Math.min(remainingCount, sessionSize) : 0;
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-8">
+    <div className="mx-auto grid w-full max-w-3xl gap-6 px-3.5 sm:px-4 py-8">
       <section className="frame" aria-label="Session summary">
-        <div className="frame-bar">
+        <div className="frame-bar flex flex-wrap items-center justify-between gap-2">
           <span className="flex items-center gap-1.5 font-semibold">
             <FireIcon size={16} className="text-orange-500" />
             <span>Practice complete</span>
@@ -47,14 +50,14 @@ export function Summary({
           </span>
         </div>
         <div className="frame-stage gap-2" style={{ minHeight: "11rem" }}>
-          <p className="sub text-5xl">
+          <p className="sub text-4xl sm:text-5xl">
             +<span className="sub-hl">{xp}</span> XP
           </p>
           <p className="text-xs sm:text-sm text-white/70">
             {accuracy >= 80 ? "Great memory retention!" : "Good practice session!"}
           </p>
         </div>
-        <div className="frame-bar flex items-center justify-between">
+        <div className="frame-bar flex flex-wrap items-center justify-between gap-2">
           <span>{accuracy}% right on the first try</span>
           <span aria-live="polite">
             {save === "saving" ? "Saving…" : save === "saved" ? "Progress saved ✓" : save === "error" ? "Not saved" : ""}
@@ -68,7 +71,7 @@ export function Summary({
           <p className="font-semibold text-ink">Spaced Repetition Updated</p>
           <p className="text-muted">Mastered words move to longer intervals. Review words return tomorrow.</p>
         </div>
-        <div className="shrink-0 flex items-center gap-1.5 text-xs text-subtitle-edge dark:text-subtitle font-bold bg-subtitle/10 px-3 py-1.5 rounded-full">
+        <div className="shrink-0 flex items-center gap-1.5 text-xs text-subtitle-edge dark:text-subtitle font-bold bg-subtitle/10 px-3 py-1.5 rounded-full w-fit">
           <span>Streak maintained 🔥</span>
         </div>
       </div>
@@ -93,7 +96,7 @@ export function Summary({
                     You still have {remainingCount} {remainingCount === 1 ? "word" : "words"} you need to practice!
                   </p>
                   <p className="text-muted text-xs sm:text-sm" dir="rtl">
-                    ما زال لديك <strong className="text-subtitle font-bold">{remainingCount}</strong>{" "}
+                    ما زال لديك <strong className="text-amber-700 dark:text-subtitle font-bold">{remainingCount}</strong>{" "}
                     {remainingCount === 1 ? "كلمة تحتاج" : "كلمات تحتاج"} للتدرب عليها
                   </p>
                 </>
@@ -115,14 +118,14 @@ export function Summary({
               className="btn btn-primary min-h-10 px-4 py-2 text-xs sm:text-sm font-semibold shrink-0 cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-transform"
               onClick={onAgain}
             >
-              Practice next {Math.min(remainingCount, 5)} words →
+              Practice next {nextBatchCount} {nextBatchCount === 1 ? "word" : "words"} →
             </button>
           ) : null}
         </div>
       )}
 
       {save === "error" ? (
-        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-bad-soft px-4 py-3 text-bad">
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-bad-soft px-4 py-3 text-bad-ink">
           <span>Your XP and streak could not be saved.</span>
           <button type="button" className="btn min-h-9 px-3 py-1 text-sm" onClick={onRetrySave}>
             Try again
@@ -130,7 +133,7 @@ export function Summary({
         </div>
       ) : null}
       {reviewFailed ? (
-        <p role="alert" className="rounded-2xl bg-bad-soft px-4 py-3 text-bad">
+        <p role="alert" className="rounded-2xl bg-bad-soft px-4 py-3 text-bad-ink">
           Some answers could not be saved, so those words may come back sooner than planned.
         </p>
       ) : null}

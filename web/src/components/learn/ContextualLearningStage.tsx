@@ -130,13 +130,13 @@ export function ContextualLearningStage({
 
   const handleUnavailableClip = useCallback((unavailable: VerifiedVideoExample) => {
     void markVideoUnavailable(unavailable.youtubeVideoId);
-    setVideos((prev) => {
-      const remaining = prev.filter((c) => c.id !== unavailable.id);
-      setVideoIndex((idx) => (remaining.length === 0 ? 0 : idx % remaining.length));
-      setSolvedCurrent(false);
-      return remaining;
-    });
+    setVideos((prev) => prev.filter((c) => c.id !== unavailable.id));
+    setSolvedCurrent(false);
   }, []);
+
+  useEffect(() => {
+    setVideoIndex((idx) => (videos.length === 0 ? 0 : idx % videos.length));
+  }, [videos.length]);
 
   const handleSolved = useCallback(
     (details: { hiddenWord: string; attempts: number; passedFirstTry: boolean }) => {
@@ -184,7 +184,7 @@ export function ContextualLearningStage({
   return (
     <section
       aria-labelledby="stage2-heading"
-      className="apple-card w-full max-w-full overflow-x-hidden p-4 sm:p-7 grid gap-5 min-w-0"
+      className="apple-card w-full max-w-full overflow-x-clip p-4 sm:p-7 grid gap-5 min-w-0"
     >
       {/* HEADER: Stage progress, non-spoiler prompt & real example count */}
       <div className="flex flex-wrap items-center justify-between gap-2">

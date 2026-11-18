@@ -12,17 +12,18 @@ type LookupResult = {
   detectedSrcLang?: string;
   sourcePronunciation?: string;
   primaryPartOfSpeech?: string | null;
-  definitions?: Array<{ partOfSpeech?: string; terms?: string[] }>;
+  definitions?: Array<{ partOfSpeech?: string; meanings?: string[]; terms?: string[] }>;
   sourceDefinitions?: Array<{
     partOfSpeech?: string;
+    text?: string;
     entries?: Array<{ gloss?: string; example?: string }>;
   }>;
 };
 
-/** Strips leading/trailing punctuation and possessive "'s" so lookup queries clean words. */
+/** Strips leading/trailing punctuation and possessive "'s" while preserving Unicode letters (EN/DE/FR/AR/etc.). */
 export function normalizeLookupWord(rawToken: string): string {
   return rawToken
-    .replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, "")
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
     .replace(/(?:['’]s)$/i, "")
     .trim();
 }
@@ -106,15 +107,14 @@ export function WordLookupPopover({
 
   const englishGloss =
     data?.sourceDefinitions
-      ?.flatMap((d) => d.entries || [])
-      .map((e) => e.gloss?.trim())
+      ?.map((d) => d.text?.trim() || d.entries?.find((e) => e.gloss?.trim())?.gloss?.trim())
       .find((g) => Boolean(g)) || null;
 
   const altTranslations =
     data?.definitions
-      ?.flatMap((d) => d.terms || [])
+      ?.flatMap((d) => d.meanings || d.terms || [])
       .filter((t) => t && t.trim().toLowerCase() !== (data.translation || "").trim().toLowerCase())
-      .slice(0, 3) || [];
+      .slice(0, 4) || [];
 
   const handleSave = async () => {
     if (!data || saving || saved) return;
@@ -151,7 +151,7 @@ export function WordLookupPopover({
       {/* Popup Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <span className="inline-flex h-5 w-5 items-center justify-center rounded-md bg-ink text-[10px] font-black text-subtitle shrink-0">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[#151833] text-xs font-black text-subtitle shrink-0">
             W
           </span>
           <span className="text-base sm:text-lg font-extrabold text-ink break-words">{word}</span>
@@ -169,9 +169,9 @@ export function WordLookupPopover({
               onClick={() => speak(word, srcLang || "en")}
               aria-label={`Pronounce ${word}`}
               title="Listen to pronunciation"
-              className="btn btn-quiet min-h-7 h-7 w-7 p-0 inline-flex items-center justify-center rounded-full cursor-pointer"
+              className="btn btn-quiet min-h-10 h-10 w-10 p-0 inline-flex items-center justify-center rounded-full cursor-pointer"
             >
-              <SpeakerIcon size={14} />
+              <SpeakerIcon size={16} />
             </button>
           ) : null}
         </div>
@@ -179,7 +179,7 @@ export function WordLookupPopover({
           type="button"
           onClick={onClose}
           aria-label="Close word popup"
-          className="btn btn-quiet min-h-7 h-7 w-7 p-0 inline-flex items-center justify-center rounded-full text-muted hover:text-ink cursor-pointer shrink-0"
+          className="btn btn-quiet min-h-10 h-10 w-10 p-0 inline-flex items-center justify-center rounded-full text-muted hover:text-ink cursor-pointer shrink-0"
         >
           <CloseIcon />
         </button>
@@ -240,7 +240,7 @@ export function WordLookupPopover({
                 type="button"
                 onClick={() => void handleSave()}
                 disabled={saving}
-                className="btn btn-primary min-h-8 px-3.5 py-1 text-xs font-bold cursor-pointer disabled:opacity-50"
+                className="btn btn-primary min-h-10 px-4 py-1.5 text-xs font-bold cursor-pointer disabled:opacity-50"
               >
                 {saving ? "Saving…" : "+ Save word"}
               </button>

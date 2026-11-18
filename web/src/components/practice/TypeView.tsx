@@ -80,7 +80,7 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
             <div className="flex flex-col items-center gap-3">
               <button
                 type="button"
-                aria-label={`Hear “${q.answer}”`}
+                aria-label="Replay dictated word"
                 title="Replay pronunciation"
                 className={`rounded-full p-5 bg-white/10 hover:bg-white/20 transition-all cursor-pointer ${
                   isSpeaking
@@ -102,13 +102,13 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
             </div>
           ) : (
             <p
-              className={`sub flex items-center justify-center gap-3 text-4xl sm:text-5xl ${
+              className={`sub flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-2xl sm:text-4xl md:text-5xl break-words max-w-full ${
                 isPromptArabic ? "sub-ar" : ""
               }`}
               dir="auto"
               lang={isPromptArabic ? "ar" : "en"}
             >
-              <span className="sub-hl">{q.prompt}</span>
+              <span className="sub-hl break-words">{q.prompt}</span>
               {canSpeak() ? (
                 <button
                   type="button"
@@ -141,8 +141,8 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
             </p>
           ) : null}
         </div>
-        <div className="frame-bar flex items-center justify-between gap-2">
-          <span className="truncate">
+        <div className="frame-bar flex flex-wrap items-center justify-between gap-2">
+          <span className="truncate min-w-0">
             {q.sourceUrl ? (
               <a
                 href={q.sourceUrl}
@@ -164,7 +164,7 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
               type="button"
               title="Delete this word from My Words (saved by accident)"
               aria-label="Delete word"
-              className="inline-flex items-center gap-1.5 text-xs text-white/60 hover:text-red-400 py-1 px-2.5 rounded-lg hover:bg-white/10 transition-colors shrink-0 ms-auto cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs text-white/60 hover:text-red-400 min-h-9 py-1 px-2.5 rounded-lg hover:bg-white/10 transition-colors shrink-0 ms-auto cursor-pointer"
               onClick={() => onDeleteWord(q.wordId)}
             >
               <TrashIcon size={14} />
@@ -213,7 +213,7 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
           {!hintUsed && !locked ? (
             <button
               type="button"
-              className="btn btn-quiet min-h-7 px-2.5 py-0.5 text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:bg-subtitle/10 transition-colors cursor-pointer shrink-0"
+              className="btn btn-quiet min-h-9 px-3 py-1 text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:bg-subtitle/10 transition-colors cursor-pointer shrink-0"
               onClick={revealFirstLetter}
             >
               💡 Show first letter

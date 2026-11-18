@@ -195,6 +195,7 @@ export default function HistoryPage() {
       <div className="flex flex-col sm:flex-row gap-3 min-w-0 max-w-full">
         <div className="relative flex-1 min-w-0">
           <svg
+            aria-hidden="true"
             className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none"
             viewBox="0 0 24 24"
             fill="none"
@@ -207,25 +208,27 @@ export default function HistoryPage() {
             <path d="m21 21-4.3-4.3" />
           </svg>
           <input
-            type="search"
+            type="text"
+            aria-label="Search translation history"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search translated words or definitions..."
-            className="field pl-10"
+            className="field pl-10 pr-10"
           />
           {query ? (
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="absolute right-3 top-2.5 text-muted hover:text-ink text-sm p-1"
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 min-h-8 min-w-8 flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 text-sm transition-colors"
             >
               ✕
             </button>
           ) : null}
         </div>
 
-        <div className="overflow-x-auto no-scrollbar py-1 px-0.5 scroll-smooth max-w-full min-w-0">
-          <div className="apple-segmented-container">
+        <div className="py-1 max-w-full min-w-0">
+          <div role="group" aria-label="Filter by source" className="apple-segmented-container apple-segmented-fit">
             {(["all", "translator", "subtitle", "selection"] as const).map((src) => {
               const active = sourceFilter === src;
               const count =
@@ -240,12 +243,15 @@ export default function HistoryPage() {
                 <button
                   key={src}
                   type="button"
+                  aria-pressed={active}
                   onClick={() => setSourceFilter(src)}
                   data-active={active ? "true" : undefined}
                   className="apple-segmented-item whitespace-nowrap"
                 >
-                  <span>{label}</span>
-                  <span className="ms-1 text-xs opacity-70">({count})</span>
+                  <span className="truncate">{label}</span>
+                  <span className="ms-0.5 text-[0.88em] opacity-70 tabular-nums shrink-0">
+                    ({count})
+                  </span>
                 </button>
               );
             })}
@@ -298,7 +304,7 @@ export default function HistoryPage() {
                 {/* Word & Translation Info */}
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-base sm:text-lg font-bold text-ink tracking-tight">
+                    <span dir="auto" className="text-base sm:text-lg font-bold text-ink tracking-tight break-words">
                       {item.text}
                     </span>
 
@@ -308,7 +314,8 @@ export default function HistoryPage() {
                         type="button"
                         onClick={() => speak(item.text, item.src_lang)}
                         title="Listen pronunciation"
-                        className="p-1 rounded-md text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                        aria-label={`Pronounce ${item.text}`}
+                        className="min-h-9 min-w-9 inline-flex items-center justify-center rounded-lg text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                       >
                         <SpeakerIcon size={16} />
                       </button>
@@ -336,23 +343,24 @@ export default function HistoryPage() {
                   {/* Translation Text */}
                   <div
                     dir="auto"
-                    className="text-sm sm:text-base font-medium text-ink"
+                    className="text-sm sm:text-base font-medium text-ink break-words"
                   >
                     {item.translation}
                   </div>
                 </div>
 
                 {/* Actions Toolbar */}
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-center">
                   {/* Copy Button */}
                   <button
                     type="button"
                     onClick={() => handleCopy(item)}
                     title={isCopied ? "Copied!" : "Copy translation"}
-                    className="p-2 rounded-lg border border-line bg-surface hover:bg-black/5 dark:hover:bg-white/10 text-muted hover:text-ink transition-all text-xs"
+                    aria-label={isCopied ? "Copied translation" : `Copy translation for ${item.text}`}
+                    className="min-h-10 min-w-10 inline-flex items-center justify-center rounded-lg border border-line bg-surface hover:bg-black/5 dark:hover:bg-white/10 text-muted hover:text-ink transition-all text-xs"
                   >
                     {isCopied ? (
-                      <span className="font-bold text-subtitle">✓</span>
+                      <span className="font-bold text-amber-700 dark:text-subtitle">✓</span>
                     ) : (
                       <svg
                         className="w-4 h-4"
@@ -373,7 +381,7 @@ export default function HistoryPage() {
                   {isSaved ? (
                     <div
                       title="Already saved to your practice list"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20"
+                      className="inline-flex items-center gap-1.5 min-h-10 px-3 py-1.5 rounded-xl text-xs font-semibold bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20"
                     >
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12" />
@@ -386,7 +394,7 @@ export default function HistoryPage() {
                       onClick={() => handleSave(item)}
                       disabled={isSaving}
                       title="Save this word to your vocabulary practice list"
-                      className="btn btn-primary min-h-8 px-3 py-1 text-xs rounded-xl"
+                      className="btn btn-primary min-h-10 px-3 py-1 text-xs rounded-xl"
                     >
                       {isSaving ? (
                         <>
@@ -409,7 +417,8 @@ export default function HistoryPage() {
                     type="button"
                     onClick={() => handleDelete(item.id)}
                     title="Remove from history"
-                    className="p-2 rounded-lg text-muted hover:text-bad hover:bg-bad/10 transition-colors"
+                    aria-label={`Remove ${item.text} from history`}
+                    className="min-h-10 min-w-10 inline-flex items-center justify-center rounded-lg text-muted hover:text-bad hover:bg-bad/10 transition-colors"
                   >
                     <svg
                       className="w-4 h-4"

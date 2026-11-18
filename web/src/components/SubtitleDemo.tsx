@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { addHistoryItem, markHistoryItemSaved } from "@/lib/history";
 import { addCustomWord } from "@/lib/api";
-import { getStoredSettings, type UserSettings } from "@/lib/settings";
+import { DEFAULT_SETTINGS, getStoredSettings, type UserSettings } from "@/lib/settings";
 
 // A fixed sample line for the landing page, so visitors can try the idea before signing up.
 const DEMO_WORDS = [
@@ -17,7 +17,7 @@ const DEMO_WORDS = [
 
 export function SubtitleDemo() {
   const [picked, setPicked] = useState<number | null>(null);
-  const [settings, setSettings] = useState<UserSettings>(getStoredSettings);
+  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [savedWords, setSavedWords] = useState<Set<string>>(new Set());
   const [savingWord, setSavingWord] = useState(false);
 
@@ -72,22 +72,26 @@ export function SubtitleDemo() {
   }
 
   return (
-    <figure className="frame" aria-label="Interactive demo of tapping a subtitle word">
-      <div className="frame-bar">
+    <figure className="frame min-w-0" aria-label="Interactive demo of tapping a subtitle word">
+      <div className="frame-bar flex-wrap gap-2">
         <span>Demo: tap a word in the subtitle</span>
         <span className="text-xs opacity-75 font-mono">
           {isManual ? "Mode: Manual save ✍️" : "Mode: Auto-save ⚡"}
         </span>
       </div>
       <div className="frame-stage" style={{ minHeight: "11rem" }}>
-        <p className="sub flex max-w-xl flex-wrap justify-center gap-x-[0.35em] text-2xl sm:text-3xl md:text-4xl px-2">
+        <p
+          dir="ltr"
+          lang="en"
+          className="sub flex max-w-xl flex-wrap justify-center gap-x-[0.35em] text-2xl sm:text-3xl md:text-4xl px-2"
+        >
           {DEMO_WORDS.map((item, i) => (
             <button
               key={item.word}
               type="button"
               onClick={() => handleWordClick(i)}
               aria-pressed={picked === i}
-              className="sub-word font-[inherit]"
+              className="sub-word font-[inherit] px-1.5 py-1"
             >
               {item.word}
             </button>

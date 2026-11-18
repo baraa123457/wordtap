@@ -22,7 +22,7 @@ export function LandingClient() {
     }
   }, [state.status, router]);
 
-  if (state.status === "signed-in" || state.status === "loading") {
+  if (state.status === "signed-in") {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-5xl items-center justify-center">
         <div className="flex items-center gap-2 text-xs font-semibold text-muted">
@@ -44,11 +44,16 @@ export function LandingClient() {
         <Logo />
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Language Switcher */}
-          <div className="flex rounded-lg border border-line bg-surface p-0.5 text-xs font-bold">
+          <div
+            role="group"
+            aria-label="Language"
+            className="flex rounded-xl border border-line bg-surface p-0.5 text-xs font-bold"
+          >
             <button
               type="button"
+              aria-pressed={!isAr}
               onClick={() => setLang("en")}
-              className={`px-2 py-1 rounded transition-colors ${
+              className={`min-h-9 px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                 !isAr ? "bg-subtitle text-subtitle-ink" : "text-muted hover:text-ink"
               }`}
             >
@@ -56,8 +61,9 @@ export function LandingClient() {
             </button>
             <button
               type="button"
+              aria-pressed={isAr}
               onClick={() => setLang("ar")}
-              className={`px-2 py-1 rounded transition-colors ${
+              className={`min-h-9 px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                 isAr ? "bg-subtitle text-subtitle-ink" : "text-muted hover:text-ink"
               }`}
             >
@@ -71,8 +77,8 @@ export function LandingClient() {
 
       <main className="flex-1 pb-20">
         {/* Hero Section */}
-        <section className="grid gap-10 pt-8 sm:pt-14 lg:grid-cols-[1.1fr_1fr] lg:items-center">
-          <div className="grid gap-6">
+        <section className="grid gap-10 pt-8 sm:pt-14 lg:grid-cols-[1.1fr_1fr] lg:items-center min-w-0">
+          <div className="grid gap-6 min-w-0">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-subtitle/15 border border-subtitle/30 text-xs font-bold text-ink w-fit">
               <span className="w-2 h-2 rounded-full bg-subtitle animate-pulse" />
               <span>
@@ -96,7 +102,7 @@ export function LandingClient() {
 
             {/* Language Pairs & Trust Note */}
             <div className="space-y-2">
-              <div className="text-xs text-muted flex items-center gap-2">
+              <div className="text-xs text-muted flex flex-wrap items-center gap-2">
                 <span className="font-semibold text-ink">
                   {isAr ? "اللغات المدعومة حالياً:" : "Supported language pairs:"}
                 </span>
@@ -207,7 +213,7 @@ export function LandingClient() {
               {isAr ? "· حول مشاهداتك إلى طلاقة حقيقية" : "· Turn your favorite shows into real fluency"}
             </span>
           </div>
-          <div className="flex items-center gap-6 text-xs font-medium">
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium">
             <Link href="/extension" className="hover:text-ink transition-colors">
               {isAr ? "الإضافة" : "Extension"}
             </Link>

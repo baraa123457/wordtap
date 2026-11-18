@@ -12,7 +12,7 @@ export function RealAppShowcase({ lang = "en" }: { lang?: "en" | "ar" }) {
       {/* Tab controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line/60 pb-3">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-subtitle">
+          <span className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-subtitle">
             {isAr ? "معاينة حية للتطبيق" : "Live App Preview"}
           </span>
           <h2 className="text-xl sm:text-2xl font-extrabold text-ink">
@@ -20,11 +20,17 @@ export function RealAppShowcase({ lang = "en" }: { lang?: "en" | "ar" }) {
           </h2>
         </div>
 
-        <div className="flex rounded-xl bg-surface p-1 border border-line text-xs font-semibold overflow-x-auto no-scrollbar scroll-smooth w-full sm:w-auto shrink-0">
+        <div
+          role="tablist"
+          aria-label="App preview tabs"
+          className="flex flex-wrap sm:flex-nowrap rounded-xl bg-surface p-1 border border-line text-xs font-semibold w-full sm:w-auto shrink-0 gap-1"
+        >
           <button
             type="button"
+            role="tab"
+            aria-selected={tab === "practice"}
             onClick={() => setTab("practice")}
-            className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-initial min-h-10 text-center whitespace-nowrap px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               tab === "practice" ? "bg-subtitle text-subtitle-ink shadow-xs" : "text-muted hover:text-ink"
             }`}
           >
@@ -32,8 +38,10 @@ export function RealAppShowcase({ lang = "en" }: { lang?: "en" | "ar" }) {
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={tab === "words"}
             onClick={() => setTab("words")}
-            className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-initial min-h-10 text-center whitespace-nowrap px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               tab === "words" ? "bg-subtitle text-subtitle-ink shadow-xs" : "text-muted hover:text-ink"
             }`}
           >
@@ -41,8 +49,10 @@ export function RealAppShowcase({ lang = "en" }: { lang?: "en" | "ar" }) {
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={tab === "subtitles"}
             onClick={() => setTab("subtitles")}
-            className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-initial min-h-10 text-center whitespace-nowrap px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               tab === "subtitles" ? "bg-subtitle text-subtitle-ink shadow-xs" : "text-muted hover:text-ink"
             }`}
           >
@@ -108,40 +118,40 @@ export function RealAppShowcase({ lang = "en" }: { lang?: "en" | "ar" }) {
           </div>
 
           <div className="divide-y divide-line/40">
-            <div className="py-3 flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
+            <div className="py-3 flex items-center justify-between gap-3 min-w-0">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-bold text-ink">Integrity</span>
                   <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-surface border border-line text-muted">Box 3</span>
                 </div>
                 <div className="text-xs text-muted font-arabic">نزاهة / أمانة اخلاقية</div>
-                <div className="text-[11px] text-muted truncate max-w-sm">From &quot;Suits S01E03&quot;</div>
+                <div className="text-[11px] text-muted truncate">From &quot;Suits S01E03&quot;</div>
               </div>
-              <span className="text-xs font-semibold text-ok bg-ok-soft/40 px-2 py-1 rounded-lg">Mastered</span>
+              <span className="text-xs font-semibold text-ok-ink bg-ok-soft/60 px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap">Mastered</span>
             </div>
 
-            <div className="py-3 flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
+            <div className="py-3 flex items-center justify-between gap-3 min-w-0">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-bold text-ink">Redundancy</span>
                   <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-surface border border-line text-muted">Box 1</span>
                 </div>
                 <div className="text-xs text-muted font-arabic">التكرار غير الضروري</div>
-                <div className="text-[11px] text-muted truncate max-w-sm">From &quot;Stanford CS Lecture&quot;</div>
+                <div className="text-[11px] text-muted truncate">From &quot;Stanford CS Lecture&quot;</div>
               </div>
-              <span className="text-xs font-semibold text-subtitle bg-subtitle/20 px-2 py-1 rounded-lg">Due today</span>
+              <span className="text-xs font-semibold text-amber-800 dark:text-subtitle bg-subtitle/20 px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap">Due today</span>
             </div>
 
-            <div className="py-3 flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
+            <div className="py-3 flex items-center justify-between gap-3 min-w-0">
+              <div className="space-y-0.5 min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-bold text-ink">Overwhelmed</span>
                   <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-surface border border-line text-muted">Box 2</span>
                 </div>
                 <div className="text-xs text-muted font-arabic">مثقل بالأعباء / مذهول</div>
-                <div className="text-[11px] text-muted truncate max-w-sm">From &quot;Friends S02E14&quot;</div>
+                <div className="text-[11px] text-muted truncate">From &quot;Friends S02E14&quot;</div>
               </div>
-              <span className="text-xs font-semibold text-muted bg-surface px-2 py-1 rounded-lg">In 2 days</span>
+              <span className="text-xs font-semibold text-muted bg-surface px-2.5 py-1 rounded-lg shrink-0 whitespace-nowrap">In 2 days</span>
             </div>
           </div>
         </div>
@@ -161,13 +171,13 @@ export function RealAppShowcase({ lang = "en" }: { lang?: "en" | "ar" }) {
               Your browser does not support the video tag.
             </video>
           </div>
-          <div className="flex items-center justify-between text-xs text-muted px-1">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted px-1">
             <span>
               {isAr
                 ? "فيديو توضيحي: النقر على الكلمات في ترجمة الفيديو وحفظها تلقائياً"
                 : "Live demo: Tap words in video subtitles to translate & save instantly"}
             </span>
-            <Link href="/extension" className="font-semibold text-subtitle hover:underline">
+            <Link href="/extension" className="font-semibold text-amber-800 dark:text-subtitle hover:underline shrink-0">
               {isAr ? "صفحة الإضافة ↗" : "Extension details ↗"}
             </Link>
           </div>
