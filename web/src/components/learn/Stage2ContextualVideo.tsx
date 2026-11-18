@@ -258,7 +258,9 @@ export function Stage2ContextualVideo({
             Stage 2 · Contextual Learning
           </span>
           <h2 id="stage2-heading" className="text-lg sm:text-2xl font-extrabold text-ink">
-            Hear &amp; complete &ldquo;{word.text}&rdquo; in real videos
+            {exerciseState === "correct"
+              ? `You heard “${word.text}” in real context`
+              : "Listen & type the missing word"}
           </h2>
         </div>
 
@@ -613,11 +615,11 @@ export function Stage2ContextualVideo({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">
                     <p className="text-sm font-bold text-ink">
-                      Play the clip to load the real caption for &ldquo;{word.text}&rdquo;
+                      Play the clip to load the real spoken sentence
                     </p>
                     <p className="text-xs text-muted">
-                      Your fill-in-the-blank exercise is generated strictly from the actual spoken
-                      caption as soon as YouGlish plays the sentence containing &ldquo;{word.text}&rdquo;.
+                      Your fill-in-the-blank exercise appears automatically as soon as the speaker
+                      reaches the sentence with the target word.
                     </p>
                   </div>
                   <button

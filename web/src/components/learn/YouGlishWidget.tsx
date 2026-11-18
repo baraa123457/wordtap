@@ -501,7 +501,7 @@ export const YouGlishWidget = forwardRef<YouGlishWidgetHandle, YouGlishWidgetPro
           >
             <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-subtitle border-t-transparent shrink-0" />
             <span>
-              Loading real YouGlish videos for &ldquo;{query}&rdquo;…
+              Loading real video examples…
             </span>
           </div>
         ) : null}

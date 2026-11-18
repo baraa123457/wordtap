@@ -423,7 +423,11 @@ function SequentialInitialLearningSession({
       {session.resumed ? (
         <div className="mb-3 rounded-xl border border-subtitle/40 bg-subtitle/10 px-3.5 py-2 text-xs font-medium text-ink flex items-center justify-between gap-2">
           <span>
-            Resumed where you left off: <strong>{activeWord.text}</strong> · Stage {currentStage} ({STAGE_LABELS[currentStage]})
+            Resumed where you left off:{" "}
+            <strong>
+              {currentStage === 2 ? `Word ${session.currentWordIndex + 1}` : activeWord.text}
+            </strong>{" "}
+            · Stage {currentStage} ({STAGE_LABELS[currentStage]})
           </span>
         </div>
       ) : null}
