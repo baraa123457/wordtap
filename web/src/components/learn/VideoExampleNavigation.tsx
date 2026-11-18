@@ -17,6 +17,7 @@ export function VideoExampleNavigation({
   onSpeedChange,
   onPrev,
   onNext,
+  onSkipWrongAudio,
 }: {
   index: number;
   total: number;
@@ -30,6 +31,7 @@ export function VideoExampleNavigation({
   onSpeedChange: (speed: WordTabPlaybackSpeed) => void;
   onPrev: () => void;
   onNext: () => void;
+  onSkipWrongAudio?: () => void;
 }) {
   const cycleSpeed = () => {
     const idx = SPEED_OPTIONS.indexOf(speed);
@@ -112,6 +114,17 @@ export function VideoExampleNavigation({
         >
           Next →
         </button>
+        {onSkipWrongAudio ? (
+          <button
+            type="button"
+            onClick={onSkipWrongAudio}
+            title="Spoken audio is not in English? Skip this clip and show another"
+            aria-label="Skip clip with wrong audio language"
+            className="btn btn-quiet min-h-10 px-2 text-[11px] font-semibold text-muted hover:text-bad cursor-pointer"
+          >
+            Wrong audio?
+          </button>
+        ) : null}
       </div>
     </div>
   );

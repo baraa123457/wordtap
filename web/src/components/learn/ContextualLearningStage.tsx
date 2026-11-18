@@ -10,6 +10,7 @@ import {
   type VideoDiscoveryResponse,
 } from "@/lib/learn-api";
 import { maskWordInSentence } from "@/lib/placeholder";
+import { isNonEnglishVideoTitle } from "@/lib/video/video-language-filter";
 import {
   WordTabVideoPlayer,
   type WordTabPlaybackSpeed,
@@ -74,10 +75,13 @@ export function ContextualLearningStage({
     fetchContextualVideos(word)
       .then((res) => {
         if (!active) return;
-        setDiscovery(res);
-        setVideos(res.videos);
-        if (res.videos[0]) {
-          setCurrentTimeSec(res.videos[0].timestampSeconds);
+        const validVideos = (res.videos || []).filter(
+          (v) => !isNonEnglishVideoTitle(v.videoTitle, v.channelName),
+        );
+        setDiscovery({ ...res, videos: validVideos });
+        setVideos(validVideos);
+        if (validVideos[0]) {
+          setCurrentTimeSec(validVideos[0].timestampSeconds);
         }
       })
       .catch((err) => {
@@ -248,6 +252,7 @@ export function ContextualLearningStage({
             onSpeedChange={setPlaybackSpeed}
             onPrev={handlePrevVideo}
             onNext={handleNextVideo}
+            onSkipWrongAudio={() => activeClip && handleUnavailableClip(activeClip)}
           />
         </div>
       ) : (

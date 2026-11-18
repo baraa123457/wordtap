@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { isNonEnglishVideoTitle } from "./video-language-filter";
 import type {
   CaptionCue,
   VerifiedVideoExample,
@@ -146,7 +147,8 @@ export class VideoRepository {
   }
 
   setMemory(wordNormalized: string, clips: VerifiedVideoExample[]): void {
-    if (clips.length === 0) return;
+    const englishClips = clips.filter((c) => !isNonEnglishVideoTitle(c.videoTitle, c.channelName));
+    if (englishClips.length === 0) return;
     const now = Date.now();
     if (MEMORY_CACHE.size >= MAX_MEMORY_ENTRIES) {
       for (const [k, v] of MEMORY_CACHE.entries()) {
@@ -157,7 +159,7 @@ export class VideoRepository {
         if (oldest) MEMORY_CACHE.delete(oldest);
       }
     }
-    MEMORY_CACHE.set(wordNormalized, { clips, expiresAt: now + MEMORY_TTL_MS });
+    MEMORY_CACHE.set(wordNormalized, { clips: englishClips, expiresAt: now + MEMORY_TTL_MS });
   }
 
   evictVideoFromMemory(videoKey: string): void {
@@ -220,7 +222,7 @@ export class VideoRepository {
 
       const mapped = (data as DbVideoRow[])
         .map(mapRowToExample)
-        .filter((c) => Boolean(c.mediaUrl));
+        .filter((c) => Boolean(c.mediaUrl) && !isNonEnglishVideoTitle(c.videoTitle, c.channelName));
       if (mapped.length === 0) return { clips: [], source: "empty" };
 
       this.setMemory(wordNormalized, mapped);
@@ -236,12 +238,13 @@ export class VideoRepository {
     clips: VerifiedVideoExample[],
     req?: Request,
   ): Promise<void> {
-    if (clips.length === 0) return;
+    const validClips = clips.filter((c) => !isNonEnglishVideoTitle(c.videoTitle, c.channelName));
+    if (validClips.length === 0) return;
 
     const existing = this.getFromMemory(wordNormalized) || [];
     const deduped: VerifiedVideoExample[] = [];
     const seen = new Set<string>();
-    for (const c of [...clips, ...existing]) {
+    for (const c of [...validClips, ...existing]) {
       const key = `${c.youtubeVideoId}:${c.timestampSeconds}`;
       if (seen.has(key)) continue;
       seen.add(key);

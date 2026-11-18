@@ -5,6 +5,7 @@ import {
   fetchAuthenticFallbackContexts,
   VideoDiscoveryService,
 } from "@/lib/video/video-discovery-service";
+import { isNonEnglishVideoTitle } from "@/lib/video/video-language-filter";
 import { VideoRepository } from "@/lib/video/video-repository";
 import type { VideoDiscoveryDiagnostics, VideoDiscoveryResponse } from "@/lib/video/types";
 
@@ -81,7 +82,7 @@ export async function GET(req: Request) {
   }
 
   // 2. Run pluggable video discovery providers (YouGlish REST API -> Filmot -> YouTube+Transcript -> User Subtitle)
-  const { videos, providersAttempted } = await discoveryService.discover({
+  const discoveryResult = await discoveryService.discover({
     word,
     wordId: wordId || null,
     lang,
@@ -90,6 +91,11 @@ export async function GET(req: Request) {
     savedSentence: sentence,
     sourceTitle,
   });
+
+  const videos = (discoveryResult.videos || []).filter(
+    (v) => !isNonEnglishVideoTitle(v.videoTitle, v.channelName),
+  );
+  const providersAttempted = discoveryResult.providersAttempted;
 
   // 3. Persist verified video metadata & cues so returning visits reuse them immediately
   if (videos.length > 0) {

@@ -2,6 +2,10 @@ import { createHash } from "node:crypto";
 import { maskWordInSentence } from "../placeholder";
 import { getVerbConjugation } from "../verbs";
 import {
+  isNonEnglishVideoMetadata,
+  isNonEnglishVideoTitle,
+} from "./video-language-filter";
+import {
   cleanCaptionText,
   CompositeTranscriptProvider,
   extractTimestampSeconds,
@@ -457,12 +461,12 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
     const searchTerms = this.buildSearchQueries(query.word);
 
     try {
-      // Step 1: Search multiple candidate TimedText subtitle pages (namespace 710)
+      // Step 1: Search multiple candidate TimedText subtitle pages (namespace 102)
       const timedTextTitles = new Set<string>();
       for (const term of searchTerms) {
         if (timedTextTitles.size >= 12) break;
         const searchUrl =
-          `https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=710` +
+          `https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=102` +
           `&srsearch=${encodeURIComponent(term)}&srlimit=12&format=json`;
         const res = await fetch(searchUrl, {
           headers: { "User-Agent": WIKIMEDIA_USER_AGENT },
@@ -490,6 +494,10 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
         const fileName = tt
           .replace(/^TimedText:/i, "")
           .replace(/\.en([-.][a-z0-9]+)?\.(srt|vtt)$/i, "");
+
+        // Filter out obvious foreign-language video titles immediately
+        if (isNonEnglishVideoTitle(fileName)) continue;
+
         const fileTitle = `File:${fileName}`;
         const key = fileTitle.toLowerCase();
         if (seenFiles.has(key)) continue;
@@ -550,6 +558,8 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
               extmetadata?: {
                 LicenseShortName?: { value?: string };
                 Artist?: { value?: string };
+                Categories?: { value?: string };
+                ImageDescription?: { value?: string };
               };
             }>;
           }>;
@@ -587,6 +597,19 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
         // Skip extremely large multi-GB raw files so HTML5 seeking stays fast
         if (typeof info.size === "number" && info.size > 450_000_000) continue;
 
+        // Verify that video audio is natively in English (reject German, French, Spanish, etc.)
+        const rawCategories = info.extmetadata?.Categories?.value || "";
+        const rawDescription = info.extmetadata?.ImageDescription?.value || "";
+        if (
+          isNonEnglishVideoMetadata({
+            title: page.title,
+            categories: rawCategories,
+            description: rawDescription,
+          })
+        ) {
+          continue;
+        }
+
         const cleanUrl = info.url.split("?")[0] || info.url;
         const rawArtist = info.extmetadata?.Artist?.value || "";
         const artist = cleanCaptionText(rawArtist).slice(0, 80);
@@ -621,6 +644,8 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
         if (cues.length === 0) continue;
 
         const videoTitle = cleanWikimediaTitle(pair.fileTitle);
+        if (isNonEnglishVideoTitle(videoTitle)) continue;
+
         const match = findVerifiedWordInCues(cues, query.word, "wikimedia_commons", {
           videoTitle,
           durationSec: fileInfo.duration,
