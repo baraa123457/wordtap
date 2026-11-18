@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const learningStatusSchema = z.enum(["new", "learning", "review", "mastered"]);
+export type LearningStatus = z.infer<typeof learningStatusSchema>;
+
 export const wordSchema = z.object({
   id: z.string(),
   text: z.string(),
@@ -9,6 +12,19 @@ export const wordSchema = z.object({
   source_title: z.string().nullable().optional().transform((v) => v ?? ""),
   source_url: z.string().nullable().optional().transform((v) => v ?? ""),
   sentence: z.string().nullable().optional().transform((v) => v ?? ""),
+  definition: z.string().nullable().optional(),
+  pronunciation: z.string().nullable().optional(),
+  part_of_speech: z.string().nullable().optional(),
+  learning_status: learningStatusSchema.nullable().optional(),
+  current_stage: z.number().nullable().optional(),
+  completed_stages: z.array(z.number()).nullable().optional(),
+  attempts_count: z.number().nullable().optional(),
+  fsrs_stability: z.number().nullable().optional(),
+  fsrs_difficulty: z.number().nullable().optional(),
+  fsrs_reps: z.number().nullable().optional(),
+  fsrs_lapses: z.number().nullable().optional(),
+  interval_days: z.number().nullable().optional(),
+  last_rating: z.number().nullable().optional(),
   times_seen: z.number(),
   box: z.number(),
   next_review: z.string(),
@@ -29,6 +45,8 @@ export const statsSchema = z.object({
   last_practice_date: z.string().nullable(),
   today_xp: z.number(),
   daily_goal: z.number(),
+  daily_new_words_goal: z.number().nullable().optional().transform((v) => v ?? 5),
+  daily_reviews_goal: z.number().nullable().optional().transform((v) => v ?? 20),
 });
 
 export type Stats = z.infer<typeof statsSchema>;
@@ -40,6 +58,8 @@ export const EMPTY_STATS: Stats = {
   last_practice_date: null,
   today_xp: 0,
   daily_goal: 20,
+  daily_new_words_goal: 5,
+  daily_reviews_goal: 20,
 };
 
 export const WORD_COLUMNS_LEGACY =
@@ -47,5 +67,9 @@ export const WORD_COLUMNS_LEGACY =
 
 export const WORD_COLUMNS = `${WORD_COLUMNS_LEGACY},sentence`;
 
+export const WORD_COLUMNS_V2 = `${WORD_COLUMNS},definition,pronunciation,part_of_speech,learning_status,current_stage,completed_stages,attempts_count,fsrs_stability,fsrs_difficulty,fsrs_reps,fsrs_lapses,interval_days,last_rating`;
+
 export const STATS_COLUMNS =
   "xp,streak,best_streak,last_practice_date,today_xp,daily_goal";
+
+export const STATS_COLUMNS_V2 = `${STATS_COLUMNS},daily_new_words_goal,daily_reviews_goal`;

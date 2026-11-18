@@ -22,6 +22,8 @@ export type UserSettings = {
   translateSaveMode: TranslateSaveMode;
   selectionMode?: SelectionMode;
   translationProvider?: TranslationProvider;
+  dailyNewWordsGoal?: number;
+  dailyReviewsGoal?: number;
 };
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -40,6 +42,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   translateSaveMode: "manual",
   selectionMode: "immediate",
   translationProvider: "google",
+  dailyNewWordsGoal: 5,
+  dailyReviewsGoal: 20,
 };
 
 const STORAGE_KEY = "wordtap_settings";

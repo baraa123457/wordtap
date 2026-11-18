@@ -1005,6 +1005,13 @@ export default function WordsPage() {
                     </span>
                   ) : (
                     <div className="flex items-center gap-1.5 shrink-0">
+                      <Link
+                        href={`/practice?wordId=${encodeURIComponent(w.id)}`}
+                        className="btn btn-primary min-h-8 px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer"
+                        title={`Learn "${w.text}" (4-Stage Interactive Flow)`}
+                      >
+                        Learn
+                      </Link>
                       <button
                         type="button"
                         className={`btn min-h-8 px-2.5 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${

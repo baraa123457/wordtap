@@ -2,10 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fetchStats, fetchWords, setDailyGoal, syncUserStreak } from "@/lib/api";
+import {
+  fetchStats,
+  fetchWords,
+  setDailyGoal,
+  setDailyLearningGoals,
+  syncUserStreak,
+} from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
 import { effectiveStats, localDateString } from "@/lib/dates";
 import { formatDueIn, isDue } from "@/lib/format";
+import { deriveWordLearningStatus } from "@/lib/fsrs";
+import { fetchRecentReviewHistory, type ReviewHistoryRow } from "@/lib/learn-api";
+import { getStoredSettings, saveStoredSettings } from "@/lib/settings";
 import type { Stats, Word } from "@/lib/schemas";
 import { useLoad } from "@/hooks/useLoad";
 import { ErrorState } from "@/components/StateViews";
@@ -14,14 +23,24 @@ import { FireIcon } from "@/components/Icons";
 import { TranslatorCard } from "@/components/TranslatorCard";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
-type DashboardData = { words: Word[]; stats: Stats };
+type DashboardData = {
+  words: Word[];
+  stats: Stats;
+  history: ReviewHistoryRow[];
+};
 
 async function loadDashboard(): Promise<DashboardData> {
-  const [words, stats] = await Promise.all([fetchWords(), fetchStats()]);
-  return { words, stats };
+  const [words, stats, history] = await Promise.all([
+    fetchWords(),
+    fetchStats(),
+    fetchRecentReviewHistory(14),
+  ]);
+  return { words, stats, history };
 }
 
 const GOALS = [10, 20, 50, 100] as const;
+const NEW_WORD_LIMITS = [3, 5, 10, 15, 20] as const;
+const REVIEW_LIMITS = [10, 20, 30, 50] as const;
 
 function GoalDropdown({
   value,
@@ -148,6 +167,7 @@ export default function DashboardPage() {
         syncUserStreak(eff.streak, newBest, targetDate).catch(() => {});
         setData({
           words: readyData.words,
+          history: readyData.history,
           stats: {
             ...currentStats,
             streak: eff.streak,
@@ -194,12 +214,50 @@ export default function DashboardPage() {
 
   if (state.status === "error") return <ErrorState message={state.message} onRetry={reload} />;
 
-  const { words, stats } = state.data;
+  const { words, stats, history } = state.data;
+  const storedSettings = getStoredSettings();
+  const dailyNewGoal = stats.daily_new_words_goal ?? storedSettings.dailyNewWordsGoal ?? 5;
+  const dailyReviewsGoal = stats.daily_reviews_goal ?? storedSettings.dailyReviewsGoal ?? 20;
 
   const dueCount = words.filter((w) => isDue(w.next_review, now)).length;
-  const mastered = words.filter((w) => w.box >= 4).length;
-  const learningCount = words.filter((w) => w.box >= 2 && w.box < 4).length;
-  const newCount = words.filter((w) => w.box <= 1).length;
+  const statusCounts = { new: 0, learning: 0, review: 0, mastered: 0 };
+  for (const w of words) {
+    const st = deriveWordLearningStatus(w);
+    statusCounts[st] += 1;
+  }
+  const mastered = statusCounts.mastered;
+  const learningCount = statusCounts.learning + statusCounts.review;
+  const newCount = statusCounts.new;
+
+  // Words learned/practiced today (from review_history + words.last_practiced)
+  const practicedTodayIds = new Set<string>();
+  for (const h of history) {
+    if (localDateString(new Date(h.review_date)) === todayStr) {
+      practicedTodayIds.add(h.word_id);
+    }
+  }
+  for (const w of words) {
+    if (w.last_practiced && localDateString(new Date(w.last_practiced)) === todayStr) {
+      practicedTodayIds.add(w.id);
+    }
+  }
+  const wordsLearnedToday = practicedTodayIds.size;
+
+  // Weekly learning activity (last 7 days)
+  const weeklyActivity = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - i), 12, 0, 0);
+    const key = localDateString(d);
+    const label = d.toLocaleDateString("en", { weekday: "short" });
+    const countFromHistory = history.filter(
+      (h) => localDateString(new Date(h.review_date)) === key,
+    ).length;
+    const countFromWords = words.filter(
+      (w) => w.last_practiced && localDateString(new Date(w.last_practiced)) === key,
+    ).length;
+    return { key, label, count: Math.max(countFromHistory, countFromWords) };
+  });
+  const weeklyMax = Math.max(1, ...weeklyActivity.map((d) => d.count));
+
   const totalCorrect = words.reduce((sum, w) => sum + (w.correct_count || 0), 0);
   const totalWrong = words.reduce((sum, w) => sum + (w.wrong_count || 0), 0);
   const totalReviews = totalCorrect + totalWrong;
@@ -218,10 +276,24 @@ export default function DashboardPage() {
     setGoalError(null);
     try {
       await setDailyGoal(goal);
-      setData({ words, stats: { ...stats, daily_goal: goal } });
+      setData({ words, history, stats: { ...stats, daily_goal: goal } });
     } catch (e) {
       setGoalError(e instanceof Error ? e.message : "Could not save your goal.");
     }
+  }
+
+  async function changeSessionGoals(nextNew: number, nextReviews: number) {
+    saveStoredSettings({ dailyNewWordsGoal: nextNew, dailyReviewsGoal: nextReviews });
+    setData({
+      words,
+      history,
+      stats: {
+        ...stats,
+        daily_new_words_goal: nextNew,
+        daily_reviews_goal: nextReviews,
+      },
+    });
+    await setDailyLearningGoals(nextNew, nextReviews);
   }
 
   async function refreshDataQuietly() {
@@ -370,48 +442,168 @@ export default function DashboardPage() {
         </p>
       ) : null}
 
-      {/* 3. Key Metrics */}
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4 min-w-0">
-        <Stat label="Ready to review" value={dueCount} />
+      {/* 3. Key Vocabulary Metrics */}
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 min-w-0">
+        <Stat label="Total words" value={words.length} />
+        <Stat label="Learned today" value={wordsLearnedToday} />
+        <Stat label="Due for review" value={dueCount} />
+        <Stat label="Learning" value={learningCount} />
         <Stat label="Mastered" value={mastered} />
-        <Stat label="Words saved" value={words.length} />
-        <Stat label="Total XP" value={stats.xp} />
+        <div className="apple-card p-3 sm:p-4 flex flex-col justify-between gap-1 shadow-2xs min-w-0">
+          <dt className="text-xs font-medium text-muted truncate">Retention</dt>
+          <dd className="text-xl sm:text-2xl font-bold tracking-tight text-ink tabular-nums">
+            {accuracyPct !== null ? `${accuracyPct}%` : "—"}
+          </dd>
+        </div>
       </dl>
 
-      {/* Mastery Breakdown & Accuracy Analytics */}
+      {/* Daily Learning Session Configurator + Weekly Activity */}
+      {words.length > 0 ? (
+        <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr] min-w-0">
+          <section aria-label="Daily learning session" className="apple-card p-5 grid gap-4 min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-bold text-ink">Daily Learning Session</h2>
+                <p className="text-xs text-muted">
+                  4-stage flow: Understanding → Real Videos → Your Sentence → Spaced Review
+                </p>
+              </div>
+              <Link
+                href="/practice?mode=daily"
+                className="btn btn-primary min-h-9 px-4 py-1.5 text-xs font-bold shrink-0"
+              >
+                Start daily session
+              </Link>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-line bg-black/[0.015] dark:bg-white/[0.025] p-3 grid gap-2">
+                <span className="text-xs font-semibold text-ink">New words / day</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {NEW_WORD_LIMITS.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => void changeSessionGoals(n, dailyReviewsGoal)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold tabular-nums transition-all cursor-pointer ${
+                        dailyNewGoal === n
+                          ? "bg-subtitle text-subtitle-ink shadow-2xs"
+                          : "bg-surface border border-line text-muted hover:text-ink"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-line bg-black/[0.015] dark:bg-white/[0.025] p-3 grid gap-2">
+                <span className="text-xs font-semibold text-ink">Reviews / day</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {REVIEW_LIMITS.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => void changeSessionGoals(dailyNewGoal, r)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold tabular-nums transition-all cursor-pointer ${
+                        dailyReviewsGoal === r
+                          ? "bg-subtitle text-subtitle-ink shadow-2xs"
+                          : "bg-surface border border-line text-muted hover:text-ink"
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section aria-label="Weekly learning activity" className="apple-card p-5 grid gap-3 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-bold text-ink">Weekly Activity</h2>
+                <p className="text-xs text-muted">Reviews &amp; exercises completed over the last 7 days</p>
+              </div>
+              <span className="text-xs font-bold text-ink tabular-nums">
+                {weeklyActivity.reduce((s, d) => s + d.count, 0)} total
+              </span>
+            </div>
+
+            <div className="grid grid-cols-7 items-end gap-2 h-24 pt-2">
+              {weeklyActivity.map((day) => {
+                const heightPct = day.count === 0 ? 8 : Math.max(16, Math.round((day.count / weeklyMax) * 100));
+                const isToday = day.key === todayStr;
+                return (
+                  <div key={day.key} className="flex flex-col items-center gap-1.5 h-full justify-end">
+                    <span className="text-[10px] font-bold text-muted tabular-nums">
+                      {day.count > 0 ? day.count : ""}
+                    </span>
+                    <div className="w-full flex-1 flex items-end justify-center">
+                      <div
+                        title={`${day.label}: ${day.count} reviews`}
+                        style={{ height: `${heightPct}%` }}
+                        className={`w-full max-w-7 rounded-t-lg transition-all ${
+                          day.count > 0
+                            ? isToday
+                              ? "bg-subtitle"
+                              : "bg-ok/75"
+                            : "bg-black/8 dark:bg-white/10"
+                        }`}
+                      />
+                    </div>
+                    <span className={`text-[10px] font-semibold ${isToday ? "text-ink font-bold" : "text-muted"}`}>
+                      {day.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {/* Mastery Breakdown & Tricky Words */}
       {words.length > 0 ? (
         <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr] min-w-0">
           <section aria-label="Mastery breakdown" className="apple-card p-5 grid gap-3 min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="text-sm font-bold text-ink">Mastery &amp; Retention</h2>
+                <h2 className="text-sm font-bold text-ink">Learning Progress Over Time</h2>
                 <p className="text-xs text-muted">
                   {accuracyPct !== null
-                    ? `${accuracyPct}% recall accuracy across ${totalReviews} reviews`
-                    : "Review words to unlock accuracy stats"}
+                    ? `${accuracyPct}% retention across ${totalReviews} reviews`
+                    : "Complete reviews to unlock retention stats"}
                 </p>
               </div>
               <Link
-                href="/practice?practice=dictation"
+                href="/practice?mode=new"
                 className="btn min-h-8 px-3 py-1 text-xs font-semibold"
               >
-                Dictation practice
+                Learn new words
               </Link>
             </div>
 
             <div className="h-2.5 w-full rounded-full overflow-hidden bg-black/5 dark:bg-white/10 flex">
-              {mastered > 0 ? (
+              {statusCounts.mastered > 0 ? (
                 <div
                   className="bg-ok h-full transition-all"
-                  style={{ width: `${Math.round((mastered / words.length) * 100)}%` }}
-                  title={`${mastered} mastered`}
+                  style={{ width: `${Math.round((statusCounts.mastered / words.length) * 100)}%` }}
+                  title={`${statusCounts.mastered} mastered`}
                 />
               ) : null}
-              {learningCount > 0 ? (
+              {statusCounts.review > 0 ? (
+                <div
+                  className="bg-blue-500 h-full transition-all"
+                  style={{ width: `${Math.round((statusCounts.review / words.length) * 100)}%` }}
+                  title={`${statusCounts.review} in review`}
+                />
+              ) : null}
+              {statusCounts.learning > 0 ? (
                 <div
                   className="bg-subtitle h-full transition-all"
-                  style={{ width: `${Math.round((learningCount / words.length) * 100)}%` }}
-                  title={`${learningCount} learning`}
+                  style={{ width: `${Math.round((statusCounts.learning / words.length) * 100)}%` }}
+                  title={`${statusCounts.learning} learning`}
                 />
               ) : null}
               {newCount > 0 ? (
@@ -426,11 +618,15 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center gap-4 text-xs text-muted">
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-ok" />
-                <span>Mastered ({mastered})</span>
+                <span>Mastered ({statusCounts.mastered})</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                <span>Review ({statusCounts.review})</span>
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-subtitle" />
-                <span>Learning ({learningCount})</span>
+                <span>Learning ({statusCounts.learning})</span>
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-muted/40" />

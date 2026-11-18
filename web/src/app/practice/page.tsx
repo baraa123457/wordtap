@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { fetchWords } from "@/lib/api";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { fetchStats, fetchWords } from "@/lib/api";
 import { useLoad } from "@/hooks/useLoad";
 import { RequireAuth } from "@/components/RequireAuth";
 import { ErrorState, LoadingState } from "@/components/StateViews";
+import { InteractiveLearningSession } from "@/components/learn/InteractiveLearningSession";
 import { PracticeSession } from "@/components/practice/PracticeSession";
 import { SAMPLE_WORDS } from "@/lib/sampleWords";
-
-import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { getStoredSettings } from "@/lib/settings";
+import type { Stats, Word } from "@/lib/schemas";
 
 const LANG_NAMES: Record<string, string> = {
   en: "English",
@@ -27,10 +29,17 @@ const LANG_NAMES: Record<string, string> = {
   auto: "Other",
 };
 
+type PracticeData = { words: Word[]; stats: Stats };
+
+async function loadPracticeData(): Promise<PracticeData> {
+  const [words, stats] = await Promise.all([fetchWords(), fetchStats()]);
+  return { words, stats };
+}
+
 export default function PracticePage() {
   return (
     <RequireAuth>
-      <Suspense fallback={<LoadingState label="Getting your words ready…" />}>
+      <Suspense fallback={<LoadingState label="Preparing your learning session…" />}>
         <PracticeLoader />
       </Suspense>
     </RequireAuth>
@@ -38,14 +47,24 @@ export default function PracticePage() {
 }
 
 function PracticeLoader() {
-  const { state, reload } = useLoad(fetchWords);
+  const { state, reload } = useLoad(loadPracticeData);
   const searchParams = useSearchParams();
   const urlLang = searchParams.get("lang");
   const urlMode = searchParams.get("mode");
+  const urlWordId = searchParams.get("wordId");
+  const urlPractice = searchParams.get("practice");
+  const urlIds = searchParams.get("ids");
+  const useClassic = searchParams.get("classic") === "1" || urlPractice === "dictation";
+
   const [selectedLang, setSelectedLang] = useState<string | null>(urlLang);
   const [trySampleSession, setTrySampleSession] = useState(false);
 
-  const words = state.status === "ready" ? state.data : null;
+  const words = state.status === "ready" ? state.data.words : null;
+  const stats = state.status === "ready" ? state.data.stats : null;
+  const stored = getStoredSettings();
+
+  const dailyNewLimit = stats?.daily_new_words_goal ?? stored.dailyNewWordsGoal ?? 5;
+  const dailyReviewLimit = stats?.daily_reviews_goal ?? stored.dailyReviewsGoal ?? 20;
 
   const languages = useMemo(() => {
     if (!words) return [];
@@ -67,7 +86,9 @@ function PracticeLoader() {
     }));
   }, [words, urlMode]);
 
-  if (state.status === "loading") return <LoadingState label="Getting your words ready…" />;
+  if (state.status === "loading") {
+    return <LoadingState label="Preparing your learning session…" />;
+  }
   if (state.status === "error") {
     return (
       <div className="px-4 py-16">
@@ -75,21 +96,29 @@ function PracticeLoader() {
       </div>
     );
   }
-  if (state.data.length === 0) {
+
+  // Empty vocabulary state + interactive 4-stage demo
+  if (state.data.words.length === 0) {
     if (trySampleSession) {
       return (
-        <div className="space-y-4">
-          <div className="mx-auto max-w-lg mt-4 px-4 py-2 bg-subtitle/15 border border-subtitle/30 rounded-xl text-xs font-semibold text-ink flex items-center justify-between">
-            <span>Demo Mode: Practicing 4 sample words (these will not be saved to your account).</span>
+        <div className="space-y-2">
+          <div className="mx-auto max-w-3xl mt-3 px-4 py-2 bg-subtitle/15 border border-subtitle/30 rounded-xl text-xs font-semibold text-ink flex items-center justify-between gap-2">
+            <span>Demo Mode: Experiencing the 4-Stage Learning System on sample words.</span>
             <button
               type="button"
               onClick={() => setTrySampleSession(false)}
-              className="text-muted hover:text-ink underline text-[11px]"
+              className="text-muted hover:text-ink underline text-[11px] shrink-0 cursor-pointer"
             >
               Exit demo
             </button>
           </div>
-          <PracticeSession words={SAMPLE_WORDS} onAgain={() => setTrySampleSession(false)} />
+          <InteractiveLearningSession
+            words={SAMPLE_WORDS}
+            newLimit={4}
+            reviewLimit={0}
+            mode="new"
+            onReload={() => setTrySampleSession(false)}
+          />
         </div>
       );
     }
@@ -101,22 +130,22 @@ function PracticeLoader() {
             🎬
           </div>
           <div className="space-y-2">
-            <h1 className="text-xl sm:text-2xl font-extrabold text-ink">No words to practice yet</h1>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-ink">No words to learn yet</h1>
             <p className="text-xs sm:text-sm text-muted leading-relaxed">
-              Words you tap in YouTube or Netflix subtitles appear here automatically. Once saved, you can review them with spaced repetition.
+              Save words from YouTube subtitles or the Dashboard translator to unlock the 4-stage interactive learning flow: Understanding, Real Videos, Sentence Creation, and Spaced Repetition.
             </p>
           </div>
 
           <div className="flex flex-col gap-2.5 sm:gap-3 pt-2">
-            <Link href="/extension" className="btn btn-primary font-bold py-3 text-center justify-center">
-              Install Chrome Extension
+            <Link href="/dashboard" className="btn btn-primary font-bold py-3 text-center justify-center">
+              Add your first word
             </Link>
             <button
               type="button"
               onClick={() => setTrySampleSession(true)}
-              className="btn btn-quiet text-xs font-semibold py-2.5"
+              className="btn btn-quiet text-xs font-semibold py-2.5 cursor-pointer"
             >
-              Or try a 4-question sample session
+              Try a 4-stage interactive sample session
             </button>
           </div>
         </div>
@@ -124,22 +153,32 @@ function PracticeLoader() {
     );
   }
 
-  // Choose language first before starting practice (unless explicit ?lang= is passed):
-  if (!selectedLang && !urlLang && languages.length > 0) {
+  // Direct single-word 4-stage focus mode (e.g. clicking "Learn" on a word in /words)
+  if (urlWordId) {
+    return (
+      <InteractiveLearningSession
+        key={`focus-${urlWordId}`}
+        words={state.data.words}
+        focusWordId={urlWordId}
+        onReload={reload}
+      />
+    );
+  }
+
+  // Language picker when multiple foreign languages exist and none explicitly chosen
+  if (!selectedLang && !urlLang && languages.length > 1) {
     const totalCount =
       urlMode === "missed"
-        ? words?.filter((w) => (w.wrong_count || 0) > 0).length || 0
-        : state.data.length;
+        ? state.data.words.filter((w) => (w.wrong_count || 0) > 0).length
+        : state.data.words.length;
 
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-3.5 sm:px-4 py-8 sm:py-12 pt-safe pb-safe">
         <div className="grid gap-5 sm:gap-6 rounded-3xl border border-line bg-surface p-5 sm:p-8 shadow-sm">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-ink">Choose what to practice</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-ink">Choose language to learn</h1>
             <p className="mt-1 text-sm text-muted">
-              {urlMode === "missed"
-                ? "Select a language to drill your tricky/missed words, or drill all languages mixed:"
-                : "Select a language to focus on, or practice all languages mixed:"}
+              Start your 4-stage interactive session (Understanding → Video Context → Your Sentence → Spaced Repetition):
             </p>
           </div>
           <div className="grid gap-3">
@@ -161,7 +200,7 @@ function PracticeLoader() {
               onClick={() => setSelectedLang("all")}
               className="btn btn-quiet justify-between text-base cursor-pointer hover:border-subtitle"
             >
-              <span>Practice all languages mixed</span>
+              <span>All languages mixed</span>
               <span className="text-xs text-muted">{totalCount} total</span>
             </button>
           </div>
@@ -170,39 +209,43 @@ function PracticeLoader() {
     );
   }
 
-  const urlPractice = searchParams.get("practice");
-  const urlIds = searchParams.get("ids");
-  const modeOverride =
-    urlPractice === "dictation" || urlPractice === "typing" || urlPractice === "choice" || urlPractice === "mixed"
-      ? urlPractice
-      : undefined;
-
   let filteredWords =
     selectedLang && selectedLang !== "all"
-      ? state.data.filter((w) => (w.src_lang || "auto").toLowerCase() === selectedLang.toLowerCase())
-      : state.data;
+      ? state.data.words.filter(
+          (w) => (w.src_lang || "auto").toLowerCase() === selectedLang.toLowerCase(),
+        )
+      : state.data.words;
 
   if (urlIds) {
     const idSet = new Set(urlIds.split(",").map((s) => s.trim()).filter(Boolean));
     const subset = filteredWords.filter((w) => idSet.has(w.id));
     if (subset.length > 0) filteredWords = subset;
-  } else if (urlMode === "missed") {
-    const trouble = [...filteredWords]
-      .filter((w) => w.wrong_count > 0)
-      .sort((a, b) => b.wrong_count - a.wrong_count);
-    if (trouble.length > 0) {
-      filteredWords = trouble;
-    }
   }
 
-  // "Practice again" reloads the words, so the next session uses fresh schedules.
+  // Optional legacy dictation mode when explicitly requested
+  if (useClassic) {
+    return (
+      <PracticeSession
+        key={`classic-${urlIds || ""}-${urlMode || ""}-${urlPractice || ""}-${selectedLang || ""}`}
+        words={filteredWords}
+        onAgain={reload}
+        onChangeLang={languages.length > 1 ? () => setSelectedLang(null) : undefined}
+        modeOverride={urlPractice === "dictation" ? "dictation" : undefined}
+      />
+    );
+  }
+
+  const sessionMode: "daily" | "new" | "review" | "missed" =
+    urlMode === "new" || urlMode === "review" || urlMode === "missed" ? urlMode : "daily";
+
   return (
-    <PracticeSession
-      key={`${urlIds || ""}-${urlMode || ""}-${urlPractice || ""}-${selectedLang || ""}`}
+    <InteractiveLearningSession
+      key={`learn-${sessionMode}-${urlIds || ""}-${selectedLang || ""}-${dailyNewLimit}-${dailyReviewLimit}`}
       words={filteredWords}
-      onAgain={reload}
-      onChangeLang={() => setSelectedLang(null)}
-      modeOverride={modeOverride}
+      newLimit={dailyNewLimit}
+      reviewLimit={dailyReviewLimit}
+      mode={sessionMode}
+      onReload={reload}
     />
   );
 }

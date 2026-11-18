@@ -3,8 +3,10 @@ import { trackEvent } from "./analytics";
 import {
   EMPTY_STATS,
   STATS_COLUMNS,
+  STATS_COLUMNS_V2,
   WORD_COLUMNS,
   WORD_COLUMNS_LEGACY,
+  WORD_COLUMNS_V2,
   statsSchema,
   wordsSchema,
   type Stats,
@@ -74,22 +76,31 @@ export function normalizeWordPair(w: {
 
 export async function fetchWords(): Promise<Word[]> {
   const supabase = getSupabase();
-  const primary = await supabase
+  const v2 = await supabase
     .from("words")
-    .select(WORD_COLUMNS)
+    .select(WORD_COLUMNS_V2)
     .order("created_at", { ascending: false });
 
-  let rows: unknown = primary.data;
-  let error = primary.error;
+  let rows: unknown = v2.data;
+  let error = v2.error;
 
-  // Fallback gracefully if migration 004/006 hasn't added `sentence` yet
-  if (error && error.message.toLowerCase().includes("sentence")) {
-    const legacy = await supabase
+  // Fallback gracefully if migration 010 hasn't been applied yet
+  if (error && /column|does not exist|schema cache/i.test(error.message)) {
+    const primary = await supabase
       .from("words")
-      .select(WORD_COLUMNS_LEGACY)
+      .select(WORD_COLUMNS)
       .order("created_at", { ascending: false });
-    rows = legacy.data;
-    error = legacy.error;
+    rows = primary.data;
+    error = primary.error;
+
+    if (error && error.message.toLowerCase().includes("sentence")) {
+      const legacy = await supabase
+        .from("words")
+        .select(WORD_COLUMNS_LEGACY)
+        .order("created_at", { ascending: false });
+      rows = legacy.data;
+      error = legacy.error;
+    }
   }
 
   if (error) throw new Error(error.message);
@@ -151,12 +162,31 @@ export async function fetchWords(): Promise<Word[]> {
 }
 
 export async function fetchStats(): Promise<Stats> {
-  const { data, error } = await getSupabase()
+  const supabase = getSupabase();
+  const v2 = await supabase
+    .from("user_stats")
+    .select(STATS_COLUMNS_V2)
+    .maybeSingle();
+  if (!v2.error) {
+    return v2.data === null ? EMPTY_STATS : statsSchema.parse(v2.data);
+  }
+  const { data, error } = await supabase
     .from("user_stats")
     .select(STATS_COLUMNS)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data === null ? EMPTY_STATS : statsSchema.parse(data);
+}
+
+export async function setDailyLearningGoals(newWords: number, reviews: number): Promise<void> {
+  const { error } = await getSupabase().rpc("set_daily_learning_goals", {
+    p_new_words: newWords,
+    p_reviews: reviews,
+  });
+  if (error) {
+    // Graceful fallback if migration 010 hasn't been applied on Supabase yet
+    console.warn("Could not persist daily learning goals to DB:", error.message);
+  }
 }
 
 export async function deleteWord(id: string): Promise<void> {
