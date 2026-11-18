@@ -46,9 +46,11 @@ describe("Stage 2 exact 1-dot-per-character placeholder rule", () => {
     expect(validateMissingWordAnswer("  reluctant. ", "reluctant", "reluctant")).toBe(true);
     expect(validateMissingWordAnswer("hesitant", "reluctant", "reluctant")).toBe(false);
 
-    expect(buildProgressiveHint("reluctant", 1)).toBeNull();
-    expect(buildProgressiveHint("reluctant", 2)).toBe("r........");
-    expect(buildProgressiveHint("reluctant", 3)).toBe("r.......t");
+    expect(buildProgressiveHint("reluctant", 0)).toBeNull();
+    expect(buildProgressiveHint("reluctant", 1)).toBe("r........");
+    expect(buildProgressiveHint("reluctant", 2)).toBe("r.......t");
+    expect(buildProgressiveHint("reluctant", 3)).toBe("re......t");
+    expect(buildProgressiveHint("reluctant", 4)).toBe("relu....t");
   });
 
   it("parses official YouGlish [[[target word]]] markers accurately", () => {

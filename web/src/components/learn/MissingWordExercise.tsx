@@ -51,13 +51,34 @@ export function MissingWordExercise({
   const inputRef = useRef<HTMLInputElement>(null);
   const [answer, setAnswer] = useState("");
   const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [hintClicks, setHintClicks] = useState(0);
   const [totalSubmits, setTotalSubmits] = useState(0);
   const [state, setState] = useState<"answering" | "wrong" | "correct">("answering");
 
+  const hintLevel = wrongAttempts + hintClicks;
   const hint = useMemo(
-    () => buildProgressiveHint(masked.hiddenWord, wrongAttempts),
-    [masked.hiddenWord, wrongAttempts],
+    () => buildProgressiveHint(masked.hiddenWord, hintLevel),
+    [masked.hiddenWord, hintLevel],
   );
+  const canShowMoreHint = hintLevel < 4 && masked.letterCount > 2;
+
+  const closenessTip = useMemo(() => {
+    const cleanGuess = answer.trim().toLowerCase();
+    const cleanTarget = masked.hiddenWord.trim().toLowerCase();
+    if (!cleanGuess || !cleanTarget) return null;
+    if (cleanTarget.startsWith(cleanGuess) && cleanGuess.length >= Math.max(3, cleanTarget.length - 2)) {
+      const missing = cleanTarget.length - cleanGuess.length;
+      return `Super close! You're just missing ${missing} ${missing === 1 ? "letter" : "letters"} at the end.`;
+    }
+    if (cleanGuess.startsWith(cleanTarget) && cleanGuess.length <= cleanTarget.length + 2) {
+      const extra = cleanGuess.length - cleanTarget.length;
+      return `Super close! Remove ${extra} extra ${extra === 1 ? "letter" : "letters"} at the end.`;
+    }
+    if (cleanGuess.length !== masked.letterCount) {
+      return `You typed ${cleanGuess.length} ${cleanGuess.length === 1 ? "letter" : "letters"}, but the word has ${masked.letterCount} letters.`;
+    }
+    return "Right length — check the spelling and listen again!";
+  }, [answer, masked.hiddenWord, masked.letterCount]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +146,7 @@ export function MissingWordExercise({
             aria-label="Type the missing word"
             className="field flex-1 text-base font-semibold"
           />
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {!isVideoMode && canSpeak() ? (
               <button
                 type="button"
@@ -135,6 +156,19 @@ export function MissingWordExercise({
               >
                 <SpeakerIcon size={15} />
                 <span>Listen</span>
+              </button>
+            ) : null}
+            {canShowMoreHint ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setHintClicks((c) => c + 1);
+                  inputRef.current?.focus();
+                }}
+                aria-label={hint ? "Reveal another hint letter" : "Show a hint"}
+                className="btn btn-quiet min-h-11 px-3.5 text-xs font-semibold text-amber-700 dark:text-subtitle border border-subtitle/35 bg-subtitle/10 hover:bg-subtitle/20 cursor-pointer"
+              >
+                💡 {hint ? "More hint" : "Hint"}
               </button>
             ) : null}
             <button
@@ -148,17 +182,47 @@ export function MissingWordExercise({
         </form>
       ) : null}
 
+      {state === "answering" && hint ? (
+        <div
+          role="status"
+          className="rounded-xl border border-subtitle/35 bg-subtitle/10 px-3.5 py-2 text-xs sm:text-sm text-ink flex flex-wrap items-center justify-between gap-2"
+        >
+          <span>
+            <strong className="text-amber-800 dark:text-subtitle">Hint:</strong>{" "}
+            <span className="font-mono font-bold tracking-[0.18em]">{hint}</span>
+            <span className="text-muted text-xs ms-2">({masked.letterCount} letters)</span>
+          </span>
+        </div>
+      ) : null}
+
       {state === "wrong" ? (
         <div
           role="alert"
-          className="rounded-xl border border-bad/30 bg-bad-soft px-3.5 py-2.5 text-xs sm:text-sm text-bad font-medium"
+          className="rounded-xl border border-bad/30 bg-bad-soft px-3.5 py-2.5 text-xs sm:text-sm text-bad-ink font-medium grid gap-1.5"
         >
-          Not quite! {isVideoMode ? "Replay the video clip" : "Listen again"} and count the dots (
-          {masked.letterCount} letters).
+          <p>
+            Not quite! {closenessTip || `${isVideoMode ? "Replay the video clip" : "Listen again"} and count the dots (${masked.letterCount} letters).`}
+          </p>
           {hint ? (
-            <span className="block mt-1 text-ink">
-              Hint: <span className="font-mono font-bold tracking-widest">{hint}</span>
-            </span>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-ink">
+              <span>
+                <strong className="text-amber-800 dark:text-subtitle">Hint:</strong>{" "}
+                <span className="font-mono font-bold tracking-[0.18em]">{hint}</span>
+                <span className="text-muted text-xs ms-2">({masked.letterCount} letters)</span>
+              </span>
+              {canShowMoreHint ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHintClicks((c) => c + 1);
+                    inputRef.current?.focus();
+                  }}
+                  className="text-xs font-bold text-amber-800 dark:text-subtitle underline underline-offset-4 hover:opacity-80 cursor-pointer"
+                >
+                  Show another letter →
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}

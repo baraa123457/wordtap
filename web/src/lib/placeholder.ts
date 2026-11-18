@@ -253,20 +253,32 @@ export function parseYouGlishCaption(
 }
 
 /**
- * Generates a progressive hint after repeated failed attempts without immediately revealing the full word.
- *  - attempts < 2: no letters revealed (pure dots)
- *  - attempts === 2: first letter revealed (e.g. "r........")
- *  - attempts >= 3: first and last letters revealed (e.g. "r.......t")
+ * Generates a progressive hint on the first failed attempt or Hint button click without spoiling the full word:
+ *  - level <= 0: no letters revealed (pure dots)
+ *  - level === 1: first letter revealed (e.g. "r........")
+ *  - level === 2: first and last letters revealed (e.g. "r.......t")
+ *  - level === 3: first 2 letters and last letter revealed (e.g. "re......t")
+ *  - level >= 4: first ~half of letters and last letter revealed (e.g. "relu....t")
  */
-export function buildProgressiveHint(hiddenWord: string, failedAttempts: number): string | null {
+export function buildProgressiveHint(hiddenWord: string, hintLevel: number): string | null {
   const chars = Array.from(hiddenWord.trim());
-  if (chars.length <= 2 || failedAttempts < 2) return null;
+  if (chars.length <= 2 || hintLevel < 1) return null;
+
+  const prefixCount =
+    hintLevel === 1
+      ? 1
+      : hintLevel === 2
+      ? 1
+      : hintLevel === 3
+      ? Math.min(2, chars.length - 2)
+      : Math.min(Math.max(2, Math.ceil(chars.length / 2) - 1), chars.length - 2);
+  const revealLast = hintLevel >= 2;
 
   return chars
     .map((ch, idx) => {
       if (ch === " " || ch === "-" || ch === "'") return ch;
-      if (idx === 0) return ch;
-      if (failedAttempts >= 3 && idx === chars.length - 1) return ch;
+      if (idx < prefixCount) return ch;
+      if (revealLast && idx === chars.length - 1) return ch;
       return ".";
     })
     .join("");
