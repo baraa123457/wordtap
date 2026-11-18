@@ -32,14 +32,146 @@ type LanguageToolMatch = {
   replacements?: Array<{ value?: string }>;
   offset?: number;
   length?: number;
-  rule?: { category?: { id?: string } };
+  rule?: {
+    id?: string;
+    issueType?: string;
+    category?: { id?: string };
+  };
 };
+
+const IGNORED_LT_CATEGORIES = new Set([
+  "CASING",
+  "PUNCTUATION",
+  "TYPOGRAPHY",
+  "COLLOQUIALISMS",
+  "STYLE",
+  "REDUNDANCY",
+  "PLAIN_ENGLISH",
+]);
+
+const IGNORED_LT_RULE_RE =
+  /CASE|UPPER|LOWER|CAPITAL|PUNCT|COMMA|PERIOD|APOSTROPHE|QUOT|INFORMAL|COLLOQ|SLANG|WANNA|GONNA|GOTTA|DUNNO|KINDA|SORTA|WHITESPACE/i;
+
+const IGNORED_LT_MESSAGE_RE =
+  /capitaliz|uppercase|lowercase|punctuation|informal|colloquial|slang|apostrophe|comma|period|question mark|exclamation|full stop|quotation|whitespace/i;
+
+const INFORMAL_WORDS = new Set([
+  "wanna",
+  "gonna",
+  "gotta",
+  "kinda",
+  "sorta",
+  "dunno",
+  "lemme",
+  "gimme",
+  "outta",
+  "ya",
+  "yall",
+  "ain't",
+  "aint",
+  "cause",
+  "cuz",
+  "coz",
+  "prolly",
+  "bro",
+  "dude",
+  "ok",
+  "okay",
+  "plz",
+  "pls",
+  "u",
+  "ur",
+  "im",
+  "ive",
+  "id",
+  "dont",
+  "doesnt",
+  "didnt",
+  "cant",
+  "wont",
+  "isnt",
+  "arent",
+  "wasnt",
+  "werent",
+  "havent",
+  "hasnt",
+  "hadnt",
+  "couldnt",
+  "wouldnt",
+  "shouldnt",
+  "thats",
+  "whats",
+  "heres",
+  "theres",
+  "youre",
+  "theyre",
+  "were",
+  "its",
+]);
+
+function isIgnoredLanguageToolMatch(match: LanguageToolMatch, originalSentence: string): boolean {
+  const catId = (match.rule?.category?.id || "").toUpperCase();
+  if (IGNORED_LT_CATEGORIES.has(catId)) return true;
+
+  const issueType = (match.rule?.issueType || "").toLowerCase();
+  if (
+    issueType === "style" ||
+    issueType === "typographical" ||
+    issueType === "whitespace" ||
+    issueType === "register"
+  ) {
+    return true;
+  }
+
+  const ruleId = match.rule?.id || "";
+  if (IGNORED_LT_RULE_RE.test(ruleId)) return true;
+
+  const combinedMsg = `${match.shortMessage || ""} ${match.message || ""}`;
+  if (IGNORED_LT_MESSAGE_RE.test(combinedMsg)) return true;
+
+  if (typeof match.offset === "number" && typeof match.length === "number") {
+    const snippet = originalSentence.slice(match.offset, match.offset + match.length).trim();
+    const suggestion = (match.replacements?.[0]?.value || "").trim();
+
+    // Ignore pure capitalization-only changes (e.g. "i" -> "I")
+    if (snippet && suggestion && snippet.toLowerCase() === suggestion.toLowerCase()) {
+      return true;
+    }
+    // Ignore pure punctuation/apostrophe-only changes (e.g. "dont" -> "don't", "word" -> "word.")
+    const stripPunct = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+    if (snippet && suggestion && stripPunct(snippet) === stripPunct(suggestion)) {
+      return true;
+    }
+    // Ignore casual/informal spoken words (e.g. "wanna", "gonna", "gotta")
+    if (INFORMAL_WORDS.has(snippet.toLowerCase())) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function normalizeForGrammarCheck(sentence: string): string {
+  // Normalize casing & trailing period only for the parser so it evaluates real grammar,
+  // without penalizing the learner for capitalization or missing end punctuation.
+  let s = sentence.replace(/\bi\b/g, "I");
+  if (/^[a-z]/.test(s)) {
+    s = s[0]!.toUpperCase() + s.slice(1);
+  }
+  if (!/[.!?]$/.test(s)) {
+    s = `${s}.`;
+  }
+  return s;
+}
 
 async function checkWithLanguageTool(sentence: string): Promise<LanguageToolMatch[] | null> {
   try {
+    const normalized = normalizeForGrammarCheck(sentence);
     const body = new URLSearchParams({
-      text: sentence,
+      text: normalized,
       language: "en-US",
+      disabledCategories: Array.from(IGNORED_LT_CATEGORIES).join(","),
+      disabledRules: "UPPERCASE_SENTENCE_START,I_LOWERCASE,EN_CONTRACTION_SPELLING",
     });
     const res = await fetch("https://api.languagetool.org/v2/check", {
       method: "POST",
@@ -52,7 +184,8 @@ async function checkWithLanguageTool(sentence: string): Promise<LanguageToolMatc
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { matches?: LanguageToolMatch[] };
-    return Array.isArray(data.matches) ? data.matches : [];
+    const matches = Array.isArray(data.matches) ? data.matches : [];
+    return matches.filter((m) => !isIgnoredLanguageToolMatch(m, normalized));
   } catch {
     return null;
   }
@@ -114,21 +247,23 @@ export async function POST(req: Request) {
     // 1. Primary: Server-side AI Evaluation (Gemini or OpenAI)
     const systemPrompt = `You are a supportive, fair English teacher evaluating a student's original sentence for an ${level}-level learner.
 Evaluate the sentence on:
-1. Grammar correctness
+1. Core grammar correctness (verb tense, subject-verb agreement, word order)
 2. Correct usage and meaning of the target vocabulary word
-3. Naturalness in everyday English
-4. Sentence structure
-5. Clarity of meaning
+3. Naturalness in everyday spoken or written English
+4. Clarity of meaning
 
-CRITICAL FAIRNESS RULE:
-Do NOT reject a grammatically correct sentence simply because it differs from your preferred example. Accept any valid structure, tense, or context where the word is used accurately.
+CRITICAL FAIRNESS & LENIENCY RULES:
+- COMPLETELY IGNORE capitalization (e.g., lowercase "i", lowercase sentence start, or mixed case). NEVER deduct points or mention capitalization.
+- COMPLETELY IGNORE informal / conversational English (e.g., "wanna", "gonna", "gotta", "kinda", "dunno", casual phrasing). Everyday spoken English is 100% valid and correct.
+- COMPLETELY IGNORE punctuation marks (e.g., missing period, question mark, exclamation mark, commas, or missing apostrophes like "dont"/"im"/"cant"). NEVER deduct points or mention punctuation.
+- Do NOT reject a valid sentence simply because it is casual or differs from a textbook example. Accept any natural context where the target word is used accurately.
 
 Return ONLY valid JSON with these exact keys:
 {
   "isCorrect": boolean,
   "usageCorrect": boolean,
   "grammarScore": integer 0..100,
-  "grammarCorrections": ["specific concise correction if any, empty array if none"],
+  "grammarCorrections": ["specific concise correction for real grammar/usage errors ONLY, empty array if none"],
   "naturalAlternative": "a more natural phrasing ONLY if helpful, else null",
   "naturalnessFeedback": "1 short sentence on how natural the sentence sounds",
   "explanation": "1-3 clear, encouraging sentences explaining what worked well or what to fix"
@@ -151,7 +286,8 @@ Return ONLY valid JSON with these exact keys:
       }
     }
 
-    // 2. Legitimate Fallback: LanguageTool real grammar API + structural validation
+    // 2. Legitimate Fallback: LanguageTool real grammar API (filtering out casing, informal, & punctuation)
+    const normalizedForLt = normalizeForGrammarCheck(cleanSentence);
     const ltMatches = await checkWithLanguageTool(cleanSentence);
     const grammarCorrections: string[] = [];
     let penalty = 0;
@@ -162,7 +298,7 @@ Return ONLY valid JSON with these exact keys:
         const suggestion = m.replacements?.[0]?.value;
         const snippet =
           typeof m.offset === "number" && typeof m.length === "number"
-            ? cleanSentence.slice(m.offset, m.offset + m.length)
+            ? normalizedForLt.slice(m.offset, m.offset + m.length)
             : "";
 
         if (snippet && suggestion) {
@@ -171,16 +307,6 @@ Return ONLY valid JSON with these exact keys:
           grammarCorrections.push(msg);
         }
         penalty += m.rule?.category?.id === "TYPOS" ? 10 : 15;
-      }
-    } else {
-      // Minimal structural checks if LanguageTool is unreachable
-      if (!/^[A-Z]/.test(cleanSentence)) {
-        grammarCorrections.push("Start your sentence with a capital letter.");
-        penalty += 5;
-      }
-      if (!/[.!?]$/.test(cleanSentence)) {
-        grammarCorrections.push("End your sentence with punctuation (., !, or ?).");
-        penalty += 5;
       }
     }
 
