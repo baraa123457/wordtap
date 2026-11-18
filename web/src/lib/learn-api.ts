@@ -115,7 +115,7 @@ export async function fetchContextualVideos(
 }
 
 export async function markVideoUnavailable(youtubeVideoId: string): Promise<void> {
-  if (!/^[A-Za-z0-9_-]{11}$/.test(youtubeVideoId)) return;
+  if (!/^([A-Za-z0-9_-]{11}|wm_[a-f0-9]{16})$/.test(youtubeVideoId)) return;
   try {
     const headers = await getAuthHeaders();
     await fetch("/api/learn/videos", {

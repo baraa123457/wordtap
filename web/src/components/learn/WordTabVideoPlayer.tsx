@@ -123,10 +123,12 @@ function formatSourceLabel(source: VerifiedVideoExample["source"]): string {
     case "youtube_supadata":
     case "youtube_transcriptapi":
       return "Verified YouTube Transcript";
+    case "wikimedia_commons":
+      return "Wikimedia Commons Open Video";
     case "user_subtitle":
       return "Your Saved YouTube Clip";
     default:
-      return "Verified YouTube Clip";
+      return "Verified Video Clip";
   }
 }
 
@@ -156,8 +158,10 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
     ref,
   ) {
     const reactId = useId();
-    const mountRef = useRef<HTMLDivElement>(null);
-    const playerRef = useRef<YTPlayerInstance | null>(null);
+    const ytMountRef = useRef<HTMLDivElement>(null);
+    const ytPlayerRef = useRef<YTPlayerInstance | null>(null);
+    const htmlVideoRef = useRef<HTMLVideoElement | null>(null);
+
     const clipRef = useRef(clip);
     clipRef.current = clip;
     const speedRef = useRef(speed);
@@ -166,6 +170,8 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
     const [ready, setReady] = useState(false);
     const [playing, setPlaying] = useState(false);
     const [embedError, setEmbedError] = useState<string | null>(null);
+
+    const isDirectVideo = clip.mediaType === "direct_video";
 
     const notifyReady = useCallback(
       (val: boolean) => {
@@ -183,69 +189,117 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
       [onPlayingChange],
     );
 
+    const playInternal = useCallback(() => {
+      if (!ready) return;
+      if (clipRef.current.mediaType === "direct_video") {
+        void htmlVideoRef.current?.play().catch(() => {});
+      } else {
+        try {
+          ytPlayerRef.current?.playVideo();
+        } catch {
+          // ignore
+        }
+      }
+    }, [ready]);
+
+    const pauseInternal = useCallback(() => {
+      if (!ready) return;
+      if (clipRef.current.mediaType === "direct_video") {
+        htmlVideoRef.current?.pause();
+      } else {
+        try {
+          ytPlayerRef.current?.pauseVideo();
+        } catch {
+          // ignore
+        }
+      }
+    }, [ready]);
+
+    const togglePlayInternal = useCallback(() => {
+      if (!ready) return;
+      if (playing) pauseInternal();
+      else playInternal();
+    }, [ready, playing, pauseInternal, playInternal]);
+
+    const replayInternal = useCallback(() => {
+      if (!ready) return;
+      const start = clipRef.current.timestampSeconds;
+      if (clipRef.current.mediaType === "direct_video") {
+        const v = htmlVideoRef.current;
+        if (!v) return;
+        v.currentTime = start;
+        void v.play().catch(() => {});
+      } else {
+        try {
+          ytPlayerRef.current?.seekTo(start, true);
+          ytPlayerRef.current?.playVideo();
+        } catch {
+          // ignore
+        }
+      }
+    }, [ready]);
+
+    const rewindInternal = useCallback(
+      (seconds = 3) => {
+        if (!ready) return;
+        if (clipRef.current.mediaType === "direct_video") {
+          const v = htmlVideoRef.current;
+          if (!v) return;
+          v.currentTime = Math.max(0, v.currentTime - seconds);
+          void v.play().catch(() => {});
+        } else {
+          try {
+            const cur = ytPlayerRef.current?.getCurrentTime?.() ?? clipRef.current.timestampSeconds;
+            ytPlayerRef.current?.seekTo(Math.max(0, cur - seconds), true);
+            ytPlayerRef.current?.playVideo();
+          } catch {
+            // ignore
+          }
+        }
+      },
+      [ready],
+    );
+
     useImperativeHandle(
       ref,
       () => ({
-        play: () => {
-          if (!ready) return;
-          try {
-            playerRef.current?.playVideo();
-          } catch {
-            // ignore
-          }
-        },
-        pause: () => {
-          if (!ready) return;
-          try {
-            playerRef.current?.pauseVideo();
-          } catch {
-            // ignore
-          }
-        },
-        togglePlay: () => {
-          if (!ready || !playerRef.current) return;
-          try {
-            if (playing) {
-              playerRef.current.pauseVideo();
-            } else {
-              playerRef.current.playVideo();
-            }
-          } catch {
-            // ignore
-          }
-        },
-        replay: () => {
-          if (!ready || !playerRef.current) return;
-          try {
-            playerRef.current.seekTo(clipRef.current.timestampSeconds, true);
-            playerRef.current.playVideo();
-          } catch {
-            // ignore
-          }
-        },
-        rewind: (seconds = 3) => {
-          if (!ready || !playerRef.current) return;
-          try {
-            const cur = playerRef.current.getCurrentTime?.() ?? clipRef.current.timestampSeconds;
-            playerRef.current.seekTo(Math.max(0, cur - seconds), true);
-            playerRef.current.playVideo();
-          } catch {
-            // ignore
-          }
-        },
+        play: playInternal,
+        pause: pauseInternal,
+        togglePlay: togglePlayInternal,
+        replay: replayInternal,
+        rewind: rewindInternal,
         setSpeed: (rate: WordTabPlaybackSpeed) => {
-          try {
-            playerRef.current?.setPlaybackRate(rate);
-          } catch {
-            // ignore
+          if (clipRef.current.mediaType === "direct_video") {
+            if (htmlVideoRef.current) htmlVideoRef.current.playbackRate = rate;
+          } else {
+            try {
+              ytPlayerRef.current?.setPlaybackRate(rate);
+            } catch {
+              // ignore
+            }
           }
         },
       }),
-      [playing, ready],
+      [playInternal, pauseInternal, togglePlayInternal, replayInternal, rewindInternal],
     );
 
-    // Initialize official YouTube IFrame Player whenever video ID or start timestamp changes
+    // Direct HTML5 Video lifecycle (Wikimedia Commons CC-licensed open videos)
     useEffect(() => {
+      if (!isDirectVideo) return;
+      setEmbedError(null);
+      notifyReady(false);
+      notifyPlaying(false);
+      onTimeUpdate?.(clip.timestampSeconds);
+
+      const v = htmlVideoRef.current;
+      if (!v) return;
+      v.playbackRate = speedRef.current;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isDirectVideo, clip.mediaUrl, clip.timestampSeconds]);
+
+    // Official YouTube IFrame Player lifecycle
+    useEffect(() => {
+      if (isDirectVideo) return;
       let active = true;
       setEmbedError(null);
       notifyReady(false);
@@ -253,27 +307,27 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
       onTimeUpdate?.(clip.timestampSeconds);
 
       const destroyExisting = () => {
-        if (playerRef.current) {
+        if (ytPlayerRef.current) {
           try {
-            playerRef.current.destroy();
+            ytPlayerRef.current.destroy();
           } catch {
             // ignore
           }
-          playerRef.current = null;
+          ytPlayerRef.current = null;
         }
       };
 
       loadOfficialYouTubeIframeApi()
         .then(() => {
-          if (!active || !mountRef.current || !window.YT?.Player) return;
+          if (!active || !ytMountRef.current || !window.YT?.Player) return;
           destroyExisting();
 
-          mountRef.current.innerHTML = "";
+          ytMountRef.current.innerHTML = "";
           const el = document.createElement("div");
           el.id = `wt-yt-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}`;
-          mountRef.current.appendChild(el);
+          ytMountRef.current.appendChild(el);
 
-          playerRef.current = new window.YT.Player(el, {
+          ytPlayerRef.current = new window.YT.Player(el, {
             videoId: clip.youtubeVideoId,
             playerVars: {
               start: clip.timestampSeconds,
@@ -281,7 +335,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
               rel: 0,
               modestbranding: 1,
               playsinline: 1,
-              cc_load_policy: 0, // Use WordTap's custom caption UI instead of native YouTube subtitles
+              cc_load_policy: 0,
               iv_load_policy: 3,
               origin: typeof window !== "undefined" ? window.location.origin : "",
             },
@@ -297,7 +351,6 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
               },
               onStateChange: (e) => {
                 if (!active) return;
-                // 1 = PLAYING
                 notifyPlaying(e.data === 1);
               },
               onError: (e) => {
@@ -323,24 +376,28 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
         destroyExisting();
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [clip.youtubeVideoId, clip.timestampSeconds]);
+    }, [isDirectVideo, clip.youtubeVideoId, clip.timestampSeconds]);
 
-    // Synchronize playback speed changes cleanly
+    // Synchronize playback speed changes
     useEffect(() => {
       if (!ready) return;
-      try {
-        playerRef.current?.setPlaybackRate(speed);
-      } catch {
-        // ignore
+      if (isDirectVideo) {
+        if (htmlVideoRef.current) htmlVideoRef.current.playbackRate = speed;
+      } else {
+        try {
+          ytPlayerRef.current?.setPlaybackRate(speed);
+        } catch {
+          // ignore
+        }
       }
-    }, [speed, ready]);
+    }, [speed, ready, isDirectVideo]);
 
-    // Real-time playback time sync for custom live caption cues
+    // Real-time playback time sync for YouTube IFrame Player
     useEffect(() => {
-      if (!playing || !ready) return;
+      if (isDirectVideo || !playing || !ready) return;
       const timer = window.setInterval(() => {
         try {
-          const cur = playerRef.current?.getCurrentTime?.();
+          const cur = ytPlayerRef.current?.getCurrentTime?.();
           if (typeof cur === "number" && Number.isFinite(cur)) {
             onTimeUpdate?.(cur);
           }
@@ -349,9 +406,9 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
         }
       }, 250);
       return () => window.clearInterval(timer);
-    }, [playing, ready, onTimeUpdate]);
+    }, [isDirectVideo, playing, ready, onTimeUpdate]);
 
-    // Keyboard accessibility (Space/K = play/pause, R = replay, J = -3s when not focused in an input)
+    // Keyboard shortcuts (Space/K = play/pause, R = replay, J = -3s when not typing in an input)
     useEffect(() => {
       const onKeyDown = (e: KeyboardEvent) => {
         const tag = (e.target as HTMLElement | null)?.tagName;
@@ -360,26 +417,22 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
 
         if (e.key === " " || e.key.toLowerCase() === "k") {
           e.preventDefault();
-          if (playing) playerRef.current?.pauseVideo();
-          else playerRef.current?.playVideo();
+          togglePlayInternal();
         } else if (e.key.toLowerCase() === "r") {
           e.preventDefault();
-          playerRef.current?.seekTo(clipRef.current.timestampSeconds, true);
-          playerRef.current?.playVideo();
+          replayInternal();
         } else if (e.key.toLowerCase() === "j") {
           e.preventDefault();
-          const cur = playerRef.current?.getCurrentTime?.() ?? clipRef.current.timestampSeconds;
-          playerRef.current?.seekTo(Math.max(0, cur - 3), true);
-          playerRef.current?.playVideo();
+          rewindInternal(3);
         }
       };
       window.addEventListener("keydown", onKeyDown);
       return () => window.removeEventListener("keydown", onKeyDown);
-    }, [ready, playing, embedError]);
+    }, [ready, embedError, togglePlayInternal, replayInternal, rewindInternal]);
 
     return (
       <div className="grid gap-2.5 min-w-0">
-        {/* Responsive 16:9 Official YouTube IFrame Container */}
+        {/* Responsive 16:9 Custom WordTap Video Container */}
         <div
           data-testid="wordtab-video-player"
           className="relative aspect-video w-full overflow-hidden rounded-2xl border border-line bg-black shadow-md"
@@ -397,6 +450,58 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                 </button>
               ) : null}
             </div>
+          ) : isDirectVideo ? (
+            <>
+              {!ready ? (
+                <div
+                  aria-live="polite"
+                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/70 text-white/90"
+                >
+                  <div className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-subtitle border-t-transparent" />
+                    <span>Preparing video clip…</span>
+                  </div>
+                </div>
+              ) : !playing ? (
+                <button
+                  type="button"
+                  onClick={playInternal}
+                  aria-label="Play video clip"
+                  className="absolute inset-0 z-10 flex items-center justify-center bg-black/25 transition hover:bg-black/35 cursor-pointer"
+                >
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-subtitle text-ink shadow-lg text-xl font-black pl-1">
+                    ▶
+                  </span>
+                </button>
+              ) : null}
+              <video
+                ref={htmlVideoRef}
+                key={clip.mediaUrl}
+                src={clip.mediaUrl}
+                preload="metadata"
+                playsInline
+                onClick={togglePlayInternal}
+                onLoadedMetadata={(e) => {
+                  const v = e.currentTarget;
+                  v.playbackRate = speedRef.current;
+                  if (clipRef.current.timestampSeconds > 0 && v.duration > clipRef.current.timestampSeconds) {
+                    v.currentTime = clipRef.current.timestampSeconds;
+                  }
+                  notifyReady(true);
+                }}
+                onPlay={() => notifyPlaying(true)}
+                onPause={() => notifyPlaying(false)}
+                onEnded={() => notifyPlaying(false)}
+                onTimeUpdate={(e) => onTimeUpdate?.(e.currentTarget.currentTime)}
+                onError={() => {
+                  notifyReady(false);
+                  notifyPlaying(false);
+                  setEmbedError("This video stream could not be loaded.");
+                  onUnavailable?.(clipRef.current);
+                }}
+                className="h-full w-full object-contain bg-black cursor-pointer"
+              />
+            </>
           ) : (
             <>
               {!ready ? (
@@ -411,7 +516,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                 </div>
               ) : null}
               <div
-                ref={mountRef}
+                ref={ytMountRef}
                 className="h-full w-full [&>iframe]:h-full [&>iframe]:w-full"
               />
             </>
@@ -423,7 +528,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold text-ink">{clip.videoTitle}</p>
             <p className="truncate text-[11px] text-muted">
-              {clip.channelName || "YouTube"} · {formatSourceLabel(clip.source)} · Clip starts at{" "}
+              {clip.channelName || "Video"} · {formatSourceLabel(clip.source)} · Clip starts at{" "}
               {formatClipTime(clip.timestampSeconds)}
             </p>
           </div>

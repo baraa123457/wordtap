@@ -3,8 +3,11 @@ export type VideoDiscoverySource =
   | "youtube_filmot"
   | "youtube_supadata"
   | "youtube_transcriptapi"
+  | "wikimedia_commons"
   | "user_subtitle"
   | "user_contributed";
+
+export type VideoMediaType = "youtube" | "direct_video";
 
 export type CaptionCue = {
   start: number;
@@ -16,10 +19,13 @@ export type VerifiedVideoExample = {
   id: string;
   wordId: string | null;
   targetWord: string;
+  mediaType: VideoMediaType;
   youtubeVideoId: string;
   youtubeUrl: string;
+  mediaUrl: string;
   videoTitle: string;
   channelName: string;
+  license?: string;
   source: VideoDiscoverySource;
   timestampSeconds: number;
   verifiedTranscript: string;
@@ -29,6 +35,7 @@ export type VerifiedVideoExample = {
   transcriptVerified: boolean;
   captionAvailable: boolean;
   videoAvailable: boolean;
+  qualityScore?: number;
   discoveredAt: string;
 };
 
@@ -64,6 +71,7 @@ export type VideoDiscoveryResponse = {
     youtubeData: boolean;
     supadata: boolean;
     transcriptApi: boolean;
+    wikimediaCommons: boolean;
   };
 };
 
@@ -73,7 +81,8 @@ export type TranscriptMatchResult = {
   verifiedTranscript: string;
   targetWordPosition: number;
   captionCues: CaptionCue[];
-  providerSource: "youtube_supadata" | "youtube_transcriptapi";
+  qualityScore: number;
+  providerSource: "youtube_supadata" | "youtube_transcriptapi" | "wikimedia_commons";
 };
 
 export interface ITranscriptProvider {

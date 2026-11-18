@@ -1,3 +1,10 @@
+import {
+  getPresentParticiple,
+  getRegularPast,
+  getThirdPersonSingular,
+  getVerbConjugation,
+} from "./verbs";
+
 /**
  * Missing-word placeholder and answer validation utilities for Stage 2 Contextual Learning.
  *
@@ -37,8 +44,10 @@ export function buildExactDotPlaceholder(word: string): string {
 }
 
 /**
- * Builds a regex that matches the target word (or common English inflections: s, es, ed, d, ing, er, est, ly)
- * as a whole word inside a sentence or transcript.
+ * Builds a regex that matches the target word (or linguistically valid English inflections:
+ * regular suffixes, doubled consonants like stop->stopped, irregular verbs via verbs.ts,
+ * and common adjective/adverb forms like probable->probably, dramatic->dramatically)
+ * strictly as a whole word — never matching unrelated substrings (e.g. "cat" inside "catch").
  */
 export function buildTargetWordPattern(targetWord: string): RegExp {
   const clean = targetWord.trim();
@@ -46,17 +55,65 @@ export function buildTargetWordPattern(targetWord: string): RegExp {
   if (clean.includes(" ")) {
     return new RegExp(`(?<![A-Za-z])${escaped}(?![A-Za-z])`, "i");
   }
-  // Support base form and common regular inflections (e.g. reluctant/reluctantly, accept/accepted/accepting)
-  const stem = clean.length >= 4 && clean.endsWith("e") ? escapeRegex(clean.slice(0, -1)) : null;
-  const stemY = clean.length >= 4 && clean.endsWith("y") ? escapeRegex(clean.slice(0, -1)) : null;
 
-  const variants = [
-    `${escaped}(?:s|es|ed|d|ing|ly|er|est)?`,
-    ...(stem ? [`${stem}(?:ed|ing|er|est)`] : []),
-    ...(stemY ? [`${stemY}(?:ies|ied|ier|iest|ily)`] : []),
-  ];
+  const lower = clean.toLowerCase();
+  const variantSet = new Set<string>([escaped]);
 
-  return new RegExp(`(?<![A-Za-z])(?:${variants.join("|")})(?![A-Za-z])`, "i");
+  // Common regular suffixes
+  variantSet.add(`${escaped}(?:s|es|ed|d|ing|ly|er|est)?`);
+
+  // Silent-e stem (e.g. make -> making, negotiate -> negotiated/negotiating)
+  if (lower.length >= 4 && lower.endsWith("e")) {
+    const stem = escapeRegex(clean.slice(0, -1));
+    variantSet.add(`${stem}(?:ed|ing|er|est)`);
+    // -le -> -ly (e.g. probable -> probably, gentle -> gently)
+    if (lower.endsWith("le") && lower.length >= 5) {
+      variantSet.add(`${escapeRegex(clean.slice(0, -1))}y`);
+    }
+  }
+
+  // Consonant + y -> ies / ied / ier / iest / ily
+  if (lower.length >= 4 && lower.endsWith("y") && !/[aeiou]y$/.test(lower)) {
+    const stemY = escapeRegex(clean.slice(0, -1));
+    variantSet.add(`${stemY}(?:ies|ied|ier|iest|ily)`);
+  }
+
+  // -ic -> -ically (e.g. dramatic -> dramatically)
+  if (lower.length >= 4 && lower.endsWith("ic")) {
+    variantSet.add(`${escaped}ally`);
+  }
+
+  // Doubled final consonant for short CVC or stressed-final stems (stop -> stopped/stopping, prefer -> preferred)
+  if (/^[a-z]{3,}[aeiou][bcdfgklmnprtvz]$/.test(lower)) {
+    const doubled = escapeRegex(clean + clean.slice(-1));
+    variantSet.add(`${doubled}(?:ed|ing|er|est)`);
+  }
+
+  // Irregular & regular verb conjugations from WordTap's own verbs.ts
+  if (/^[a-z]{2,}$/.test(lower)) {
+    const conj = getVerbConjugation(lower);
+    if (conj) {
+      for (const form of [
+        conj.base,
+        conj.past,
+        conj.pastParticiple,
+        conj.presentParticiple,
+        conj.thirdPerson,
+      ]) {
+        if (form && form.length >= 2) {
+          variantSet.add(escapeRegex(form));
+        }
+      }
+    } else if (lower.length >= 3) {
+      variantSet.add(escapeRegex(getRegularPast(lower)));
+      variantSet.add(escapeRegex(getPresentParticiple(lower)));
+      variantSet.add(escapeRegex(getThirdPersonSingular(lower)));
+    }
+  }
+
+  // Sort longest patterns first so regex prefers full inflected match over shorter stem
+  const sorted = Array.from(variantSet).sort((a, b) => b.length - a.length);
+  return new RegExp(`(?<![A-Za-z])(?:${sorted.join("|")})(?![A-Za-z])`, "i");
 }
 
 /**

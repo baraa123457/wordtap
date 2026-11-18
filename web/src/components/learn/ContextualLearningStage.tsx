@@ -251,19 +251,19 @@ export function ContextualLearningStage({
           />
         </div>
       ) : (
-        /* FALLBACK (Section 13): Clean, honest non-blocking fallback — never pretends to be a video transcript */
+        /* FALLBACK (Section 5): Smooth, clearly labeled text & audio fallback — never feels broken */
         <div
           data-testid="stage2-fallback-notice"
           className="rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] px-4 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
         >
           <div className="space-y-0.5 min-w-0">
             <p className="text-sm font-bold text-ink">
-              We couldn&apos;t find a verified video example for this word yet.
+              Contextual text &amp; audio practice
             </p>
             <p className="text-xs text-muted">
               {masked
-                ? "Practice with the labeled text & audio example below, or continue directly to Stage 3."
-                : "Continue directly to Stage 3 to write your own original sentence."}
+                ? "No verified video clip matched this word yet — listen to the pronunciation and complete the real context sentence below."
+                : "No verified video clip matched this word yet — continue directly to Stage 3 to practice writing your own sentence."}
             </p>
           </div>
           {!masked ? (

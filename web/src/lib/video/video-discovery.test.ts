@@ -4,6 +4,7 @@ import {
   extractTimestampSeconds,
   extractYouTubeVideoId,
   findVerifiedWordInCues,
+  parseSrtOrVttToCues,
 } from "./transcript-provider";
 import { VideoDiscoveryService } from "./video-discovery-service";
 import { VideoRepository } from "./video-repository";
@@ -33,7 +34,7 @@ describe("TranscriptProvider cue verification & URL extraction", () => {
 
     const match = findVerifiedWordInCues(cues, "crowded", "youtube_supadata");
     expect(match).not.toBeNull();
-    expect(match?.timestampSeconds).toBe(11); // 13s - 2s lead-in
+    expect(match?.timestampSeconds).toBe(12); // 13s - 1s lead-in
     expect(match?.contextSentence).toContain("now-crowded commuter trains");
     expect(match?.captionCues.length).toBe(3); // excludes 80s cue outside window
 
@@ -43,6 +44,49 @@ describe("TranscriptProvider cue verification & URL extraction", () => {
 
     // Must return null if the target word is never actually spoken in the transcript
     expect(findVerifiedWordInCues(cues, "embarrassed", "youtube_supadata")).toBeNull();
+  });
+
+  it("parses SRT captions, ranks clearer complete sentences above fragments, and matches inflections without false positives", () => {
+    const srt = `1
+00:00:05,000 --> 00:00:06,500
+Reluctant.
+
+2
+00:01:02,920 --> 00:01:06,360
+Many new editors feel reluctant to contribute to open projects.
+
+3
+00:02:10,000 --> 00:02:13,500
+She stopped the train right before the station.
+
+4
+00:02:20,000 --> 00:02:24,000
+He began writing his speech early in the morning.
+`;
+    const cues = parseSrtOrVttToCues(srt);
+    expect(cues.length).toBe(4);
+
+    // Should select cue 2 (clear complete sentence at 62s) over cue 1 (1-word fragment at 5s)
+    const ranked = findVerifiedWordInCues(cues, "reluctant", "wikimedia_commons", {
+      videoTitle: "Wikimedia Open Education Interview",
+      durationSec: 200,
+    });
+    expect(ranked?.contextSentence).toContain("Many new editors feel reluctant");
+    expect(ranked?.timestampSeconds).toBe(61);
+
+    // Doubled consonant inflection: stop -> stopped
+    expect(findVerifiedWordInCues(cues, "stop", "wikimedia_commons")?.contextSentence).toContain(
+      "stopped the train",
+    );
+    // Irregular verb inflection: begin -> began, write -> writing
+    expect(findVerifiedWordInCues(cues, "begin", "wikimedia_commons")?.contextSentence).toContain(
+      "began writing",
+    );
+    expect(findVerifiedWordInCues(cues, "write", "wikimedia_commons")?.contextSentence).toContain(
+      "began writing",
+    );
+    // Must NEVER match unrelated substring ("cat" must NOT match "education" or "catch")
+    expect(maskWordInSentence("We tried to catch the morning train.", "cat")).toBeNull();
   });
 
   it("verifies exact dynamic dot lengths across all 5 mandatory words", () => {
@@ -70,8 +114,10 @@ describe("VideoDiscoveryService provider orchestration & VideoRepository caching
     id: `test-${id}-${ts}`,
     wordId: null,
     targetWord: word,
+    mediaType: "youtube",
     youtubeVideoId: id,
     youtubeUrl: `https://www.youtube.com/watch?v=${id}&t=${ts}s`,
+    mediaUrl: `https://www.youtube.com/watch?v=${id}&t=${ts}s`,
     videoTitle: `Clip ${id}`,
     channelName: "Test Channel",
     source: "youglish_rest",
@@ -83,6 +129,7 @@ describe("VideoDiscoveryService provider orchestration & VideoRepository caching
     transcriptVerified: true,
     captionAvailable: true,
     videoAvailable: true,
+    qualityScore: 80,
     discoveredAt: new Date().toISOString(),
   });
 

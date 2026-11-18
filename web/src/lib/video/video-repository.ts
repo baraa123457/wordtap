@@ -1,5 +1,10 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { CaptionCue, VerifiedVideoExample, VideoDiscoverySource } from "./types";
+import type {
+  CaptionCue,
+  VerifiedVideoExample,
+  VideoDiscoverySource,
+  VideoMediaType,
+} from "./types";
 
 type MemoryCacheEntry = {
   clips: VerifiedVideoExample[];
@@ -8,16 +13,21 @@ type MemoryCacheEntry = {
 
 const MEMORY_CACHE = new Map<string, MemoryCacheEntry>();
 const MAX_MEMORY_ENTRIES = 500;
-const MEMORY_TTL_MS = 15 * 60 * 1000;
+const MEMORY_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+const VALID_VIDEO_KEY_RE = /^([A-Za-z0-9_-]{11}|wm_[a-f0-9]{16})$/;
 
 type DbVideoRow = {
   id: string;
   word_id?: string | null;
   word_normalized: string;
+  media_type?: string | null;
   youtube_video_id: string;
   youtube_url?: string | null;
+  media_url?: string | null;
   video_title: string;
   channel_name: string;
+  license?: string | null;
   source: string;
   timestamp_seconds: number;
   verified_transcript: string;
@@ -49,16 +59,27 @@ function parseCaptionCues(raw: unknown, fallbackStart: number, fallbackText: str
 
 function mapRowToExample(row: DbVideoRow): VerifiedVideoExample {
   const ts = Math.max(0, Number(row.timestamp_seconds) || 0);
+  const mediaType: VideoMediaType =
+    row.media_type === "direct_video" || row.source === "wikimedia_commons"
+      ? "direct_video"
+      : "youtube";
+
   const canonicalUrl =
     row.youtube_url && row.youtube_url.trim().length > 0
       ? row.youtube_url
-      : `https://www.youtube.com/watch?v=${row.youtube_video_id}&t=${ts}s`;
+      : mediaType === "youtube"
+      ? `https://www.youtube.com/watch?v=${row.youtube_video_id}&t=${ts}s`
+      : row.media_url || "";
+
+  const mediaUrl =
+    row.media_url && row.media_url.trim().length > 0 ? row.media_url : canonicalUrl;
 
   const allowedSources: VideoDiscoverySource[] = [
     "youglish_rest",
     "youtube_filmot",
     "youtube_supadata",
     "youtube_transcriptapi",
+    "wikimedia_commons",
     "user_subtitle",
     "user_contributed",
   ];
@@ -70,10 +91,13 @@ function mapRowToExample(row: DbVideoRow): VerifiedVideoExample {
     id: row.id,
     wordId: row.word_id ?? null,
     targetWord: row.word_normalized,
+    mediaType,
     youtubeVideoId: row.youtube_video_id,
     youtubeUrl: canonicalUrl,
-    videoTitle: row.video_title || "YouTube Video",
-    channelName: row.channel_name || "YouTube",
+    mediaUrl,
+    videoTitle: row.video_title || "Video Example",
+    channelName: row.channel_name || "Video",
+    license: row.license || undefined,
     source,
     timestampSeconds: ts,
     verifiedTranscript: row.verified_transcript,
@@ -136,9 +160,9 @@ export class VideoRepository {
     MEMORY_CACHE.set(wordNormalized, { clips, expiresAt: now + MEMORY_TTL_MS });
   }
 
-  evictVideoFromMemory(youtubeVideoId: string): void {
+  evictVideoFromMemory(videoKey: string): void {
     for (const [k, entry] of MEMORY_CACHE.entries()) {
-      const remaining = entry.clips.filter((c) => c.youtubeVideoId !== youtubeVideoId);
+      const remaining = entry.clips.filter((c) => c.youtubeVideoId !== videoKey);
       if (remaining.length === 0) {
         MEMORY_CACHE.delete(k);
       } else if (remaining.length !== entry.clips.length) {
@@ -163,9 +187,8 @@ export class VideoRepository {
     if (!supabase) return { clips: [], source: "empty" };
 
     try {
-      // Try migration 012 full schema first; fall back cleanly to migration 010 schema if 012 isn't applied yet
       const fullCols =
-        "id,word_id,word_normalized,youtube_video_id,youtube_url,video_title,channel_name,source,timestamp_seconds,verified_transcript,caption_cues,context_sentence,target_word_position,transcript_verified,caption_available,video_available,discovered_at,created_at";
+        "id,word_id,word_normalized,media_type,youtube_video_id,youtube_url,media_url,video_title,channel_name,license,source,timestamp_seconds,verified_transcript,caption_cues,context_sentence,target_word_position,transcript_verified,caption_available,video_available,discovered_at,created_at";
       const legacyCols =
         "id,word_normalized,youtube_video_id,video_title,channel_name,source,timestamp_seconds,verified_transcript,context_sentence,target_word_position,caption_available,video_available,created_at";
 
@@ -195,7 +218,11 @@ export class VideoRepository {
         return { clips: [], source: "empty" };
       }
 
-      const mapped = (data as DbVideoRow[]).map(mapRowToExample);
+      const mapped = (data as DbVideoRow[])
+        .map(mapRowToExample)
+        .filter((c) => Boolean(c.mediaUrl));
+      if (mapped.length === 0) return { clips: [], source: "empty" };
+
       this.setMemory(wordNormalized, mapped);
       return { clips: mapped, source: "db_hit" };
     } catch {
@@ -235,10 +262,13 @@ export class VideoRepository {
             {
               word_id: safeWordId,
               word_normalized: wordNormalized,
+              media_type: clip.mediaType,
               youtube_video_id: clip.youtubeVideoId,
               youtube_url: clip.youtubeUrl,
+              media_url: clip.mediaUrl,
               video_title: clip.videoTitle,
               channel_name: clip.channelName,
+              license: clip.license || "",
               source: clip.source,
               timestamp_seconds: clip.timestampSeconds,
               verified_transcript: clip.verifiedTranscript,
@@ -256,13 +286,16 @@ export class VideoRepository {
           if (!error) continue;
         }
 
-        // Authenticated RPC path (works cleanly under RLS without exposing service role)
         await supabase.rpc("save_verified_video_example", {
           p_word_id: safeWordId,
           p_word_normalized: wordNormalized,
+          p_media_type: clip.mediaType,
           p_youtube_video_id: clip.youtubeVideoId,
+          p_media_url: clip.mediaUrl,
+          p_youtube_url: clip.youtubeUrl,
           p_video_title: clip.videoTitle,
           p_channel_name: clip.channelName,
+          p_license: clip.license || "",
           p_source: clip.source,
           p_timestamp_seconds: clip.timestampSeconds,
           p_verified_transcript: clip.verifiedTranscript,
@@ -277,9 +310,9 @@ export class VideoRepository {
     }
   }
 
-  async markUnavailable(youtubeVideoId: string, req?: Request): Promise<void> {
-    if (!/^[A-Za-z0-9_-]{11}$/.test(youtubeVideoId)) return;
-    this.evictVideoFromMemory(youtubeVideoId);
+  async markUnavailable(videoKey: string, req?: Request): Promise<void> {
+    if (!VALID_VIDEO_KEY_RE.test(videoKey)) return;
+    this.evictVideoFromMemory(videoKey);
 
     const supabase = createServerSupabase(req);
     if (!supabase) return;
@@ -289,10 +322,10 @@ export class VideoRepository {
         await supabase
           .from("vocabulary_video_examples")
           .update({ video_available: false, updated_at: new Date().toISOString() })
-          .eq("youtube_video_id", youtubeVideoId);
+          .eq("youtube_video_id", videoKey);
       } else {
         await supabase.rpc("mark_video_unavailable", {
-          p_youtube_video_id: youtubeVideoId,
+          p_youtube_video_id: videoKey,
         });
       }
     } catch {

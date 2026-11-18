@@ -12,7 +12,7 @@ const cspHeader = `
   form-action 'self';
   frame-ancestors 'none';
   connect-src 'self' https://*.supabase.co wss://*.supabase.co https://translate.googleapis.com https://api.ocr.space https://www.youtube.com;
-  media-src 'self' blob: data:;
+  media-src 'self' blob: data: https://upload.wikimedia.org;
 `
   .replace(/\s{2,}/g, " ")
   .trim();

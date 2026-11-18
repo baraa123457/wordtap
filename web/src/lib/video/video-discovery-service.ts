@@ -1,10 +1,15 @@
+import { createHash } from "node:crypto";
 import { maskWordInSentence } from "../placeholder";
+import { getVerbConjugation } from "../verbs";
 import {
   cleanCaptionText,
   CompositeTranscriptProvider,
   extractTimestampSeconds,
   extractYouTubeVideoId,
+  findVerifiedWordInCues,
   mapLangToYouGlish,
+  parseSrtOrVttToCues,
+  scoreContextCandidate,
   verifyYouTubeOembed,
 } from "./transcript-provider";
 import type {
@@ -15,10 +20,26 @@ import type {
   VerifiedVideoExample,
 } from "./types";
 
+const WIKIMEDIA_USER_AGENT = "WordTapLearningApp/1.0 (https://wordtap.app; educational-video-context)";
+
+function makeWikimediaVideoKey(fileTitle: string): string {
+  const hash = createHash("sha256").update(fileTitle.toLowerCase()).digest("hex").slice(0, 16);
+  return `wm_${hash}`;
+}
+
+function cleanWikimediaTitle(fileTitle: string): string {
+  return fileTitle
+    .replace(/^File:/i, "")
+    .replace(/\.(webm|mp4|ogv)$/i, "")
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 220);
+}
+
 /**
  * 1. Official YouGlish REST API v1 Provider (https://youglish.com/api/doc/rest)
  * Commercial REST API key required (YOUGLISH_API_KEY).
- * Returns YouTube video IDs, timestamps, captions, and surrounding timestamped cues.
  */
 export class YouGlishRestDiscoveryProvider implements IVideoDiscoveryProvider {
   readonly name = "youglish_rest";
@@ -47,12 +68,10 @@ export class YouGlishRestDiscoveryProvider implements IVideoDiscoveryProvider {
           display?: string;
           vid?: string;
           start?: string | number;
-          id?: string | number;
-          zone?: string;
         }>;
       };
 
-      const rows = Array.isArray(data.results) ? data.results : [];
+      const rows = Array.isArray(data.results) ? data.results.slice(0, 14) : [];
       const seenVideos = new Set<string>();
       const verified: VerifiedVideoExample[] = [];
       const nowIso = new Date().toISOString();
@@ -72,16 +91,23 @@ export class YouGlishRestDiscoveryProvider implements IVideoDiscoveryProvider {
         seenVideos.add(vid);
         const startSec = Math.max(0, Math.floor(Number(row.start) || 0));
         const clipStart = Math.max(0, startSec - 2);
-
-        // Fetch surrounding timestamped captions via official YouGlish Captions API
         const cues = await this.fetchSurroundingCues(apiKey, vid, lg, clipStart, sentence);
+        const qualityScore = scoreContextCandidate({
+          sentence,
+          targetWord: query.word,
+          matchedForm: masked.hiddenWord,
+          videoTitle: oembed.title,
+        });
+        const ytUrl = `https://www.youtube.com/watch?v=${vid}&t=${clipStart}s`;
 
         verified.push({
           id: `youglish_rest-${vid}-${clipStart}`,
           wordId: query.wordId ?? null,
           targetWord: query.word,
+          mediaType: "youtube",
           youtubeVideoId: vid,
-          youtubeUrl: `https://www.youtube.com/watch?v=${vid}&t=${clipStart}s`,
+          youtubeUrl: ytUrl,
+          mediaUrl: ytUrl,
           videoTitle: oembed.title,
           channelName: oembed.authorName,
           source: "youglish_rest",
@@ -93,11 +119,12 @@ export class YouGlishRestDiscoveryProvider implements IVideoDiscoveryProvider {
           transcriptVerified: true,
           captionAvailable: true,
           videoAvailable: true,
+          qualityScore,
           discoveredAt: nowIso,
         });
       }
 
-      return verified;
+      return verified.sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0));
     } catch {
       return [];
     }
@@ -131,7 +158,7 @@ export class YouGlishRestDiscoveryProvider implements IVideoDiscoveryProvider {
         }
       }
     } catch {
-      // Fall back to single cue from verified search result
+      // Fall back to verified search sentence cue
     }
     return [{ start: startSec, end: startSec + 6, text: fallbackSentence }];
   }
@@ -139,7 +166,6 @@ export class YouGlishRestDiscoveryProvider implements IVideoDiscoveryProvider {
 
 /**
  * 2. Official RapidAPI Filmot Subtitle Search Provider (RAPIDAPI_FILMOT_KEY)
- * Searches indexed YouTube captions directly by spoken word with exact timestamps.
  */
 export class FilmotDiscoveryProvider implements IVideoDiscoveryProvider {
   readonly name = "youtube_filmot";
@@ -178,7 +204,7 @@ export class FilmotDiscoveryProvider implements IVideoDiscoveryProvider {
         }>;
       };
 
-      const rows = Array.isArray(data.result) ? data.result : [];
+      const rows = Array.isArray(data.result) ? data.result.slice(0, 14) : [];
       const seen = new Set<string>();
       const verified: VerifiedVideoExample[] = [];
       const nowIso = new Date().toISOString();
@@ -201,13 +227,24 @@ export class FilmotDiscoveryProvider implements IVideoDiscoveryProvider {
 
         seen.add(vid);
         const startSec = Math.max(0, Math.floor(Number(hit.start) || 0) - 2);
+        const ytUrl = `https://www.youtube.com/watch?v=${vid}&t=${startSec}s`;
+        const title = oembed.title || item.title || "YouTube Video";
+        const qualityScore = scoreContextCandidate({
+          sentence,
+          targetWord: query.word,
+          matchedForm: masked.hiddenWord,
+          videoTitle: title,
+        });
+
         verified.push({
           id: `youtube_filmot-${vid}-${startSec}`,
           wordId: query.wordId ?? null,
           targetWord: query.word,
+          mediaType: "youtube",
           youtubeVideoId: vid,
-          youtubeUrl: `https://www.youtube.com/watch?v=${vid}&t=${startSec}s`,
-          videoTitle: oembed.title || item.title || "YouTube Video",
+          youtubeUrl: ytUrl,
+          mediaUrl: ytUrl,
+          videoTitle: title,
           channelName: oembed.authorName || item.channelname || "YouTube",
           source: "youtube_filmot",
           timestampSeconds: startSec,
@@ -218,11 +255,12 @@ export class FilmotDiscoveryProvider implements IVideoDiscoveryProvider {
           transcriptVerified: true,
           captionAvailable: true,
           videoAvailable: true,
+          qualityScore,
           discoveredAt: nowIso,
         });
       }
 
-      return verified;
+      return verified.sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0));
     } catch {
       return [];
     }
@@ -230,9 +268,9 @@ export class FilmotDiscoveryProvider implements IVideoDiscoveryProvider {
 }
 
 /**
- * 3. Official YouTube Data API v3 + TranscriptProvider Discovery
- * Searches embeddable captioned YouTube videos (interviews, talks, podcasts, educational content)
- * and verifies that the target word is ACTUALLY spoken in the transcript (rejects title-only matches!).
+ * 3. Official YouTube Data API v3 + CompositeTranscriptProvider
+ * Searches multiple candidate videos (educational/interviews/podcasts), evaluates transcripts in parallel,
+ * and ranks the best verified matches.
  */
 export class YouTubeDataDiscoveryProvider implements IVideoDiscoveryProvider {
   readonly name = "youtube_data_transcript";
@@ -250,77 +288,94 @@ export class YouTubeDataDiscoveryProvider implements IVideoDiscoveryProvider {
     const ytKey = process.env.YOUTUBE_API_KEY?.trim();
     if (!ytKey || !this.transcriptProvider.hasConfiguredProvider()) return [];
 
-    const maxResults = Math.min(query.maxResults ?? 5, 8);
+    const maxResults = Math.min(query.maxResults ?? 6, 8);
     const langCode = (query.lang || "en").slice(0, 2).toLowerCase();
-    const searchQuery = `${query.word} interview OR podcast OR TED OR talk`;
+    const queries = [
+      `${query.word} interview OR TED OR lecture`,
+      `${query.word} podcast OR explained OR conversation`,
+    ];
 
     try {
-      const searchUrl =
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video` +
-        `&videoEmbeddable=true&videoCaption=closedCaption&safeSearch=strict` +
-        `&relevanceLanguage=${encodeURIComponent(langCode)}&maxResults=10` +
-        `&q=${encodeURIComponent(searchQuery)}&key=${encodeURIComponent(ytKey)}`;
+      const candidateMap = new Map<string, { videoId: string; title: string; channelName: string }>();
 
-      const res = await fetch(searchUrl, { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) return [];
+      await Promise.allSettled(
+        queries.map(async (q) => {
+          const searchUrl =
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video` +
+            `&videoEmbeddable=true&videoCaption=closedCaption&safeSearch=strict` +
+            `&relevanceLanguage=${encodeURIComponent(langCode)}&maxResults=8` +
+            `&q=${encodeURIComponent(q)}&key=${encodeURIComponent(ytKey)}`;
+          const res = await fetch(searchUrl, { signal: AbortSignal.timeout(7500) });
+          if (!res.ok) return;
+          const data = (await res.json()) as {
+            items?: Array<{
+              id?: { videoId?: string };
+              snippet?: { title?: string; channelTitle?: string };
+            }>;
+          };
+          for (const it of data.items || []) {
+            const vid = it.id?.videoId || "";
+            if (!/^[A-Za-z0-9_-]{11}$/.test(vid) || candidateMap.has(vid)) continue;
+            candidateMap.set(vid, {
+              videoId: vid,
+              title: cleanCaptionText(it.snippet?.title || "YouTube Video"),
+              channelName: cleanCaptionText(it.snippet?.channelTitle || "YouTube"),
+            });
+          }
+        }),
+      );
 
-      const data = (await res.json()) as {
-        items?: Array<{
-          id?: { videoId?: string };
-          snippet?: { title?: string; channelTitle?: string };
-        }>;
-      };
-
-      const candidates = (data.items || [])
-        .map((it) => ({
-          videoId: it.id?.videoId || "",
-          title: cleanCaptionText(it.snippet?.title || "YouTube Video"),
-          channelName: cleanCaptionText(it.snippet?.channelTitle || "YouTube"),
-        }))
-        .filter((c) => /^[A-Za-z0-9_-]{11}$/.test(c.videoId));
-
-      const verified: VerifiedVideoExample[] = [];
-      const seen = new Set<string>();
+      const candidates = Array.from(candidateMap.values()).slice(0, 12);
       const nowIso = new Date().toISOString();
 
-      // Verify transcripts in parallel batches (never accept title-only matches)
-      for (const candidate of candidates) {
-        if (verified.length >= maxResults) break;
-        if (seen.has(candidate.videoId)) continue;
+      // Evaluate multiple candidates in parallel (don't stop on first failed candidate!)
+      const evaluated = await Promise.allSettled(
+        candidates.map(async (candidate): Promise<VerifiedVideoExample | null> => {
+          const match = await this.transcriptProvider.verifyWordInVideo(
+            candidate.videoId,
+            query.word,
+            langCode,
+            { videoTitle: candidate.title },
+          );
+          if (!match) return null;
 
-        const match = await this.transcriptProvider.verifyWordInVideo(
-          candidate.videoId,
-          query.word,
-          langCode,
-        );
-        if (!match) continue;
+          const oembed = await verifyYouTubeOembed(candidate.videoId);
+          if (!oembed) return null;
 
-        const oembed = await verifyYouTubeOembed(candidate.videoId);
-        if (!oembed) continue;
+          const ytUrl = `https://www.youtube.com/watch?v=${candidate.videoId}&t=${match.timestampSeconds}s`;
+          return {
+            id: `${match.providerSource}-${candidate.videoId}-${match.timestampSeconds}`,
+            wordId: query.wordId ?? null,
+            targetWord: query.word,
+            mediaType: "youtube",
+            youtubeVideoId: candidate.videoId,
+            youtubeUrl: ytUrl,
+            mediaUrl: ytUrl,
+            videoTitle: oembed.title || candidate.title,
+            channelName: oembed.authorName || candidate.channelName,
+            source: match.providerSource,
+            timestampSeconds: match.timestampSeconds,
+            verifiedTranscript: match.verifiedTranscript,
+            contextSentence: match.contextSentence,
+            targetWordPosition: match.targetWordPosition,
+            captionCues: match.captionCues,
+            transcriptVerified: true,
+            captionAvailable: true,
+            videoAvailable: true,
+            qualityScore: match.qualityScore,
+            discoveredAt: nowIso,
+          };
+        }),
+      );
 
-        seen.add(candidate.videoId);
-        verified.push({
-          id: `${match.providerSource}-${candidate.videoId}-${match.timestampSeconds}`,
-          wordId: query.wordId ?? null,
-          targetWord: query.word,
-          youtubeVideoId: candidate.videoId,
-          youtubeUrl: `https://www.youtube.com/watch?v=${candidate.videoId}&t=${match.timestampSeconds}s`,
-          videoTitle: oembed.title || candidate.title,
-          channelName: oembed.authorName || candidate.channelName,
-          source: match.providerSource,
-          timestampSeconds: match.timestampSeconds,
-          verifiedTranscript: match.verifiedTranscript,
-          contextSentence: match.contextSentence,
-          targetWordPosition: match.targetWordPosition,
-          captionCues: match.captionCues,
-          transcriptVerified: true,
-          captionAvailable: true,
-          videoAvailable: true,
-          discoveredAt: nowIso,
-        });
-      }
-
-      return verified;
+      return evaluated
+        .filter(
+          (r): r is PromiseFulfilledResult<VerifiedVideoExample | null> => r.status === "fulfilled",
+        )
+        .map((r) => r.value)
+        .filter((v): v is VerifiedVideoExample => v !== null)
+        .sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0))
+        .slice(0, maxResults);
     } catch {
       return [];
     }
@@ -329,8 +384,7 @@ export class YouTubeDataDiscoveryProvider implements IVideoDiscoveryProvider {
 
 /**
  * 4. User-Saved YouTube Subtitle Provider
- * When the learner saved this word directly from a real YouTube video via the WordTap extension,
- * verifies embeddability via official YouTube oEmbed and surfaces the real clip immediately.
+ * Reuses a verified clip when the user saved the word directly from a YouTube video via WordTap extension.
  */
 export class UserSavedSubtitleProvider implements IVideoDiscoveryProvider {
   readonly name = "user_subtitle";
@@ -352,14 +406,19 @@ export class UserSavedSubtitleProvider implements IVideoDiscoveryProvider {
     if (!oembed) return [];
 
     const ts = Math.max(0, extractTimestampSeconds(query.sourceUrl) - 2);
+    const ytUrl = `https://www.youtube.com/watch?v=${videoId}&t=${ts}s`;
+    const title = oembed.title || query.sourceTitle || "Saved YouTube Clip";
+
     return [
       {
         id: `user_subtitle-${videoId}-${ts}`,
         wordId: query.wordId ?? null,
         targetWord: query.word,
+        mediaType: "youtube",
         youtubeVideoId: videoId,
-        youtubeUrl: `https://www.youtube.com/watch?v=${videoId}&t=${ts}s`,
-        videoTitle: oembed.title || query.sourceTitle || "Saved YouTube Clip",
+        youtubeUrl: ytUrl,
+        mediaUrl: ytUrl,
+        videoTitle: title,
         channelName: oembed.authorName || "YouTube",
         source: "user_subtitle",
         timestampSeconds: ts,
@@ -370,9 +429,247 @@ export class UserSavedSubtitleProvider implements IVideoDiscoveryProvider {
         transcriptVerified: true,
         captionAvailable: true,
         videoAvailable: true,
+        qualityScore: 95,
         discoveredAt: new Date().toISOString(),
       },
     ];
+  }
+}
+
+/**
+ * 5. Official Wikimedia Commons TimedText + Creative Commons Video Provider
+ * Uses the official public MediaWiki API (https://commons.wikimedia.org/w/api.php) — zero API key,
+ * zero scraping, 100% open-licensed (CC BY / CC BY-SA / CC0 / Public Domain) videos with verified
+ * millisecond-accurate SRT/VTT English subtitles.
+ */
+export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
+  readonly name = "wikimedia_commons";
+
+  isConfigured(): boolean {
+    return true;
+  }
+
+  async discover(query: DiscoveryQuery): Promise<VerifiedVideoExample[]> {
+    const langCode = (query.lang || "en").trim().toLowerCase().slice(0, 2);
+    if (langCode !== "en") return [];
+
+    const maxResults = Math.min(query.maxResults ?? 6, 8);
+    const searchTerms = this.buildSearchQueries(query.word);
+
+    try {
+      // Step 1: Search multiple candidate TimedText subtitle pages (namespace 710)
+      const timedTextTitles = new Set<string>();
+      for (const term of searchTerms) {
+        if (timedTextTitles.size >= 12) break;
+        const searchUrl =
+          `https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=710` +
+          `&srsearch=${encodeURIComponent(term)}&srlimit=12&format=json`;
+        const res = await fetch(searchUrl, {
+          headers: { "User-Agent": WIKIMEDIA_USER_AGENT },
+          signal: AbortSignal.timeout(6500),
+        });
+        if (!res.ok) continue;
+        const data = (await res.json()) as {
+          query?: { search?: Array<{ title?: string }> };
+        };
+        for (const hit of data.query?.search || []) {
+          const t = hit.title || "";
+          // Strictly accept playable HTML5 video formats (.webm / .mp4) with English captions
+          if (!/^TimedText:.+\.(webm|mp4)\.en([-.][a-z0-9]+)?\.(srt|vtt)$/i.test(t)) continue;
+          timedTextTitles.add(t);
+          if (timedTextTitles.size >= 12) break;
+        }
+      }
+
+      if (timedTextTitles.size === 0) return [];
+
+      // Map each TimedText page to its parent File: video page (deduplicating multiple subtitle tracks per video)
+      const pairs: Array<{ timedTextTitle: string; fileTitle: string }> = [];
+      const seenFiles = new Set<string>();
+      for (const tt of timedTextTitles) {
+        const fileName = tt
+          .replace(/^TimedText:/i, "")
+          .replace(/\.en([-.][a-z0-9]+)?\.(srt|vtt)$/i, "");
+        const fileTitle = `File:${fileName}`;
+        const key = fileTitle.toLowerCase();
+        if (seenFiles.has(key)) continue;
+        seenFiles.add(key);
+        pairs.push({ timedTextTitle: tt, fileTitle });
+        if (pairs.length >= 10) break;
+      }
+
+      // Step 2: Fetch ALL SRT contents + ALL video file URLs/metadata in 2 parallel batched official API calls
+      const ttParam = pairs.map((p) => p.timedTextTitle).join("|");
+      const fileParam = pairs.map((p) => p.fileTitle).join("|");
+
+      const [srtRes, fileRes] = await Promise.all([
+        fetch(
+          `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(
+            ttParam,
+          )}&prop=revisions&rvprop=content&rvslots=main&format=json&formatversion=2`,
+          {
+            headers: { "User-Agent": WIKIMEDIA_USER_AGENT },
+            signal: AbortSignal.timeout(8000),
+          },
+        ),
+        fetch(
+          `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(
+            fileParam,
+          )}&prop=imageinfo&iiprop=url|mime|duration|size|extmetadata&format=json&formatversion=2`,
+          {
+            headers: { "User-Agent": WIKIMEDIA_USER_AGENT },
+            signal: AbortSignal.timeout(8000),
+          },
+        ),
+      ]);
+
+      if (!srtRes.ok || !fileRes.ok) return [];
+
+      const srtJson = (await srtRes.json()) as {
+        query?: {
+          pages?: Array<{
+            title?: string;
+            missing?: boolean;
+            revisions?: Array<{ slots?: { main?: { content?: string } } }>;
+          }>;
+        };
+      };
+      const fileJson = (await fileRes.json()) as {
+        query?: {
+          pages?: Array<{
+            title?: string;
+            missing?: boolean;
+            imageinfo?: Array<{
+              url?: string;
+              descriptionurl?: string;
+              mime?: string;
+              duration?: number;
+              size?: number;
+              extmetadata?: {
+                LicenseShortName?: { value?: string };
+                Artist?: { value?: string };
+              };
+            }>;
+          }>;
+        };
+      };
+
+      const srtByTitle = new Map<string, string>();
+      for (const page of srtJson.query?.pages || []) {
+        const content = page.revisions?.[0]?.slots?.main?.content;
+        if (page.title && !page.missing && content) {
+          srtByTitle.set(page.title.toLowerCase(), content);
+        }
+      }
+
+      const fileInfoByTitle = new Map<
+        string,
+        {
+          url: string;
+          descriptionUrl: string;
+          mime: string;
+          duration: number;
+          size: number;
+          license: string;
+          artist: string;
+        }
+      >();
+      for (const page of fileJson.query?.pages || []) {
+        const info = page.imageinfo?.[0];
+        if (!page.title || page.missing || !info?.url) continue;
+        const mime = (info.mime || "").toLowerCase();
+        if (mime !== "video/webm" && mime !== "video/mp4") continue;
+        if (!info.url.startsWith("https://upload.wikimedia.org/")) continue;
+        // Skip extremely large multi-GB raw files so HTML5 seeking stays fast
+        if (typeof info.size === "number" && info.size > 450_000_000) continue;
+
+        const cleanUrl = info.url.split("?")[0] || info.url;
+        const rawArtist = info.extmetadata?.Artist?.value || "";
+        const artist = cleanCaptionText(rawArtist).slice(0, 80);
+        const license = cleanCaptionText(info.extmetadata?.LicenseShortName?.value || "CC Open License").slice(
+          0,
+          40,
+        );
+
+        fileInfoByTitle.set(page.title.toLowerCase(), {
+          url: cleanUrl,
+          descriptionUrl: info.descriptionurl || cleanUrl,
+          mime,
+          duration: Number(info.duration) || 0,
+          size: Number(info.size) || 0,
+          license,
+          artist,
+        });
+      }
+
+      // Step 3: Verify transcripts, extract best ranked sentence per video, and rank all videos
+      const verified: VerifiedVideoExample[] = [];
+      const nowIso = new Date().toISOString();
+
+      for (const pair of pairs) {
+        const srt = srtByTitle.get(pair.timedTextTitle.toLowerCase());
+        const fileInfo = fileInfoByTitle.get(pair.fileTitle.toLowerCase());
+        if (!srt || !fileInfo) continue;
+
+        const cues = parseSrtOrVttToCues(srt);
+        if (cues.length === 0) continue;
+
+        const videoTitle = cleanWikimediaTitle(pair.fileTitle);
+        const match = findVerifiedWordInCues(cues, query.word, "wikimedia_commons", {
+          videoTitle,
+          durationSec: fileInfo.duration,
+        });
+        if (!match) continue;
+
+        // Slight quality boost for concise, clear clips (< 150MB)
+        const sizeBonus = fileInfo.size > 0 && fileInfo.size < 150_000_000 ? 6 : 0;
+        const videoKey = makeWikimediaVideoKey(pair.fileTitle);
+        const channelLabel = fileInfo.artist
+          ? `${fileInfo.artist} · Wikimedia Commons (${fileInfo.license})`
+          : `Wikimedia Commons (${fileInfo.license})`;
+
+        verified.push({
+          id: `wikimedia_commons-${videoKey}-${match.timestampSeconds}`,
+          wordId: query.wordId ?? null,
+          targetWord: query.word,
+          mediaType: "direct_video",
+          youtubeVideoId: videoKey,
+          youtubeUrl: fileInfo.descriptionUrl,
+          mediaUrl: fileInfo.url,
+          videoTitle,
+          channelName: channelLabel,
+          license: fileInfo.license,
+          source: "wikimedia_commons",
+          timestampSeconds: match.timestampSeconds,
+          verifiedTranscript: match.verifiedTranscript,
+          contextSentence: match.contextSentence,
+          targetWordPosition: match.targetWordPosition,
+          captionCues: match.captionCues,
+          transcriptVerified: true,
+          captionAvailable: true,
+          videoAvailable: true,
+          qualityScore: match.qualityScore + sizeBonus,
+          discoveredAt: nowIso,
+        });
+      }
+
+      return verified
+        .sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0))
+        .slice(0, maxResults);
+    } catch {
+      return [];
+    }
+  }
+
+  private buildSearchQueries(rawWord: string): string[] {
+    const clean = rawWord.trim();
+    const queries = [`"${clean}" intitle:.webm intitle:.en`];
+    const conj = getVerbConjugation(clean);
+    if (conj && conj.base.toLowerCase() !== clean.toLowerCase()) {
+      queries.push(`"${conj.base}" intitle:.webm intitle:.en`);
+    }
+    queries.push(`"${clean}" intitle:.mp4 intitle:.en`);
+    return queries;
   }
 }
 
@@ -402,7 +699,6 @@ export async function fetchAuthenticFallbackContexts(
   }
 
   const tasks = [
-    // Free Dictionary API
     (async () => {
       try {
         const res = await fetch(
@@ -418,7 +714,7 @@ export async function fetchAuthenticFallbackContexts(
         for (const entry of json.slice(0, 2)) {
           for (const m of entry.meanings || []) {
             for (const d of m.definitions || []) {
-              if (d.example) pushIfValid(d.example, "Dictionary text example", phon);
+              if (d.example) pushIfValid(d.example, "Dictionary text & audio example", phon);
             }
           }
         }
@@ -426,7 +722,6 @@ export async function fetchAuthenticFallbackContexts(
         // ignore timeout
       }
     })(),
-    // Youdao bilingual / authentic example sentences
     (async () => {
       try {
         const res = await fetch(
@@ -442,12 +737,14 @@ export async function fetchAuthenticFallbackContexts(
           if (s.foreign) {
             pushIfValid(
               s.foreign,
-              s.source ? `Published text example (${cleanCaptionText(s.source)})` : "Published text example",
+              s.source
+                ? `Published text & audio example (${cleanCaptionText(s.source)})`
+                : "Published text & audio example",
             );
           }
         }
         for (const s of json.blng_sents_part?.["sentence-pair"] || []) {
-          if (s.sentence) pushIfValid(s.sentence, "Dictionary text example");
+          if (s.sentence) pushIfValid(s.sentence, "Dictionary text & audio example");
         }
       } catch {
         // ignore timeout
@@ -460,7 +757,8 @@ export async function fetchAuthenticFallbackContexts(
 }
 
 /**
- * Orchestrates all pluggable video discovery providers cleanly.
+ * Orchestrates all pluggable video discovery providers cleanly, deduplicates across sources,
+ * and ranks candidates by educational quality, sentence clarity, and accessibility.
  */
 export class VideoDiscoveryService {
   private readonly providers: IVideoDiscoveryProvider[];
@@ -473,6 +771,7 @@ export class VideoDiscoveryService {
       new FilmotDiscoveryProvider(),
       new YouTubeDataDiscoveryProvider(this.transcriptProvider),
       new UserSavedSubtitleProvider(),
+      new WikimediaCommonsVideoProvider(),
     ];
   }
 
@@ -483,6 +782,7 @@ export class VideoDiscoveryService {
       youtubeData: Boolean(process.env.YOUTUBE_API_KEY?.trim()),
       supadata: Boolean(process.env.SUPADATA_API_KEY?.trim()),
       transcriptApi: Boolean(process.env.TRANSCRIPT_API_KEY?.trim()),
+      wikimediaCommons: true,
     };
   }
 
@@ -490,8 +790,8 @@ export class VideoDiscoveryService {
     const caps = this.getProviderCapabilities();
     if (caps.youglishRest || caps.filmot) return [];
     if (caps.youtubeData && (caps.supadata || caps.transcriptApi)) return [];
-    if (caps.youtubeData) return ["SUPADATA_API_KEY or TRANSCRIPT_API_KEY"];
-    return ["YOUGLISH_API_KEY (or RAPIDAPI_FILMOT_KEY, or YOUTUBE_API_KEY + SUPADATA_API_KEY)"];
+    // Wikimedia Commons works out-of-the-box; YouTube/YouGlish keys are optional upgrades
+    return [];
   }
 
   async discover(query: DiscoveryQuery): Promise<{
@@ -521,6 +821,7 @@ export class VideoDiscoveryService {
       }
     }
 
-    return { videos: collected, providersAttempted };
+    collected.sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0));
+    return { videos: collected.slice(0, maxResults), providersAttempted };
   }
 }

@@ -19,7 +19,7 @@ const querySchema = z.object({
 });
 
 const patchSchema = z.object({
-  youtubeVideoId: z.string().trim().regex(/^[A-Za-z0-9_-]{11}$/),
+  youtubeVideoId: z.string().trim().regex(/^([A-Za-z0-9_-]{11}|wm_[a-f0-9]{16})$/),
 });
 
 const videoRepository = new VideoRepository();
