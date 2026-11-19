@@ -171,11 +171,13 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
     speedRef.current = speed;
 
     const [ready, setReady] = useState(false);
+    const [buffering, setBuffering] = useState(false);
     const [playing, setPlaying] = useState(false);
     const [embedError, setEmbedError] = useState<string | null>(null);
     const [nativeRatio, setNativeRatio] = useState<number | null>(null);
 
     const isDirectVideo = clip.mediaType === "direct_video";
+    const isLoading = !ready || buffering;
 
     const notifyReady = useCallback(
       (val: boolean) => {
@@ -299,6 +301,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
         return;
       }
       setEmbedError(null);
+      setBuffering(false);
       notifyReady(false);
       notifyPlaying(false);
       onTimeUpdate?.(clip.timestampSeconds);
@@ -314,6 +317,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
       if (isDirectVideo) return;
       let active = true;
       setEmbedError(null);
+      setBuffering(false);
       notifyReady(false);
       notifyPlaying(false);
       onTimeUpdate?.(clip.timestampSeconds);
@@ -356,6 +360,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
             events: {
               onReady: (e) => {
                 if (!active) return;
+                setBuffering(false);
                 notifyReady(true);
                 try {
                   e.target.setPlaybackRate(speedRef.current);
@@ -365,7 +370,17 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
               },
               onStateChange: (e) => {
                 if (!active) return;
-                notifyPlaying(e.data === 1);
+                if (e.data === 3) {
+                  // YT.PlayerState.BUFFERING
+                  setBuffering(true);
+                } else if (e.data === 1) {
+                  // YT.PlayerState.PLAYING
+                  setBuffering(false);
+                  notifyPlaying(true);
+                } else {
+                  setBuffering(false);
+                  notifyPlaying(false);
+                }
               },
               onError: (e) => {
                 if (!active) return;
@@ -507,99 +522,118 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                 </button>
               ) : null}
             </div>
-          ) : isDirectVideo ? (
-            <>
-              {!ready ? (
-                <div
-                  aria-live="polite"
-                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/70 text-white/90"
-                >
-                  <div className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
-                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-subtitle border-t-transparent" />
-                    <span>Preparing video clip…</span>
-                  </div>
-                </div>
-              ) : !playing ? (
-                <button
-                  type="button"
-                  onClick={playInternal}
-                  aria-label="Play video clip"
-                  className="absolute inset-0 z-10 flex items-center justify-center bg-black/25 transition hover:bg-black/35 cursor-pointer"
-                >
-                  <span className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-subtitle text-subtitle-ink shadow-lg text-lg sm:text-xl font-black pl-1">
-                    ▶
-                  </span>
-                </button>
-              ) : null}
-              <video
-                ref={htmlVideoRef}
-                key={clip.mediaUrl}
-                src={clip.mediaUrl}
-                crossOrigin="anonymous"
-                preload="metadata"
-                playsInline
-                onClick={togglePlayInternal}
-                onLoadedMetadata={(e) => {
-                  const v = e.currentTarget;
-                  if (v.videoWidth > 0 && v.videoHeight > 0) {
-                    setNativeRatio(v.videoWidth / v.videoHeight);
-                  }
-                  v.playbackRate = speedRef.current;
-                  if (clipRef.current.timestampSeconds > 0 && v.duration > clipRef.current.timestampSeconds) {
-                    v.currentTime = clipRef.current.timestampSeconds;
-                  }
-
-                  // Browser-level check: Detect if HTML5 video has no audio tracks
-                  const anyVideo = v as HTMLVideoElement & {
-                    mozHasAudio?: boolean;
-                    audioTracks?: { length: number };
-                  };
-                  if (
-                    anyVideo.mozHasAudio === false ||
-                    (anyVideo.audioTracks && anyVideo.audioTracks.length === 0)
-                  ) {
-                    notifyReady(false);
-                    notifyPlaying(false);
-                    setEmbedError("This video has no audio track. Skipping to next clip…");
-                    onUnavailable?.(clipRef.current);
-                    if (onSkipNext) {
-                      setTimeout(onSkipNext, 600);
-                    }
-                    return;
-                  }
-
-                  notifyReady(true);
-                }}
-                onPlay={() => notifyPlaying(true)}
-                onPause={() => notifyPlaying(false)}
-                onEnded={() => notifyPlaying(false)}
-                onTimeUpdate={(e) => onTimeUpdate?.(e.currentTarget.currentTime)}
-                onError={() => {
-                  notifyReady(false);
-                  notifyPlaying(false);
-                  setEmbedError("This video stream could not be loaded.");
-                  onUnavailable?.(clipRef.current);
-                }}
-                className="absolute inset-0 block h-full w-full object-contain bg-black cursor-pointer"
-              />
-            </>
           ) : (
             <>
-              {!ready ? (
+              {/* Universal Prominent Loading & Buffering Spinner */}
+              {isLoading ? (
                 <div
+                  role="status"
                   aria-live="polite"
-                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/70 text-white/90"
+                  className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px] text-white"
                 >
-                  <div className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
-                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-subtitle border-t-transparent" />
-                    <span>Loading video player…</span>
+                  <div className="flex flex-col items-center gap-3">
+                    <span
+                      data-testid="video-loading-spinner"
+                      className="inline-block h-12 w-12 sm:h-14 sm:w-14 animate-spin rounded-full border-4 border-white/20 border-t-subtitle"
+                    />
+                    <span className="text-xs sm:text-sm font-semibold tracking-wide text-white/90 drop-shadow">
+                      {!ready ? "Loading video clip…" : "Buffering clip…"}
+                    </span>
                   </div>
                 </div>
               ) : null}
-              <div
-                ref={ytMountRef}
-                className="absolute inset-0 h-full w-full [&>iframe]:h-full [&>iframe]:w-full"
-              />
+
+              {isDirectVideo ? (
+                <>
+                  {!isLoading && !playing ? (
+                    <button
+                      type="button"
+                      onClick={playInternal}
+                      aria-label="Play video clip"
+                      className="absolute inset-0 z-10 flex items-center justify-center bg-black/25 transition hover:bg-black/35 cursor-pointer"
+                    >
+                      <span className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-subtitle text-subtitle-ink shadow-lg text-lg sm:text-xl font-black pl-1">
+                        ▶
+                      </span>
+                    </button>
+                  ) : null}
+                  <video
+                    ref={htmlVideoRef}
+                    key={clip.mediaUrl}
+                    src={clip.mediaUrl}
+                    crossOrigin="anonymous"
+                    preload="metadata"
+                    playsInline
+                    onClick={togglePlayInternal}
+                    onLoadStart={() => setBuffering(true)}
+                    onLoadedData={() => setBuffering(false)}
+                    onCanPlay={() => setBuffering(false)}
+                    onCanPlayThrough={() => setBuffering(false)}
+                    onSeeking={() => setBuffering(true)}
+                    onSeeked={() => setBuffering(false)}
+                    onWaiting={() => setBuffering(true)}
+                    onLoadedMetadata={(e) => {
+                      const v = e.currentTarget;
+                      if (v.videoWidth > 0 && v.videoHeight > 0) {
+                        setNativeRatio(v.videoWidth / v.videoHeight);
+                      }
+                      v.playbackRate = speedRef.current;
+                      if (clipRef.current.timestampSeconds > 0 && v.duration > clipRef.current.timestampSeconds) {
+                        v.currentTime = clipRef.current.timestampSeconds;
+                      }
+
+                      // Browser-level check: Detect if HTML5 video has no audio tracks
+                      const anyVideo = v as HTMLVideoElement & {
+                        mozHasAudio?: boolean;
+                        audioTracks?: { length: number };
+                      };
+                      if (
+                        anyVideo.mozHasAudio === false ||
+                        (anyVideo.audioTracks && anyVideo.audioTracks.length === 0)
+                      ) {
+                        notifyReady(false);
+                        notifyPlaying(false);
+                        setBuffering(false);
+                        setEmbedError("This video has no audio track. Skipping to next clip…");
+                        onUnavailable?.(clipRef.current);
+                        if (onSkipNext) {
+                          setTimeout(onSkipNext, 600);
+                        }
+                        return;
+                      }
+
+                      notifyReady(true);
+                      setBuffering(false);
+                    }}
+                    onPlay={() => {
+                      setBuffering(false);
+                      notifyPlaying(true);
+                    }}
+                    onPause={() => {
+                      setBuffering(false);
+                      notifyPlaying(false);
+                    }}
+                    onEnded={() => {
+                      setBuffering(false);
+                      notifyPlaying(false);
+                    }}
+                    onTimeUpdate={(e) => onTimeUpdate?.(e.currentTarget.currentTime)}
+                    onError={() => {
+                      notifyReady(false);
+                      notifyPlaying(false);
+                      setBuffering(false);
+                      setEmbedError("This video stream could not be loaded.");
+                      onUnavailable?.(clipRef.current);
+                    }}
+                    className="absolute inset-0 block h-full w-full object-contain bg-black cursor-pointer"
+                  />
+                </>
+              ) : (
+                <div
+                  ref={ytMountRef}
+                  className="absolute inset-0 h-full w-full [&>iframe]:h-full [&>iframe]:w-full"
+                />
+              )}
             </>
           )}
         </div>
