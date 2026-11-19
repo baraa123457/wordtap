@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
+  isAllowedMediaUrl,
   isNonEnglishVideoMetadata,
   isNonEnglishVideoTitle,
   isVerifiedEnglishCollection,
+  MAX_VIDEO_FILE_SIZE_BYTES,
 } from "./video-language-filter";
 
 describe("Spoken Language & Speech Media Filter", () => {
@@ -87,5 +89,26 @@ describe("Spoken Language & Speech Media Filter", () => {
         "PD US Army|Files created by the United States Army|Videos by the Defense Visual Information Distribution Service",
       ),
     ).toBe(true);
+  });
+
+  it("validates media URLs against trusted secure host whitelist", () => {
+    expect(
+      isAllowedMediaUrl(
+        "https://upload.wikimedia.org/wikipedia/commons/transcoded/1/1a/Sample.webm/Sample.webm.480p.vp9.webm",
+      ),
+    ).toBe(true);
+    expect(isAllowedMediaUrl("https://commons.wikimedia.org/wiki/File:Sample.webm")).toBe(true);
+    expect(isAllowedMediaUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toBe(true);
+    expect(isAllowedMediaUrl("https://youtu.be/dQw4w9WgXcQ")).toBe(true);
+
+    // Untrusted or malicious hosts / protocols rejected
+    expect(isAllowedMediaUrl("http://upload.wikimedia.org/insecure.webm")).toBe(false);
+    expect(isAllowedMediaUrl("https://malicious-site.com/video.webm")).toBe(false);
+    expect(isAllowedMediaUrl("javascript:alert(1)")).toBe(false);
+    expect(isAllowedMediaUrl("")).toBe(false);
+  });
+
+  it("enforces maximum video file size cap of 150MB", () => {
+    expect(MAX_VIDEO_FILE_SIZE_BYTES).toBe(150_000_000);
   });
 });

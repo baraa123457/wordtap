@@ -8,37 +8,48 @@
  * 2. Non-speech media (silent showcase reels, b-roll montages, timelapses, music videos).
  */
 
-// Any closed captions or subtitles in a language other than English
-const NON_ENGLISH_CAPTION_OR_SUB_CAT_RE =
-  /\b(Files with closed captioning in (?!English\b)[A-Za-z]+|Videos with (?!English\b)[A-Za-z]+ subtitles|Files with (?!English\b)[A-Za-z]+ subtitles)\b/i;
+import {
+  ALLOWED_MEDIA_HOSTS,
+  CHINESE_OR_ASIAN_MEDIA_RE,
+  FOREIGN_TITLE_MARKERS_RE,
+  FRENCH_TITLE_MARKERS_RE,
+  GERMAN_TITLE_MARKERS_RE,
+  NON_ENGLISH_CAPTION_OR_SUB_CAT_RE,
+  NON_ENGLISH_CATEGORY_RE,
+  NON_LATIN_SCRIPT_RE,
+  NON_SPEECH_MEDIA_RE,
+  SPANISH_TITLE_MARKERS_RE,
+  VERIFIED_ENGLISH_COLLECTIONS_RE,
+} from "./video-language-constants";
 
-// Categories designating foreign video collections or languages
-const NON_ENGLISH_CATEGORY_RE =
-  /\b(Videos?\s+in\s+(?!English\b)[A-Za-z]+|(?!English\b)[A-Za-z]+-language\s+videos?|instructional\s+videos?\s+.*in\s+(?!English\b)[A-Za-z]+|vidéos?\s+en\s+français|vídeos?\s+en\s+español|video\s+in\s+deutsch|deutschsprachig|erklärvideo|kurzfilm|hörspiel|spielfilm|chinese television|chinese media|automobiles in china|leapmotor|autolab|media of china|videos (of|from|in) (china|germany|france|russia|japan|korea|spain|italy|brazil|ukraine|poland|iran|turkey|taiwan))\b/i;
+export {
+  ALLOWED_MEDIA_HOSTS,
+  MAX_VIDEO_FILE_SIZE_BYTES,
+  NON_ENGLISH_CAPTION_OR_SUB_CAT_RE,
+  NON_ENGLISH_CATEGORY_RE,
+  NON_LATIN_SCRIPT_RE,
+  NON_SPEECH_MEDIA_RE,
+  FOREIGN_TITLE_MARKERS_RE,
+  GERMAN_TITLE_MARKERS_RE,
+  FRENCH_TITLE_MARKERS_RE,
+  SPANISH_TITLE_MARKERS_RE,
+  CHINESE_OR_ASIAN_MEDIA_RE,
+  VERIFIED_ENGLISH_COLLECTIONS_RE,
+} from "./video-language-constants";
 
-// Non-Latin scripts (Hanzi/Kanji, Cyrillic, Arabic, Hangul, Kana, Thai, Hebrew)
-const NON_LATIN_SCRIPT_RE =
-  /[\u4e00-\u9fa5\u0400-\u04ff\u0600-\u06ff\u3040-\u30ff\uac00-\ud7af\u0e00-\u0e7f\u0590-\u05ff]/;
-
-// Non-speech media title markers (silent showcase reels, B-roll, timelapses, sound effects only)
-const NON_SPEECH_MEDIA_RE =
-  /\b(showcase reel|\(reel\)|reel\b|b-roll|b roll|timelapse|time-lapse|silent film|silent animation|silent video|no sound|no audio|music only|soundtrack|ambient|drone footage|dashcam footage)\b/i;
-
-// Foreign language and production brand markers in title/channel
-const FOREIGN_TITLE_MARKERS_RE =
-  /\b(mach\s+mit|erklärvideo|kurzfilm|hörspiel|spielfilm|autolab|leapmotor|the chinese car|chinese car|bilibili|weibo|youku|cgtn|cctv|xinhua|dw deutsch|zdf|ard|rt news|sputnik)\b/i;
-
-const GERMAN_TITLE_MARKERS_RE =
-  /\b(der|die|das|und|nicht|für|mit|ein|eine|eines|einer|einem|einen|aus|auf|nach|über|wie|wir|sie|ihr|uns|dass|deutsch|deutschland)\b/gi;
-
-const FRENCH_TITLE_MARKERS_RE =
-  /\b(dans|pour|avec|sur|les|des|une|cette|sont|nous|vous|leur|leurs|français|france|comment|pourquoi|vidéo)\b/gi;
-
-const SPANISH_TITLE_MARKERS_RE =
-  /\b(para|con|por|sobre|los|las|una|este|esta|estos|estas|español|méxico|españa|cómo|vídeo)\b/gi;
-
-const CHINESE_OR_ASIAN_MEDIA_RE =
-  /\b(chinese car|autolab|leapmotor|byd yuan|byd auto|nio firefly|xpeng|changan|dongfeng|bilibili)\b/i;
+/**
+ * Validates that a video URL belongs strictly to whitelisted secure CDNs.
+ */
+export function isAllowedMediaUrl(rawUrl: string): boolean {
+  if (!rawUrl || typeof rawUrl !== "string") return false;
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== "https:") return false;
+    return ALLOWED_MEDIA_HOSTS.has(parsed.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Checks whether a video title or channel indicates a non-English language or non-speech media.
@@ -137,7 +148,5 @@ export function isNonEnglishVideoMetadata(params: {
  */
 export function isVerifiedEnglishCollection(categories?: string, channelOrTitle?: string): boolean {
   const combined = `${categories || ""} ${channelOrTitle || ""}`.toLowerCase();
-  return /\b(defense visual information distribution service|dvids|united states army|united states navy|united states air force|united states marine corps|united states coast guard|pd us army|pd us navy|pd us air force|lakeland pbs|pbs|voice of america|voa news|nasa videos|pd nasa|white house|c-span|wikimania.*in english|english wikipedia)\b/i.test(
-    combined,
-  );
+  return VERIFIED_ENGLISH_COLLECTIONS_RE.test(combined);
 }

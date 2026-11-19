@@ -2,9 +2,11 @@ import { createHash } from "node:crypto";
 import { maskWordInSentence } from "../placeholder";
 import { getVerbConjugation } from "../verbs";
 import {
+  isAllowedMediaUrl,
   isNonEnglishVideoMetadata,
   isNonEnglishVideoTitle,
   isVerifiedEnglishCollection,
+  MAX_VIDEO_FILE_SIZE_BYTES,
 } from "./video-language-filter";
 import {
   cleanCaptionText,
@@ -43,6 +45,37 @@ function cleanWikimediaTitle(fileTitle: string): string {
 }
 
 /**
+ * Robust fetch wrapper that gracefully retries on rate limits (429) or transient gateway errors (503/504)
+ * with exponential backoff before throwing.
+ */
+async function fetchWithRetry(
+  url: string,
+  init?: RequestInit,
+  retries = 2,
+  baseBackoffMs = 400,
+): Promise<Response> {
+  let attempt = 0;
+  while (true) {
+    try {
+      const res = await fetch(url, init);
+      if ((res.status === 429 || res.status === 503 || res.status === 504) && attempt < retries) {
+        attempt++;
+        await new Promise((resolve) => setTimeout(resolve, baseBackoffMs * Math.pow(2, attempt - 1)));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      if (attempt < retries) {
+        attempt++;
+        await new Promise((resolve) => setTimeout(resolve, baseBackoffMs * Math.pow(2, attempt - 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+/**
  * 1. Official YouGlish REST API v1 Provider (https://youglish.com/api/doc/rest)
  * Commercial REST API key required (YOUGLISH_API_KEY).
  */
@@ -65,7 +98,7 @@ export class YouGlishRestDiscoveryProvider implements IVideoDiscoveryProvider {
         apiKey,
       )}&query=${encodeURIComponent(query.word)}&lg=${encodeURIComponent(lg)}&restricted=yes&page=1`;
 
-      const res = await fetch(searchUrl, { signal: AbortSignal.timeout(8000) });
+      const res = await fetchWithRetry(searchUrl, { signal: AbortSignal.timeout(8000) });
       if (!res.ok) return [];
 
       const data = (await res.json()) as {
@@ -469,7 +502,7 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
         const searchUrl =
           `https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=102` +
           `&srsearch=${encodeURIComponent(term)}&srlimit=12&format=json`;
-        const res = await fetch(searchUrl, {
+        const res = await fetchWithRetry(searchUrl, {
           headers: { "User-Agent": WIKIMEDIA_USER_AGENT },
           signal: AbortSignal.timeout(6500),
         });
@@ -512,7 +545,7 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
       const fileParam = pairs.map((p) => p.fileTitle).join("|");
 
       const [srtRes, fileRes] = await Promise.all([
-        fetch(
+        fetchWithRetry(
           `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(
             ttParam,
           )}&prop=revisions&rvprop=content&rvslots=main&format=json&formatversion=2`,
@@ -521,7 +554,7 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
             signal: AbortSignal.timeout(8000),
           },
         ),
-        fetch(
+        fetchWithRetry(
           `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(
             fileParam,
           )}&prop=imageinfo&iiprop=url|mime|duration|size|dimensions|extmetadata|metadata&format=json&formatversion=2`,
@@ -596,9 +629,9 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
         if (!page.title || page.missing || !info?.url) continue;
         const mime = (info.mime || "").toLowerCase();
         if (mime !== "video/webm" && mime !== "video/mp4") continue;
-        if (!info.url.startsWith("https://upload.wikimedia.org/")) continue;
-        // Skip extremely large multi-GB raw files so HTML5 seeking stays fast
-        if (typeof info.size === "number" && info.size > 450_000_000) continue;
+        if (!info.url.startsWith("https://upload.wikimedia.org/") || !isAllowedMediaUrl(info.url)) continue;
+        // Enforce hard size limit (max 150MB) so mobile and web playback stays fast and doesn't exhaust bandwidth
+        if (typeof info.size === "number" && info.size > MAX_VIDEO_FILE_SIZE_BYTES) continue;
 
         // Verify the video actually has an audio stream (reject silent timelapses, silent animations, etc.)
         const metadata = info.metadata;
@@ -834,6 +867,10 @@ export async function fetchAuthenticFallbackContexts(
 export class VideoDiscoveryService {
   private readonly providers: IVideoDiscoveryProvider[];
   private readonly transcriptProvider: CompositeTranscriptProvider;
+  private readonly inFlightSearches = new Map<
+    string,
+    Promise<{ videos: VerifiedVideoExample[]; providersAttempted: string[] }>
+  >();
 
   constructor(providers?: IVideoDiscoveryProvider[], transcriptProvider?: CompositeTranscriptProvider) {
     this.transcriptProvider = transcriptProvider ?? new CompositeTranscriptProvider();
@@ -866,6 +903,24 @@ export class VideoDiscoveryService {
   }
 
   async discover(query: DiscoveryQuery): Promise<{
+    videos: VerifiedVideoExample[];
+    providersAttempted: string[];
+  }> {
+    const key = `${query.word.trim().toLowerCase()}_${(query.lang || "en").toLowerCase()}_${query.maxResults ?? 6}_${query.sourceUrl || ""}`;
+    const inFlight = this.inFlightSearches.get(key);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const task = this.executeDiscovery(query).finally(() => {
+      this.inFlightSearches.delete(key);
+    });
+
+    this.inFlightSearches.set(key, task);
+    return task;
+  }
+
+  private async executeDiscovery(query: DiscoveryQuery): Promise<{
     videos: VerifiedVideoExample[];
     providersAttempted: string[];
   }> {

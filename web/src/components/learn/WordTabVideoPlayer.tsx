@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { isAllowedMediaUrl } from "@/lib/video/video-language-filter";
 import type { VerifiedVideoExample } from "@/lib/video/types";
 
 export type WordTabPlaybackSpeed = 0.75 | 1 | 1.25;
@@ -289,8 +290,15 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
     // Direct HTML5 Video lifecycle (Wikimedia Commons CC-licensed open videos)
     useEffect(() => {
       if (!isDirectVideo) return;
-      setEmbedError(null);
       setNativeRatio(null);
+      if (!isAllowedMediaUrl(clip.mediaUrl)) {
+        setEmbedError("Media URL is from an untrusted or unsupported origin.");
+        notifyReady(false);
+        notifyPlaying(false);
+        onUnavailable?.(clipRef.current);
+        return;
+      }
+      setEmbedError(null);
       notifyReady(false);
       notifyPlaying(false);
       onTimeUpdate?.(clip.timestampSeconds);

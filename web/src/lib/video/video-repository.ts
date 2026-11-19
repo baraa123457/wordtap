@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { isNonEnglishVideoTitle } from "./video-language-filter";
+import { isAllowedMediaUrl, isNonEnglishVideoTitle } from "./video-language-filter";
 import type {
   CaptionCue,
   VerifiedVideoExample,
@@ -72,8 +72,9 @@ function mapRowToExample(row: DbVideoRow): VerifiedVideoExample {
       ? `https://www.youtube.com/watch?v=${row.youtube_video_id}&t=${ts}s`
       : row.media_url || "";
 
-  const mediaUrl =
+  const rawMediaUrl =
     row.media_url && row.media_url.trim().length > 0 ? row.media_url : canonicalUrl;
+  const mediaUrl = isAllowedMediaUrl(rawMediaUrl) ? rawMediaUrl : canonicalUrl;
 
   const allowedSources: VideoDiscoverySource[] = [
     "youglish_rest",
@@ -129,6 +130,13 @@ function createServerSupabase(req?: Request): SupabaseClient | null {
     return createClient(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { headers: { Authorization: authHeader } },
+    });
+  }
+
+  // Gracefully fallback to anon key for server-side cached reads/writes to public tables
+  if (anonKey) {
+    return createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
     });
   }
 

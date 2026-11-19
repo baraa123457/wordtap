@@ -156,6 +156,30 @@ describe("VideoDiscoveryService provider orchestration & VideoRepository caching
     ]);
   });
 
+  it("deduplicates concurrent in-flight discovery requests for the same word", async () => {
+    let callCount = 0;
+    const slowProvider: IVideoDiscoveryProvider = {
+      name: "slow_mock",
+      isConfigured: () => true,
+      discover: async () => {
+        callCount++;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return [makeClip("CONCURRENT1", "dedup")];
+      },
+    };
+
+    const service = new VideoDiscoveryService([slowProvider]);
+    const [res1, res2] = await Promise.all([
+      service.discover({ word: "dedup", lang: "en", maxResults: 5 }),
+      service.discover({ word: "dedup", lang: "en", maxResults: 5 }),
+    ]);
+
+    expect(callCount).toBe(1);
+    expect(res1.videos.length).toBe(1);
+    expect(res2.videos.length).toBe(1);
+    expect(res1.videos[0].youtubeVideoId).toBe("CONCURRENT1");
+  });
+
   it("caches verified examples and evicts unavailable videos cleanly", async () => {
     const repo = new VideoRepository();
     const wordKey = `test-cache-${Date.now()}`;
