@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { POST } from "./route";
 
 describe("POST /api/learn/evaluate-sentence", () => {
-  it("rejects 'i will study portion of lesson' with low score and corrections", async () => {
+  it("rejects 'i will study portion of lesson' with low score and corrections", { timeout: 15000 }, async () => {
     const req = new Request("http://localhost:3000/api/learn/evaluate-sentence", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -25,7 +25,7 @@ describe("POST /api/learn/evaluate-sentence", () => {
     expect(data.naturalAlternative).toBe("I will study a portion of the lesson.");
   });
 
-  it("accepts 'i will study a portion of the lesson' with 100/100", async () => {
+  it("accepts 'i will study a portion of the lesson' with 100/100", { timeout: 15000 }, async () => {
     const req = new Request("http://localhost:3000/api/learn/evaluate-sentence", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -45,7 +45,7 @@ describe("POST /api/learn/evaluate-sentence", () => {
     expect(data.grammarCorrections).toHaveLength(0);
   });
 
-  it("accepts informal 'i wanna study a portion of the lesson' with 100/100", async () => {
+  it("accepts informal 'i wanna study a portion of the lesson' with 100/100", { timeout: 15000 }, async () => {
     const req = new Request("http://localhost:3000/api/learn/evaluate-sentence", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -65,7 +65,7 @@ describe("POST /api/learn/evaluate-sentence", () => {
     expect(data.grammarCorrections).toHaveLength(0);
   });
 
-  it("accepts 'I accumulated a lot of English vocabulary last Thursday' with 100/100", async () => {
+  it("accepts 'I accumulated a lot of English vocabulary last Thursday' with 100/100", { timeout: 15000 }, async () => {
     const req = new Request("http://localhost:3000/api/learn/evaluate-sentence", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

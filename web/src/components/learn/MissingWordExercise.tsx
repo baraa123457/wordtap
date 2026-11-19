@@ -164,17 +164,28 @@ export function MissingWordExercise({
                 <span>Listen</span>
               </button>
             ) : null}
-            {canShowMoreHint ? (
+            {canShowMoreHint || (faultAnalysis && faultAnalysis.hasFault) ? (
               <button
                 type="button"
                 onClick={() => {
                   setHintClicks((c) => c + 1);
                   inputRef.current?.focus();
                 }}
-                aria-label={hint ? "Reveal another hint letter" : "Show a hint"}
+                aria-label={
+                  faultAnalysis?.hasFault
+                    ? "Show fault letter analysis"
+                    : hint
+                    ? "Reveal another hint letter"
+                    : "Show a hint"
+                }
                 className="btn btn-quiet min-h-11 px-3.5 text-xs font-semibold text-amber-700 dark:text-subtitle border border-subtitle/35 bg-subtitle/10 hover:bg-subtitle/20 cursor-pointer"
               >
-                💡 {hint ? "More hint" : "Hint"}
+                💡{" "}
+                {faultAnalysis?.hasFault && faultAnalysis?.firstWrongChar
+                  ? "Fault hint"
+                  : hint
+                  ? "More hint"
+                  : "Hint"}
               </button>
             ) : null}
             <button
@@ -188,17 +199,37 @@ export function MissingWordExercise({
         </form>
       ) : null}
 
-      {state === "answering" && hint ? (
+      {/* Dynamic Hint & Fault Analysis Display */}
+      {state === "answering" && (hint || (faultAnalysis && faultAnalysis.hasFault)) ? (
         <div
           role="status"
-          className="rounded-xl border border-subtitle/35 bg-subtitle/10 px-3.5 py-2.5 text-xs sm:text-sm text-ink flex flex-col gap-1.5"
+          data-testid="missing-word-hint-card"
+          className="rounded-xl border border-subtitle/35 bg-subtitle/10 px-3.5 py-3 text-xs sm:text-sm text-ink flex flex-col gap-2.5 shadow-xs"
         >
+          {/* Main Hint Line */}
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span>
-              <strong className="text-amber-800 dark:text-subtitle">Hint:</strong>{" "}
-              <span className="font-mono font-bold tracking-[0.18em]">{hint}</span>
-              <span className="text-muted text-xs ms-2">({masked.letterCount} letters)</span>
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-base">💡</span>
+              <span>
+                <strong className="text-amber-800 dark:text-subtitle">
+                  {faultAnalysis?.hasFault && faultAnalysis?.firstWrongChar ? "Fault Hint:" : "Hint:"}
+                </strong>{" "}
+                {faultAnalysis?.hasFault && faultAnalysis?.firstWrongChar ? (
+                  <span className="font-semibold text-bad">
+                    Letter #{faultAnalysis.firstWrongIndex + 1} &ldquo;{faultAnalysis.firstWrongChar}&rdquo; is wrong
+                    {faultAnalysis.expectedChar ? ` — change it to “${faultAnalysis.expectedChar}”` : " — remove it"}
+                  </span>
+                ) : faultAnalysis && !faultAnalysis.hasFault && answer.trim().length > 0 ? (
+                  <span className="font-semibold text-ok">
+                    &ldquo;{answer.trim()}&rdquo; is correct so far! Next letter is &ldquo;{faultAnalysis.expectedChar}&rdquo;
+                  </span>
+                ) : (
+                  <span className="font-mono font-bold tracking-[0.18em]">{hint}</span>
+                )}
+                <span className="text-muted text-xs ms-2">({masked.letterCount} letters)</span>
+              </span>
+            </div>
+
             {canShowMoreHint ? (
               <button
                 type="button"
@@ -206,16 +237,86 @@ export function MissingWordExercise({
                   setHintClicks((c) => c + 1);
                   inputRef.current?.focus();
                 }}
-                className="text-xs font-bold text-amber-800 dark:text-subtitle underline underline-offset-4 hover:opacity-80 cursor-pointer"
+                className="text-xs font-bold text-amber-800 dark:text-subtitle underline underline-offset-4 hover:opacity-80 cursor-pointer shrink-0"
               >
                 Reveal more →
               </button>
             ) : null}
           </div>
-          {faultAnalysis?.summary ? (
-            <div className="pt-1.5 border-t border-subtitle/25 text-xs font-semibold text-amber-900 dark:text-amber-200 flex items-start gap-1.5">
-              <span className="text-sm leading-none">🔍</span>
-              <span>{faultAnalysis.summary}</span>
+
+          {/* Letter-by-letter Diagnosis & Auto-Correction */}
+          {faultAnalysis && answer.trim().length > 0 && faultAnalysis.letterFaults.length > 0 ? (
+            <div className="pt-2 border-t border-subtitle/25 flex flex-col gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-amber-950 dark:text-amber-200">
+                  {faultAnalysis.hasFault ? "Your letters (faults marked in red):" : "Your letters so far:"}
+                </span>
+                {faultAnalysis.hasFault && faultAnalysis.firstWrongIndex >= 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cleanTarget = masked.hiddenWord;
+                      const fixedPrefix = cleanTarget.slice(0, faultAnalysis.firstWrongIndex + 1);
+                      setAnswer(fixedPrefix);
+                      inputRef.current?.focus();
+                    }}
+                    className="text-[11px] font-bold text-ok hover:underline cursor-pointer bg-ok/10 border border-ok/30 rounded-md px-2 py-0.5"
+                  >
+                    ✓ Auto-correct to &ldquo;{masked.hiddenWord.slice(0, faultAnalysis.firstWrongIndex + 1)}&rdquo;
+                  </button>
+                ) : null}
+              </div>
+
+              {/* Visual Letter Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 font-mono text-sm font-bold">
+                {faultAnalysis.letterFaults.map((lf, i) => (
+                  <button
+                    type="button"
+                    key={i}
+                    onClick={() => {
+                      // Focus input and place cursor right after this character
+                      if (inputRef.current) {
+                        inputRef.current.focus();
+                        inputRef.current.setSelectionRange(lf.index, lf.index + 1);
+                      }
+                    }}
+                    title={
+                      lf.status === "correct"
+                        ? `Letter #${lf.position} (${lf.char}) is correct`
+                        : `Fault letter #${lf.position}: "${lf.char}" is wrong (expected "${lf.expectedChar ?? "none"}")`
+                    }
+                    className={`flex flex-col items-center justify-center min-w-[30px] h-9 px-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                      lf.status === "correct"
+                        ? "bg-ok/15 text-ok border-ok/30 hover:bg-ok/25"
+                        : "bg-bad/20 text-bad border-bad ring-2 ring-bad/20 hover:bg-bad/30"
+                    }`}
+                  >
+                    <span>{lf.char}</span>
+                    <span className="text-[9px] leading-none font-sans font-normal opacity-70">
+                      {lf.status === "correct" ? "✓" : "✗"}
+                    </span>
+                  </button>
+                ))}
+
+                {/* Remaining dots for untyped letters */}
+                {Array.from({ length: Math.max(0, masked.letterCount - answer.trim().length) }).map((_, i) => (
+                  <div
+                    key={`dot-${i}`}
+                    className="flex flex-col items-center justify-center w-7 h-9 rounded-lg border border-line bg-surface text-muted text-xs font-mono"
+                  >
+                    <span>·</span>
+                    <span className="text-[9px] leading-none opacity-40 font-sans">
+                      {answer.trim().length + i + 1}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {faultAnalysis.summary ? (
+                <p className="text-xs font-medium text-amber-900 dark:text-amber-200">
+                  {faultAnalysis.summary}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -224,11 +325,33 @@ export function MissingWordExercise({
       {state === "wrong" ? (
         <div
           role="alert"
-          className="rounded-xl border border-bad/30 bg-bad-soft px-3.5 py-2.5 text-xs sm:text-sm text-bad-ink font-medium grid gap-1.5"
+          className="rounded-xl border border-bad/30 bg-bad-soft px-3.5 py-2.5 text-xs sm:text-sm text-bad-ink font-medium grid gap-2"
         >
           <p>
             Not quite! {faultAnalysis?.summary || closenessTip || `${isVideoMode ? "Replay the video clip" : "Listen again"} and count the dots (${masked.letterCount} letters).`}
           </p>
+
+          {/* Fault Letters Breakdown in Alert */}
+          {faultAnalysis && faultAnalysis.letterFaults.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5 font-mono text-sm font-bold pt-1">
+              {faultAnalysis.letterFaults.map((lf, i) => (
+                <div
+                  key={i}
+                  className={`flex flex-col items-center justify-center min-w-[28px] h-8 px-1 rounded-md border text-center ${
+                    lf.status === "correct"
+                      ? "bg-ok/15 text-ok border-ok/30"
+                      : "bg-bad/25 text-bad border-bad font-extrabold"
+                  }`}
+                >
+                  <span>{lf.char}</span>
+                  <span className="text-[8px] leading-none font-sans opacity-70">
+                    {lf.status === "correct" ? "✓" : "✗"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           {hint ? (
             <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-ink">
               <span>

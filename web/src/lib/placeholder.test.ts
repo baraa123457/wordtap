@@ -107,6 +107,17 @@ describe("Stage 2 exact 1-dot-per-character placeholder rule", () => {
       expect(res.notInWord).toBe(true);
       expect(res.summary).toContain('Letter #6 ("f") is incorrect — "f" is not in this word.');
       expect(res.summary).toContain('You have "retri" right so far');
+      expect(res.wrongLettersList).toContain("f");
+      expect(res.hintSuggestion).toContain('Letter #6 ("f") is your fault letter — change it to "e"');
+      expect(res.letterFaults[5]).toEqual({
+        char: "f",
+        expectedChar: "e",
+        status: "wrong",
+        index: 5,
+        position: 6,
+        isFault: true,
+      });
+      expect(res.letterFaults[0].status).toBe("correct");
     });
 
     it("detects incorrect letters that exist elsewhere in the word", () => {
