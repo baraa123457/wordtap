@@ -539,6 +539,26 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                   if (clipRef.current.timestampSeconds > 0 && v.duration > clipRef.current.timestampSeconds) {
                     v.currentTime = clipRef.current.timestampSeconds;
                   }
+
+                  // Browser-level check: Detect if HTML5 video has no audio tracks
+                  const anyVideo = v as HTMLVideoElement & {
+                    mozHasAudio?: boolean;
+                    audioTracks?: { length: number };
+                  };
+                  if (
+                    anyVideo.mozHasAudio === false ||
+                    (anyVideo.audioTracks && anyVideo.audioTracks.length === 0)
+                  ) {
+                    notifyReady(false);
+                    notifyPlaying(false);
+                    setEmbedError("This video has no audio track. Skipping to next clip…");
+                    onUnavailable?.(clipRef.current);
+                    if (onSkipNext) {
+                      setTimeout(onSkipNext, 600);
+                    }
+                    return;
+                  }
+
                   notifyReady(true);
                 }}
                 onPlay={() => notifyPlaying(true)}

@@ -523,7 +523,7 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
         fetch(
           `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(
             fileParam,
-          )}&prop=imageinfo&iiprop=url|mime|duration|size|dimensions|extmetadata&format=json&formatversion=2`,
+          )}&prop=imageinfo&iiprop=url|mime|duration|size|dimensions|extmetadata|metadata&format=json&formatversion=2`,
           {
             headers: { "User-Agent": WIKIMEDIA_USER_AGENT },
             signal: AbortSignal.timeout(8000),
@@ -555,6 +555,7 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
               size?: number;
               width?: number;
               height?: number;
+              metadata?: Array<{ name: string; value: unknown }>;
               extmetadata?: {
                 LicenseShortName?: { value?: string };
                 Artist?: { value?: string };
@@ -596,6 +597,27 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
         if (!info.url.startsWith("https://upload.wikimedia.org/")) continue;
         // Skip extremely large multi-GB raw files so HTML5 seeking stays fast
         if (typeof info.size === "number" && info.size > 450_000_000) continue;
+
+        // Verify the video actually has an audio stream (reject silent timelapses, silent animations, etc.)
+        const metadata = info.metadata;
+        const hasAudioStream =
+          Array.isArray(metadata) &&
+          metadata.some((m) => {
+            if (m.name !== "audio") return false;
+            if (Array.isArray(m.value)) {
+              const channels = m.value.find(
+                (v: unknown): v is { name?: string; value?: unknown } =>
+                  Boolean(v) && typeof v === "object" && (v as { name?: string }).name === "channels",
+              );
+              if (channels && Number(channels.value) === 0) return false;
+            }
+            return true;
+          });
+
+        if (!hasAudioStream) {
+          // Reject silent video with no audio track
+          continue;
+        }
 
         // Verify that video audio is natively in English (reject German, French, Spanish, etc.)
         const rawCategories = info.extmetadata?.Categories?.value || "";
