@@ -38,6 +38,18 @@ describe("api-guard security", () => {
     expect(isAllowedOrigin(evilReq)).toBe(false);
   });
 
+  it("blocks prefix-matching CORS bypass attacks (e.g. localhost.attacker.com)", () => {
+    const localhostBypassReq = new Request("https://wordtap.app/api/translate", {
+      headers: { origin: "http://localhost.attacker.com" },
+    });
+    expect(isAllowedOrigin(localhostBypassReq)).toBe(false);
+
+    const ipBypassReq = new Request("https://wordtap.app/api/translate", {
+      headers: { origin: "http://127.0.0.1.evil.org" },
+    });
+    expect(isAllowedOrigin(ipBypassReq)).toBe(false);
+  });
+
   it("blocks cross-origin request even if attacker supplies dummy Bearer token", () => {
     const evilReq = new Request("https://wordtap.app/api/translate", {
       headers: {

@@ -79,12 +79,13 @@ export async function getCachedWordExercise(
     // Update in-memory cache
     MEMORY_CACHE.set(key, { data: res, cachedAt: Date.now() });
 
-    // Asynchronously increment hits_count in background
+    // Asynchronously increment hits_count via secure RPC in background
     void supabase
-      .from("cached_word_exercises")
-      .update({ hits_count: (data.hits_count || 1) + 1, updated_at: new Date().toISOString() })
-      .eq("word", word.toLowerCase().trim())
-      .eq("target_lang", targetLang.toLowerCase().trim());
+      .rpc("increment_cached_word_hits", {
+        p_word: word.toLowerCase().trim(),
+        p_target_lang: targetLang.toLowerCase().trim(),
+      })
+      .then(undefined, () => {});
 
     return res;
   } catch {
@@ -117,22 +118,35 @@ export async function saveWordExerciseToCache(params: {
   };
   MEMORY_CACHE.set(key, { data: updatedData, cachedAt: Date.now() });
 
-  // Persist to Supabase
+  // Persist to Supabase via secure RPC
   try {
     const supabase = getSupabase();
-    await supabase.from("cached_word_exercises").upsert(
-      {
-        word: cleanWord,
-        target_lang: targetLang,
-        understanding_question: updatedData.understanding || null,
-        sentence_examples: updatedData.examples || [],
-        meanings: updatedData.meanings || [],
-        definition: params.definition || updatedData.understanding?.definition || "",
-        part_of_speech: params.partOfSpeech || updatedData.understanding?.partOfSpeech || "",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "word,target_lang" },
-    );
+    const { error } = await supabase.rpc("save_cached_word_exercise", {
+      p_word: cleanWord,
+      p_target_lang: targetLang,
+      p_understanding_question: updatedData.understanding || null,
+      p_sentence_examples: updatedData.examples || [],
+      p_meanings: updatedData.meanings || [],
+      p_definition: params.definition || updatedData.understanding?.definition || "",
+      p_part_of_speech: params.partOfSpeech || updatedData.understanding?.partOfSpeech || "",
+    });
+
+    // Graceful fallback to upsert if migration 014 RPC has not executed yet
+    if (error) {
+      await supabase.from("cached_word_exercises").upsert(
+        {
+          word: cleanWord,
+          target_lang: targetLang,
+          understanding_question: updatedData.understanding || null,
+          sentence_examples: updatedData.examples || [],
+          meanings: updatedData.meanings || [],
+          definition: params.definition || updatedData.understanding?.definition || "",
+          part_of_speech: params.partOfSpeech || updatedData.understanding?.partOfSpeech || "",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "word,target_lang" },
+      );
+    }
   } catch {
     // Best effort persistence
   }

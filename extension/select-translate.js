@@ -4,11 +4,18 @@
  * is selected on any webpage, with dynamic English speech pronunciation.
  */
 (() => {
-  const IS_WORDTAP_WEB =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1" ||
-      window.location.host.includes("wordtap"));
+  function isTrustedWordTapSite() {
+    if (typeof window === "undefined" || !window.location) return false;
+    const hn = window.location.hostname.toLowerCase();
+    return (
+      hn === "localhost" ||
+      hn === "127.0.0.1" ||
+      hn === "wordtap.vercel.app" ||
+      hn.endsWith(".wordtap.vercel.app")
+    );
+  }
+
+  const IS_WORDTAP_WEB = isTrustedWordTapSite();
 
   if (IS_WORDTAP_WEB) {
     function syncSettingsFromWeb() {
@@ -252,6 +259,9 @@
   updateSavedWordsFromStorage();
 
   function syncFromWebsiteStorage() {
+    // SECURITY: Strictly restrict reading session tokens and cached words to trusted WordTap origins
+    if (!IS_WORDTAP_WEB) return;
+
     try {
       const cached = localStorage.getItem("wordtap_cached_words");
       if (cached) {
@@ -286,6 +296,8 @@
   syncFromWebsiteStorage();
 
   window.addEventListener("message", (e) => {
+    // SECURITY: Strictly restrict cross-window messages to trusted WordTap origins
+    if (!IS_WORDTAP_WEB || !e.origin || e.origin !== window.location.origin) return;
     if (!e.data || typeof e.data !== "object") return;
     if (e.data.type === "wordtap:words-synced" && Array.isArray(e.data.words)) {
       for (const item of e.data.words) {
@@ -310,6 +322,7 @@
   });
 
   window.addEventListener("wordtap_words_synced", (e) => {
+    if (!IS_WORDTAP_WEB) return;
     if (e.detail && Array.isArray(e.detail.words)) {
       for (const item of e.detail.words) {
         if (item && item.text) {
@@ -326,6 +339,7 @@
   });
 
   window.addEventListener("wordtap:word-deleted", (e) => {
+    if (!IS_WORDTAP_WEB) return;
     if (e.detail && e.detail.text) {
       const n = normWord(e.detail.text);
       savedWordsSet.delete(n);

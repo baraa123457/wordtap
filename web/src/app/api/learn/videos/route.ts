@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
 import {
@@ -152,6 +153,31 @@ export async function PATCH(req: Request) {
   const blocked = guardApiRequest(req, "learn-videos-flag", 30);
   if (blocked) return blocked;
   const corsHeaders = getCorsHeaders(req);
+
+  // Require valid authenticated user session to prevent unauthenticated video suppression
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader || !/^Bearer\s+.+/i.test(authHeader)) {
+    return NextResponse.json(
+      { error: "Authentication required to report unavailable videos." },
+      { status: 401, headers: corsHeaders },
+    );
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (supabaseUrl && anonKey) {
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const authClient = createClient(supabaseUrl, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: { user }, error: authErr } = await authClient.auth.getUser(token);
+    if (authErr || !user) {
+      return NextResponse.json(
+        { error: "Invalid or expired authorization token." },
+        { status: 401, headers: corsHeaders },
+      );
+    }
+  }
 
   try {
     const raw = await req.json();

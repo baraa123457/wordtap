@@ -18,15 +18,6 @@ export function isAllowedOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");
   if (!origin) return true; // Same-origin navigations or server-side fetches
 
-  if (
-    origin.startsWith("chrome-extension://") ||
-    origin.startsWith("moz-extension://") ||
-    origin.startsWith("http://localhost") ||
-    origin.startsWith("http://127.0.0.1")
-  ) {
-    return true;
-  }
-
   let origUrl: URL;
   let reqUrl: URL;
   try {
@@ -34,6 +25,19 @@ export function isAllowedOrigin(req: Request): boolean {
     origUrl = new URL(origin);
   } catch {
     return false;
+  }
+
+  // 1. Browser extension protocols
+  if (
+    origUrl.protocol === "chrome-extension:" ||
+    origUrl.protocol === "moz-extension:"
+  ) {
+    return true;
+  }
+
+  // 2. Strict local development hostnames (strictly "localhost" or "127.0.0.1", eliminating prefix bypasses like localhost.attacker.com)
+  if (origUrl.hostname === "localhost" || origUrl.hostname === "127.0.0.1") {
+    return true;
   }
 
   if (origUrl.host === reqUrl.host) return true;
