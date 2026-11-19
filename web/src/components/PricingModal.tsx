@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   activateSubscription,
+  formatPrice,
   PRICING_PLANS,
   type PricingCurrency,
 } from "@/lib/subscription";
@@ -110,7 +111,9 @@ export function PricingModal({
                 onClick={() => void handleQuickUpgrade()}
                 className="btn btn-primary w-full min-h-11 text-sm font-bold justify-center cursor-pointer shadow-xs"
               >
-                {upgrading ? "Activating Pro…" : `Upgrade Now (${plan.symbol}${plan.yearlyMonthlyEquivalent.toFixed(2)}/mo)`}
+                {upgrading
+                  ? "Activating Pro…"
+                  : `Upgrade Now (${formatPrice(plan.yearlyMonthlyEquivalent, currency).display}/mo)`}
               </button>
               <Link
                 href="/pricing"

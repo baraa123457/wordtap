@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   activateSubscription,
+  formatPrice,
   getUserSubscription,
   PRICING_PLANS,
   type BillingInterval,
@@ -28,13 +29,13 @@ export default function PricingPage() {
   }, []);
 
   const plan = PRICING_PLANS[currency];
-  const priceDisplay =
-    interval === "yearly"
-      ? `${plan.symbol}${plan.yearlyMonthlyEquivalent.toFixed(2)}`
-      : `${plan.symbol}${plan.monthlyPrice.toFixed(2)}`;
+  const currentPrice = interval === "yearly" ? plan.yearlyMonthlyEquivalent : plan.monthlyPrice;
+  const formattedMonthlyPrice = formatPrice(currentPrice, currency);
+  const formattedYearlyTotal = formatPrice(plan.yearlyPrice, currency);
+
   const billedPeriodText =
     interval === "yearly"
-      ? `billed annually at ${plan.symbol}${plan.yearlyPrice}/yr`
+      ? `billed annually at ${formattedYearlyTotal.display} / year`
       : `billed monthly`;
 
   const handleUpgrade = async () => {
@@ -189,12 +190,30 @@ export default function PricingPage() {
               </p>
             </div>
 
-            <div>
-              <div className="flex items-baseline gap-1 text-3xl sm:text-4xl font-extrabold text-ink">
-                <span>{priceDisplay}</span>
-                <span className="text-xs font-normal text-muted">/ month</span>
+            <div className="py-1">
+              <div className="flex items-baseline gap-1.5 text-ink" dir="ltr">
+                {formattedMonthlyPrice.isSymbolPrefix ? (
+                  <>
+                    <span className="text-xl sm:text-2xl font-bold text-muted select-none">
+                      {formattedMonthlyPrice.symbol}
+                    </span>
+                    <span className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                      {formattedMonthlyPrice.amount}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                      {formattedMonthlyPrice.amount}
+                    </span>
+                    <span className="text-base sm:text-lg font-bold text-muted select-none">
+                      {formattedMonthlyPrice.symbol}
+                    </span>
+                  </>
+                )}
+                <span className="text-xs font-medium text-muted ml-0.5 self-baseline">/ month</span>
               </div>
-              <p className="text-[11px] text-muted mt-0.5">{billedPeriodText}</p>
+              <p className="text-xs text-muted mt-2 leading-relaxed">{billedPeriodText}</p>
             </div>
 
             <ul className="space-y-2.5 text-xs sm:text-sm text-ink pt-2">
@@ -237,7 +256,7 @@ export default function PricingPage() {
                 onClick={() => void handleUpgrade()}
                 className="btn btn-primary w-full min-h-12 text-sm font-extrabold justify-center cursor-pointer shadow-sm"
               >
-                {upgrading ? "Activating Fluency Pass…" : `Upgrade to Pro — ${priceDisplay}/mo`}
+                {upgrading ? "Activating Fluency Pass…" : `Upgrade to Pro — ${formattedMonthlyPrice.display}/mo`}
               </button>
             )}
 

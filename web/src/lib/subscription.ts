@@ -62,6 +62,27 @@ export const PRICING_PLANS: Record<
   },
 };
 
+export function formatPrice(
+  amount: number,
+  currency: PricingCurrency,
+): {
+  amount: string;
+  symbol: string;
+  isSymbolPrefix: boolean;
+  display: string;
+} {
+  const plan = PRICING_PLANS[currency] || PRICING_PLANS.USD;
+  const isPrefix = currency === "USD";
+  const formattedAmount = Number.isInteger(amount) ? amount.toString() : amount.toFixed(2);
+  const display = isPrefix ? `${plan.symbol}${formattedAmount}` : `${formattedAmount} ${plan.symbol}`;
+  return {
+    amount: formattedAmount,
+    symbol: plan.symbol,
+    isSymbolPrefix: isPrefix,
+    display,
+  };
+}
+
 export const FREE_LIMITS = {
   dailyCaptures: 5,
   dailyReviews: 15,
