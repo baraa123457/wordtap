@@ -245,6 +245,7 @@ export function ContextualLearningStage({
             total={videos.length}
             speed={playbackSpeed}
             quality={videoQuality}
+            onQualityChange={handleQualityChange}
             onReadyChange={setPlayerReady}
             onPlayingChange={setPlayerPlaying}
             onTimeUpdate={setCurrentTimeSec}

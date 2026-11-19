@@ -146,6 +146,7 @@ type WordTabVideoPlayerProps = {
   total: number;
   speed: WordTabPlaybackSpeed;
   quality?: WordTabVideoQuality;
+  onQualityChange?: (quality: WordTabVideoQuality) => void;
   onReadyChange?: (ready: boolean) => void;
   onPlayingChange?: (playing: boolean) => void;
   onTimeUpdate?: (currentTimeSec: number) => void;
@@ -160,6 +161,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
       total,
       speed,
       quality = "auto",
+      onQualityChange,
       onReadyChange,
       onPlayingChange,
       onTimeUpdate,
@@ -172,6 +174,8 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
     const ytMountRef = useRef<HTMLDivElement>(null);
     const ytPlayerRef = useRef<YTPlayerInstance | null>(null);
     const htmlVideoRef = useRef<HTMLVideoElement | null>(null);
+
+    const [showQualityMenu, setShowQualityMenu] = useState(false);
 
     const clipRef = useRef(clip);
     clipRef.current = clip;
@@ -530,6 +534,25 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
       return () => window.removeEventListener("keydown", onKeyDown);
     }, [ready, embedError, togglePlayInternal, replayInternal, rewindInternal]);
 
+    useEffect(() => {
+      if (!showQualityMenu) return;
+      const handleClickOutside = (e: MouseEvent) => {
+        const target = e.target as HTMLElement | null;
+        if (!target?.closest?.('[data-testid="in-video-quality-container"]')) {
+          setShowQualityMenu(false);
+        }
+      };
+      window.addEventListener("click", handleClickOutside);
+      return () => window.removeEventListener("click", handleClickOutside);
+    }, [showQualityMenu]);
+
+    const qualityBadge =
+      quality === "auto"
+        ? "Auto (480p)"
+        : quality === "original"
+        ? "Original"
+        : quality;
+
     const activeRatio = isDirectVideo && nativeRatio ? nativeRatio : 16 / 9;
     const containerStyle: React.CSSProperties = {
       aspectRatio: `${activeRatio}`,
@@ -548,7 +571,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
         <div
           data-testid="wordtab-video-player"
           style={containerStyle}
-          className="relative mx-auto w-full max-w-full overflow-hidden rounded-2xl border border-line bg-black shadow-md"
+          className="group relative mx-auto w-full max-w-full overflow-hidden rounded-2xl border border-line bg-black shadow-md"
         >
           {embedError ? (
             <div className="absolute inset-0 flex h-full w-full flex-col items-center justify-center gap-3 p-6 text-center text-white/90">
@@ -704,6 +727,73 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                   className="absolute inset-0 h-full w-full [&>iframe]:h-full [&>iframe]:w-full"
                 />
               )}
+
+              {/* In-Video YouTube-Style Quality Settings Overlay */}
+              {onQualityChange && !embedError ? (
+                <div
+                  data-testid="in-video-quality-container"
+                  className="absolute bottom-2.5 right-2.5 z-40 select-none"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {showQualityMenu ? (
+                    <div
+                      role="menu"
+                      aria-label="Select Video Quality"
+                      className="mb-2 w-36 rounded-xl border border-white/20 bg-black/90 backdrop-blur-md p-1.5 shadow-2xl text-white text-xs"
+                    >
+                      <div className="px-2 py-1 text-[10px] font-bold text-white/50 uppercase tracking-wider border-b border-white/10 mb-1 flex items-center justify-between">
+                        <span>Quality</span>
+                        <span className="text-[11px]">⚙️</span>
+                      </div>
+                      {(
+                        ["auto", "720p", "480p", "360p", "original"] as WordTabVideoQuality[]
+                      ).map((q) => {
+                        const isSelected = quality === q;
+                        const label =
+                          q === "auto"
+                            ? "Auto (480p)"
+                            : q === "720p"
+                            ? "720p HD"
+                            : q === "480p"
+                            ? "480p"
+                            : q === "360p"
+                            ? "360p"
+                            : "Original";
+                        return (
+                          <button
+                            key={q}
+                            type="button"
+                            onClick={() => {
+                              onQualityChange(q);
+                              setShowQualityMenu(false);
+                            }}
+                            className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-start font-semibold transition hover:bg-white/15 cursor-pointer ${
+                              isSelected ? "text-subtitle font-bold" : "text-white/90"
+                            }`}
+                          >
+                            <span>{label}</span>
+                            {isSelected ? (
+                              <span className="text-subtitle font-black text-xs">✓</span>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    data-testid="in-video-quality-button"
+                    onClick={() => setShowQualityMenu((prev) => !prev)}
+                    title={`Video Quality: ${qualityBadge} (Click to change)`}
+                    aria-label={`Video Quality: ${qualityBadge}`}
+                    className="flex items-center gap-1.5 rounded-full bg-black/65 hover:bg-black/90 border border-white/25 hover:border-subtitle backdrop-blur-md px-2.5 py-1 text-[11px] font-bold text-white shadow-lg transition-all hover:scale-105 cursor-pointer opacity-85 group-hover:opacity-100 hover:opacity-100"
+                  >
+                    <span className="text-[12px] opacity-90">⚙️</span>
+                    <span className="tabular-nums font-semibold">{qualityBadge}</span>
+                  </button>
+                </div>
+              ) : null}
             </>
           )}
         </div>
