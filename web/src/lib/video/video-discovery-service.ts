@@ -8,6 +8,7 @@ import {
   isVerifiedEnglishCollection,
   MAX_VIDEO_FILE_SIZE_BYTES,
 } from "./video-language-filter";
+import { detectSubtitleLanguage } from "./subtitle-language-checker";
 import {
   cleanCaptionText,
   CompositeTranscriptProvider,
@@ -130,6 +131,13 @@ export class YouGlishRestDiscoveryProvider implements IVideoDiscoveryProvider {
         const startSec = Math.max(0, Math.floor(Number(row.start) || 0));
         const clipStart = Math.max(0, startSec - 2);
         const cues = await this.fetchSurroundingCues(apiKey, vid, lg, clipStart, sentence);
+      // Detect subtitle language and reject non‑English subtitles
+      const subtitleText = cues.map((c) => c.text).join(' ');
+      const subLang = detectSubtitleLanguage(subtitleText);
+      if (subLang && subLang !== 'en') {
+        // Skip this video – subtitles are not English
+        continue;
+      }
         const qualityScore = scoreContextCandidate({
           sentence,
           targetWord: query.word,
@@ -707,6 +715,11 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
           0,
         );
         if (totalTranscriptWords < 15) continue;
+
+        // Verify subtitle language is English (reject German, French, Spanish, Chinese subtitles)
+        const combinedSubtitleText = cues.map((c) => c.text).join(" ");
+        const subLang = detectSubtitleLanguage(combinedSubtitleText);
+        if (subLang && subLang !== "en") continue;
 
         const videoTitle = cleanWikimediaTitle(pair.fileTitle);
         if (isNonEnglishVideoTitle(videoTitle)) continue;
