@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  analyzeAnswerFaults,
   buildExactDotPlaceholder,
   buildProgressiveHint,
   maskWordInSentence,
@@ -92,5 +93,44 @@ describe("Stage 2 exact 1-dot-per-character placeholder rule", () => {
     expect(parsed.hasExplicitMarker).toBe(false);
     expect(parsed.masked).toBeNull();
     expect(parsed.plainSentence).toBe("Welcome back to today's episode everyone.");
+  });
+
+  describe("analyzeAnswerFaults letter-by-letter diagnosis", () => {
+    it("detects wrong letters not in the word (e.g. 'retrife' vs 'retrieve')", () => {
+      const res = analyzeAnswerFaults("retrife", "retrieve");
+      expect(res.hasFault).toBe(true);
+      expect(res.isCorrect).toBe(false);
+      expect(res.correctPrefix).toBe("retri");
+      expect(res.firstWrongIndex).toBe(5);
+      expect(res.firstWrongChar).toBe("f");
+      expect(res.expectedChar).toBe("e");
+      expect(res.notInWord).toBe(true);
+      expect(res.summary).toContain('Letter #6 ("f") is incorrect — "f" is not in this word.');
+      expect(res.summary).toContain('You have "retri" right so far');
+    });
+
+    it("detects incorrect letters that exist elsewhere in the word", () => {
+      const res = analyzeAnswerFaults("retreive", "retrieve");
+      expect(res.hasFault).toBe(true);
+      expect(res.correctPrefix).toBe("retr");
+      expect(res.firstWrongIndex).toBe(4);
+      expect(res.firstWrongChar).toBe("e");
+      expect(res.expectedChar).toBe("i");
+      expect(res.notInWord).toBe(false);
+      expect(res.summary).toContain('Letter #5 ("e") is incorrect — try "i".');
+    });
+
+    it("reports correct partial prefix when input is incomplete", () => {
+      const res = analyzeAnswerFaults("retri", "retrieve");
+      expect(res.hasFault).toBe(true);
+      expect(res.correctPrefix).toBe("retri");
+      expect(res.firstWrongIndex).toBe(-1);
+      expect(res.summary).toContain('"retri" is correct so far! You need 3 more letters');
+    });
+
+    it("handles exact match and empty inputs", () => {
+      expect(analyzeAnswerFaults("retrieve", "retrieve").isCorrect).toBe(true);
+      expect(analyzeAnswerFaults("", "retrieve").hasFault).toBe(false);
+    });
   });
 });

@@ -283,3 +283,128 @@ export function buildProgressiveHint(hiddenWord: string, hintLevel: number): str
     })
     .join("");
 }
+
+export type AnswerFaultAnalysis = {
+  hasFault: boolean;
+  isCorrect: boolean;
+  correctPrefix: string;
+  firstWrongIndex: number;
+  firstWrongChar: string | null;
+  expectedChar: string | null;
+  notInWord: boolean;
+  lengthDiff: number;
+  summary: string | null;
+};
+
+/**
+ * Compares the user's typed attempt against the target word to pinpoint exact faulty letters,
+ * transpositions, or missing characters.
+ */
+export function analyzeAnswerFaults(
+  rawInput: string,
+  rawTarget: string,
+): AnswerFaultAnalysis {
+  const normalize = (s: string) =>
+    (s || "")
+      .trim()
+      .toLowerCase()
+      .replace(/^[.,!?;:"'()\[\]]+|[.,!?;:"'()\[\]]+$/g, "");
+
+  const input = normalize(rawInput);
+  const target = normalize(rawTarget);
+
+  if (!input) {
+    return {
+      hasFault: false,
+      isCorrect: false,
+      correctPrefix: "",
+      firstWrongIndex: -1,
+      firstWrongChar: null,
+      expectedChar: null,
+      notInWord: false,
+      lengthDiff: -target.length,
+      summary: null,
+    };
+  }
+
+  if (input === target) {
+    return {
+      hasFault: false,
+      isCorrect: true,
+      correctPrefix: target,
+      firstWrongIndex: -1,
+      firstWrongChar: null,
+      expectedChar: null,
+      notInWord: false,
+      lengthDiff: 0,
+      summary: null,
+    };
+  }
+
+  // Find common prefix
+  let prefixLen = 0;
+  while (
+    prefixLen < input.length &&
+    prefixLen < target.length &&
+    input[prefixLen] === target[prefixLen]
+  ) {
+    prefixLen++;
+  }
+
+  const correctPrefix = input.slice(0, prefixLen);
+
+  if (prefixLen < input.length) {
+    const wrongChar = input[prefixLen]!;
+    const expectedChar = prefixLen < target.length ? target[prefixLen]! : null;
+    const notInWord = !target.includes(wrongChar);
+    const posNum = prefixLen + 1;
+
+    let summary = "";
+    if (notInWord) {
+      summary = `Letter #${posNum} ("${wrongChar}") is incorrect — "${wrongChar}" is not in this word.`;
+    } else if (expectedChar) {
+      summary = `Letter #${posNum} ("${wrongChar}") is incorrect — try "${expectedChar}".`;
+    } else {
+      summary = `Remove extra letters starting from letter #${posNum} ("${wrongChar}").`;
+    }
+
+    if (correctPrefix.length > 0) {
+      summary += ` You have "${correctPrefix}" right so far.`;
+    }
+
+    if (input.length !== target.length) {
+      summary += ` (${target.length} letters total).`;
+    }
+
+    return {
+      hasFault: true,
+      isCorrect: false,
+      correctPrefix,
+      firstWrongIndex: prefixLen,
+      firstWrongChar: wrongChar,
+      expectedChar,
+      notInWord,
+      lengthDiff: input.length - target.length,
+      summary,
+    };
+  }
+
+  const remaining = target.length - input.length;
+  const nextChar = target[input.length];
+  const summary = `"${input}" is correct so far! You need ${remaining} more ${
+    remaining === 1 ? "letter" : "letters"
+  } (starts with "${input}${nextChar}…", ${target.length} letters total).`;
+
+  return {
+    hasFault: true,
+    isCorrect: false,
+    correctPrefix: input,
+    firstWrongIndex: -1,
+    firstWrongChar: null,
+    expectedChar: nextChar || null,
+    notInWord: false,
+    lengthDiff: -remaining,
+    summary,
+  };
+}
+

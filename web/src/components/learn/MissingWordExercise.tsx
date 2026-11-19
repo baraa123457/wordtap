@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import {
+  analyzeAnswerFaults,
   buildProgressiveHint,
   validateMissingWordAnswer,
   type MaskedSentence,
@@ -61,6 +62,11 @@ export function MissingWordExercise({
     [masked.hiddenWord, hintLevel],
   );
   const canShowMoreHint = hintLevel < 4 && masked.letterCount > 2;
+
+  const faultAnalysis = useMemo(
+    () => (answer.trim() ? analyzeAnswerFaults(answer, masked.hiddenWord) : null),
+    [answer, masked.hiddenWord],
+  );
 
   const closenessTip = useMemo(() => {
     const cleanGuess = answer.trim().toLowerCase();
@@ -185,13 +191,33 @@ export function MissingWordExercise({
       {state === "answering" && hint ? (
         <div
           role="status"
-          className="rounded-xl border border-subtitle/35 bg-subtitle/10 px-3.5 py-2 text-xs sm:text-sm text-ink flex flex-wrap items-center justify-between gap-2"
+          className="rounded-xl border border-subtitle/35 bg-subtitle/10 px-3.5 py-2.5 text-xs sm:text-sm text-ink flex flex-col gap-1.5"
         >
-          <span>
-            <strong className="text-amber-800 dark:text-subtitle">Hint:</strong>{" "}
-            <span className="font-mono font-bold tracking-[0.18em]">{hint}</span>
-            <span className="text-muted text-xs ms-2">({masked.letterCount} letters)</span>
-          </span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              <strong className="text-amber-800 dark:text-subtitle">Hint:</strong>{" "}
+              <span className="font-mono font-bold tracking-[0.18em]">{hint}</span>
+              <span className="text-muted text-xs ms-2">({masked.letterCount} letters)</span>
+            </span>
+            {canShowMoreHint ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setHintClicks((c) => c + 1);
+                  inputRef.current?.focus();
+                }}
+                className="text-xs font-bold text-amber-800 dark:text-subtitle underline underline-offset-4 hover:opacity-80 cursor-pointer"
+              >
+                Reveal more →
+              </button>
+            ) : null}
+          </div>
+          {faultAnalysis?.summary ? (
+            <div className="pt-1.5 border-t border-subtitle/25 text-xs font-semibold text-amber-900 dark:text-amber-200 flex items-start gap-1.5">
+              <span className="text-sm leading-none">🔍</span>
+              <span>{faultAnalysis.summary}</span>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -201,7 +227,7 @@ export function MissingWordExercise({
           className="rounded-xl border border-bad/30 bg-bad-soft px-3.5 py-2.5 text-xs sm:text-sm text-bad-ink font-medium grid gap-1.5"
         >
           <p>
-            Not quite! {closenessTip || `${isVideoMode ? "Replay the video clip" : "Listen again"} and count the dots (${masked.letterCount} letters).`}
+            Not quite! {faultAnalysis?.summary || closenessTip || `${isVideoMode ? "Replay the video clip" : "Listen again"} and count the dots (${masked.letterCount} letters).`}
           </p>
           {hint ? (
             <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-ink">
