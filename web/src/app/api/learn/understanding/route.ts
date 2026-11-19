@@ -10,6 +10,7 @@ export async function OPTIONS(req: Request) {
 const requestSchema = z.object({
   word: z.string().trim().min(1).max(120),
   translation: z.string().trim().max(300).optional().default(""),
+  targetLang: z.string().trim().max(20).optional().default("ar"),
   existingDefinition: z.string().trim().max(600).optional().default(""),
   partOfSpeech: z.string().trim().max(60).optional().default(""),
   level: z.enum(["beginner", "intermediate", "advanced"]).optional().default("intermediate"),
@@ -21,6 +22,7 @@ const aiResponseSchema = z.object({
   explanation: z.string().min(8).max(400),
   partOfSpeech: z.string().max(60).optional().default(""),
   pronunciation: z.string().max(100).optional().default(""),
+  nativeMeanings: z.array(z.string().min(1).max(80)).optional().default([]),
 });
 
 type OptionId = "A" | "B" | "C" | "D";
@@ -213,6 +215,55 @@ async function fetchDictionaryEntry(word: string): Promise<{
   return null;
 }
 
+async function fetchNativeMeanings(
+  word: string,
+  targetLang = "ar",
+  primaryTranslation = "",
+): Promise<string[]> {
+  const list: string[] = [];
+  if (primaryTranslation) {
+    const parts = primaryTranslation.split(/[,/،;·•\n]+/).map((s) => s.trim()).filter(Boolean);
+    for (const p of parts) {
+      if (!list.includes(p)) list.push(p);
+    }
+  }
+
+  try {
+    const gUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(
+      targetLang,
+    )}&dt=t&dt=bd&dt=rm&q=${encodeURIComponent(word.trim())}`;
+    const res = await fetch(gUrl, {
+      signal: AbortSignal.timeout(3500),
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      },
+    });
+    if (res.ok) {
+      const data = (await res.json()) as unknown[];
+      const main = (data?.[0] as Array<Array<string>>)?.[0]?.[0];
+      if (typeof main === "string" && main.trim() && !list.includes(main.trim())) {
+        list.push(main.trim());
+      }
+      if (Array.isArray(data?.[1])) {
+        for (const entry of data[1]) {
+          if (Array.isArray(entry) && Array.isArray(entry[1])) {
+            for (const m of entry[1]) {
+              if (typeof m === "string" && m.trim() && !list.includes(m.trim())) {
+                list.push(m.trim());
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // continue with whatever was extracted
+  }
+
+  return list.slice(0, 5);
+}
+
 function pickDistractors(
   pos: string,
   correctMeaning: string,
@@ -268,7 +319,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { word, translation, existingDefinition, partOfSpeech, level } = parsed.data;
+    const { word, translation, targetLang = "ar", existingDefinition, partOfSpeech, level } = parsed.data;
     const displayWord = word.charAt(0).toUpperCase() + word.slice(1);
     const question = `What does "${displayWord}" mean?`;
 
@@ -280,14 +331,16 @@ Return ONLY valid JSON with these exact keys:
   "distractors": ["plausible wrong meaning 1", "plausible wrong meaning 2", "plausible wrong meaning 3"],
   "explanation": "1-2 friendly, simple sentences explaining what the word means and when native speakers use it.",
   "partOfSpeech": "noun|verb|adjective|adverb|phrase",
-  "pronunciation": "IPA pronunciation like /rɪˈlʌktənt/ if known, else empty string"
+  "pronunciation": "IPA pronunciation like /rɪˈlʌktənt/ if known, else empty string",
+  "nativeMeanings": ["primary translation", "common alternative 1", "common alternative 2"]
 }
 Rules:
 - All 4 options must share the same grammatical style and similar length so the learner CANNOT guess by wording length or grammar cues.
 - Distractors must be realistic, relevant meanings of other concepts—never silly, never obvious opposites only, never synonyms of the correct answer.
-- Never include the target word or its stem in correctMeaning.`;
+- Never include the target word or its stem in correctMeaning.
+- nativeMeanings must contain 2 to 4 natural, accurate translations of "${word}" in the learner's native language (${targetLang}).`;
 
-    const userPrompt = `Target English word: "${word}"${partOfSpeech ? `\nPart of speech hint: ${partOfSpeech}` : ""}${existingDefinition ? `\nReference definition: ${existingDefinition}` : ""}${translation ? `\nLearner's native translation hint (for disambiguating sense only, write ALL output in simple English): ${translation}` : ""}`;
+    const userPrompt = `Target English word: "${word}"${partOfSpeech ? `\nPart of speech hint: ${partOfSpeech}` : ""}${existingDefinition ? `\nReference definition: ${existingDefinition}` : ""}${translation ? `\nLearner's native translation hint (for disambiguating sense, language: ${targetLang}): ${translation}` : ""}`;
 
     const aiRes = await callAiJson<unknown>(systemPrompt, userPrompt);
     if (aiRes) {
@@ -306,6 +359,15 @@ Rules:
         const correctIndex = rawOptions.findIndex((o) => o.isCorrect);
         const correctOptionId = OPTION_IDS[correctIndex]!;
 
+        const fallbackDictMeanings = await fetchNativeMeanings(word, targetLang, translation);
+        const resolvedMeanings = Array.from(
+          new Set(
+            [...(d.nativeMeanings || []), ...fallbackDictMeanings]
+              .map((s) => s.trim())
+              .filter(Boolean),
+          ),
+        ).slice(0, 5);
+
         return NextResponse.json(
           {
             word,
@@ -316,6 +378,7 @@ Rules:
             definition: correctText,
             pronunciation: d.pronunciation || "",
             partOfSpeech: d.partOfSpeech || partOfSpeech || "",
+            meanings: resolvedMeanings,
             provider: aiRes.provider,
           },
           { headers: corsHeaders },
@@ -357,6 +420,8 @@ Rules:
     const correctIndex = rawOptions.findIndex((o) => o.isCorrect);
     const correctOptionId = OPTION_IDS[correctIndex]!;
 
+    const dictMeanings = await fetchNativeMeanings(word, targetLang, translation);
+
     const explanation = `"${displayWord}" (${resolvedPos || "word"}) means: ${resolvedDefinition.toLowerCase()}.${translation ? ` In your language: ${translation}.` : ""}`;
 
     return NextResponse.json(
@@ -369,6 +434,7 @@ Rules:
         definition: resolvedDefinition,
         pronunciation: resolvedPron,
         partOfSpeech: resolvedPos,
+        meanings: dictMeanings,
         provider: "dictionary",
       },
       { headers: corsHeaders },

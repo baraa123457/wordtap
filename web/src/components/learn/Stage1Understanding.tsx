@@ -9,6 +9,7 @@ import {
 import { canSpeak, speak } from "@/lib/speech";
 import { SpeakerIcon, TrashIcon } from "@/components/Icons";
 import { POS_BADGES } from "@/components/TranslatorCard";
+import { updateWordDetails } from "@/lib/api";
 
 export function Stage1Understanding({
   word,
@@ -31,6 +32,98 @@ export function Stage1Understanding({
   const [selectedId, setSelectedId] = useState<"A" | "B" | "C" | "D" | null>(null);
   const [status, setStatus] = useState<"answering" | "wrong" | "correct">("answering");
   const [hadWrongAttempt, setHadWrongAttempt] = useState(false);
+
+  const [meanings, setMeanings] = useState<string[]>(() => {
+    if (!word.translation) return [];
+    return word.translation
+      .split(/[,/،;·•\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  });
+  const [isAddingMeaning, setIsAddingMeaning] = useState(false);
+  const [newMeaningInput, setNewMeaningInput] = useState("");
+  const [savingMeaning, setSavingMeaning] = useState(false);
+
+  useEffect(() => {
+    const list = word.translation
+      ? word.translation.split(/[,/،;·•\n]+/).map((s) => s.trim()).filter(Boolean)
+      : [];
+    setMeanings(list);
+    setIsAddingMeaning(false);
+    setNewMeaningInput("");
+  }, [word.id, word.translation]);
+
+  useEffect(() => {
+    if (question?.meanings && question.meanings.length > 0) {
+      setMeanings((prev) => {
+        const merged = [...prev];
+        for (const m of question.meanings!) {
+          const clean = m.trim();
+          if (clean && !merged.some((e) => e.toLowerCase() === clean.toLowerCase())) {
+            merged.push(clean);
+          }
+        }
+        return merged.slice(0, 5);
+      });
+    }
+  }, [question?.meanings]);
+
+  useEffect(() => {
+    let active = true;
+    if (meanings.length <= 1) {
+      const targetLang = word.target_lang || "ar";
+      fetch(`/api/translate?text=${encodeURIComponent(word.text)}&src=en&target=${targetLang}`)
+        .then((r) => r.json())
+        .then((data: { translation?: string; definitions?: Array<{ meanings?: string[] }> }) => {
+          if (!active) return;
+          const candidates: string[] = [];
+          if (data.translation) candidates.push(data.translation);
+          for (const d of data.definitions || []) {
+            for (const m of d.meanings || []) {
+              if (typeof m === "string") candidates.push(m);
+            }
+          }
+          if (candidates.length > 0) {
+            setMeanings((prev) => {
+              const combined = [...prev];
+              for (const c of candidates) {
+                const clean = c.trim();
+                if (clean && !combined.some((x) => x.toLowerCase() === clean.toLowerCase())) {
+                  combined.push(clean);
+                }
+              }
+              return combined.slice(0, 5);
+            });
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      active = false;
+    };
+  }, [word.id, word.text, word.target_lang, meanings.length]);
+
+  const handleAddCustomMeaning = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = newMeaningInput.trim();
+    if (!clean) return;
+    if (meanings.some((m) => m.toLowerCase() === clean.toLowerCase())) {
+      setIsAddingMeaning(false);
+      setNewMeaningInput("");
+      return;
+    }
+    setSavingMeaning(true);
+    try {
+      const nextList = [...meanings, clean];
+      setMeanings(nextList);
+      const joined = nextList.join(" ، ");
+      await updateWordDetails(word.id, { translation: joined }, word).catch(() => {});
+      setIsAddingMeaning(false);
+      setNewMeaningInput("");
+    } finally {
+      setSavingMeaning(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -174,19 +267,72 @@ export function Stage1Understanding({
             ) : null}
           </div>
 
-          {/* Mother Language Meaning */}
-          {word.translation ? (
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span
+          {/* Mother Language Meanings */}
+          {meanings.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 pt-1 min-w-0 max-w-full">
+              <div
                 dir="auto"
                 data-testid="stage1-mother-language-meaning"
-                className="inline-flex items-center gap-2 rounded-xl border border-subtitle/35 bg-subtitle/15 px-3.5 py-1 text-base sm:text-lg font-bold text-ink"
+                className="inline-flex flex-wrap items-center gap-2 rounded-xl border border-subtitle/35 bg-subtitle/15 px-3.5 py-1.5 text-base sm:text-lg font-bold text-ink min-w-0"
               >
-                <span className="text-xs font-semibold text-amber-800 dark:text-subtitle opacity-90 uppercase tracking-wider">
-                  Meaning:
+                <span className="text-xs font-semibold text-amber-800 dark:text-subtitle opacity-90 uppercase tracking-wider shrink-0 select-none">
+                  {meanings.length > 1 ? "Meanings:" : "Meaning:"}
                 </span>
-                <span className="font-extrabold">{word.translation}</span>
-              </span>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {meanings.map((m, idx) => (
+                    <span key={idx} className="inline-flex items-center">
+                      <span className="font-extrabold">{m}</span>
+                      {idx < meanings.length - 1 ? (
+                        <span className="mx-1.5 text-ink/35 font-bold select-none">·</span>
+                      ) : null}
+                    </span>
+                  ))}
+                </div>
+                {!isAddingMeaning ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingMeaning(true)}
+                    title="Add another meaning in your language"
+                    className="ml-1 inline-flex items-center justify-center rounded-lg border border-subtitle/40 bg-subtitle/20 hover:bg-subtitle/35 px-2 py-0.5 text-xs font-bold text-ink cursor-pointer transition-colors"
+                  >
+                    + Add
+                  </button>
+                ) : null}
+              </div>
+
+              {isAddingMeaning ? (
+                <form
+                  onSubmit={(e) => void handleAddCustomMeaning(e)}
+                  className="inline-flex items-center gap-1.5"
+                >
+                  <input
+                    type="text"
+                    dir="auto"
+                    autoFocus
+                    value={newMeaningInput}
+                    onChange={(e) => setNewMeaningInput(e.target.value)}
+                    placeholder="Add meaning..."
+                    className="input min-h-8 px-2.5 py-1 text-xs sm:text-sm font-semibold rounded-lg border border-subtitle"
+                  />
+                  <button
+                    type="submit"
+                    disabled={savingMeaning || !newMeaningInput.trim()}
+                    className="btn btn-primary min-h-8 px-2.5 py-1 text-xs font-bold cursor-pointer disabled:opacity-50"
+                  >
+                    {savingMeaning ? "Saving…" : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingMeaning(false);
+                      setNewMeaningInput("");
+                    }}
+                    className="btn btn-quiet min-h-8 px-2 py-1 text-xs font-semibold cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </form>
+              ) : null}
             </div>
           ) : null}
 

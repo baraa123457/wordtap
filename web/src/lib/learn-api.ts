@@ -27,6 +27,7 @@ export type UnderstandingQuestion = {
   definition: string;
   pronunciation: string;
   partOfSpeech: string;
+  meanings?: string[];
   provider: "gemini" | "openai" | "dictionary";
 };
 
@@ -67,6 +68,7 @@ export async function fetchUnderstandingQuestion(
     body: JSON.stringify({
       word: word.text,
       translation: word.translation,
+      targetLang: word.target_lang || "ar",
       existingDefinition: word.definition || "",
       partOfSpeech: word.part_of_speech || "",
       level,
