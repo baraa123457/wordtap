@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { fetchStats, fetchWords, setDailyGoal, deleteAccount } from "@/lib/api";
@@ -8,7 +9,7 @@ import { exportWordsToCsv, downloadCsvFile } from "@/lib/export";
 import { exportWordsToAnki, downloadAnkiFile } from "@/lib/anki";
 import { getStoredSettings, saveStoredSettings, type UserSettings, type PracticeMode } from "@/lib/settings";
 import { canSpeak, speak } from "@/lib/speech";
-import { SpeakerIcon } from "@/components/Icons";
+import { DownloadIcon, SpeakerIcon } from "@/components/Icons";
 
 const GOALS = [10, 20, 50, 100] as const;
 
@@ -706,6 +707,35 @@ export default function SettingsPage() {
                 </p>
               </div>
             </button>
+          </div>
+        </div>
+
+        {/* Chrome & Edge Extension Download Card */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-subtitle/10 border border-subtitle/30">
+          <div className="space-y-1">
+            <div className="font-bold text-ink text-sm flex items-center gap-2">
+              <DownloadIcon size={16} className="text-subtitle" />
+              <span>WordTap Chrome &amp; Edge Extension</span>
+            </div>
+            <p className="text-xs text-muted">
+              Click-to-translate video subtitles on YouTube and Netflix, and highlight text on any webpage.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href="/wordtap-extension.zip"
+              download
+              className="btn btn-primary min-h-9 px-3.5 py-1 text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <DownloadIcon size={13} />
+              <span>Download ZIP</span>
+            </a>
+            <Link
+              href="/extension"
+              className="btn btn-quiet min-h-9 px-3 py-1 text-xs font-semibold text-subtitle hover:underline"
+            >
+              Setup guide →
+            </Link>
           </div>
         </div>
 

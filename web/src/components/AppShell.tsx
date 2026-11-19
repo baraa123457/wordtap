@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "./ThemeToggle";
 import { Logo } from "./Logo";
-import { StarIcon } from "./Icons";
+import { DownloadIcon, StarIcon } from "./Icons";
 
 const AUTH_LINKS = [
   { href: "/dashboard", label: "Dashboard", shortLabel: "Dashboard" },
@@ -47,6 +47,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             <ThemeToggle />
             {isSignedIn && email ? (
               <>
+                <Link
+                  href="/extension"
+                  className="btn btn-quiet min-h-9 px-2.5 sm:px-3 py-1 text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap"
+                  title="Download & Install Chrome Extension"
+                >
+                  <DownloadIcon size={13} className="text-muted" />
+                  <span className="hidden sm:inline">Extension</span>
+                </Link>
                 <span
                   className="hidden max-w-36 truncate text-xs font-medium text-muted lg:inline"
                   title={email}
