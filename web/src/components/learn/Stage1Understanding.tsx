@@ -31,14 +31,12 @@ export function Stage1Understanding({
   const [selectedId, setSelectedId] = useState<"A" | "B" | "C" | "D" | null>(null);
   const [status, setStatus] = useState<"answering" | "wrong" | "correct">("answering");
   const [hadWrongAttempt, setHadWrongAttempt] = useState(false);
-  const [showDefinition, setShowDefinition] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setError(null);
     setSelectedId(null);
     setStatus("answering");
-    setShowDefinition(false);
     try {
       const q = await fetchUnderstandingQuestion(word);
       setQuestion(q);
@@ -68,7 +66,6 @@ export function Stage1Understanding({
   const handleRetry = () => {
     setSelectedId(null);
     setStatus("answering");
-    setShowDefinition(false);
   };
 
   // Keyboard shortcuts (1-4 or A-D to select, Enter to continue when correct)
@@ -176,24 +173,31 @@ export function Stage1Understanding({
               </button>
             ) : null}
           </div>
+
+          {/* Mother Language Meaning */}
+          {word.translation ? (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span
+                dir="auto"
+                data-testid="stage1-mother-language-meaning"
+                className="inline-flex items-center gap-2 rounded-xl border border-subtitle/35 bg-subtitle/15 px-3.5 py-1 text-base sm:text-lg font-bold text-ink"
+              >
+                <span className="text-xs font-semibold text-amber-800 dark:text-subtitle opacity-90 uppercase tracking-wider">
+                  Meaning:
+                </span>
+                <span className="font-extrabold">{word.translation}</span>
+              </span>
+            </div>
+          ) : null}
+
           {question.pronunciation ? (
             <p className="text-xs sm:text-sm text-muted font-mono">{question.pronunciation}</p>
           ) : null}
         </div>
 
-        {/* Action controls: Show Definition & Delete Word */}
-        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-          {(question.definition || word.definition || word.translation) ? (
-            <button
-              type="button"
-              onClick={() => setShowDefinition((v) => !v)}
-              aria-expanded={showDefinition}
-              className="btn btn-quiet min-h-10 px-3 py-1.5 text-xs font-semibold text-amber-800 dark:text-subtitle border border-subtitle/35 bg-subtitle/10 hover:bg-subtitle/20 cursor-pointer"
-            >
-              💡 {showDefinition ? "Hide definition" : "Definition"}
-            </button>
-          ) : null}
-          {onDeleteWord ? (
+        {/* Action controls: Delete Word */}
+        {onDeleteWord ? (
+          <div className="flex items-center shrink-0">
             <button
               type="button"
               onClick={() => onDeleteWord(word)}
@@ -204,35 +208,12 @@ export function Stage1Understanding({
               <TrashIcon size={14} />
               <span>Delete</span>
             </button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
 
-      {/* On-demand Definition & Saved Meaning Panel */}
-      {showDefinition ? (
-        <div className="rounded-2xl border border-subtitle/35 bg-subtitle/10 px-4 py-3 text-xs sm:text-sm grid gap-1.5 animate-in fade-in duration-150">
-          {(question.definition || word.definition) ? (
-            <p className="text-ink leading-relaxed break-words">
-              <strong className="text-amber-800 dark:text-subtitle">Definition:</strong>{" "}
-              {question.definition || word.definition}
-            </p>
-          ) : null}
-          {word.translation ? (
-            <p dir="auto" className="text-ink font-semibold break-words">
-              <span className="text-muted font-medium">Meaning: </span>
-              {word.translation}
-            </p>
-          ) : null}
-          {word.sentence ? (
-            <p dir="auto" className="text-xs text-muted italic border-t border-line/40 pt-1.5 break-words">
-              &ldquo;{word.sentence}&rdquo;
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* Saved subtitle context preview (if available and definition panel is collapsed) */}
-      {!showDefinition && word.sentence ? (
+      {/* Saved subtitle context preview */}
+      {word.sentence ? (
         <p dir="auto" className="rounded-xl border border-line/70 bg-black/[0.02] dark:bg-white/[0.03] px-3.5 py-2 text-xs sm:text-sm text-muted italic break-words">
           Context: &ldquo;{word.sentence}&rdquo;
         </p>
