@@ -527,6 +527,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                 ref={htmlVideoRef}
                 key={clip.mediaUrl}
                 src={clip.mediaUrl}
+                crossOrigin="anonymous"
                 preload="metadata"
                 playsInline
                 onClick={togglePlayInternal}

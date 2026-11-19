@@ -171,4 +171,35 @@ describe("VideoDiscoveryService provider orchestration & VideoRepository caching
     const afterEvict = await repo.findByWord(wordKey);
     expect(afterEvict.clips.map((c) => c.youtubeVideoId)).toEqual(["EEEEEEEEEEE"]);
   });
+
+  it("filters out non-English videos (e.g. Chinese Leapmotor car review) and non-speech media (reels)", async () => {
+    const foreignClip: VerifiedVideoExample = {
+      ...makeClip("wm_chinese01", "overall", 137),
+      mediaType: "direct_video",
+      videoTitle: "Leapmotor A10- The Chinese Car That Will Shock the World",
+      channelName: "AutoLab · Wikimedia Commons (CC BY 4.0)",
+    };
+    const reelClip: VerifiedVideoExample = {
+      ...makeClip("wm_reel00001", "overall", 5),
+      mediaType: "direct_video",
+      videoTitle: "REEL- Defender 25 Overall Showcase Reel (967241)",
+      channelName: "DVIDS",
+    };
+    const validClip: VerifiedVideoExample = {
+      ...makeClip("wm_english01", "overall", 42),
+      mediaType: "direct_video",
+      videoTitle: "2018 Minnesota State Fair Sets New Overall Attendance Record",
+      channelName: "Lakeland PBS",
+    };
+
+    const repo = new VideoRepository();
+    const testWord = `test-filter-${Date.now()}`;
+    await repo.saveMany(testWord, null, [foreignClip, reelClip, validClip]);
+
+    const hit = await repo.findByWord(testWord);
+    expect(hit.clips.length).toBe(1);
+    expect(hit.clips[0]?.videoTitle).toBe(
+      "2018 Minnesota State Fair Sets New Overall Attendance Record",
+    );
+  });
 });

@@ -4,6 +4,7 @@ import { getVerbConjugation } from "../verbs";
 import {
   isNonEnglishVideoMetadata,
   isNonEnglishVideoTitle,
+  isVerifiedEnglishCollection,
 } from "./video-language-filter";
 import {
   cleanCaptionText,
@@ -587,6 +588,7 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
           height: number;
           license: string;
           artist: string;
+          categories: string;
         }
       >();
       for (const page of fileJson.query?.pages || []) {
@@ -650,6 +652,7 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
           height: Number(info.height) || 0,
           license,
           artist,
+          categories: rawCategories,
         });
       }
 
@@ -663,7 +666,14 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
         if (!srt || !fileInfo) continue;
 
         const cues = parseSrtOrVttToCues(srt);
-        if (cues.length === 0) continue;
+        // Eliminate non-speech media (silent showcase reels, 1-line promos, b-rolls with only 1-2 title cards)
+        if (cues.length < 3) continue;
+
+        const totalTranscriptWords = cues.reduce(
+          (sum, c) => sum + c.text.split(/\s+/).filter(Boolean).length,
+          0,
+        );
+        if (totalTranscriptWords < 15) continue;
 
         const videoTitle = cleanWikimediaTitle(pair.fileTitle);
         if (isNonEnglishVideoTitle(videoTitle)) continue;
@@ -680,6 +690,10 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
           fileInfo.width >= 640 && fileInfo.height > 0 && fileInfo.width / fileInfo.height >= 1.5
             ? 8
             : 0;
+        // Boost verified native spoken English public institutions (DVIDS, PBS, NASA, VOA, C-SPAN)
+        const englishSourceBonus = isVerifiedEnglishCollection(fileInfo.categories, videoTitle)
+          ? 40
+          : 0;
         const videoKey = makeWikimediaVideoKey(pair.fileTitle);
         const channelLabel = fileInfo.artist
           ? `${fileInfo.artist} · Wikimedia Commons (${fileInfo.license})`
@@ -705,7 +719,7 @@ export class WikimediaCommonsVideoProvider implements IVideoDiscoveryProvider {
           transcriptVerified: true,
           captionAvailable: true,
           videoAvailable: true,
-          qualityScore: match.qualityScore + sizeBonus + widescreenBonus,
+          qualityScore: match.qualityScore + sizeBonus + widescreenBonus + englishSourceBonus,
           discoveredAt: nowIso,
         });
       }
