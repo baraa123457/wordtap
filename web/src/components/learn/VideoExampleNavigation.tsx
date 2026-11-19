@@ -111,12 +111,11 @@ export function VideoExampleNavigation({
             type="button"
             data-testid="video-quality-button"
             onClick={cycleQuality}
-            disabled={!ready}
             title={`Video Quality (${qualityBadge}) - Click to switch (360p / 480p / 720p / Original)`}
             aria-label={`Video quality: ${qualityBadge}`}
-            className="btn btn-quiet min-h-10 px-2.5 text-xs font-semibold tabular-nums cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
+            className="btn btn-quiet min-h-10 px-2.5 text-xs font-semibold tabular-nums cursor-pointer inline-flex items-center gap-1 hover:border-subtitle hover:bg-subtitle/10 transition-colors"
           >
-            <span className="opacity-70 text-[11px]">⚙️</span>
+            <span className="text-[12px]">⚙️</span>
             <span>{qualityBadge}</span>
           </button>
         ) : null}
