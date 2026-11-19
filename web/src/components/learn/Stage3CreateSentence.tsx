@@ -324,9 +324,11 @@ export function Stage3CreateSentence({
           disabled={submitting || Boolean(evaluation)}
           onChange={(e) => setSentence(e.target.value)}
           onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !evaluation && sentence.trim()) {
+            if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              void handleSubmit(e);
+              if (!evaluation && !submitting && sentence.trim()) {
+                void handleSubmit(e);
+              }
             }
           }}
           placeholder={`Example structure: Write a natural sentence with "${word.text}"…`}
@@ -342,7 +344,7 @@ export function Stage3CreateSentence({
 
         {!evaluation ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="hidden sm:inline text-[11px] text-muted">Tip: Press Ctrl+Enter to submit</span>
+            <span className="hidden sm:inline text-[11px] text-muted">Tip: Press Enter to submit</span>
             <button
               type="submit"
               disabled={submitting || !sentence.trim()}
