@@ -16,6 +16,11 @@ import {
   type WordTabPlaybackSpeed,
   type WordTabVideoPlayerHandle,
 } from "./WordTabVideoPlayer";
+import {
+  getSavedVideoQuality,
+  saveVideoQualityPreference,
+  type WordTabVideoQuality,
+} from "@/lib/video/video-quality";
 import { VideoExampleNavigation } from "./VideoExampleNavigation";
 import { MissingWordExercise } from "./MissingWordExercise";
 
@@ -46,7 +51,13 @@ export function ContextualLearningStage({
   const [playerReady, setPlayerReady] = useState(false);
   const [playerPlaying, setPlayerPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<WordTabPlaybackSpeed>(1);
+  const [videoQuality, setVideoQuality] = useState<WordTabVideoQuality>(() => getSavedVideoQuality());
   const [currentTimeSec, setCurrentTimeSec] = useState<number>(0);
+
+  const handleQualityChange = useCallback((q: WordTabVideoQuality) => {
+    setVideoQuality(q);
+    saveVideoQualityPreference(q);
+  }, []);
 
   // Exercise completion tracking across examples
   const [solvedCurrent, setSolvedCurrent] = useState(false);
@@ -233,6 +244,7 @@ export function ContextualLearningStage({
             clip={activeClip}
             total={videos.length}
             speed={playbackSpeed}
+            quality={videoQuality}
             onReadyChange={setPlayerReady}
             onPlayingChange={setPlayerPlaying}
             onTimeUpdate={setCurrentTimeSec}
@@ -246,10 +258,12 @@ export function ContextualLearningStage({
             ready={playerReady}
             playing={playerPlaying}
             speed={playbackSpeed}
+            quality={videoQuality}
             onTogglePlay={() => playerRef.current?.togglePlay()}
             onReplay={() => playerRef.current?.replay()}
             onRewind={() => playerRef.current?.rewind(3)}
             onSpeedChange={setPlaybackSpeed}
+            onQualityChange={handleQualityChange}
             onPrev={handlePrevVideo}
             onNext={handleNextVideo}
             onSkipWrongAudio={() => activeClip && handleUnavailableClip(activeClip)}

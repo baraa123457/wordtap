@@ -11,6 +11,10 @@ import {
 } from "react";
 import { isAllowedMediaUrl } from "@/lib/video/video-language-filter";
 import type { VerifiedVideoExample } from "@/lib/video/types";
+import {
+  resolveDirectVideoQualityUrl,
+  type WordTabVideoQuality,
+} from "@/lib/video/video-quality";
 
 export type WordTabPlaybackSpeed = 0.75 | 1 | 1.25;
 
@@ -21,6 +25,7 @@ export type WordTabVideoPlayerHandle = {
   replay: () => void;
   rewind: (seconds?: number) => void;
   setSpeed: (rate: WordTabPlaybackSpeed) => void;
+  setQuality?: (quality: WordTabVideoQuality) => void;
 };
 
 type YTPlayerInstance = {
@@ -30,6 +35,7 @@ type YTPlayerInstance = {
   getCurrentTime: () => number;
   getPlayerState: () => number;
   setPlaybackRate: (rate: number) => void;
+  setPlaybackQuality?: (quality: string) => void;
   destroy: () => void;
 };
 
@@ -139,6 +145,7 @@ type WordTabVideoPlayerProps = {
   clip: VerifiedVideoExample;
   total: number;
   speed: WordTabPlaybackSpeed;
+  quality?: WordTabVideoQuality;
   onReadyChange?: (ready: boolean) => void;
   onPlayingChange?: (playing: boolean) => void;
   onTimeUpdate?: (currentTimeSec: number) => void;
@@ -152,6 +159,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
       clip,
       total,
       speed,
+      quality = "auto",
       onReadyChange,
       onPlayingChange,
       onTimeUpdate,
@@ -178,6 +186,36 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
     const [nativeRatio, setNativeRatio] = useState<number | null>(null);
 
     const isDirectVideo = clip.mediaType === "direct_video";
+    const [currentMediaUrl, setCurrentMediaUrl] = useState(() =>
+      isDirectVideo ? resolveDirectVideoQualityUrl(clip.mediaUrl, quality) : clip.mediaUrl,
+    );
+
+    useEffect(() => {
+      if (isDirectVideo) {
+        const resolved = resolveDirectVideoQualityUrl(clip.mediaUrl, quality);
+        setCurrentMediaUrl(resolved);
+      } else {
+        setCurrentMediaUrl(clip.mediaUrl);
+      }
+    }, [isDirectVideo, clip.mediaUrl, quality]);
+
+    // Apply quality to YouTube iframe if applicable
+    useEffect(() => {
+      if (isDirectVideo || !ytPlayerRef.current) return;
+      const ytMap: Record<WordTabVideoQuality, string> = {
+        auto: "default",
+        "360p": "medium",
+        "480p": "large",
+        "720p": "hd720",
+        original: "highres",
+      };
+      try {
+        ytPlayerRef.current.setPlaybackQuality?.(ytMap[quality] || "default");
+      } catch {
+        // ignore
+      }
+    }, [isDirectVideo, quality, ready]);
+
     const isLoading = !ready || buffering || (!frameReady && !playing);
 
     const notifyReady = useCallback(
@@ -567,8 +605,8 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
               {isDirectVideo ? (
                 <video
                   ref={htmlVideoRef}
-                  key={clip.mediaUrl}
-                  src={clip.mediaUrl}
+                  key={currentMediaUrl}
+                  src={currentMediaUrl}
                   crossOrigin="anonymous"
                   preload="metadata"
                   playsInline
@@ -647,6 +685,11 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                   }}
                   onTimeUpdate={(e) => onTimeUpdate?.(e.currentTarget.currentTime)}
                   onError={() => {
+                    if (currentMediaUrl !== clip.mediaUrl) {
+                      // Transcode unavailable for this file; gracefully fallback to original
+                      setCurrentMediaUrl(clip.mediaUrl);
+                      return;
+                    }
                     notifyReady(false);
                     notifyPlaying(false);
                     setBuffering(false);

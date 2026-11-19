@@ -1,8 +1,10 @@
 "use client";
 
 import { formatClipTime, type WordTabPlaybackSpeed } from "./WordTabVideoPlayer";
+import { type WordTabVideoQuality } from "@/lib/video/video-quality";
 
 const SPEED_OPTIONS: WordTabPlaybackSpeed[] = [0.75, 1, 1.25];
+const QUALITY_CYCLE: WordTabVideoQuality[] = ["auto", "360p", "480p", "720p", "original"];
 
 export function VideoExampleNavigation({
   index,
@@ -11,10 +13,12 @@ export function VideoExampleNavigation({
   ready,
   playing,
   speed,
+  quality = "auto",
   onTogglePlay,
   onReplay,
   onRewind,
   onSpeedChange,
+  onQualityChange,
   onPrev,
   onNext,
   onSkipWrongAudio,
@@ -25,10 +29,12 @@ export function VideoExampleNavigation({
   ready: boolean;
   playing: boolean;
   speed: WordTabPlaybackSpeed;
+  quality?: WordTabVideoQuality;
   onTogglePlay: () => void;
   onReplay: () => void;
   onRewind: () => void;
   onSpeedChange: (speed: WordTabPlaybackSpeed) => void;
+  onQualityChange?: (quality: WordTabVideoQuality) => void;
   onPrev: () => void;
   onNext: () => void;
   onSkipWrongAudio?: () => void;
@@ -38,6 +44,20 @@ export function VideoExampleNavigation({
     const next = SPEED_OPTIONS[(idx + 1) % SPEED_OPTIONS.length]!;
     onSpeedChange(next);
   };
+
+  const cycleQuality = () => {
+    if (!onQualityChange) return;
+    const idx = QUALITY_CYCLE.indexOf(quality);
+    const next = QUALITY_CYCLE[(idx + 1) % QUALITY_CYCLE.length]!;
+    onQualityChange(next);
+  };
+
+  const qualityBadge =
+    quality === "auto"
+      ? "Auto (480p)"
+      : quality === "original"
+      ? "Original"
+      : quality;
 
   return (
     <div
@@ -86,6 +106,20 @@ export function VideoExampleNavigation({
         >
           {speed}x
         </button>
+        {onQualityChange ? (
+          <button
+            type="button"
+            data-testid="video-quality-button"
+            onClick={cycleQuality}
+            disabled={!ready}
+            title={`Video Quality (${qualityBadge}) - Click to switch (360p / 480p / 720p / Original)`}
+            aria-label={`Video quality: ${qualityBadge}`}
+            className="btn btn-quiet min-h-10 px-2.5 text-xs font-semibold tabular-nums cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
+          >
+            <span className="opacity-70 text-[11px]">⚙️</span>
+            <span>{qualityBadge}</span>
+          </button>
+        ) : null}
       </div>
 
       {/* Multi-Example Navigation */}
