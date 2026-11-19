@@ -10,6 +10,11 @@ import {
   type PricingCurrency,
   type UserSubscription,
 } from "@/lib/subscription";
+import {
+  CheckIcon,
+  SparklesIcon,
+  StarIcon,
+} from "@/components/Icons";
 
 export default function PricingPage() {
   const [interval, setInterval] = useState<BillingInterval>("yearly");
@@ -56,7 +61,8 @@ export default function PricingPage() {
       {/* Header */}
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="inline-flex items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3.5 py-1 text-xs font-bold text-ink">
-          <span>✨ WordTap Fluency Pass</span>
+          <SparklesIcon size={14} className="text-amber-800 dark:text-subtitle" />
+          <span>WordTap Fluency Pass</span>
         </div>
         <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-ink max-w-2xl">
           Speak English Like the Shows You Watch
@@ -128,22 +134,28 @@ export default function PricingPage() {
             </div>
             <ul className="space-y-2.5 text-xs sm:text-sm text-ink pt-2">
               <li className="flex items-center gap-2">
-                <span className="text-ok font-bold">✓</span> Up to 5 subtitle word captures per day
+                <CheckIcon size={14} className="text-ok shrink-0" />
+                <span>Up to 5 subtitle word captures per day</span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-ok font-bold">✓</span> 15 daily practice reviews
+                <CheckIcon size={14} className="text-ok shrink-0" />
+                <span>15 daily practice reviews</span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-ok font-bold">✓</span> 4-stage smart learning method
+                <CheckIcon size={14} className="text-ok shrink-0" />
+                <span>4-stage smart learning method</span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-ok font-bold">✓</span> Community word cache &amp; dictionary meanings
+                <CheckIcon size={14} className="text-ok shrink-0" />
+                <span>Community word cache &amp; dictionary meanings</span>
               </li>
               <li className="flex items-center gap-2 text-muted">
-                <span className="opacity-40">✕</span> Unlimited TV show decks import
+                <span className="opacity-40 text-xs px-1">✕</span>
+                <span>Unlimited TV show decks import</span>
               </li>
               <li className="flex items-center gap-2 text-muted">
-                <span className="opacity-40">✕</span> Export to Anki with video audio
+                <span className="opacity-40 text-xs px-1">✕</span>
+                <span>Export to Anki with video audio</span>
               </li>
             </ul>
           </div>
@@ -168,7 +180,9 @@ export default function PricingPage() {
             <div>
               <h2 className="text-xl font-bold text-ink flex items-center gap-1.5">
                 <span>Fluency Pass</span>
-                <span className="text-subtitle">★ Pro</span>
+                <span className="inline-flex items-center gap-1 text-xs font-extrabold rounded-full bg-subtitle/20 text-amber-900 dark:text-subtitle px-2 py-0.5 border border-subtitle/40">
+                  <StarIcon size={11} filled className="text-subtitle" /> Pro
+                </span>
               </h2>
               <p className="text-xs text-muted mt-1">
                 Fast-track your fluency with zero limits.
@@ -185,24 +199,28 @@ export default function PricingPage() {
 
             <ul className="space-y-2.5 text-xs sm:text-sm text-ink pt-2">
               <li className="flex items-center gap-2 font-medium">
-                <span className="text-subtitle font-bold">★</span>{" "}
-                <strong>Unlimited</strong> subtitle captures on YouTube &amp; Netflix
+                <StarIcon size={14} filled className="text-subtitle shrink-0" />
+                <span><strong>Unlimited</strong> subtitle captures on YouTube &amp; Netflix</span>
               </li>
               <li className="flex items-center gap-2 font-medium">
-                <span className="text-subtitle font-bold">★</span>{" "}
-                <strong>Unlimited</strong> daily practice reviews &amp; FSRS spaced repetition
+                <StarIcon size={14} filled className="text-subtitle shrink-0" />
+                <span><strong>Unlimited</strong> daily practice reviews &amp; FSRS spaced repetition</span>
               </li>
               <li className="flex items-center gap-2 font-medium">
-                <span className="text-subtitle font-bold">★</span> Real-time AI sentence evaluation &amp; grammar polish
+                <StarIcon size={14} filled className="text-subtitle shrink-0" />
+                <span>Real-time AI sentence evaluation &amp; grammar polish</span>
               </li>
               <li className="flex items-center gap-2 font-medium">
-                <span className="text-subtitle font-bold">★</span> High-definition video player (720p/1080p) + Data Saver
+                <StarIcon size={14} filled className="text-subtitle shrink-0" />
+                <span>High-definition video player (720p/1080p) + Data Saver</span>
               </li>
               <li className="flex items-center gap-2 font-medium">
-                <span className="text-subtitle font-bold">★</span> Unlimited import of Curated Show &amp; Career Decks
+                <StarIcon size={14} filled className="text-subtitle shrink-0" />
+                <span>Unlimited import of Curated Show &amp; Career Decks</span>
               </li>
               <li className="flex items-center gap-2 font-medium">
-                <span className="text-subtitle font-bold">★</span> Export to Anki with video audio clips
+                <StarIcon size={14} filled className="text-subtitle shrink-0" />
+                <span>Export to Anki with video audio clips</span>
               </li>
             </ul>
           </div>

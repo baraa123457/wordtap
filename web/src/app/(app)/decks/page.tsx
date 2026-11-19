@@ -10,6 +10,13 @@ import {
 } from "@/lib/curated-decks";
 import { InteractiveLearningSession } from "@/components/learn/InteractiveLearningSession";
 import { useAuth } from "@/context/AuthContext";
+import {
+  CheckIcon,
+  DownloadIcon,
+  FilmIcon,
+  PlayIcon,
+  SearchIcon,
+} from "@/components/Icons";
 
 export default function DecksPage() {
   const { state: authState } = useAuth();
@@ -69,7 +76,8 @@ export default function DecksPage() {
       {/* Hero Header */}
       <div className="flex flex-col gap-3 text-center sm:text-left">
         <div className="inline-flex items-center gap-2 self-center sm:self-start rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-1 text-xs font-bold text-ink">
-          <span>🎬 Authentic Entertainment Vocabulary</span>
+          <FilmIcon size={14} className="text-amber-800 dark:text-subtitle" />
+          <span>Authentic Entertainment Vocabulary</span>
         </div>
         <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-ink">
           Curated Show &amp; Career Decks
@@ -85,9 +93,9 @@ export default function DecksPage() {
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
           {[
             { id: "all", label: "All Decks" },
-            { id: "tv_shows", label: "🎬 TV Shows" },
-            { id: "career_tech", label: "🚀 Career & Tech" },
-            { id: "ielts_academic", label: "🎓 IELTS & Exam" },
+            { id: "tv_shows", label: "TV Shows" },
+            { id: "career_tech", label: "Career & Tech" },
+            { id: "ielts_academic", label: "IELTS & Academic" },
           ].map((cat) => (
             <button
               key={cat.id}
@@ -113,8 +121,8 @@ export default function DecksPage() {
             placeholder="Search words or shows…"
             className="field w-full py-1.5 ps-9 text-xs sm:text-sm"
           />
-          <span className="absolute start-3 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none">
-            🔍
+          <span className="absolute start-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
+            <SearchIcon size={14} />
           </span>
         </div>
       </div>
@@ -177,13 +185,14 @@ export default function DecksPage() {
               {/* Import status message */}
               {importMessage?.id === deck.id ? (
                 <p
-                  className={`text-xs font-medium rounded-lg px-2.5 py-1.5 ${
+                  className={`text-xs font-medium rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 ${
                     importMessage.isError
                       ? "bg-bad-soft text-bad-ink"
                       : "bg-ok/15 text-ok-ink"
                   }`}
                 >
-                  {importMessage.text}
+                  {!importMessage.isError ? <CheckIcon size={13} className="shrink-0 text-ok" /> : null}
+                  <span>{importMessage.text}</span>
                 </p>
               ) : null}
             </div>
@@ -195,7 +204,7 @@ export default function DecksPage() {
                 onClick={() => setInspectingDeck(deck)}
                 className="btn btn-quiet min-h-9 px-3 text-xs font-semibold cursor-pointer"
               >
-                👁 Preview Words
+                Preview Words
               </button>
 
               <div className="flex items-center gap-2 ms-auto">
@@ -203,17 +212,19 @@ export default function DecksPage() {
                   type="button"
                   disabled={importingId === deck.id}
                   onClick={() => void handleImport(deck)}
-                  className="btn btn-quiet border border-line min-h-9 px-3 text-xs font-semibold cursor-pointer hover:border-subtitle/40"
+                  className="btn btn-quiet border border-line min-h-9 px-3 text-xs font-semibold cursor-pointer hover:border-subtitle/40 inline-flex items-center gap-1.5"
                   title="Save all words into your personal library"
                 >
-                  {importingId === deck.id ? "Adding…" : "📥 Add to Words"}
+                  <DownloadIcon size={13} />
+                  <span>{importingId === deck.id ? "Adding…" : "Add to Words"}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPracticingDeck(deck)}
                   className="btn btn-primary min-h-9 px-4 text-xs font-bold cursor-pointer inline-flex items-center gap-1.5"
                 >
-                  <span>▶ Practice</span>
+                  <PlayIcon size={11} />
+                  <span>Practice</span>
                 </button>
               </div>
             </div>

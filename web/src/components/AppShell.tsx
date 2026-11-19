@@ -6,19 +6,20 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "./ThemeToggle";
 import { Logo } from "./Logo";
+import { StarIcon } from "./Icons";
 
 const AUTH_LINKS = [
   { href: "/dashboard", label: "Dashboard", shortLabel: "Dashboard" },
-  { href: "/decks", label: "Show Decks", shortLabel: "Decks" },
+  { href: "/decks", label: "Decks", shortLabel: "Decks" },
   { href: "/words", label: "My words", shortLabel: "Words" },
   { href: "/history", label: "History", shortLabel: "History" },
-  { href: "/pricing", label: "★ Pro", shortLabel: "Pro" },
+  { href: "/pricing", label: "Pro", shortLabel: "Pro", isPro: true },
   { href: "/settings", label: "Settings", shortLabel: "Settings" },
 ] as const;
 
 const GUEST_LINKS = [
   { href: "/", label: "Home", shortLabel: "Home" },
-  { href: "/decks", label: "Show Decks", shortLabel: "Decks" },
+  { href: "/decks", label: "Decks", shortLabel: "Decks" },
   { href: "/pricing", label: "Pricing", shortLabel: "Pricing" },
   { href: "/extension", label: "Extension", shortLabel: "Extension" },
 ] as const;
@@ -88,7 +89,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                     data-active={active ? "true" : undefined}
                     className="apple-segmented-item whitespace-nowrap min-h-[40px] sm:min-h-[38px] sm:px-3.5 sm:py-1.5 sm:text-sm flex items-center justify-center"
                   >
-                    {link.label === link.shortLabel ? (
+                    {("isPro" in link && link.isPro) ? (
+                      <span className="inline-flex items-center gap-1">
+                        <StarIcon size={12} filled className="text-subtitle" />
+                        <span>{link.label}</span>
+                      </span>
+                    ) : link.label === link.shortLabel ? (
                       link.label
                     ) : (
                       <>

@@ -7,6 +7,7 @@ import {
   PRICING_PLANS,
   type PricingCurrency,
 } from "@/lib/subscription";
+import { CheckIcon, StarIcon } from "@/components/Icons";
 
 export function PricingModal({
   isOpen,
@@ -66,7 +67,8 @@ export function PricingModal({
 
         <div className="flex flex-col gap-4 text-center">
           <div className="inline-flex self-center items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-xs font-bold text-ink">
-            <span>★ WordTap Fluency Pass</span>
+            <StarIcon size={12} filled className="text-subtitle" />
+            <span>WordTap Fluency Pass</span>
           </div>
 
           <div className="space-y-1">
@@ -78,26 +80,27 @@ export function PricingModal({
 
           <div className="rounded-2xl bg-surface border border-line p-4 space-y-2.5 text-left text-xs sm:text-sm">
             <div className="flex items-center gap-2">
-              <span className="text-subtitle font-bold">★</span>
+              <StarIcon size={14} filled className="text-subtitle shrink-0" />
               <span><strong>Unlimited</strong> daily word reviews &amp; FSRS scheduling</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-subtitle font-bold">★</span>
+              <StarIcon size={14} filled className="text-subtitle shrink-0" />
               <span><strong>Unlimited</strong> subtitle word tapping (YouTube &amp; Netflix)</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-subtitle font-bold">★</span>
+              <StarIcon size={14} filled className="text-subtitle shrink-0" />
               <span>AI Grammar Evaluation &amp; Naturalness Coaching</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-subtitle font-bold">★</span>
+              <StarIcon size={14} filled className="text-subtitle shrink-0" />
               <span>Data-Saver Audio-First Mode &amp; High-Definition Playback</span>
             </div>
           </div>
 
           {upgraded ? (
-            <div className="rounded-xl bg-ok/15 border border-ok/30 py-3 text-sm font-bold text-ok-ink animate-in fade-in">
-              🎉 Pro Fluency Pass Activated!
+            <div className="rounded-xl bg-ok/15 border border-ok/30 py-3 text-sm font-bold text-ok-ink animate-in fade-in flex items-center justify-center gap-2">
+              <CheckIcon size={16} className="text-ok" />
+              <span>Pro Fluency Pass Activated!</span>
             </div>
           ) : (
             <div className="space-y-2 pt-1">

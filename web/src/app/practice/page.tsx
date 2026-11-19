@@ -11,6 +11,7 @@ import { InteractiveLearningSession } from "@/components/learn/InteractiveLearni
 import { PracticeSession } from "@/components/practice/PracticeSession";
 import { SAMPLE_WORDS } from "@/lib/sampleWords";
 import { getStoredSettings } from "@/lib/settings";
+import { FilmIcon } from "@/components/Icons";
 import type { Stats, Word } from "@/lib/schemas";
 
 const LANG_NAMES: Record<string, string> = {
@@ -128,8 +129,8 @@ function PracticeLoader() {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-3.5 sm:px-4 py-8 sm:py-12 pt-safe pb-safe">
         <div className="apple-card p-5 sm:p-8 space-y-5 sm:space-y-6 text-center">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-subtitle/20 border border-subtitle/30 flex items-center justify-center text-2xl">
-            🎬
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-subtitle/20 border border-subtitle/30 flex items-center justify-center">
+            <FilmIcon size={28} className="text-amber-800 dark:text-subtitle" />
           </div>
           <div className="space-y-2">
             <h1 className="text-xl sm:text-2xl font-extrabold text-ink">No words to learn yet</h1>
@@ -139,8 +140,9 @@ function PracticeLoader() {
           </div>
 
           <div className="flex flex-col gap-2.5 sm:gap-3 pt-2">
-            <Link href="/decks" className="btn btn-primary font-bold py-3 text-center justify-center">
-              🎬 Browse Curated Show &amp; Career Decks
+            <Link href="/decks" className="btn btn-primary font-bold py-3 text-center justify-center inline-flex items-center gap-2">
+              <FilmIcon size={16} />
+              <span>Browse Curated Show &amp; Career Decks</span>
             </Link>
             <Link href="/dashboard" className="btn btn-quiet border border-line font-semibold py-2.5 text-center justify-center">
               Translate &amp; add your own word

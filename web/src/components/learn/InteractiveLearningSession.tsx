@@ -29,7 +29,7 @@ import {
   type SpacedReviewQueueItem,
 } from "@/lib/learning-session-manager";
 import type { Word } from "@/lib/schemas";
-import { CloseIcon, TrashIcon } from "@/components/Icons";
+import { CheckIcon, CloseIcon, SparklesIcon, TrashIcon } from "@/components/Icons";
 import { Stage1Understanding } from "./Stage1Understanding";
 import { Stage2ContextualVideo } from "./Stage2ContextualVideo";
 import { Stage3CreateSentence } from "./Stage3CreateSentence";
@@ -214,8 +214,8 @@ function SequentialInitialLearningSession({
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col justify-center px-4 py-10 pt-safe pb-safe">
         <div className="apple-card p-6 sm:p-8 grid gap-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-subtitle/25 border border-subtitle/40 text-3xl">
-            🎉
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-subtitle/25 border border-subtitle/40">
+            <SparklesIcon size={32} className="text-amber-800 dark:text-subtitle" />
           </div>
           <div className="space-y-1.5">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-ink">
@@ -758,8 +758,8 @@ function SpacedRepetitionReviewSession({
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-12 pt-safe pb-safe">
         <div className="apple-card p-6 sm:p-8 text-center grid gap-5">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-subtitle/20 border border-subtitle/30 text-2xl">
-            📅
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-subtitle/20 border border-subtitle/30">
+            <CheckIcon size={26} className="text-amber-800 dark:text-subtitle" />
           </div>
           <div className="space-y-2">
             <h1 className="text-xl sm:text-2xl font-extrabold text-ink">

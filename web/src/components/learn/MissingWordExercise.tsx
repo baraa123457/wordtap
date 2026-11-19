@@ -8,7 +8,7 @@ import {
   type MaskedSentence,
 } from "@/lib/placeholder";
 import { canSpeak, speak } from "@/lib/speech";
-import { SpeakerIcon } from "@/components/Icons";
+import { LightbulbIcon, SpeakerIcon } from "@/components/Icons";
 import type { CaptionCue } from "@/lib/video/types";
 import { ContextCaption } from "./ContextCaption";
 
@@ -178,14 +178,16 @@ export function MissingWordExercise({
                     ? "Reveal another hint letter"
                     : "Show a hint"
                 }
-                className="btn btn-quiet min-h-11 px-3.5 text-xs font-semibold text-amber-700 dark:text-subtitle border border-subtitle/35 bg-subtitle/10 hover:bg-subtitle/20 cursor-pointer"
+                className="btn btn-quiet min-h-11 px-3.5 text-xs font-semibold text-amber-700 dark:text-subtitle border border-subtitle/35 bg-subtitle/10 hover:bg-subtitle/20 cursor-pointer inline-flex items-center gap-1.5"
               >
-                💡{" "}
-                {faultAnalysis?.hasFault && faultAnalysis?.firstWrongChar
-                  ? "Fault hint"
-                  : hint
-                  ? "More hint"
-                  : "Hint"}
+                <LightbulbIcon size={14} className="text-amber-800 dark:text-subtitle" />
+                <span>
+                  {faultAnalysis?.hasFault && faultAnalysis?.firstWrongChar
+                    ? "Fault hint"
+                    : hint
+                    ? "More hint"
+                    : "Hint"}
+                </span>
               </button>
             ) : null}
             <button
@@ -209,7 +211,7 @@ export function MissingWordExercise({
           {/* Main Hint Line */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-base">💡</span>
+              <LightbulbIcon size={16} className="text-amber-800 dark:text-subtitle shrink-0" />
               <span>
                 <strong className="text-amber-800 dark:text-subtitle">
                   {faultAnalysis?.hasFault && faultAnalysis?.firstWrongChar ? "Fault Hint:" : "Hint:"}

@@ -9,7 +9,7 @@ import {
   type SentenceEvaluation,
 } from "@/lib/learn-api";
 import { canSpeak, speak } from "@/lib/speech";
-import { SpeakerIcon } from "@/components/Icons";
+import { LightbulbIcon, SpeakerIcon } from "@/components/Icons";
 import { POS_BADGES } from "@/components/TranslatorCard";
 
 function normalizePosList(raw: string | string[] | undefined): string[] {
@@ -219,7 +219,7 @@ export function Stage3CreateSentence({
             className="btn btn-quiet min-h-10 px-3 py-1.5 text-xs font-semibold cursor-pointer shrink-0 inline-flex items-center gap-1.5"
             title="Toggle 3 authentic example sentences"
           >
-            <span>💡</span>
+            <LightbulbIcon size={14} className="text-amber-800 dark:text-subtitle" />
             <span>{showExamples ? "Hide examples" : "3 Examples"}</span>
             {examples.length > 0 && !showExamples ? (
               <span className="rounded-full bg-subtitle/30 px-1.5 py-0.2 text-[10px] font-bold">
@@ -253,7 +253,7 @@ export function Stage3CreateSentence({
         <div className="rounded-2xl border border-subtitle/40 bg-subtitle/10 p-4 sm:p-5 flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-base">💡</span>
+              <LightbulbIcon size={16} className="text-amber-800 dark:text-subtitle" />
               <h3 className="text-sm sm:text-base font-bold text-ink">
                 3 Real Examples with &ldquo;<span className="text-subtitle font-extrabold">{word.text}</span>&rdquo;
               </h3>

@@ -9,6 +9,7 @@ import { Logo } from "@/components/Logo";
 import { SubtitleDemo } from "@/components/SubtitleDemo";
 import { RealAppShowcase } from "@/components/RealAppShowcase";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { FilmIcon } from "@/components/Icons";
 
 export function LandingClient() {
   const router = useRouter();
@@ -72,9 +73,10 @@ export function LandingClient() {
           </div>
           <Link
             href="/decks"
-            className="hidden sm:inline-flex btn btn-quiet min-h-9 px-3 text-xs font-semibold"
+            className="hidden sm:inline-flex btn btn-quiet min-h-9 px-3 text-xs font-semibold items-center gap-1.5"
           >
-            🎬 {isAr ? "مكتبة المسلسلات" : "Show Decks"}
+            <FilmIcon size={14} className="text-amber-800 dark:text-subtitle" />
+            <span>{isAr ? "مكتبة المسلسلات" : "Show Decks"}</span>
           </Link>
           <Link
             href="/pricing"

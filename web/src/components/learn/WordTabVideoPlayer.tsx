@@ -15,6 +15,7 @@ import {
   resolveDirectVideoQualityUrl,
   type WordTabVideoQuality,
 } from "@/lib/video/video-quality";
+import { GearIcon } from "@/components/Icons";
 
 export type WordTabPlaybackSpeed = 0.75 | 1 | 1.25;
 
@@ -743,7 +744,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                     >
                       <div className="px-2 py-1 text-[10px] font-bold text-white/50 uppercase tracking-wider border-b border-white/10 mb-1 flex items-center justify-between">
                         <span>Quality</span>
-                        <span className="text-[11px]">⚙️</span>
+                        <GearIcon size={12} className="opacity-70" />
                       </div>
                       {(
                         ["auto", "720p", "480p", "360p", "original"] as WordTabVideoQuality[]
@@ -789,7 +790,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                     aria-label={`Video Quality: ${qualityBadge}`}
                     className="flex items-center gap-1.5 rounded-full bg-black/65 hover:bg-black/90 border border-white/25 hover:border-subtitle backdrop-blur-md px-2.5 py-1 text-[11px] font-bold text-white shadow-lg transition-all hover:scale-105 cursor-pointer opacity-85 group-hover:opacity-100 hover:opacity-100"
                   >
-                    <span className="text-[12px] opacity-90">⚙️</span>
+                    <GearIcon size={12} className="opacity-90" />
                     <span className="tabular-nums font-semibold">{qualityBadge}</span>
                   </button>
                 </div>
