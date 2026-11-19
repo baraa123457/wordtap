@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Word } from "@/lib/schemas";
 import {
   cardStateFromWord,
@@ -14,30 +14,32 @@ const RATING_META: Array<{
   label: string;
   sub: string;
   accent: string;
+  badge?: string;
 }> = [
   {
     rating: 1,
     label: "Again",
     sub: "Forgot it",
-    accent: "hover:border-bad hover:bg-bad-soft/70",
+    accent: "hover:border-bad hover:bg-bad-soft/70 focus:border-bad",
   },
   {
     rating: 2,
     label: "Hard",
     sub: "Took effort",
-    accent: "hover:border-amber-500 hover:bg-amber-500/10",
+    accent: "hover:border-amber-500 hover:bg-amber-500/10 focus:border-amber-500",
   },
   {
     rating: 3,
     label: "Good",
     sub: "Remembered",
-    accent: "border-subtitle/60 bg-subtitle/10 hover:border-subtitle hover:bg-subtitle/20",
+    badge: "Recommended",
+    accent: "border-subtitle/60 bg-subtitle/10 hover:border-subtitle hover:bg-subtitle/20 focus:border-subtitle",
   },
   {
     rating: 4,
     label: "Easy",
     sub: "Effortless",
-    accent: "hover:border-ok hover:bg-ok/10",
+    accent: "hover:border-ok hover:bg-ok/10 focus:border-ok",
   },
 ];
 
@@ -54,22 +56,32 @@ export function Stage4SpacedRepetition({
   saving?: boolean;
   onRate: (rating: FsrsRating, schedule: FsrsScheduleResult) => void;
 }) {
+  const [submittingRating, setSubmittingRating] = useState<FsrsRating | null>(null);
   const card = useMemo(() => cardStateFromWord(word), [word]);
   const previews = useMemo(() => previewFsrsIntervals(card), [card]);
 
+  const handleRate = useCallback(
+    (rating: FsrsRating, schedule: FsrsScheduleResult) => {
+      if (saving || submittingRating !== null) return;
+      setSubmittingRating(rating);
+      onRate(rating, schedule);
+    },
+    [saving, submittingRating, onRate],
+  );
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (saving) return;
+      if (saving || submittingRating !== null) return;
       if (document.querySelector('[aria-modal="true"]')) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === "1") onRate(1, previews[1].result);
-      else if (e.key === "2") onRate(2, previews[2].result);
-      else if (e.key === "3") onRate(3, previews[3].result);
-      else if (e.key === "4") onRate(4, previews[4].result);
+      if (e.key === "1") handleRate(1, previews[1].result);
+      else if (e.key === "2") handleRate(2, previews[2].result);
+      else if (e.key === "3") handleRate(3, previews[3].result);
+      else if (e.key === "4") handleRate(4, previews[4].result);
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onRate, previews, saving]);
+  }, [handleRate, previews, saving, submittingRating]);
 
   return (
     <section aria-labelledby="stage4-heading" className="apple-card w-full max-w-full p-4 sm:p-8 flex flex-col gap-5 sm:gap-6 min-w-0">
@@ -117,15 +129,27 @@ export function Stage4SpacedRepetition({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
         {RATING_META.map((item) => {
           const prev = previews[item.rating];
+          const isPending = submittingRating === item.rating;
+          const isAnySubmitting = submittingRating !== null || Boolean(saving);
           return (
             <button
               key={item.rating}
               type="button"
-              disabled={saving}
-              onClick={() => onRate(item.rating, prev.result)}
-              className={`flex flex-col items-center justify-center gap-1 rounded-2xl border border-line bg-surface p-3.5 sm:p-4 text-center transition-all active:scale-95 cursor-pointer disabled:opacity-50 ${item.accent}`}
+              disabled={isAnySubmitting}
+              onClick={() => handleRate(item.rating, prev.result)}
+              className={`relative flex flex-col items-center justify-center gap-1 rounded-2xl border border-line bg-surface p-3.5 sm:p-4 text-center transition-all active:scale-95 cursor-pointer disabled:opacity-60 ${item.accent}`}
             >
-              <span className="text-sm sm:text-base font-extrabold text-ink">{item.label}</span>
+              {item.badge ? (
+                <span className="absolute -top-2.5 rounded-full bg-subtitle/30 border border-subtitle/50 px-2 py-0.5 text-[10px] font-bold text-ink shadow-xs">
+                  ★ {item.badge}
+                </span>
+              ) : null}
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm sm:text-base font-extrabold text-ink">{item.label}</span>
+                {isPending ? (
+                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-ink/30 border-t-ink" />
+                ) : null}
+              </div>
               <span className="text-xs font-bold text-ink/80 tabular-nums">{prev.label}</span>
               <span className="text-[11px] text-muted">{item.sub}</span>
             </button>
@@ -133,10 +157,15 @@ export function Stage4SpacedRepetition({
         })}
       </div>
 
-      <p className="text-center text-[11px] text-muted">
-        Keyboard shortcuts: press <kbd className="rounded border border-line px-1.5 py-0.5 font-mono">1</kbd>–
-        <kbd className="rounded border border-line px-1.5 py-0.5 font-mono">4</kbd> to rate
-      </p>
+      <div className="flex flex-col items-center gap-1 text-center">
+        <p className="text-xs font-medium text-muted">
+          Tap any rating above to schedule this word and proceed to the next word
+        </p>
+        <p className="text-[11px] text-muted/70">
+          Keyboard shortcuts: press <kbd className="rounded border border-line px-1.5 py-0.5 font-mono">1</kbd>–
+          <kbd className="rounded border border-line px-1.5 py-0.5 font-mono">4</kbd> to rate
+        </p>
+      </div>
     </section>
   );
 }

@@ -318,6 +318,10 @@ function SequentialInitialLearningSession({
       });
       setSession(next);
       awardXp(xpDelta);
+      // Immediately release lock so user can interact with the new stage without awaiting background network
+      setSavingStage(false);
+      lockRef.current = false;
+
       await persistStageAdvanceRemote({
         sessionId: next.sessionId,
         wordId: activeWord.id,
@@ -346,13 +350,6 @@ function SequentialInitialLearningSession({
         wordId: activeWord.id,
         xpDelta,
       });
-      await persistCompleteInitialWordRemote({
-        sessionId: session.sessionId,
-        wordId: activeWord.id,
-        rating,
-        schedule,
-        xpDelta,
-      });
 
       awardXp(xpDelta);
       setCompletedSummary((prev) => [
@@ -372,7 +369,18 @@ function SequentialInitialLearningSession({
         });
       }
 
+      // Optimistically advance to next word / summary immediately so UI never hangs
       setSession(next);
+      setSavingStage(false);
+      lockRef.current = false;
+
+      await persistCompleteInitialWordRemote({
+        sessionId: session.sessionId,
+        wordId: activeWord.id,
+        rating,
+        schedule,
+        xpDelta,
+      });
     } catch (err) {
       setTransitionError(err instanceof Error ? err.message : "Could not complete word.");
     } finally {

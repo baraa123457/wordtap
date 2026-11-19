@@ -889,27 +889,31 @@ export async function persistCompleteInitialWordRemote(params: {
   xpDelta: number;
 }): Promise<void> {
   if (params.wordId.startsWith("sample-")) return;
-  const supabase = getSupabase();
-  const { error } = await supabase.rpc("complete_initial_learning_word", {
-    p_session_id: params.sessionId,
-    p_word_id: params.wordId,
-    p_rating: params.rating,
-    p_fsrs_stability: params.schedule.stability,
-    p_fsrs_difficulty: params.schedule.difficulty,
-    p_fsrs_reps: params.schedule.reps,
-    p_fsrs_lapses: params.schedule.lapses,
-    p_interval_days: params.schedule.intervalDays,
-    p_next_review: params.schedule.nextReviewIso,
-    p_box: params.schedule.box,
-    p_learning_status: params.schedule.learningStatus,
-    p_xp_delta: params.xpDelta,
-  });
+  try {
+    const supabase = getSupabase();
+    const { error } = await supabase.rpc("complete_initial_learning_word", {
+      p_session_id: params.sessionId,
+      p_word_id: params.wordId,
+      p_rating: params.rating,
+      p_fsrs_stability: params.schedule.stability,
+      p_fsrs_difficulty: params.schedule.difficulty,
+      p_fsrs_reps: params.schedule.reps,
+      p_fsrs_lapses: params.schedule.lapses,
+      p_interval_days: params.schedule.intervalDays,
+      p_next_review: params.schedule.nextReviewIso,
+      p_box: params.schedule.box,
+      p_learning_status: params.schedule.learningStatus,
+      p_xp_delta: params.xpDelta,
+    });
 
-  if (!error) return;
+    if (!error) return;
 
-  // Backward-compatible fallback to legacy review_word if migration 011 isn't applied yet
-  const legacyGrade = (params.rating - 1) as 0 | 1 | 2 | 3;
-  await reviewWord(params.wordId, params.rating > 1, legacyGrade);
+    // Backward-compatible fallback to legacy review_word if migration 011 isn't applied yet
+    const legacyGrade = (params.rating - 1) as 0 | 1 | 2 | 3;
+    await reviewWord(params.wordId, params.rating > 1, legacyGrade).catch(() => {});
+  } catch (err) {
+    console.warn("Could not persist initial word completion remotely:", err);
+  }
 }
 
 export async function persistSpacedReviewRemote(params: {
