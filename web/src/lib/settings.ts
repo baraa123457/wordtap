@@ -24,6 +24,9 @@ export type UserSettings = {
   translationProvider?: TranslationProvider;
   dailyNewWordsGoal?: number;
   dailyReviewsGoal?: number;
+  dataSaverMode: boolean;
+  whatsappReminderPhone?: string;
+  reminderTime?: string;
 };
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -44,6 +47,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   translationProvider: "google",
   dailyNewWordsGoal: 5,
   dailyReviewsGoal: 20,
+  dataSaverMode: false,
+  reminderTime: "20:00",
 };
 
 const STORAGE_KEY = "wordtap_settings";

@@ -139,13 +139,16 @@ function PracticeLoader() {
           </div>
 
           <div className="flex flex-col gap-2.5 sm:gap-3 pt-2">
-            <Link href="/dashboard" className="btn btn-primary font-bold py-3 text-center justify-center">
-              Add your first word
+            <Link href="/decks" className="btn btn-primary font-bold py-3 text-center justify-center">
+              🎬 Browse Curated Show &amp; Career Decks
+            </Link>
+            <Link href="/dashboard" className="btn btn-quiet border border-line font-semibold py-2.5 text-center justify-center">
+              Translate &amp; add your own word
             </Link>
             <button
               type="button"
               onClick={() => setTrySampleSession(true)}
-              className="btn btn-quiet text-xs font-semibold py-2.5 cursor-pointer"
+              className="btn btn-quiet text-xs font-semibold py-2 cursor-pointer text-muted hover:text-ink"
             >
               Try a 4-stage interactive sample session
             </button>

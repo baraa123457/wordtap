@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
 import { callAiJson } from "@/lib/ai-server";
+import { getCachedWordExercise, saveWordExerciseToCache } from "@/lib/word-exercise-cache";
 
 export async function OPTIONS(req: Request) {
   return handleCorsPreflight(req);
@@ -323,6 +324,19 @@ export async function POST(req: Request) {
     const displayWord = word.charAt(0).toUpperCase() + word.slice(1);
     const question = `What does "${displayWord}" mean?`;
 
+    // 0. High-speed cache check (zero AI token cost, sub-25ms response)
+    const cached = await getCachedWordExercise(word, targetLang);
+    if (cached?.understanding) {
+      return NextResponse.json(
+        {
+          ...cached.understanding,
+          meanings: cached.meanings || cached.understanding.meanings,
+          provider: "cache",
+        },
+        { headers: corsHeaders },
+      );
+    }
+
     // 1. Primary: AI-generated learner-level understanding question (if GEMINI_API_KEY or OPENAI_API_KEY is configured)
     const systemPrompt = `You are an expert English vocabulary teacher creating Stage 1 Understanding multiple-choice questions for an ${level}-level English learner.
 Return ONLY valid JSON with these exact keys:
@@ -368,21 +382,29 @@ Rules:
           ),
         ).slice(0, 5);
 
-        return NextResponse.json(
-          {
-            word,
-            question,
-            options,
-            correctOptionId,
-            explanation: d.explanation.trim(),
-            definition: correctText,
-            pronunciation: d.pronunciation || "",
-            partOfSpeech: d.partOfSpeech || partOfSpeech || "",
-            meanings: resolvedMeanings,
-            provider: aiRes.provider,
-          },
-          { headers: corsHeaders },
-        );
+        const understandingPayload = {
+          word,
+          question,
+          options,
+          correctOptionId,
+          explanation: d.explanation.trim(),
+          definition: correctText,
+          pronunciation: d.pronunciation || "",
+          partOfSpeech: d.partOfSpeech || partOfSpeech || "",
+          meanings: resolvedMeanings,
+          provider: aiRes.provider,
+        };
+
+        void saveWordExerciseToCache({
+          word,
+          targetLang,
+          understanding: understandingPayload,
+          meanings: resolvedMeanings,
+          definition: correctText,
+          partOfSpeech: d.partOfSpeech || partOfSpeech || "",
+        });
+
+        return NextResponse.json(understandingPayload, { headers: corsHeaders });
       }
     }
 
@@ -424,21 +446,29 @@ Rules:
 
     const explanation = `"${displayWord}" (${resolvedPos || "word"}) means: ${resolvedDefinition.toLowerCase()}.${translation ? ` In your language: ${translation}.` : ""}`;
 
-    return NextResponse.json(
-      {
-        word,
-        question,
-        options,
-        correctOptionId,
-        explanation,
-        definition: resolvedDefinition,
-        pronunciation: resolvedPron,
-        partOfSpeech: resolvedPos,
-        meanings: dictMeanings,
-        provider: "dictionary",
-      },
-      { headers: corsHeaders },
-    );
+    const dictPayload = {
+      word,
+      question,
+      options,
+      correctOptionId,
+      explanation,
+      definition: resolvedDefinition,
+      pronunciation: resolvedPron,
+      partOfSpeech: resolvedPos,
+      meanings: dictMeanings,
+      provider: "dictionary" as const,
+    };
+
+    void saveWordExerciseToCache({
+      word,
+      targetLang,
+      understanding: dictPayload,
+      meanings: dictMeanings,
+      definition: resolvedDefinition,
+      partOfSpeech: resolvedPos,
+    });
+
+    return NextResponse.json(dictPayload, { headers: corsHeaders });
   } catch (err) {
     console.error("Understanding API error:", err);
     return NextResponse.json(

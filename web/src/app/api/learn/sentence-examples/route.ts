@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
 import { callAiJson } from "@/lib/ai-server";
+import { getCachedWordExercise, saveWordExerciseToCache } from "@/lib/word-exercise-cache";
 
 export async function OPTIONS(req: Request) {
   return handleCorsPreflight(req);
@@ -111,6 +112,19 @@ export async function POST(req: Request) {
 
     const { word, definition, partOfSpeech } = parsed.data;
 
+    // 0. High-speed cache check (zero AI token cost, sub-25ms response)
+    const cached = await getCachedWordExercise(word, "ar");
+    if (cached?.examples && cached.examples.length >= 3) {
+      return NextResponse.json(
+        {
+          word,
+          examples: cached.examples.slice(0, 3),
+          provider: "cache",
+        },
+        { headers: corsHeaders },
+      );
+    }
+
     // 1. Primary: AI-generated authentic examples (Gemini / OpenAI)
     const systemPrompt = `You are an expert English language teacher creating sentence examples for an English learner.
 Generate exactly 3 diverse, natural, practical example sentences using the target word.
@@ -134,10 +148,19 @@ Rules:
     if (aiRes) {
       const checked = aiResponseSchema.safeParse(aiRes.data);
       if (checked.success) {
+        const exs = checked.data.examples.slice(0, 3);
+        void saveWordExerciseToCache({
+          word,
+          targetLang: "ar",
+          examples: exs,
+          definition,
+          partOfSpeech,
+        });
+
         return NextResponse.json(
           {
             word,
-            examples: checked.data.examples.slice(0, 3),
+            examples: exs,
             provider: aiRes.provider,
           },
           { headers: corsHeaders },
@@ -148,10 +171,19 @@ Rules:
     // 2. Secondary fallback: Authentic Google Translate dictionary example sentences
     const dictExamples = await fetchDictionaryExamples(word);
     if (dictExamples.length >= 3) {
+      const exs = dictExamples.slice(0, 3);
+      void saveWordExerciseToCache({
+        word,
+        targetLang: "ar",
+        examples: exs,
+        definition,
+        partOfSpeech,
+      });
+
       return NextResponse.json(
         {
           word,
-          examples: dictExamples.slice(0, 3),
+          examples: exs,
           provider: "dictionary",
         },
         { headers: corsHeaders },
@@ -161,6 +193,14 @@ Rules:
     // 3. Fallback: Curated structural templates
     const templates = buildTemplateExamples(word, partOfSpeech);
     const combined = Array.from(new Set([...dictExamples, ...templates])).slice(0, 3);
+
+    void saveWordExerciseToCache({
+      word,
+      targetLang: "ar",
+      examples: combined,
+      definition,
+      partOfSpeech,
+    });
 
     return NextResponse.json(
       {

@@ -9,14 +9,17 @@ import { Logo } from "./Logo";
 
 const AUTH_LINKS = [
   { href: "/dashboard", label: "Dashboard", shortLabel: "Dashboard" },
+  { href: "/decks", label: "Show Decks", shortLabel: "Decks" },
   { href: "/words", label: "My words", shortLabel: "Words" },
   { href: "/history", label: "History", shortLabel: "History" },
-  { href: "/extension", label: "Extension", shortLabel: "Extension" },
+  { href: "/pricing", label: "★ Pro", shortLabel: "Pro" },
   { href: "/settings", label: "Settings", shortLabel: "Settings" },
 ] as const;
 
 const GUEST_LINKS = [
   { href: "/", label: "Home", shortLabel: "Home" },
+  { href: "/decks", label: "Show Decks", shortLabel: "Decks" },
+  { href: "/pricing", label: "Pricing", shortLabel: "Pricing" },
   { href: "/extension", label: "Extension", shortLabel: "Extension" },
 ] as const;
 

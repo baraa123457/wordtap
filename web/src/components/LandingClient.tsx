@@ -70,6 +70,18 @@ export function LandingClient() {
               عربي
             </button>
           </div>
+          <Link
+            href="/decks"
+            className="hidden sm:inline-flex btn btn-quiet min-h-9 px-3 text-xs font-semibold"
+          >
+            🎬 {isAr ? "مكتبة المسلسلات" : "Show Decks"}
+          </Link>
+          <Link
+            href="/pricing"
+            className="hidden sm:inline-flex btn btn-quiet min-h-9 px-3 text-xs font-semibold"
+          >
+            {isAr ? "الاشتراكات" : "Pricing"}
+          </Link>
           <ThemeToggle />
           <AuthActions size="nav" />
         </div>

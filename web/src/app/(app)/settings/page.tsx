@@ -1058,6 +1058,70 @@ export default function SettingsPage() {
           </button>
         </div>
 
+        {/* Bandwidth & Data Saver Mode */}
+        <div className="border-t border-line/50 pt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="font-semibold text-ink flex items-center gap-2">
+                <span>Data Saver Mode (Audio-First)</span>
+                <span className="rounded-full bg-subtitle/20 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:text-subtitle">
+                  Save 95% Data
+                </span>
+              </div>
+              <div className="text-xs sm:text-sm text-muted">
+                Prioritize lightweight audio clips and minimal posters in Stage 2 practice instead of heavy video streams. Ideal for slow or metered mobile connections.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => update({ dataSaverMode: !settings.dataSaverMode })}
+              className={`apple-switch shrink-0 ${settings.dataSaverMode ? "apple-switch-on" : ""}`}
+              aria-label="Toggle Data Saver Mode"
+            >
+              <span className="apple-switch-thumb" />
+            </button>
+          </div>
+        </div>
+
+        {/* Daily Practice Reminders (WhatsApp & Streak) */}
+        <div className="border-t border-line/50 pt-4 space-y-3">
+          <div>
+            <div className="font-semibold text-ink flex items-center gap-1.5">
+              <span>📱 Daily Micro-Learning Reminders</span>
+            </div>
+            <div className="text-xs sm:text-sm text-muted">
+              Never lose your streak. Get 1 vocabulary quiz from your shows delivered at your preferred hour.
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-xs font-semibold text-ink block mb-1">
+                WhatsApp Number (with country code)
+              </label>
+              <input
+                type="tel"
+                value={settings.whatsappReminderPhone || ""}
+                onChange={(e) => update({ whatsappReminderPhone: e.target.value })}
+                placeholder="+966 50 123 4567 or +20 10 1234 5678"
+                className="field w-full text-xs sm:text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-ink block mb-1">
+                Preferred Reminder Time
+              </label>
+              <input
+                type="time"
+                value={settings.reminderTime || "20:00"}
+                onChange={(e) => update({ reminderTime: e.target.value })}
+                className="field w-full text-xs sm:text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Your Data: Export */}
         <div className="border-t border-line/50 pt-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
