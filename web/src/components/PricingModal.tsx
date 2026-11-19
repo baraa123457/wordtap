@@ -68,7 +68,7 @@ export function PricingModal({
 
         <div className="flex flex-col gap-4 text-center">
           <div className="inline-flex self-center items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-xs font-bold text-ink">
-            <StarIcon size={12} filled className="text-subtitle" />
+            <StarIcon size={12} filled className="text-amber-600 dark:text-subtitle" />
             <span>WordTap Fluency Pass</span>
           </div>
 

@@ -90,8 +90,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                     className="apple-segmented-item whitespace-nowrap min-h-[40px] sm:min-h-[38px] sm:px-3.5 sm:py-1.5 sm:text-sm flex items-center justify-center"
                   >
                     {("isPro" in link && link.isPro) ? (
-                      <span className="inline-flex items-center gap-1">
-                        <StarIcon size={12} filled className="text-subtitle" />
+                      <span className="inline-flex items-center gap-1.5">
+                        <StarIcon
+                          size={12}
+                          filled
+                          className={active ? "text-subtitle-ink" : "text-amber-500 dark:text-subtitle"}
+                        />
                         <span>{link.label}</span>
                       </span>
                     ) : link.label === link.shortLabel ? (

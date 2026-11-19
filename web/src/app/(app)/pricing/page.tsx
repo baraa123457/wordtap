@@ -182,7 +182,7 @@ export default function PricingPage() {
               <h2 className="text-xl font-bold text-ink flex items-center gap-1.5">
                 <span>Fluency Pass</span>
                 <span className="inline-flex items-center gap-1 text-xs font-extrabold rounded-full bg-subtitle/20 text-amber-900 dark:text-subtitle px-2 py-0.5 border border-subtitle/40">
-                  <StarIcon size={11} filled className="text-subtitle" /> Pro
+                  <StarIcon size={11} filled className="text-amber-600 dark:text-subtitle" /> Pro
                 </span>
               </h2>
               <p className="text-xs text-muted mt-1">
