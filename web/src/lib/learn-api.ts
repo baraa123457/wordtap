@@ -223,6 +223,25 @@ export async function persistLearningReview(params: {
   await reviewWord(params.wordId, params.rating > 1, legacyGrade);
 }
 
+export async function fetchSentenceExamples(
+  word: string,
+  definition?: string,
+  partOfSpeech?: string,
+): Promise<string[]> {
+  try {
+    const res = await fetch("/api/learn/sentence-examples", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ word, definition, partOfSpeech }),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { examples?: string[] };
+    return Array.isArray(data.examples) ? data.examples : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Fetches the last 14 days of review history for weekly activity & retention analytics. */
 export async function fetchRecentReviewHistory(days = 14): Promise<ReviewHistoryRow[]> {
   try {
