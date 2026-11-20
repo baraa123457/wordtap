@@ -8,5 +8,10 @@ contextBridge.exposeInMainWorld('WordTapAPI', {
   saveWord: (entry) => ipcRenderer.invoke('storage:save-word', entry),
   getConfig: () => ipcRenderer.invoke('storage:get-config'),
   saveConfig: (config) => ipcRenderer.invoke('storage:save-config', config),
-  openExternal: (url) => ipcRenderer.invoke('shell:open-external', url)
+  openExternal: (url) => ipcRenderer.invoke('shell:open-external', url),
+  toggleFullscreen: () => ipcRenderer.invoke('window:toggle-fullscreen'),
+  isFullscreen: () => ipcRenderer.invoke('window:is-fullscreen'),
+  onFullscreenChange: (callback) => {
+    ipcRenderer.on('window:fullscreen-change', (_event, isFullScreen) => callback(isFullScreen));
+  }
 });

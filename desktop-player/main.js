@@ -1,6 +1,9 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+// Completely disable the default Electron application menu (File, Edit, View, Window, Help)
+Menu.setApplicationMenu(null);
 
 let mainWindow = null;
 
@@ -41,6 +44,7 @@ function createWindow() {
     minHeight: 560,
     backgroundColor: '#0c0e14',
     title: 'WordTap Video Player',
+    autoHideMenuBar: true,
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -48,6 +52,22 @@ function createWindow() {
       nodeIntegration: false,
       webSecurity: false, // Allows streaming local video files and local subtitles seamlessly
       sandbox: false
+    }
+  });
+
+  mainWindow.setMenuBarVisibility(false);
+  mainWindow.setAutoHideMenuBar(true);
+
+  // Send fullscreen state changes to renderer
+  mainWindow.on('enter-full-screen', () => {
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('window:fullscreen-change', true);
+    }
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('window:fullscreen-change', false);
     }
   });
 
@@ -227,4 +247,16 @@ ipcMain.handle('shell:open-external', async (_event, url) => {
   if (url && (url.startsWith('https://') || url.startsWith('http://'))) {
     shell.openExternal(url);
   }
+});
+
+// IPC: Native Fullscreen Window Management
+ipcMain.handle('window:toggle-fullscreen', async () => {
+  if (!mainWindow) return false;
+  const isFS = mainWindow.isFullScreen();
+  mainWindow.setFullScreen(!isFS);
+  return !isFS;
+});
+
+ipcMain.handle('window:is-fullscreen', async () => {
+  return mainWindow ? mainWindow.isFullScreen() : false;
 });

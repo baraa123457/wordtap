@@ -773,17 +773,39 @@
     });
 
     // Fullscreen Toggle
-    function toggleFullscreen() {
-      if (!document.fullscreenElement) {
+    async function toggleFullscreen() {
+      if (window.WordTapAPI && window.WordTapAPI.toggleFullscreen) {
+        const isFS = await window.WordTapAPI.toggleFullscreen();
+        updateFullscreenIcons(isFS);
+      } else if (!document.fullscreenElement) {
         document.getElementById('app-container').requestFullscreen().catch(() => {});
-        iconFsEnter.style.display = 'none';
-        iconFsExit.style.display = 'block';
+        updateFullscreenIcons(true);
       } else {
         document.exitFullscreen().catch(() => {});
+        updateFullscreenIcons(false);
+      }
+    }
+
+    function updateFullscreenIcons(isFS) {
+      if (isFS) {
+        iconFsEnter.style.display = 'none';
+        iconFsExit.style.display = 'block';
+        showToast('Fullscreen (Press F or Esc to exit)');
+      } else {
         iconFsEnter.style.display = 'block';
         iconFsExit.style.display = 'none';
       }
     }
+
+    if (window.WordTapAPI && window.WordTapAPI.onFullscreenChange) {
+      window.WordTapAPI.onFullscreenChange((isFS) => {
+        updateFullscreenIcons(isFS);
+      });
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      updateFullscreenIcons(Boolean(document.fullscreenElement));
+    });
 
     btnFullscreen.addEventListener('click', toggleFullscreen);
     video.addEventListener('dblclick', toggleFullscreen);
@@ -848,6 +870,12 @@
           accountModal.classList.remove('open');
         } else if (savedWordsModal.classList.contains('open')) {
           savedWordsModal.classList.remove('open');
+        } else {
+          if (window.WordTapAPI && window.WordTapAPI.isFullscreen) {
+            window.WordTapAPI.isFullscreen().then(isFS => {
+              if (isFS) toggleFullscreen();
+            });
+          }
         }
       } else if (e.code === 'KeyF') {
         toggleFullscreen();
