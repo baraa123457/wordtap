@@ -20,7 +20,7 @@ const AUTH_LINKS = [
 const GUEST_LINKS = [
   { href: "/", label: "Home", shortLabel: "Home" },
   { href: "/decks", label: "Decks", shortLabel: "Decks" },
-  { href: "/pricing", label: "Pricing", shortLabel: "Pricing" },
+  { href: "/pricing", label: "Pro", shortLabel: "Pro", isPro: true },
   { href: "/extension", label: "Extension", shortLabel: "Extension" },
 ] as const;
 
@@ -102,7 +102,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <StarIcon
                           size={12}
                           filled
-                          className={active ? "text-subtitle-ink" : "text-amber-500 dark:text-subtitle"}
+                          className="text-amber-500 dark:text-subtitle"
                         />
                         <span>{link.label}</span>
                       </span>

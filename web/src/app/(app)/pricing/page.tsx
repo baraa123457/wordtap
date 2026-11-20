@@ -190,30 +190,30 @@ export default function PricingPage() {
               </p>
             </div>
 
-            <div className="py-1">
-              <div className="flex items-baseline gap-1.5 text-ink" dir="ltr">
+            <div className="py-2">
+              <div className="flex items-baseline gap-2 text-ink pb-1" dir="ltr">
                 {formattedMonthlyPrice.isSymbolPrefix ? (
                   <>
                     <span className="text-xl sm:text-2xl font-bold text-muted select-none">
                       {formattedMonthlyPrice.symbol}
                     </span>
-                    <span className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                    <span className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-none">
                       {formattedMonthlyPrice.amount}
                     </span>
                   </>
                 ) : (
                   <>
-                    <span className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                    <span className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-none">
                       {formattedMonthlyPrice.amount}
                     </span>
-                    <span className="text-base sm:text-lg font-bold text-muted select-none">
+                    <span className="text-sm sm:text-base font-semibold text-muted select-none">
                       {formattedMonthlyPrice.symbol}
                     </span>
                   </>
                 )}
                 <span className="text-xs font-medium text-muted ml-0.5 self-baseline">/ month</span>
               </div>
-              <p className="text-xs text-muted mt-2 leading-relaxed">{billedPeriodText}</p>
+              <p className="text-xs text-muted mt-2.5 leading-relaxed">{billedPeriodText}</p>
             </div>
 
             <ul className="space-y-2.5 text-xs sm:text-sm text-ink pt-2">
