@@ -6,15 +6,17 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { trackEvent } from "@/lib/analytics";
 import { Logo } from "./Logo";
+import { GoogleIcon } from "./Icons";
 
 type Mode = "login" | "signup";
 
 export function AuthForm({ mode }: { mode: Mode }) {
-  const { state, signIn, signUp, resendConfirmation, resetPassword } = useAuth();
+  const { state, signIn, signInWithGoogle, signUp, resendConfirmation, resetPassword } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -66,6 +68,23 @@ export function AuthForm({ mode }: { mode: Mode }) {
       setError(err instanceof Error ? err.message : "Could not resend confirmation email.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setGoogleBusy(true);
+    setError(null);
+    setStatusMessage(null);
+    try {
+      const message = await signInWithGoogle();
+      if (message) {
+        setError(message);
+        setGoogleBusy(false);
+      }
+      // If no error, the window is redirected to Google OAuth
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not initialize Google sign-in.");
+      setGoogleBusy(false);
     }
   }
 
@@ -126,6 +145,36 @@ export function AuthForm({ mode }: { mode: Mode }) {
                       : "Start capturing subtitle words from YouTube & Netflix."}
                 </p>
               </div>
+
+              {!forgotMode ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void handleGoogleSignIn()}
+                    disabled={busy || googleBusy}
+                    className="btn btn-quiet w-full min-h-11 font-semibold flex items-center justify-center gap-3 border border-line bg-surface hover:bg-black/5 dark:hover:bg-white/5 transition-all shadow-2xs cursor-pointer"
+                  >
+                    <GoogleIcon size={18} />
+                    <span>
+                      {googleBusy
+                        ? "Connecting to Google…"
+                        : isLogin
+                          ? "Continue with Google"
+                          : "Sign up with Google"}
+                    </span>
+                  </button>
+
+                  <div className="relative my-0.5 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-line" />
+                    </div>
+                    <span className="relative bg-surface px-3 text-[11px] text-muted font-bold uppercase tracking-wider">
+                      or with email
+                    </span>
+                  </div>
+                </>
+              ) : null}
+
               <form onSubmit={onSubmit} className="grid gap-4" noValidate={false}>
                 <label className="grid gap-1.5">
                   <span className="font-medium text-xs sm:text-sm text-ink">Email</span>

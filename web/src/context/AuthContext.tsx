@@ -23,6 +23,7 @@ type SignUpResult = { error: string | null; needsConfirmation: boolean };
 type AuthContextValue = {
   state: AuthState;
   signIn: (email: string, password: string) => Promise<string | null>;
+  signInWithGoogle: () => Promise<string | null>;
   signUp: (email: string, password: string) => Promise<SignUpResult>;
   resendConfirmation: (email: string) => Promise<string | null>;
   resetPassword: (email: string) => Promise<string | null>;
@@ -74,6 +75,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error ? error.message : null;
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    const redirectTo = getAuthRedirectUrl("/auth/callback");
+    const { error } = await getSupabase().auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
+    });
+    return error ? error.message : null;
+  }, []);
+
   const signUp = useCallback(async (email: string, password: string): Promise<SignUpResult> => {
     const emailRedirectTo = getAuthRedirectUrl("/auth/callback");
     const { data, error } = await getSupabase().auth.signUp({
@@ -116,8 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ state, signIn, signUp, resendConfirmation, resetPassword, signOut }),
-    [state, signIn, signUp, resendConfirmation, resetPassword, signOut],
+    () => ({ state, signIn, signInWithGoogle, signUp, resendConfirmation, resetPassword, signOut }),
+    [state, signIn, signInWithGoogle, signUp, resendConfirmation, resetPassword, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
