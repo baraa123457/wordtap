@@ -798,24 +798,6 @@
       pos: 'word'
     };
 
-    const rect = element.getBoundingClientRect();
-    const popoverWidth = 320;
-    const popoverHeight = 220;
-    const wrapper = document.getElementById('video-wrapper');
-    const wrapperRect = wrapper ? wrapper.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
-
-    let left = (rect.left - wrapperRect.left) + (rect.width / 2) - (popoverWidth / 2);
-    if (left < 16) left = 16;
-    if (left + popoverWidth > wrapperRect.width - 16) left = wrapperRect.width - popoverWidth - 16;
-
-    let top = (rect.top - wrapperRect.top) - popoverHeight - 14;
-    if (top < 16) {
-      top = (rect.bottom - wrapperRect.top) + 14;
-    }
-
-    wordPopover.style.left = `${left}px`;
-    wordPopover.style.top = `${top}px`;
-
     popoverWordText.textContent = rawWord;
     popoverWordPos.textContent = '...';
     popoverTranslationAr.textContent = 'جاري الترجمة...';
@@ -841,9 +823,36 @@
       }
     }
 
+    // Precise placement above subtitle line: never cover the subtitle text!
+    const rect = element.getBoundingClientRect();
+    const subLine = element.closest('.subtitle-line') || element;
+    const subLineRect = subLine.getBoundingClientRect();
+    const popoverWidth = 320;
+    const wrapper = document.getElementById('video-wrapper');
+    const wrapperRect = wrapper ? wrapper.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight, bottom: window.innerHeight };
+
+    let left = (rect.left - wrapperRect.left) + (rect.width / 2) - (popoverWidth / 2);
+    if (left < 16) left = 16;
+    if (left + popoverWidth > wrapperRect.width - 16) left = wrapperRect.width - popoverWidth - 16;
+
+    const clearance = 18; // 18px generous air gap directly above the subtitle text
+    const bottomOffset = (wrapperRect.bottom - subLineRect.top) + clearance;
+
+    // In the standard case (subtitles at bottom/lower half), anchor by bottom so it expands upward without covering subtitles
+    if (subLineRect.top > wrapperRect.top + 260) {
+      wordPopover.style.top = 'auto';
+      wordPopover.style.bottom = `${bottomOffset}px`;
+    } else {
+      // Subtitles are near the very top of the screen; place below
+      wordPopover.style.bottom = 'auto';
+      wordPopover.style.top = `${(subLineRect.bottom - wrapperRect.top) + clearance}px`;
+    }
+
+    wordPopover.style.left = `${left}px`;
     wordPopover.classList.add('visible');
 
-    speakWord(rawWord);
+    // DO NOT auto-speak the English word - user requested silence on click.
+    // Pronunciation is available on demand by clicking the speaker icon button.
 
     // Initial dismiss timer: stays for 2.6s unless mouse hovers over it
     schedulePopoverClose(2600);
