@@ -566,16 +566,17 @@ function startAudioServer() {
         'Access-Control-Allow-Origin': '*'
       });
 
-      // -ss before -i with -noaccurate_seek and -map 0:a:0!
-      // This completely skips decoding heavy 10-bit HEVC video and begins streaming audio in 50ms!
+      // Sample-accurate seek, clean stereo downmixing, instant packet flushing, zero negative PTS
       const args = [
-        '-ss', String(startTime),
-        '-noaccurate_seek',
+        '-ss', String(Math.max(0, startTime)),
         '-i', filePath,
         '-vn',
         '-map', '0:a:0',
         '-c:a', 'mp3',
         '-b:a', '192k',
+        '-ac', '2',
+        '-flush_packets', '1',
+        '-avoid_negative_ts', 'make_zero',
         '-f', 'mp3',
         'pipe:1'
       ];
