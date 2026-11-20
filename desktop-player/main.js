@@ -1,6 +1,18 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const crypto = require('crypto');
+const { spawn } = require('child_process');
+const xmlrpc = require('xmlrpc');
+const zlib = require('zlib');
+
+let ffmpegPath = null;
+try {
+  ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+} catch (e) {
+  console.warn('ffmpeg installer error:', e);
+}
 
 // CRITICAL AUDIO FIX: Allow automatic audio playback with sound without requiring gesture
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -264,4 +276,270 @@ ipcMain.handle('window:toggle-fullscreen', async () => {
 
 ipcMain.handle('window:is-fullscreen', async () => {
   return mainWindow ? mainWindow.isFullScreen() : false;
+});
+
+// ==========================================
+// AUDIO TRANSCODING & PROBING ENGINE (FFmpeg)
+// ==========================================
+
+function probeAudio(filePath) {
+  return new Promise((resolve) => {
+    if (!ffmpegPath || !fs.existsSync(filePath)) {
+      return resolve({ hasAudio: false, needsTranscode: false, codecs: [], audioStreams: [] });
+    }
+
+    const child = spawn(ffmpegPath, ['-i', filePath]);
+    let output = '';
+    child.stderr.on('data', d => output += d.toString());
+    child.on('close', () => {
+      const audioStreams = [];
+      const codecs = [];
+      let needsTranscode = false;
+
+      const lines = output.split('\n');
+      for (const line of lines) {
+        if (line.includes('Audio:')) {
+          audioStreams.push(line.trim());
+          const match = line.match(/Audio:\s*([^,]+)/);
+          const codec = match ? match[1].trim().toLowerCase() : 'unknown';
+          codecs.push(codec);
+          // Chromium cannot natively decode AC3 (Dolby Digital), E-AC3, DTS, TrueHD, MLP
+          if (/ac3|eac3|dts|truehd|mlp/i.test(codec)) {
+            needsTranscode = true;
+          }
+        }
+      }
+
+      const hasAudio = audioStreams.length > 0;
+      const hasSafeCodec = codecs.some(c => /aac|mp3|opus|vorbis/i.test(c));
+      if (hasAudio && !hasSafeCodec) {
+        needsTranscode = true;
+      }
+
+      resolve({
+        hasAudio,
+        codecs,
+        needsTranscode,
+        audioStreams
+      });
+    });
+  });
+}
+
+function transcodeAudio(filePath) {
+  return new Promise((resolve) => {
+    if (!ffmpegPath || !fs.existsSync(filePath)) {
+      return resolve({ success: false, error: 'FFmpeg not available or video file not found' });
+    }
+
+    try {
+      const stats = fs.statSync(filePath);
+      const hash = crypto.createHash('md5').update(`${filePath}_${stats.size}_${stats.mtimeMs}`).digest('hex');
+      const tempAudioPath = path.join(os.tmpdir(), `wt_vlc_${hash}.mp3`);
+
+      // Check if already transcoded in cache
+      if (fs.existsSync(tempAudioPath) && fs.statSync(tempAudioPath).size > 1024) {
+        return resolve({
+          success: true,
+          cached: true,
+          audioPath: tempAudioPath,
+          audioUrl: `file://${tempAudioPath.replace(/\\/g, '/')}`
+        });
+      }
+
+      // Transcode audio stream to standard 192k MP3 (100% playable & instantaneous seeking in Chromium)
+      const args = [
+        '-y',
+        '-i', filePath,
+        '-vn',
+        '-c:a', 'mp3',
+        '-b:a', '192k',
+        tempAudioPath
+      ];
+
+      const child = spawn(ffmpegPath, args);
+      let stderr = '';
+      child.stderr.on('data', d => stderr += d.toString());
+
+      child.on('close', (code) => {
+        if (code === 0 && fs.existsSync(tempAudioPath) && fs.statSync(tempAudioPath).size > 512) {
+          resolve({
+            success: true,
+            cached: false,
+            audioPath: tempAudioPath,
+            audioUrl: `file://${tempAudioPath.replace(/\\/g, '/')}`
+          });
+        } else {
+          console.error('Audio transcode error:', stderr);
+          resolve({
+            success: false,
+            error: `Transcode failed with exit code ${code}`
+          });
+        }
+      });
+    } catch (err) {
+      resolve({ success: false, error: err.message });
+    }
+  });
+}
+
+ipcMain.handle('audio:probe', async (_event, filePath) => {
+  return probeAudio(filePath);
+});
+
+ipcMain.handle('audio:transcode', async (_event, filePath) => {
+  return transcodeAudio(filePath);
+});
+
+// ==========================================
+// VLSUB OPENSUBTITLES ENGINE (XML-RPC)
+// ==========================================
+
+function computeOpenSubtitlesHash(filePath) {
+  try {
+    const stats = fs.statSync(filePath);
+    const fileSize = stats.size;
+    if (fileSize < 131072) return null;
+
+    const chunkSize = 65536;
+    const buf = Buffer.alloc(chunkSize);
+    const fd = fs.openSync(filePath, 'r');
+
+    let hash = BigInt(fileSize);
+
+    // Read first 64KB
+    fs.readSync(fd, buf, 0, chunkSize, 0);
+    for (let i = 0; i < chunkSize; i += 8) {
+      hash = (hash + buf.readBigUInt64LE(i)) & BigInt('0xFFFFFFFFFFFFFFFF');
+    }
+
+    // Read last 64KB
+    fs.readSync(fd, buf, 0, chunkSize, fileSize - chunkSize);
+    for (let i = 0; i < chunkSize; i += 8) {
+      hash = (hash + buf.readBigUInt64LE(i)) & BigInt('0xFFFFFFFFFFFFFFFF');
+    }
+
+    fs.closeSync(fd);
+    let hex = hash.toString(16);
+    while (hex.length < 16) hex = '0' + hex;
+    return { movieHash: hex, movieByteSize: fileSize };
+  } catch (err) {
+    console.error('Hash calculation error:', err);
+    return null;
+  }
+}
+
+let osToken = null;
+let osTokenTime = 0;
+
+function getOpenSubtitlesClient() {
+  return xmlrpc.createClient({
+    host: 'api.opensubtitles.org',
+    port: 80,
+    path: '/xml-rpc',
+    headers: {
+      'User-Agent': 'VLSub 0.10.2'
+    }
+  });
+}
+
+function getValidToken() {
+  return new Promise((resolve, reject) => {
+    const now = Date.now();
+    if (osToken && (now - osTokenTime) < 10 * 60 * 1000) {
+      return resolve(osToken);
+    }
+    const client = getOpenSubtitlesClient();
+    client.methodCall('LogIn', ['', '', 'en', 'VLSub 0.10.2'], (err, val) => {
+      if (err) return reject(err);
+      if (val && val.token) {
+        osToken = val.token;
+        osTokenTime = Date.now();
+        resolve(osToken);
+      } else {
+        reject(new Error((val && val.status) || 'OpenSubtitles login failed'));
+      }
+    });
+  });
+}
+
+ipcMain.handle('vlsub:calculate-hash', async (_event, filePath) => {
+  if (!filePath || !fs.existsSync(filePath)) return null;
+  return computeOpenSubtitlesHash(filePath);
+});
+
+ipcMain.handle('vlsub:search', async (_event, params) => {
+  try {
+    const token = await getValidToken();
+    const client = getOpenSubtitlesClient();
+
+    const queryObj = {};
+    if (params.langCode && params.langCode !== 'all') {
+      queryObj.sublanguageid = params.langCode;
+    }
+    if (params.movieHash && params.movieByteSize) {
+      queryObj.moviehash = params.movieHash;
+      queryObj.moviebytesize = params.movieByteSize;
+    } else if (params.query) {
+      queryObj.query = params.query.trim();
+      if (params.season) queryObj.season = params.season;
+      if (params.episode) queryObj.episode = params.episode;
+    }
+
+    return new Promise((resolve) => {
+      client.methodCall('SearchSubtitles', [token, [queryObj]], (err, res) => {
+        if (err) {
+          console.error('VLsub search error:', err);
+          return resolve({ ok: false, error: err.message, data: [] });
+        }
+        if (!res || !res.data) {
+          return resolve({ ok: true, data: [] });
+        }
+        const list = res.data.map(item => ({
+          id: item.IDSubtitleFile,
+          fileName: item.SubFileName || item.MovieReleaseName || 'subtitle.srt',
+          movieName: item.MovieName || '',
+          movieYear: item.MovieYear || '',
+          langName: item.LanguageName || item.SubLanguageID || 'Unknown',
+          langCode: item.SubLanguageID || '',
+          rating: item.SubRating || '0.0',
+          downloads: item.SubDownloadsCnt || '0',
+          format: item.SubFormat || 'srt'
+        }));
+        resolve({ ok: true, data: list });
+      });
+    });
+  } catch (err) {
+    console.error('VLsub search exception:', err);
+    return { ok: false, error: err.message, data: [] };
+  }
+});
+
+ipcMain.handle('vlsub:download', async (_event, subId) => {
+  try {
+    const token = await getValidToken();
+    const client = getOpenSubtitlesClient();
+
+    return new Promise((resolve) => {
+      client.methodCall('DownloadSubtitles', [token, [subId]], (err, res) => {
+        if (err) {
+          console.error('VLsub download error:', err);
+          return resolve({ ok: false, error: err.message });
+        }
+        if (!res || !res.data || res.data.length === 0) {
+          return resolve({ ok: false, error: 'Empty subtitle data returned' });
+        }
+        try {
+          const rawBase64 = res.data[0].data;
+          const gzBuf = Buffer.from(rawBase64, 'base64');
+          const unzipped = zlib.gunzipSync(gzBuf).toString('utf-8');
+          resolve({ ok: true, srtContent: unzipped });
+        } catch (unzipErr) {
+          resolve({ ok: false, error: 'Failed to decompress subtitle: ' + unzipErr.message });
+        }
+      });
+    });
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 });

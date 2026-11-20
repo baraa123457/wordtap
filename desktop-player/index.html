@@ -25,12 +25,151 @@
           <span class="vlc-brand-title">WordTap VLC</span>
         </div>
 
-        <!-- VLC Menu Navigation -->
-        <div class="vlc-menu-items">
-          <button class="vlc-menu-btn" id="btn-open-video">Media (Ctrl+O)</button>
-          <button class="vlc-menu-btn" id="btn-open-sub">Subtitle...</button>
-          <button class="vlc-menu-btn" id="btn-sub-size">Font Size (A)</button>
-          <button class="vlc-menu-btn" id="btn-help">Shortcuts (?)</button>
+        <!-- VLC Classic Dropdown Menus -->
+        <div class="vlc-menu-dropdown-group" id="vlc-menu-bar">
+          <!-- Media Menu -->
+          <div class="vlc-menu-dropdown" data-menu="media">
+            <button class="vlc-menu-btn menu-header-btn">Media</button>
+            <div class="vlc-dropdown-list">
+              <button class="vlc-dropdown-item" id="btn-open-video">
+                <span>Open Media File...</span>
+                <kbd>Ctrl+O</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="btn-open-sub">
+                <span>Open Subtitle File...</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Playback Menu -->
+          <div class="vlc-menu-dropdown" data-menu="playback">
+            <button class="vlc-menu-btn menu-header-btn">Playback</button>
+            <div class="vlc-dropdown-list">
+              <button class="vlc-dropdown-item" id="menu-item-play">
+                <span>Play / Pause</span>
+                <kbd>Space</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-stop">
+                <span>Stop</span>
+              </button>
+              <div class="vlc-dropdown-sep"></div>
+              <button class="vlc-dropdown-item" id="menu-item-replay">
+                <span>Replay Subtitle Line</span>
+                <kbd>S</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-fwd">
+                <span>Forward 5s</span>
+                <kbd>→</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-back">
+                <span>Rewind 5s</span>
+                <kbd>←</kbd>
+              </button>
+              <div class="vlc-dropdown-sep"></div>
+              <button class="vlc-dropdown-item" id="menu-item-speed">
+                <span>Cycle Speed</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Audio Menu -->
+          <div class="vlc-menu-dropdown" data-menu="audio">
+            <button class="vlc-menu-btn menu-header-btn">Audio</button>
+            <div class="vlc-dropdown-list">
+              <button class="vlc-dropdown-item highlight-action" id="menu-item-audio-fix">
+                <span>🔊 Fix Sound (AC3 / DTS Transcode)</span>
+              </button>
+              <div class="vlc-dropdown-sep"></div>
+              <button class="vlc-dropdown-item" id="menu-item-mute">
+                <span>Mute / Unmute</span>
+                <kbd>M</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-vol-up">
+                <span>Volume Up (+5%)</span>
+                <kbd>↑</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-vol-down">
+                <span>Volume Down (-5%)</span>
+                <kbd>↓</kbd>
+              </button>
+            </div>
+          </div>
+
+          <!-- Subtitle Menu -->
+          <div class="vlc-menu-dropdown" data-menu="subtitle">
+            <button class="vlc-menu-btn menu-header-btn">Subtitle</button>
+            <div class="vlc-dropdown-list">
+              <button class="vlc-dropdown-item" id="menu-item-add-sub">
+                <span>Add Subtitle File...</span>
+              </button>
+              <button class="vlc-dropdown-item highlight-action" id="menu-item-sub-vlsub">
+                <span>Download Subtitles (VLsub)</span>
+              </button>
+              <div class="vlc-dropdown-sep"></div>
+              <button class="vlc-dropdown-item" id="menu-item-toggle-sub">
+                <span>Toggle Subtitles</span>
+                <kbd>C</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="btn-sub-size">
+                <span>Font Size (A)</span>
+                <kbd>A</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-sub-delay-plus">
+                <span>Delay +100ms</span>
+                <kbd>]</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-sub-delay-minus">
+                <span>Delay -100ms</span>
+                <kbd>[</kbd>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tools Menu -->
+          <div class="vlc-menu-dropdown" data-menu="tools">
+            <button class="vlc-menu-btn menu-header-btn">Tools</button>
+            <div class="vlc-dropdown-list">
+              <button class="vlc-dropdown-item" id="menu-item-words">
+                <span>★ Saved Words List</span>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-account">
+                <span>WordTap Account & Sync</span>
+              </button>
+              <button class="vlc-dropdown-item" id="btn-help">
+                <span>Shortcuts (?)</span>
+                <kbd>?</kbd>
+              </button>
+            </div>
+          </div>
+
+          <!-- View Menu (EXACT MATCH FOR USER SCREENSHOT!) -->
+          <div class="vlc-menu-dropdown" data-menu="view">
+            <button class="vlc-menu-btn menu-header-btn" id="menu-btn-view">View</button>
+            <div class="vlc-dropdown-list">
+              <button class="vlc-dropdown-item highlight-action" id="menu-item-vlsub">
+                <span style="font-weight:600;">VLsub</span>
+              </button>
+              <div class="vlc-dropdown-sep"></div>
+              <button class="vlc-dropdown-item" id="menu-item-fs">
+                <span>Fullscreen Interface</span>
+                <kbd>F</kbd>
+              </button>
+            </div>
+          </div>
+
+          <!-- Help Menu -->
+          <div class="vlc-menu-dropdown" data-menu="help">
+            <button class="vlc-menu-btn menu-header-btn">Help</button>
+            <div class="vlc-dropdown-list">
+              <button class="vlc-dropdown-item" id="menu-item-help-shortcuts">
+                <span>Keyboard Shortcuts</span>
+                <kbd>?</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-help-web">
+                <span>Open WordTap Web App</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -60,6 +199,8 @@
     <!-- Video Canvas Wrapper -->
     <main id="video-wrapper">
       <video id="main-video" preload="auto" playsinline></video>
+      <!-- Dedicated Transcoded Audio Channel for 100% Codec Compatibility (Dolby Digital AC3 / DTS) -->
+      <audio id="compatible-audio" preload="auto"></audio>
 
       <!-- Audio Unmute Banner (safeguard) -->
       <div id="audio-unmute-banner">
@@ -323,6 +464,106 @@
         <button class="btn-vlc-primary" id="btn-saved-open-web" style="width: 100%; justify-content: center; margin-top: 6px;">
           Practice on WordTap Web
         </button>
+      </div>
+    </div>
+
+    <!-- Authentic VLsub 0.10.2 OpenSubtitles Dialog -->
+    <div class="modal-overlay" id="vlsub-modal">
+      <div class="vlsub-window">
+        <!-- Window Title Bar -->
+        <div class="vlsub-titlebar">
+          <div class="vlsub-title-left">
+            <svg class="vlsub-cone-icon" viewBox="0 0 100 100" fill="none">
+              <ellipse cx="50" cy="88" rx="42" ry="9" fill="#D9531E"/>
+              <ellipse cx="50" cy="85" rx="38" ry="7" fill="#F16624"/>
+              <polygon points="50,10 24,80 76,80" fill="#F36F21"/>
+              <polygon points="50,28 35,66 65,66" fill="#F8FAFC"/>
+              <polygon points="50,40 39,58 61,58" fill="#F36F21"/>
+              <polygon points="50,46 42,55 58,55" fill="#F8FAFC"/>
+              <path d="M50,40 L52,46 L58,46 L53,50 L55,56 L50,52 L45,56 L47,50 L42,46 L48,46 Z" fill="#FACC3B"/>
+            </svg>
+            <span class="vlsub-title-text">VLsub 0.10.2</span>
+          </div>
+          <button class="vlsub-close-btn" id="btn-close-vlsub" title="Close">✕</button>
+        </div>
+
+        <div class="vlsub-body">
+          <!-- Search Parameters Form -->
+          <div class="vlsub-form-container">
+            <div class="vlsub-form-row">
+              <label class="vlsub-label" for="vlsub-lang-select">Subtitle language</label>
+              <select id="vlsub-lang-select" class="vlsub-select">
+                <option value="eng" selected>English (eng)</option>
+                <option value="ara">Arabic (ara)</option>
+                <option value="all">All Languages</option>
+                <option value="spa">Spanish (spa)</option>
+                <option value="fre">French (fre)</option>
+                <option value="ger">German (ger)</option>
+                <option value="ita">Italian (ita)</option>
+                <option value="tur">Turkish (tur)</option>
+                <option value="por">Portuguese (por)</option>
+                <option value="rus">Russian (rus)</option>
+              </select>
+            </div>
+
+            <div class="vlsub-form-row">
+              <label class="vlsub-label" for="vlsub-title-input">Title</label>
+              <input type="text" id="vlsub-title-input" class="vlsub-input" placeholder="e.g. Inception, Breaking Bad">
+            </div>
+
+            <div class="vlsub-form-row vlsub-episodes-row">
+              <div class="vlsub-ep-field">
+                <label class="vlsub-label" for="vlsub-season-input">Season</label>
+                <input type="number" id="vlsub-season-input" class="vlsub-input vlsub-input-sm" placeholder="—" min="1">
+              </div>
+              <div class="vlsub-ep-field">
+                <label class="vlsub-label" for="vlsub-episode-input">Episode</label>
+                <input type="number" id="vlsub-episode-input" class="vlsub-input vlsub-input-sm" placeholder="—" min="1">
+              </div>
+            </div>
+          </div>
+
+          <!-- Search Action Buttons -->
+          <div class="vlsub-actions-row">
+            <button class="btn-vlsub" id="btn-vlsub-search-hash">Search by hash</button>
+            <button class="btn-vlsub" id="btn-vlsub-search-name">Search by name</button>
+            <div class="vlsub-spinner" id="vlsub-spinner" style="display:none;"></div>
+          </div>
+
+          <!-- Subtitle Results Table -->
+          <div class="vlsub-table-wrapper">
+            <table class="vlsub-table">
+              <thead>
+                <tr>
+                  <th class="th-filename">Subtitle File Name</th>
+                  <th class="th-lang">Language</th>
+                  <th class="th-rating">Rating</th>
+                  <th class="th-dl">Downloads</th>
+                </tr>
+              </thead>
+              <tbody id="vlsub-results-tbody">
+                <tr>
+                  <td colspan="4" class="vlsub-empty-cell">
+                    Enter a title or click "Search by hash" to find subtitles on OpenSubtitles.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Bottom Status & Download Buttons -->
+          <div class="vlsub-bottom-bar">
+            <div class="vlsub-status-message" id="vlsub-status-text">Ready</div>
+            <div class="vlsub-bottom-actions">
+              <button class="btn-vlsub btn-vlsub-primary" id="btn-vlsub-download" disabled>
+                Download selection
+              </button>
+              <button class="btn-vlsub" id="btn-vlsub-close-footer">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

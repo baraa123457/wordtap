@@ -11,6 +11,27 @@
   const wordPopover = document.getElementById('word-popover');
   const toastEl = document.getElementById('toast');
   const audioUnmuteBanner = document.getElementById('audio-unmute-banner');
+  const compatibleAudio = document.getElementById('compatible-audio');
+
+  // VLsub OpenSubtitles Elements
+  const vlsubModal = document.getElementById('vlsub-modal');
+  const btnCloseVlsub = document.getElementById('btn-close-vlsub');
+  const btnCloseVlsubFooter = document.getElementById('btn-vlsub-close-footer');
+  const vlsubLangSelect = document.getElementById('vlsub-lang-select');
+  const vlsubTitleInput = document.getElementById('vlsub-title-input');
+  const vlsubSeasonInput = document.getElementById('vlsub-season-input');
+  const vlsubEpisodeInput = document.getElementById('vlsub-episode-input');
+  const btnVlsubSearchHash = document.getElementById('btn-vlsub-search-hash');
+  const btnVlsubSearchName = document.getElementById('btn-vlsub-search-name');
+  const vlsubSpinner = document.getElementById('vlsub-spinner');
+  const vlsubResultsTbody = document.getElementById('vlsub-results-tbody');
+  const vlsubStatusText = document.getElementById('vlsub-status-text');
+  const btnVlsubDownload = document.getElementById('btn-vlsub-download');
+
+  // Menu Dropdown Specific Actions
+  const menuItemVlsub = document.getElementById('menu-item-vlsub');
+  const menuItemSubVlsub = document.getElementById('menu-item-sub-vlsub');
+  const menuItemAudioFix = document.getElementById('menu-item-audio-fix');
 
   // VLC Controls
   const btnPlayPause = document.getElementById('btn-play-pause');
@@ -113,11 +134,19 @@
   const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
   let currentSpeedIndex = 1;
   let currentMediaTitle = 'No media loaded';
+  let currentFilePath = null;
+  let isAudioTranscoded = false;
+  let vlsubSearchResults = [];
+  let selectedVlsubIndex = -1;
 
   // Explicit Audio Initialization
   function initAudio() {
     video.muted = false;
     video.volume = 1.0;
+    if (compatibleAudio) {
+      compatibleAudio.volume = 1.0;
+      compatibleAudio.muted = false;
+    }
     volumeSlider.value = 1.0;
     volumePercentLabel.textContent = '100%';
     iconVolHigh.style.display = 'block';
@@ -590,9 +619,17 @@
     showToast(`Subtitle sync: ${sign}${subtitleDelayMs}ms`);
   }
 
-  // Video Load Handler - GUARANTEED AUDIO
-  function playVideoFile(fileUrl, fileName, subContent = null) {
+  // Video Load Handler - GUARANTEED AUDIO & DOLBY/DTS TRANSCODING
+  async function playVideoFile(fileUrl, fileName, subContent = null, filePath = null) {
     currentMediaTitle = fileName;
+    currentFilePath = filePath;
+    isAudioTranscoded = false;
+    if (compatibleAudio) {
+      compatibleAudio.pause();
+      compatibleAudio.removeAttribute('src');
+      compatibleAudio.load();
+    }
+
     video.src = fileUrl;
     dropZone.classList.add('hidden');
 
@@ -605,8 +642,7 @@
     const playPromise = video.play();
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
-        console.warn('Autoplay error:', err);
-        // Show unmute banner if browser restricted audio
+        console.warn('Autoplay warning:', err);
         audioUnmuteBanner.style.display = 'block';
       });
     }
@@ -615,6 +651,248 @@
       loadSubtitles(subContent, 'Auto-loaded matching subtitle');
     }
     showToast(`Playing: ${fileName}`);
+
+    // Automatic Dolby AC3 / DTS Audio Stream Probing & Transcoding
+    if (filePath && window.WordTapAPI && window.WordTapAPI.probeAudio) {
+      try {
+        const info = await window.WordTapAPI.probeAudio(filePath);
+        if (info && info.needsTranscode) {
+          showToast('🔊 Detected Dolby/DTS audio. Transcoding audio stream...');
+          transcodeAndAttachAudio(filePath);
+        }
+      } catch (e) {
+        console.warn('Audio probe err:', e);
+      }
+    }
+  }
+
+  // Audio Transcoding Engine (FFmpeg on-demand)
+  async function transcodeAndAttachAudio(filePath) {
+    if (!filePath || !window.WordTapAPI || !window.WordTapAPI.transcodeAudio) {
+      showToast('Please open a media file first');
+      return;
+    }
+    try {
+      showToast('🔊 Transcoding audio to high-compatibility MP3 stream...');
+      const res = await window.WordTapAPI.transcodeAudio(filePath);
+      if (res && res.success && res.audioUrl) {
+        compatibleAudio.src = res.audioUrl;
+        compatibleAudio.currentTime = video.currentTime;
+        compatibleAudio.playbackRate = video.playbackRate;
+        compatibleAudio.volume = video.muted ? 0 : video.volume;
+        compatibleAudio.muted = video.muted;
+        
+        // Mute video element to avoid dual audio
+        video.muted = true;
+        isAudioTranscoded = true;
+
+        if (!video.paused) {
+          compatibleAudio.play().catch(() => {});
+        }
+        showToast('🔊 Crystal-clear sound active!');
+      } else {
+        showToast('Audio transcode error: ' + (res ? res.error : 'Unknown'));
+      }
+    } catch (err) {
+      console.error('Transcode err:', err);
+      showToast('Audio transcode failed: ' + err.message);
+    }
+  }
+
+  // Helper: Extract clean movie/show name and season/episode from filename
+  function cleanMovieTitle(raw) {
+    if (!raw) return { title: '', season: '', episode: '' };
+    let title = raw.replace(/\.[^/.]+$/, '');
+    let season = '';
+    let episode = '';
+
+    const seMatch = title.match(/[sS](\d{1,2})[eE](\d{1,2})/);
+    if (seMatch) {
+      season = parseInt(seMatch[1], 10).toString();
+      episode = parseInt(seMatch[2], 10).toString();
+      title = title.substring(0, seMatch.index);
+    }
+
+    // Strip common release tags
+    title = title.replace(/\b(1080p|720p|480p|2160p|4k|bluray|bdrip|brrip|webrip|web-dl|hdtv|x264|x265|hevc|yts|yify|rarbg|ac3|dts|aac|10bit|repack)\b/gi, ' ');
+    title = title.replace(/[\._\+]/g, ' ');
+    title = title.replace(/\s*\(\d{4}\)\s*/g, ' ');
+    title = title.trim();
+
+    return { title, season, episode };
+  }
+
+  // VLsub 0.10.2 OpenSubtitles Dialog Logic
+  function openVLsubModal() {
+    vlsubModal.classList.add('open');
+    if (currentMediaTitle && currentMediaTitle !== 'No media loaded') {
+      const parsed = cleanMovieTitle(currentMediaTitle);
+      vlsubTitleInput.value = parsed.title;
+      if (parsed.season) vlsubSeasonInput.value = parsed.season;
+      if (parsed.episode) vlsubEpisodeInput.value = parsed.episode;
+    }
+    vlsubStatusText.textContent = 'Ready to search OpenSubtitles';
+    vlsubStatusText.className = 'vlsub-status-message';
+    setTimeout(() => {
+      vlsubTitleInput.focus();
+    }, 100);
+  }
+
+  function closeVLsubModal() {
+    vlsubModal.classList.remove('open');
+  }
+
+  async function searchVLsubByName() {
+    const query = vlsubTitleInput.value.trim();
+    if (!query) {
+      vlsubStatusText.textContent = 'Please enter a title to search';
+      return;
+    }
+
+    const langCode = vlsubLangSelect.value;
+    const season = vlsubSeasonInput.value.trim() ? parseInt(vlsubSeasonInput.value.trim(), 10) : undefined;
+    const episode = vlsubEpisodeInput.value.trim() ? parseInt(vlsubEpisodeInput.value.trim(), 10) : undefined;
+
+    vlsubSpinner.style.display = 'block';
+    vlsubStatusText.textContent = `Searching OpenSubtitles for "${query}"...`;
+    vlsubStatusText.className = 'vlsub-status-message';
+    btnVlsubDownload.disabled = true;
+    selectedVlsubIndex = -1;
+
+    try {
+      const res = await window.WordTapAPI.searchVLSub({ query, langCode, season, episode });
+      if (res && res.ok && res.data && res.data.length > 0) {
+        vlsubSearchResults = res.data;
+        renderVLsubResults(res.data);
+        vlsubStatusText.textContent = `Found ${res.data.length} subtitles for "${query}"`;
+      } else {
+        vlsubSearchResults = [];
+        renderVLsubEmpty('No subtitles found. Try another search term or language.');
+        vlsubStatusText.textContent = '0 subtitles found';
+      }
+    } catch (err) {
+      console.error('VLsub search err:', err);
+      vlsubStatusText.textContent = 'Search failed: ' + err.message;
+      renderVLsubEmpty('Failed to connect to OpenSubtitles.');
+    } finally {
+      vlsubSpinner.style.display = 'none';
+    }
+  }
+
+  async function searchVLsubByHash() {
+    if (!currentFilePath) {
+      vlsubStatusText.textContent = 'Please open a video file first to search by hash';
+      return;
+    }
+
+    vlsubSpinner.style.display = 'block';
+    vlsubStatusText.textContent = 'Calculating movie hash...';
+    vlsubStatusText.className = 'vlsub-status-message';
+    btnVlsubDownload.disabled = true;
+    selectedVlsubIndex = -1;
+
+    try {
+      const hashInfo = await window.WordTapAPI.calculateVLSubHash(currentFilePath);
+      if (!hashInfo) {
+        vlsubStatusText.textContent = 'Could not compute hash for this file';
+        vlsubSpinner.style.display = 'none';
+        return;
+      }
+
+      vlsubStatusText.textContent = 'Searching OpenSubtitles by movie hash...';
+      const langCode = vlsubLangSelect.value;
+      const res = await window.WordTapAPI.searchVLSub({
+        movieHash: hashInfo.movieHash,
+        movieByteSize: hashInfo.movieByteSize,
+        langCode
+      });
+
+      if (res && res.ok && res.data && res.data.length > 0) {
+        vlsubSearchResults = res.data;
+        renderVLsubResults(res.data);
+        vlsubStatusText.textContent = `Found ${res.data.length} exact hash matching subtitles!`;
+      } else {
+        vlsubStatusText.textContent = 'No exact hash match found. Searching by title...';
+        await searchVLsubByName();
+      }
+    } catch (err) {
+      console.error('VLsub hash search err:', err);
+      vlsubStatusText.textContent = 'Hash search error: ' + err.message;
+    } finally {
+      vlsubSpinner.style.display = 'none';
+    }
+  }
+
+  function renderVLsubResults(list) {
+    let html = '';
+    list.forEach((item, idx) => {
+      const rating = item.rating ? parseFloat(item.rating).toFixed(1) : '—';
+      const dls = item.downloads ? parseInt(item.downloads, 10).toLocaleString() : '0';
+      html += `
+        <tr class="vlsub-row" data-idx="${idx}">
+          <td class="td-filename" title="${item.fileName}">${item.fileName}</td>
+          <td class="td-lang">${item.langName}</td>
+          <td class="td-rating" style="text-align:center;">★ ${rating}</td>
+          <td class="td-dl" style="text-align:right;">${dls}</td>
+        </tr>
+      `;
+    });
+    vlsubResultsTbody.innerHTML = html;
+
+    const rows = vlsubResultsTbody.querySelectorAll('.vlsub-row');
+    rows.forEach(row => {
+      row.addEventListener('click', () => {
+        rows.forEach(r => r.classList.remove('selected'));
+        row.classList.add('selected');
+        selectedVlsubIndex = parseInt(row.getAttribute('data-idx'), 10);
+        btnVlsubDownload.disabled = false;
+      });
+
+      row.addEventListener('dblclick', () => {
+        selectedVlsubIndex = parseInt(row.getAttribute('data-idx'), 10);
+        downloadSelectedVLsub();
+      });
+    });
+  }
+
+  function renderVLsubEmpty(msg) {
+    vlsubResultsTbody.innerHTML = `
+      <tr>
+        <td colspan="4" class="vlsub-empty-cell">${msg}</td>
+      </tr>
+    `;
+    btnVlsubDownload.disabled = true;
+  }
+
+  async function downloadSelectedVLsub() {
+    if (selectedVlsubIndex < 0 || selectedVlsubIndex >= vlsubSearchResults.length) return;
+    const item = vlsubSearchResults[selectedVlsubIndex];
+
+    btnVlsubDownload.disabled = true;
+    vlsubSpinner.style.display = 'block';
+    vlsubStatusText.textContent = `Downloading ${item.fileName}...`;
+
+    try {
+      const res = await window.WordTapAPI.downloadVLSub(item.id);
+      if (res && res.ok && res.srtContent) {
+        loadSubtitles(res.srtContent, `VLsub: ${item.fileName}`);
+        vlsubStatusText.textContent = '✓ Subtitle loaded successfully into player!';
+        vlsubStatusText.className = 'vlsub-status-message success';
+        setTimeout(() => {
+          closeVLsubModal();
+        }, 500);
+        showToast(`✓ VLsub: Loaded "${item.fileName}"! Tap any word to translate.`);
+      } else {
+        vlsubStatusText.textContent = 'Download error: ' + (res ? res.error : 'Unknown');
+        btnVlsubDownload.disabled = false;
+      }
+    } catch (err) {
+      console.error('VLsub download error:', err);
+      vlsubStatusText.textContent = 'Download failed: ' + err.message;
+      btnVlsubDownload.disabled = false;
+    } finally {
+      vlsubSpinner.style.display = 'none';
+    }
   }
 
   // Fullscreen Management
@@ -726,26 +1004,183 @@
 
     // Open Video
     btnOpenVideo.addEventListener('click', async () => {
+      closeAllMenus();
       const res = await window.WordTapAPI.openVideoFile();
       if (res) {
-        playVideoFile(res.fileUrl, res.fileName, res.subContent);
+        playVideoFile(res.fileUrl, res.fileName, res.subContent, res.filePath);
       }
     });
 
     btnSplashOpenVideo.addEventListener('click', async () => {
       const res = await window.WordTapAPI.openVideoFile();
       if (res) {
-        playVideoFile(res.fileUrl, res.fileName, res.subContent);
+        playVideoFile(res.fileUrl, res.fileName, res.subContent, res.filePath);
       }
     });
 
     // Open Subtitle
     btnOpenSub.addEventListener('click', async () => {
+      closeAllMenus();
       const res = await window.WordTapAPI.openSubtitleFile();
       if (res && res.content) {
         loadSubtitles(res.content, `Loaded ${res.fileName}`);
       }
     });
+
+    // VLsub Dialog Controls
+    if (btnCloseVlsub) btnCloseVlsub.addEventListener('click', closeVLsubModal);
+    if (btnCloseVlsubFooter) btnCloseVlsubFooter.addEventListener('click', closeVLsubModal);
+    if (btnVlsubSearchName) btnVlsubSearchName.addEventListener('click', searchVLsubByName);
+    if (btnVlsubSearchHash) btnVlsubSearchHash.addEventListener('click', searchVLsubByHash);
+    if (btnVlsubDownload) btnVlsubDownload.addEventListener('click', downloadSelectedVLsub);
+
+    if (vlsubTitleInput) {
+      vlsubTitleInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') searchVLsubByName();
+      });
+    }
+    if (vlsubSeasonInput) {
+      vlsubSeasonInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') searchVLsubByName();
+      });
+    }
+    if (vlsubEpisodeInput) {
+      vlsubEpisodeInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') searchVLsubByName();
+      });
+    }
+
+    // Top VLC Menu Dropdown Management
+    const menuDropdowns = document.querySelectorAll('.vlc-menu-dropdown');
+    let isAnyMenuOpen = false;
+
+    function closeAllMenus() {
+      menuDropdowns.forEach(d => d.classList.remove('open'));
+      isAnyMenuOpen = false;
+    }
+
+    menuDropdowns.forEach(dropdown => {
+      const headerBtn = dropdown.querySelector('.menu-header-btn');
+      if (!headerBtn) return;
+
+      headerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = dropdown.classList.contains('open');
+        closeAllMenus();
+        if (!isOpen) {
+          dropdown.classList.add('open');
+          isAnyMenuOpen = true;
+        }
+      });
+
+      dropdown.addEventListener('mouseenter', () => {
+        if (isAnyMenuOpen && !dropdown.classList.contains('open')) {
+          closeAllMenus();
+          dropdown.classList.add('open');
+          isAnyMenuOpen = true;
+        }
+      });
+    });
+
+    window.addEventListener('click', (e) => {
+      if (!e.target.closest('.vlc-menu-dropdown')) {
+        closeAllMenus();
+      }
+    });
+
+    // Menu Item Actions
+    const bindMenuItem = (id, fn) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeAllMenus();
+          fn();
+        });
+      }
+    };
+
+    bindMenuItem('menu-item-play', togglePlay);
+    bindMenuItem('menu-item-stop', () => {
+      video.pause();
+      video.currentTime = 0;
+      if (isAudioTranscoded && compatibleAudio) {
+        compatibleAudio.pause();
+        compatibleAudio.currentTime = 0;
+      }
+      showToast('⏹ Stopped');
+    });
+    bindMenuItem('menu-item-replay', replayCurrentLine);
+    bindMenuItem('menu-item-fwd', () => {
+      video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
+      showToast('⏩ +5s');
+    });
+    bindMenuItem('menu-item-back', () => {
+      video.currentTime = Math.max(0, video.currentTime - 5);
+      showToast('⏪ -5s');
+    });
+    bindMenuItem('menu-item-speed', () => {
+      currentSpeedIndex = (currentSpeedIndex + 1) % speeds.length;
+      const speed = speeds[currentSpeedIndex];
+      video.playbackRate = speed;
+      if (isAudioTranscoded && compatibleAudio) compatibleAudio.playbackRate = speed;
+      btnSpeed.textContent = `${speed.toFixed(speed === 1.0 ? 1 : 2).replace('.00', '.0')}x`;
+      showToast(`Speed: ${speed}x`);
+    });
+
+    // Audio Menu Actions (CRITICAL FIX FOR USER: AC3 / DTS Transcode)
+    bindMenuItem('menu-item-audio-fix', () => {
+      if (!currentFilePath) {
+        showToast('Please open a media file first');
+        return;
+      }
+      transcodeAndAttachAudio(currentFilePath);
+    });
+    bindMenuItem('menu-item-mute', () => {
+      video.muted = !video.muted;
+      updateVolumeDisplay();
+      showToast(video.muted ? 'Muted' : `Volume: ${Math.round(video.volume * 100)}%`);
+    });
+    bindMenuItem('menu-item-vol-up', () => {
+      video.volume = Math.min(1, video.volume + 0.05);
+      video.muted = false;
+      updateVolumeDisplay();
+      showToast(`Volume: ${Math.round(video.volume * 100)}%`);
+    });
+    bindMenuItem('menu-item-vol-down', () => {
+      video.volume = Math.max(0, video.volume - 0.05);
+      updateVolumeDisplay();
+      showToast(`Volume: ${Math.round(video.volume * 100)}%`);
+    });
+
+    // Subtitle Menu Actions
+    bindMenuItem('menu-item-add-sub', async () => {
+      const res = await window.WordTapAPI.openSubtitleFile();
+      if (res && res.content) {
+        loadSubtitles(res.content, `Loaded ${res.fileName}`);
+      }
+    });
+    bindMenuItem('menu-item-sub-vlsub', openVLsubModal);
+    bindMenuItem('menu-item-toggle-sub', () => {
+      subtitlesVisible = !subtitlesVisible;
+      btnToggleSub.classList.toggle('active', subtitlesVisible);
+      renderSubtitle(currentCue);
+      showToast(subtitlesVisible ? 'Subtitles On' : 'Subtitles Off');
+    });
+    bindMenuItem('menu-item-sub-delay-plus', () => adjustSubtitleDelay(100));
+    bindMenuItem('menu-item-sub-delay-minus', () => adjustSubtitleDelay(-100));
+
+    // Tools Menu Actions
+    bindMenuItem('menu-item-words', openSavedWordsModal);
+    bindMenuItem('menu-item-account', () => accountModal.classList.add('open'));
+
+    // View Menu Actions (EXACT MATCH FOR USER SCREENSHOT!)
+    bindMenuItem('menu-item-vlsub', openVLsubModal);
+    bindMenuItem('menu-item-fs', toggleFullscreen);
+
+    // Help Menu Actions
+    bindMenuItem('menu-item-help-shortcuts', () => helpModal.classList.add('open'));
+    bindMenuItem('menu-item-help-web', () => window.WordTapAPI.openExternal(WEBSITE_URL));
 
     // Subtitle Sync
     btnSyncMinus.addEventListener('click', () => adjustSubtitleDelay(-100));
@@ -784,10 +1219,18 @@
         return;
       }
       if (video.paused) {
-        video.muted = false;
+        if (!isAudioTranscoded) {
+          video.muted = false;
+        }
         video.play().catch(() => {});
+        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+          compatibleAudio.play().catch(() => {});
+        }
       } else {
         video.pause();
+        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+          compatibleAudio.pause();
+        }
       }
     }
 
@@ -795,6 +1238,10 @@
     btnStop.addEventListener('click', () => {
       video.pause();
       video.currentTime = 0;
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+        compatibleAudio.pause();
+        compatibleAudio.currentTime = 0;
+      }
       showToast('⏹ Stopped');
     });
 
@@ -810,11 +1257,35 @@
       iconPlay.style.display = 'none';
       iconPause.style.display = 'block';
       audioUnmuteBanner.style.display = 'none';
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src && compatibleAudio.paused) {
+        compatibleAudio.play().catch(() => {});
+      }
     });
 
     video.addEventListener('pause', () => {
       iconPlay.style.display = 'block';
       iconPause.style.display = 'none';
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src && !compatibleAudio.paused) {
+        compatibleAudio.pause();
+      }
+    });
+
+    video.addEventListener('seeking', () => {
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+        compatibleAudio.currentTime = video.currentTime;
+      }
+    });
+
+    video.addEventListener('seeked', () => {
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+        compatibleAudio.currentTime = video.currentTime;
+      }
+    });
+
+    video.addEventListener('ratechange', () => {
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+        compatibleAudio.playbackRate = video.playbackRate;
+      }
     });
 
     // Video Time Updates & Subtitle Matching
@@ -830,6 +1301,14 @@
         const pct = (cur / dur) * 100;
         scrubberPlayed.style.width = `${pct}%`;
         scrubberThumb.style.left = `${pct}%`;
+      }
+
+      // Keep Transcoded Audio in 100% Lip Sync
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src && !compatibleAudio.paused && !video.paused) {
+        const diff = Math.abs(compatibleAudio.currentTime - video.currentTime);
+        if (diff > 0.12) {
+          compatibleAudio.currentTime = video.currentTime;
+        }
       }
 
       // Check Subtitles
@@ -860,7 +1339,11 @@
       const rect = scrubberContainer.getBoundingClientRect();
       const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       if (video.duration) {
-        video.currentTime = pos * video.duration;
+        const targetTime = pos * video.duration;
+        video.currentTime = targetTime;
+        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+          compatibleAudio.currentTime = targetTime;
+        }
       }
     }
 
@@ -897,14 +1380,22 @@
     // Replay Line (S key or button)
     function replayCurrentLine() {
       if (currentCue) {
-        video.currentTime = Math.max(0, currentCue.start + (subtitleDelayMs / 1000));
+        const target = Math.max(0, currentCue.start + (subtitleDelayMs / 1000));
+        video.currentTime = target;
+        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+          compatibleAudio.currentTime = target;
+        }
         video.play().catch(() => {});
         showToast('↺ Replaying line');
       } else if (cues.length > 0) {
         const cur = video.currentTime - (subtitleDelayMs / 1000);
         const prevCue = [...cues].reverse().find(c => c.start <= cur);
         if (prevCue) {
-          video.currentTime = Math.max(0, prevCue.start + (subtitleDelayMs / 1000));
+          const target = Math.max(0, prevCue.start + (subtitleDelayMs / 1000));
+          video.currentTime = target;
+          if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+            compatibleAudio.currentTime = target;
+          }
           video.play().catch(() => {});
           showToast('↺ Replaying line');
         }
@@ -914,10 +1405,14 @@
 
     // Seek buttons (-5s, +5s)
     btnSeekBack.addEventListener('click', () => {
-      video.currentTime = Math.max(0, video.currentTime - 5);
+      const target = Math.max(0, video.currentTime - 5);
+      video.currentTime = target;
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) compatibleAudio.currentTime = target;
     });
     btnSeekFwd.addEventListener('click', () => {
-      video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
+      const target = Math.min(video.duration || 0, video.currentTime + 5);
+      video.currentTime = target;
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) compatibleAudio.currentTime = target;
     });
 
     // Speed Selector
@@ -925,6 +1420,7 @@
       currentSpeedIndex = (currentSpeedIndex + 1) % speeds.length;
       const speed = speeds[currentSpeedIndex];
       video.playbackRate = speed;
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) compatibleAudio.playbackRate = speed;
       btnSpeed.textContent = `${speed.toFixed(speed === 1.0 ? 1 : 2).replace('.00', '.0')}x`;
       showToast(`Speed: ${speed}x`);
     });
@@ -947,9 +1443,14 @@
         iconVolHigh.style.display = 'none';
         iconVolMute.style.display = 'block';
         volumePercentLabel.textContent = 'Muted';
+        if (isAudioTranscoded && compatibleAudio) compatibleAudio.muted = true;
       } else {
         iconVolHigh.style.display = 'block';
         iconVolMute.style.display = 'none';
+        if (isAudioTranscoded && compatibleAudio) {
+          compatibleAudio.muted = false;
+          compatibleAudio.volume = video.volume;
+        }
       }
     }
 
@@ -993,7 +1494,7 @@
           reader.readAsText(file);
         } else if (['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v', 'ts', 'flv'].includes(ext)) {
           const fileUrl = URL.createObjectURL(file);
-          playVideoFile(fileUrl, file.name);
+          playVideoFile(fileUrl, file.name, null, file.path);
 
           if (file.path) {
             const adjacentResult = await window.WordTapAPI.readSubtitleFile(
@@ -1009,13 +1510,23 @@
 
     // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+        if (e.code === 'Escape') {
+          if (vlsubModal && vlsubModal.classList.contains('open')) {
+            closeVLsubModal();
+          }
+        }
+        return;
+      }
 
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
       } else if (e.code === 'Escape') {
-        if (wordPopover.classList.contains('visible')) {
+        closeAllMenus();
+        if (vlsubModal && vlsubModal.classList.contains('open')) {
+          closeVLsubModal();
+        } else if (wordPopover.classList.contains('visible')) {
           closePopover(true);
         } else if (helpModal.classList.contains('open')) {
           helpModal.classList.remove('open');
@@ -1046,10 +1557,14 @@
       } else if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) {
         helpModal.classList.toggle('open');
       } else if (e.code === 'ArrowLeft') {
-        video.currentTime = Math.max(0, video.currentTime - 5);
+        const target = Math.max(0, video.currentTime - 5);
+        video.currentTime = target;
+        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) compatibleAudio.currentTime = target;
         showToast('⏪ -5s');
       } else if (e.code === 'ArrowRight') {
-        video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
+        const target = Math.min(video.duration || 0, video.currentTime + 5);
+        video.currentTime = target;
+        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) compatibleAudio.currentTime = target;
         showToast('⏩ +5s');
       } else if (e.code === 'ArrowUp') {
         video.volume = Math.min(1, video.volume + 0.05);

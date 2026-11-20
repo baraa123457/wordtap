@@ -863,3 +863,380 @@ body {
 
 .saved-word-title { font-weight: 700; color: #fff; font-size: 13px; }
 .saved-word-ar { color: var(--wt-gold); font-size: 13px; direction: rtl; }
+
+/* ==========================================
+   VLC Menu Bar Dropdowns
+   ========================================== */
+.vlc-menu-dropdown-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.vlc-menu-dropdown {
+  position: relative;
+}
+
+.vlc-menu-dropdown .menu-header-btn {
+  background: none;
+  border: none;
+  color: #d1d5db;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  user-select: none;
+}
+
+.vlc-menu-dropdown:hover .menu-header-btn,
+.vlc-menu-dropdown.open .menu-header-btn {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.vlc-dropdown-list {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 230px;
+  background: #202026;
+  border: 1px solid #3c3c48;
+  border-radius: 5px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.15);
+  padding: 4px;
+  z-index: 999;
+  margin-top: 4px;
+}
+
+.vlc-menu-dropdown.open .vlc-dropdown-list {
+  display: block;
+}
+
+.vlc-dropdown-item {
+  width: 100%;
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #e2e8f0;
+  border-radius: 3px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.vlc-dropdown-item:hover {
+  background: var(--vlc-orange);
+  color: #fff;
+}
+
+.vlc-dropdown-item.highlight-action {
+  font-weight: 600;
+  color: #fed7aa;
+}
+
+.vlc-dropdown-item.highlight-action:hover {
+  background: var(--vlc-orange);
+  color: #fff;
+}
+
+.vlc-dropdown-item kbd {
+  font-family: inherit;
+  font-size: 10px;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-left: 12px;
+}
+
+.vlc-dropdown-item:hover kbd {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.vlc-dropdown-sep {
+  height: 1px;
+  background: #353542;
+  margin: 4px 2px;
+}
+
+/* ==========================================
+   VLsub 0.10.2 Dialog Styles
+   ========================================== */
+.vlsub-window {
+  background: #222228;
+  border: 1px solid #454554;
+  border-radius: 8px;
+  width: 720px;
+  max-width: 95vw;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: vlsubFadeIn 0.15s ease-out;
+}
+
+@keyframes vlsubFadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.vlsub-titlebar {
+  background: #191920;
+  border-bottom: 1px solid #353542;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+
+.vlsub-title-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vlsub-cone-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.vlsub-title-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: -0.2px;
+}
+
+.vlsub-close-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.vlsub-close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.vlsub-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vlsub-form-container {
+  display: grid;
+  grid-template-columns: 180px 1fr 140px;
+  gap: 12px;
+  align-items: end;
+}
+
+.vlsub-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vlsub-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.vlsub-select,
+.vlsub-input {
+  background: #18181e;
+  border: 1px solid #3d3d4b;
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.vlsub-select:focus,
+.vlsub-input:focus {
+  border-color: var(--vlc-orange);
+}
+
+.vlsub-episodes-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.vlsub-ep-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vlsub-input-sm {
+  width: 100%;
+  text-align: center;
+}
+
+.vlsub-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-vlsub {
+  background: #2b2b35;
+  border: 1px solid #454554;
+  color: #f1f5f9;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.btn-vlsub:hover:not(:disabled) {
+  background: #393946;
+  border-color: #5c5c6e;
+  color: #fff;
+}
+
+.btn-vlsub:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-vlsub-primary {
+  background: var(--vlc-orange);
+  border-color: var(--vlc-orange-dark);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-vlsub-primary:hover:not(:disabled) {
+  background: var(--vlc-orange-light);
+  border-color: var(--vlc-orange);
+}
+
+.vlsub-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(243, 111, 33, 0.3);
+  border-top-color: var(--vlc-orange);
+  border-radius: 50%;
+  animation: vlsubSpin 0.7s linear infinite;
+}
+
+@keyframes vlsubSpin {
+  to { transform: rotate(360deg); }
+}
+
+.vlsub-table-wrapper {
+  height: 240px;
+  border: 1px solid #3d3d4b;
+  border-radius: 5px;
+  background: #16161c;
+  overflow-y: auto;
+}
+
+.vlsub-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.vlsub-table thead {
+  position: sticky;
+  top: 0;
+  background: #1c1c23;
+  z-index: 10;
+  border-bottom: 1px solid #3d3d4b;
+}
+
+.vlsub-table th {
+  padding: 6px 10px;
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.th-filename { width: 56%; }
+.th-lang { width: 16%; }
+.th-rating { width: 14%; text-align: center; }
+.th-dl { width: 14%; text-align: right; }
+
+.vlsub-row {
+  cursor: pointer;
+  border-bottom: 1px solid #23232c;
+  transition: background 0.1s ease;
+  user-select: none;
+}
+
+.vlsub-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.vlsub-row.selected {
+  background: rgba(243, 111, 33, 0.25) !important;
+  color: #fed7aa;
+}
+
+.vlsub-row td {
+  padding: 6px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vlsub-empty-cell {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+  font-style: italic;
+}
+
+.vlsub-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 6px;
+  border-top: 1px solid #30303c;
+}
+
+.vlsub-status-message {
+  font-size: 12px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vlsub-status-message.success {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.vlsub-bottom-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

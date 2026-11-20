@@ -13,5 +13,12 @@ contextBridge.exposeInMainWorld('WordTapAPI', {
   isFullscreen: () => ipcRenderer.invoke('window:is-fullscreen'),
   onFullscreenChange: (callback) => {
     ipcRenderer.on('window:fullscreen-change', (_event, isFullScreen) => callback(isFullScreen));
-  }
+  },
+  // Audio Fix & Transcoding APIs
+  probeAudio: (filePath) => ipcRenderer.invoke('audio:probe', filePath),
+  transcodeAudio: (filePath) => ipcRenderer.invoke('audio:transcode', filePath),
+  // VLsub OpenSubtitles APIs
+  calculateVLSubHash: (filePath) => ipcRenderer.invoke('vlsub:calculate-hash', filePath),
+  searchVLSub: (params) => ipcRenderer.invoke('vlsub:search', params),
+  downloadVLSub: (subId) => ipcRenderer.invoke('vlsub:download', subId)
 });
