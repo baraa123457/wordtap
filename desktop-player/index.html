@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WordTap Video Player</title>
+  <title>WordTap VLC Player - Custom Edition</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,9 +11,27 @@
     <!-- Top Bar -->
     <header id="top-bar">
       <div class="top-bar-left">
+        <!-- VLC Cone + WordTap Badge -->
         <div class="brand-badge">
-          <div class="brand-icon">★</div>
-          <span>WordTap Player</span>
+          <div class="vlc-cone-wrapper" title="WordTap VLC Player">
+            <svg width="26" height="26" viewBox="0 0 100 100" fill="none">
+              <!-- Traffic Cone Base -->
+              <ellipse cx="50" cy="88" rx="42" ry="9" fill="#D9531E"/>
+              <ellipse cx="50" cy="85" rx="38" ry="7" fill="#F16624"/>
+              <!-- Cone Body -->
+              <polygon points="50,10 24,80 76,80" fill="#F36F21"/>
+              <!-- White Stripe 1 -->
+              <polygon points="50,28 35,66 65,66" fill="#F8FAFC"/>
+              <!-- Orange Middle -->
+              <polygon points="50,40 39,58 61,58" fill="#F36F21"/>
+              <!-- White Stripe 2 -->
+              <polygon points="50,46 42,55 58,55" fill="#F8FAFC"/>
+              <!-- WordTap Gold Star Center -->
+              <path d="M50,40 L52,46 L58,46 L53,50 L55,56 L50,52 L45,56 L47,50 L42,46 L48,46 Z" fill="#FACC3B"/>
+            </svg>
+          </div>
+          <span class="brand-title">WordTap VLC</span>
+          <span class="vlc-tag">EDITION</span>
         </div>
         <div class="now-playing-title" id="now-playing-title">No video loaded</div>
       </div>
@@ -26,6 +44,17 @@
           <span id="sync-delay-text">0ms</span>
           <button class="sync-btn" id="btn-sync-plus" title="Delay +100ms (] key)">+</button>
         </div>
+
+        <!-- Subtitle Size Adjuster -->
+        <button class="btn-secondary" id="btn-sub-size" title="Cycle Subtitle Size (A key)">
+          <span id="sub-size-label" style="font-weight:700; font-size:12px;">Size 26px</span>
+        </button>
+
+        <!-- Dialogue Script Drawer Toggle -->
+        <button class="btn-secondary" id="btn-toggle-script" title="Toggle Dialogue Script (D key)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span>Script</span>
+        </button>
 
         <!-- Open File Buttons -->
         <button class="btn-secondary" id="btn-open-video" title="Open Video File (Ctrl+O)">
@@ -49,6 +78,11 @@
           <span class="account-dot" id="account-status-dot"></span>
           <span id="account-label">WordTap Sync</span>
         </button>
+
+        <!-- Shortcuts Help Button -->
+        <button class="ctrl-btn" id="btn-help" title="Keyboard Shortcuts (?)" style="width:32px; height:32px;">
+          <span style="font-weight:700; font-size:13px;">?</span>
+        </button>
       </div>
     </header>
 
@@ -59,11 +93,19 @@
       <!-- Drag & Drop / Initial Splash Screen -->
       <div id="drop-zone">
         <div class="drop-card">
-          <div class="drop-icon">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <div class="vlc-cone-large">
+            <svg width="68" height="68" viewBox="0 0 100 100" fill="none">
+              <ellipse cx="50" cy="88" rx="42" ry="9" fill="#D9531E"/>
+              <ellipse cx="50" cy="85" rx="38" ry="7" fill="#F16624"/>
+              <polygon points="50,10 24,80 76,80" fill="#F36F21"/>
+              <polygon points="50,28 35,66 65,66" fill="#F8FAFC"/>
+              <polygon points="50,40 39,58 61,58" fill="#F36F21"/>
+              <polygon points="50,46 42,55 58,55" fill="#F8FAFC"/>
+              <path d="M50,40 L52,46 L58,46 L53,50 L55,56 L50,52 L45,56 L47,50 L42,46 L48,46 Z" fill="#FACC3B"/>
+            </svg>
           </div>
-          <h2>Play Video with WordTap Subtitles</h2>
-          <p>Drag and drop any local video file here (MP4, MKV, WebM), or load from your computer. Click any subtitle word to translate and save!</p>
+          <h2>WordTap VLC Player</h2>
+          <p>Play any offline local video file (MP4, MKV, WebM) with interactive subtitles. Click any word to auto-pause, see Arabic translation, and save to WordTap!</p>
           <div class="drop-buttons">
             <button class="btn-primary" id="btn-splash-open-video">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 10l5-5v14l-5-5M4 19h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg>
@@ -75,6 +117,23 @@
 
       <!-- Subtitles Overlay -->
       <div id="subtitle-container"></div>
+
+      <!-- Dialogue Script Sidebar Drawer -->
+      <aside id="script-drawer" class="script-drawer">
+        <div class="drawer-header">
+          <div class="drawer-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span>Dialogue Script</span>
+          </div>
+          <button class="modal-close-btn" id="btn-close-script">✕</button>
+        </div>
+        <div class="drawer-search-bar">
+          <input type="text" id="script-search-input" placeholder="Search dialogue..." class="drawer-search-input">
+        </div>
+        <div class="drawer-cues-list" id="drawer-cues-list">
+          <div class="drawer-empty-msg">No subtitle cues loaded yet.</div>
+        </div>
+      </aside>
 
       <!-- WordTap Word Card Popover -->
       <div id="word-popover" role="dialog" aria-modal="true">
@@ -177,6 +236,30 @@
         </div>
       </div>
     </footer>
+
+    <!-- Shortcuts Help Modal -->
+    <div class="modal-overlay" id="help-modal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>VLC Keyboard Shortcuts</h3>
+          <button class="modal-close-btn" id="btn-close-help">✕</button>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:13px; color:var(--text-muted); margin-top:8px;">
+          <div><strong style="color:#fff;">Space</strong>: Play / Pause</div>
+          <div><strong style="color:#fff;">S</strong>: ↺ Replay Line</div>
+          <div><strong style="color:#fff;">[ / ]</strong>: Subtitle Sync ±100ms</div>
+          <div><strong style="color:#fff;">A</strong>: Cycle Subtitle Size</div>
+          <div><strong style="color:#fff;">D</strong>: Dialogue Script Drawer</div>
+          <div><strong style="color:#fff;">Left / Right</strong>: Seek ±5s</div>
+          <div><strong style="color:#fff;">Up / Down</strong>: Volume ±5%</div>
+          <div><strong style="color:#fff;">M</strong>: Mute / Unmute</div>
+          <div><strong style="color:#fff;">C</strong>: Subtitles On / Off</div>
+          <div><strong style="color:#fff;">F</strong>: Fullscreen</div>
+          <div><strong style="color:#fff;">Ctrl + O</strong>: Open Video</div>
+          <div><strong style="color:#fff;">Esc</strong>: Close Popover / Dialog</div>
+        </div>
+      </div>
+    </div>
 
     <!-- Account / Sync Modal -->
     <div class="modal-overlay" id="account-modal">

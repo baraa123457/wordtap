@@ -1,4 +1,4 @@
-// WordTap Desktop Player - Core Renderer Script
+// WordTap VLC Player - Core Renderer Script
 (() => {
   const SUPABASE_URL = "https://vjjilwbhvoxfigrokqch.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_YzMg6sNWjpwwfP2T-apa-Q_c3EHVBNa";
@@ -36,10 +36,13 @@
   const iconFsEnter = document.getElementById('icon-fs-enter');
   const iconFsExit = document.getElementById('icon-fs-exit');
 
-  // Header & Sync
+  // Header & Navigation
   const btnSyncMinus = document.getElementById('btn-sync-minus');
   const btnSyncPlus = document.getElementById('btn-sync-plus');
   const syncDelayText = document.getElementById('sync-delay-text');
+  const btnSubSize = document.getElementById('btn-sub-size');
+  const subSizeLabel = document.getElementById('sub-size-label');
+  const btnToggleScript = document.getElementById('btn-toggle-script');
   const btnOpenVideo = document.getElementById('btn-open-video');
   const btnOpenSub = document.getElementById('btn-open-sub');
   const subBtnLabel = document.getElementById('sub-btn-label');
@@ -49,6 +52,7 @@
   const btnAccount = document.getElementById('btn-account');
   const accountStatusDot = document.getElementById('account-status-dot');
   const accountLabel = document.getElementById('account-label');
+  const btnHelp = document.getElementById('btn-help');
 
   // Popover elements
   const popoverWordText = document.getElementById('popover-word-text');
@@ -58,7 +62,15 @@
   const popoverContextBox = document.getElementById('popover-context-box');
   const popoverBtnSave = document.getElementById('popover-btn-save');
 
+  // Dialogue Script Drawer
+  const scriptDrawer = document.getElementById('script-drawer');
+  const btnCloseScript = document.getElementById('btn-close-script');
+  const scriptSearchInput = document.getElementById('script-search-input');
+  const drawerCuesList = document.getElementById('drawer-cues-list');
+
   // Modals
+  const helpModal = document.getElementById('help-modal');
+  const btnCloseHelp = document.getElementById('btn-close-help');
   const accountModal = document.getElementById('account-modal');
   const btnCloseAccountModal = document.getElementById('btn-close-account-modal');
   const accountLoggedOutView = document.getElementById('account-logged-out-view');
@@ -75,9 +87,19 @@
   const savedWordsListContainer = document.getElementById('saved-words-list-container');
   const btnSavedOpenWeb = document.getElementById('btn-saved-open-web');
 
+  // Subtitle Sizes
+  const subSizes = [
+    { label: 'Size 20px', cls: 'sub-size-compact' },
+    { label: 'Size 26px', cls: 'sub-size-standard' },
+    { label: 'Size 34px', cls: 'sub-size-large' },
+    { label: 'Size 42px', cls: 'sub-size-cinema' }
+  ];
+  let currentSubSizeIdx = 1;
+
   // State
   let cues = [];
   let currentCue = null;
+  let activeCueIdx = -1;
   let subtitleDelayMs = 0;
   let subtitlesVisible = true;
   let activeWordData = null;
@@ -102,6 +124,10 @@
         subtitleDelayMs = config.subtitleDelayMs;
         updateSyncDelayUI();
       }
+      if (typeof config.subSizeIdx === 'number' && config.subSizeIdx >= 0 && config.subSizeIdx < subSizes.length) {
+        currentSubSizeIdx = config.subSizeIdx;
+      }
+      applySubSize(currentSubSizeIdx);
       refreshSavedWordsCount();
     } catch (e) {
       console.warn('Config load error:', e);
@@ -131,7 +157,22 @@
     }, 2000);
   }
 
-  // Subtitle Parsing (.srt and .vtt)
+  // Subtitle Sizing
+  function applySubSize(index) {
+    subSizes.forEach(s => subtitleContainer.classList.remove(s.cls));
+    const size = subSizes[index];
+    subtitleContainer.classList.add(size.cls);
+    if (subSizeLabel) subSizeLabel.textContent = size.label;
+  }
+
+  function cycleSubSize() {
+    currentSubSizeIdx = (currentSubSizeIdx + 1) % subSizes.length;
+    applySubSize(currentSubSizeIdx);
+    window.WordTapAPI.saveConfig({ subSizeIdx: currentSubSizeIdx });
+    showToast(`Subtitle: ${subSizes[currentSubSizeIdx].label}`);
+  }
+
+  // Subtitle Parsing (.srt, .vtt)
   function parseSRTTimestamp(str) {
     const parts = str.trim().split(':');
     if (parts.length < 3) return 0;
@@ -145,7 +186,6 @@
 
   function parseSubtitles(rawText) {
     const clean = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    const isVTT = clean.startsWith('WEBVTT');
     const blocks = clean.split(/\n\s*\n/);
     const parsed = [];
 
@@ -168,7 +208,6 @@
       const end = parseSRTTimestamp(timeParts[1]);
 
       const textLines = lines.slice(timeLineIdx + 1);
-      // Strip formatting tags like <i>, <b>, <font color="...">, etc.
       const text = textLines
         .join(' ')
         .replace(/<[^>]+>/g, '')
@@ -187,22 +226,21 @@
     return parsed.sort((a, b) => a.start - b.start);
   }
 
-  // Load Subtitles Content
+  // Load Subtitles
   function loadSubtitles(content, label = 'Subtitle loaded') {
     cues = parseSubtitles(content);
     subBtnLabel.textContent = cues.length > 0 ? `Subtitles (${cues.length})` : 'Load Subtitle';
     showToast(`${label} (${cues.length} lines)`);
+    renderScriptDrawer();
   }
 
-  // Interactive Subtitle Rendering
+  // Interactive Subtitle Rendering on Screen
   function renderSubtitle(cue) {
     if (!subtitlesVisible || !cue) {
       subtitleContainer.innerHTML = '';
       return;
     }
 
-    // Split text into tokens (words and punctuation)
-    // Matches English words (including contractions like "don't", "it's") and non-words
     const tokens = cue.text.match(/([a-zA-Z0-9]+(?:'[a-zA-Z0-9]+)?|[^\s\w]+|\s+)/g) || [cue.text];
     
     let html = '<div class="subtitle-line">';
@@ -218,7 +256,6 @@
 
     subtitleContainer.innerHTML = html;
 
-    // Attach click listeners to all words
     const wordElements = subtitleContainer.querySelectorAll('.wt-word');
     wordElements.forEach(el => {
       el.addEventListener('click', (e) => {
@@ -228,9 +265,67 @@
     });
   }
 
+  // Dialogue Script Drawer Rendering
+  function renderScriptDrawer(filterText = '') {
+    if (!drawerCuesList) return;
+    if (cues.length === 0) {
+      drawerCuesList.innerHTML = '<div class="drawer-empty-msg">No subtitle cues loaded yet. Open a video or load a subtitle (.srt) file.</div>';
+      return;
+    }
+
+    const query = filterText.trim().toLowerCase();
+    let html = '';
+
+    cues.forEach((cue, index) => {
+      if (query && !cue.text.toLowerCase().includes(query)) return;
+
+      const tokens = cue.text.match(/([a-zA-Z0-9]+(?:'[a-zA-Z0-9]+)?|[^\s\w]+|\s+)/g) || [cue.text];
+      let wordsHtml = '';
+      for (const tok of tokens) {
+        if (/^[a-zA-Z0-9]+(?:'[a-zA-Z0-9]+)?$/.test(tok)) {
+          wordsHtml += `<span class="drawer-cue-word" data-word="${tok.toLowerCase()}" data-raw="${tok}">${tok}</span>`;
+        } else {
+          wordsHtml += tok;
+        }
+      }
+
+      html += `
+        <div class="drawer-cue-item ${index === activeCueIdx ? 'active' : ''}" id="drawer-cue-${index}" data-index="${index}">
+          <div class="drawer-cue-time" data-start="${cue.start}">⏱️ ${formatTime(cue.start)}</div>
+          <div class="drawer-cue-text">${wordsHtml}</div>
+        </div>
+      `;
+    });
+
+    drawerCuesList.innerHTML = html;
+
+    // Attach listeners in drawer
+    drawerCuesList.querySelectorAll('.drawer-cue-time').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const start = parseFloat(el.dataset.start);
+        if (!isNaN(start)) {
+          video.currentTime = Math.max(0, start + (subtitleDelayMs / 1000));
+          video.play();
+        }
+      });
+    });
+
+    drawerCuesList.querySelectorAll('.drawer-cue-word').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const cueItem = el.closest('.drawer-cue-item');
+        const cueIdx = parseInt(cueItem.dataset.index, 10);
+        const cue = cues[cueIdx];
+        if (cue) {
+          onWordClick(el, cue);
+        }
+      });
+    });
+  }
+
   // Word Click Handler - Auto Pause & Open Card
   async function onWordClick(element, cue) {
-    // 1. Auto-pause video
     if (!video.paused) {
       video.pause();
       resumeVideoAfterPopover = true;
@@ -250,26 +345,22 @@
       pos: 'word'
     };
 
-    // Position Popover above or below word chip
     const rect = element.getBoundingClientRect();
     const popoverWidth = 320;
     const popoverHeight = 220;
 
     let left = rect.left + (rect.width / 2) - (popoverWidth / 2);
-    // Boundary check
     if (left < 16) left = 16;
     if (left + popoverWidth > window.innerWidth - 16) left = window.innerWidth - popoverWidth - 16;
 
     let top = rect.top - popoverHeight - 14;
     if (top < 70) {
-      // Show below the word if too close to top
       top = rect.bottom + 14;
     }
 
     wordPopover.style.left = `${left}px`;
     wordPopover.style.top = `${top}px`;
 
-    // Populate initial UI
     popoverWordText.textContent = rawWord;
     popoverWordPos.textContent = '...';
     popoverTranslationAr.textContent = 'جاري الترجمة...';
@@ -281,10 +372,8 @@
     popoverBtnSave.innerHTML = '<span>★ Save to WordTap</span>';
     wordPopover.classList.add('visible');
 
-    // Automatically speak the word
     speakWord(rawWord);
 
-    // Fetch Translation from Google Translate API
     try {
       const res = await fetch(
         `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ar&dt=t&dt=bd&dt=qca&dt=at&q=${encodeURIComponent(cleanWord)}`
@@ -326,7 +415,6 @@
         utterance.rate = 0.9;
         window.speechSynthesis.speak(utterance);
       } else {
-        // Fallback to Google TTS audio
         const audio = new Audio(`https://translate.googleapis.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(text)}`);
         audio.play().catch(() => {});
       }
@@ -356,22 +444,20 @@
       text: activeWordData.cleanWord || activeWordData.word,
       translation: activeWordData.translation || '',
       sentence: activeWordData.contextSentence || '',
-      title: nowPlayingTitle.textContent !== 'No video loaded' ? nowPlayingTitle.textContent : 'Desktop Player Video',
+      title: nowPlayingTitle.textContent !== 'No video loaded' ? nowPlayingTitle.textContent : 'WordTap VLC Video',
       lang: 'ar',
       src: 'en',
       createdAt: new Date().toISOString()
     };
 
-    // 1. Save to local desktop storage
     await window.WordTapAPI.saveWord(entry);
     refreshSavedWordsCount();
 
-    // 2. Sync to Supabase if session exists
     if (userSession && userSession.access_token) {
       try {
         await syncWordToSupabase(entry, userSession.access_token);
       } catch (err) {
-        console.warn('Supabase sync background fail (will retry later):', err);
+        console.warn('Supabase sync background fail (will retry):', err);
       }
     }
 
@@ -387,7 +473,7 @@
       p_src_lang: 'en',
       p_target_lang: 'ar',
       p_source_title: `"${entry.sentence}" — ${entry.title}`,
-      p_source_url: 'desktop-player',
+      p_source_url: 'wordtap-vlc-player',
       p_times: 1,
       p_sentence: entry.sentence
     };
@@ -467,8 +553,6 @@
       updateAccountUI();
       accountModal.classList.remove('open');
       showToast(`Connected as ${userSession.email}`);
-
-      // Push any previously saved offline words to cloud!
       pushPendingOfflineWords();
     } catch (err) {
       alert(`Sign in error: ${err.message}`);
@@ -551,9 +635,44 @@
     }
   }
 
+  // Fullscreen Management
+  async function toggleFullscreen() {
+    if (window.WordTapAPI && window.WordTapAPI.toggleFullscreen) {
+      const isFS = await window.WordTapAPI.toggleFullscreen();
+      updateFullscreenIcons(isFS);
+    } else if (!document.fullscreenElement) {
+      document.getElementById('app-container').requestFullscreen().catch(() => {});
+      updateFullscreenIcons(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      updateFullscreenIcons(false);
+    }
+  }
+
+  function updateFullscreenIcons(isFS) {
+    if (isFS) {
+      iconFsEnter.style.display = 'none';
+      iconFsExit.style.display = 'block';
+      showToast('Fullscreen (Press F or Esc to exit)');
+    } else {
+      iconFsEnter.style.display = 'block';
+      iconFsExit.style.display = 'none';
+    }
+  }
+
+  if (window.WordTapAPI && window.WordTapAPI.onFullscreenChange) {
+    window.WordTapAPI.onFullscreenChange((isFS) => {
+      updateFullscreenIcons(isFS);
+    });
+  }
+
+  document.addEventListener('fullscreenchange', () => {
+    updateFullscreenIcons(Boolean(document.fullscreenElement));
+  });
+
   // Setup Event Listeners
   function setupEvents() {
-    // Open Video Button
+    // Open Video
     btnOpenVideo.addEventListener('click', async () => {
       const res = await window.WordTapAPI.openVideoFile();
       if (res) {
@@ -568,7 +687,7 @@
       }
     });
 
-    // Open Subtitle Button
+    // Open Subtitle
     btnOpenSub.addEventListener('click', async () => {
       const res = await window.WordTapAPI.openSubtitleFile();
       if (res && res.content) {
@@ -576,9 +695,29 @@
       }
     });
 
-    // Subtitle Sync Buttons
+    // Subtitle Sync
     btnSyncMinus.addEventListener('click', () => adjustSubtitleDelay(-100));
     btnSyncPlus.addEventListener('click', () => adjustSubtitleDelay(100));
+
+    // Subtitle Size
+    btnSubSize.addEventListener('click', cycleSubSize);
+
+    // Dialogue Script Drawer Toggle
+    btnToggleScript.addEventListener('click', () => {
+      scriptDrawer.classList.toggle('open');
+    });
+
+    btnCloseScript.addEventListener('click', () => {
+      scriptDrawer.classList.remove('open');
+    });
+
+    scriptSearchInput.addEventListener('input', (e) => {
+      renderScriptDrawer(e.target.value);
+    });
+
+    // Shortcuts Help Modal
+    btnHelp.addEventListener('click', () => helpModal.classList.add('open'));
+    btnCloseHelp.addEventListener('click', () => helpModal.classList.remove('open'));
 
     // Popover Audio and Save Buttons
     popoverBtnAudio.addEventListener('click', () => {
@@ -587,18 +726,19 @@
 
     popoverBtnSave.addEventListener('click', saveActiveWord);
 
-    // Modal Triggers
+    // Account Modal
     btnAccount.addEventListener('click', () => accountModal.classList.add('open'));
     btnCloseAccountModal.addEventListener('click', () => accountModal.classList.remove('open'));
     btnAuthSignin.addEventListener('click', handleSignIn);
     btnAuthSignout.addEventListener('click', handleSignOut);
     btnOpenWeb.addEventListener('click', () => window.WordTapAPI.openExternal(WEBSITE_URL));
 
+    // Saved Words Modal
     btnSavedWords.addEventListener('click', openSavedWordsModal);
     btnCloseSavedModal.addEventListener('click', () => savedWordsModal.classList.remove('open'));
     btnSavedOpenWeb.addEventListener('click', () => window.WordTapAPI.openExternal(WEBSITE_URL));
 
-    // Video Play/Pause
+    // Play/Pause
     function togglePlay() {
       if (wordPopover.classList.contains('visible')) {
         closePopover(true);
@@ -648,10 +788,34 @@
       // Check Subtitles
       if (cues.length > 0) {
         const adjustedTime = cur - (subtitleDelayMs / 1000);
-        const matchingCue = cues.find(c => adjustedTime >= c.start && adjustedTime <= c.end);
-        if (matchingCue !== currentCue) {
-          currentCue = matchingCue;
+        let foundIdx = -1;
+        for (let i = 0; i < cues.length; i++) {
+          if (adjustedTime >= cues[i].start && adjustedTime <= cues[i].end) {
+            foundIdx = i;
+            break;
+          }
+        }
+
+        if (foundIdx !== -1 && foundIdx !== activeCueIdx) {
+          activeCueIdx = foundIdx;
+          currentCue = cues[foundIdx];
           renderSubtitle(currentCue);
+
+          // Update active item in drawer
+          if (drawerCuesList) {
+            drawerCuesList.querySelectorAll('.drawer-cue-item.active').forEach(el => el.classList.remove('active'));
+            const activeEl = document.getElementById(`drawer-cue-${activeCueIdx}`);
+            if (activeEl) {
+              activeEl.classList.add('active');
+              if (scriptDrawer.classList.contains('open')) {
+                activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+              }
+            }
+          }
+        } else if (foundIdx === -1 && currentCue !== null) {
+          activeCueIdx = -1;
+          currentCue = null;
+          renderSubtitle(null);
         }
       }
     });
@@ -704,7 +868,7 @@
       timeTooltip.style.opacity = '0';
     });
 
-    // Replay Current Line (S key or button)
+    // Replay Line (S key or button)
     function replayCurrentLine() {
       if (currentCue) {
         video.currentTime = Math.max(0, currentCue.start + (subtitleDelayMs / 1000));
@@ -712,7 +876,6 @@
         showToast('↺ Replaying line');
       } else if (cues.length > 0) {
         const cur = video.currentTime - (subtitleDelayMs / 1000);
-        // Find closest preceding cue
         const prevCue = [...cues].reverse().find(c => c.start <= cur);
         if (prevCue) {
           video.currentTime = Math.max(0, prevCue.start + (subtitleDelayMs / 1000));
@@ -772,41 +935,6 @@
       updateVolumeUI();
     });
 
-    // Fullscreen Toggle
-    async function toggleFullscreen() {
-      if (window.WordTapAPI && window.WordTapAPI.toggleFullscreen) {
-        const isFS = await window.WordTapAPI.toggleFullscreen();
-        updateFullscreenIcons(isFS);
-      } else if (!document.fullscreenElement) {
-        document.getElementById('app-container').requestFullscreen().catch(() => {});
-        updateFullscreenIcons(true);
-      } else {
-        document.exitFullscreen().catch(() => {});
-        updateFullscreenIcons(false);
-      }
-    }
-
-    function updateFullscreenIcons(isFS) {
-      if (isFS) {
-        iconFsEnter.style.display = 'none';
-        iconFsExit.style.display = 'block';
-        showToast('Fullscreen (Press F or Esc to exit)');
-      } else {
-        iconFsEnter.style.display = 'block';
-        iconFsExit.style.display = 'none';
-      }
-    }
-
-    if (window.WordTapAPI && window.WordTapAPI.onFullscreenChange) {
-      window.WordTapAPI.onFullscreenChange((isFS) => {
-        updateFullscreenIcons(isFS);
-      });
-    }
-
-    document.addEventListener('fullscreenchange', () => {
-      updateFullscreenIcons(Boolean(document.fullscreenElement));
-    });
-
     btnFullscreen.addEventListener('click', toggleFullscreen);
     video.addEventListener('dblclick', toggleFullscreen);
 
@@ -842,7 +970,6 @@
           const fileUrl = URL.createObjectURL(file);
           playVideoFile(fileUrl, file.name);
 
-          // If electron file path exists, check adjacent subtitle
           if (file.path) {
             const adjacentResult = await window.WordTapAPI.readSubtitleFile(
               file.path.replace(/\.[^/.]+$/, '.srt')
@@ -855,9 +982,8 @@
       }
     });
 
-    // Keyboard Shortcuts (Space, Left, Right, F, M, S, [, ])
+    // Keyboard Shortcuts (Space, Left, Right, F, M, S, [, ], A, D, ?)
     window.addEventListener('keydown', (e) => {
-      // Don't intercept when user is typing in input fields
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
       if (e.code === 'Space') {
@@ -866,6 +992,10 @@
       } else if (e.code === 'Escape') {
         if (wordPopover.classList.contains('visible')) {
           closePopover(true);
+        } else if (scriptDrawer.classList.contains('open')) {
+          scriptDrawer.classList.remove('open');
+        } else if (helpModal.classList.contains('open')) {
+          helpModal.classList.remove('open');
         } else if (accountModal.classList.contains('open')) {
           accountModal.classList.remove('open');
         } else if (savedWordsModal.classList.contains('open')) {
@@ -888,6 +1018,12 @@
         subtitlesVisible = !subtitlesVisible;
         btnToggleSub.classList.toggle('active', subtitlesVisible);
         renderSubtitle(currentCue);
+      } else if (e.code === 'KeyA') {
+        cycleSubSize();
+      } else if (e.code === 'KeyD') {
+        scriptDrawer.classList.toggle('open');
+      } else if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) {
+        helpModal.classList.toggle('open');
       } else if (e.code === 'ArrowLeft') {
         video.currentTime = Math.max(0, video.currentTime - 5);
         showToast('⏪ -5s');
@@ -910,11 +1046,11 @@
       }
     });
 
-    // Controls Auto-Hide on Inactivity
+    // Auto-Hide Controls on Inactivity
     function resetIdleTimer() {
       appContainer.classList.remove('idle-hidden');
       clearTimeout(idleTimer);
-      if (!video.paused && !wordPopover.classList.contains('visible')) {
+      if (!video.paused && !wordPopover.classList.contains('visible') && !scriptDrawer.classList.contains('open')) {
         idleTimer = setTimeout(() => {
           appContainer.classList.add('idle-hidden');
         }, 2800);

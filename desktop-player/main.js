@@ -43,7 +43,7 @@ function createWindow() {
     minWidth: 840,
     minHeight: 560,
     backgroundColor: '#0c0e14',
-    title: 'WordTap Video Player',
+    title: 'WordTap VLC Player',
     autoHideMenuBar: true,
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
