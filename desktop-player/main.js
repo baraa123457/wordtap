@@ -5,6 +5,7 @@ const os = require('os');
 const http = require('http');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
+const { pathToFileURL } = require('url');
 const xmlrpc = require('xmlrpc');
 const zlib = require('zlib');
 
@@ -32,9 +33,12 @@ if (!ffmpegPath || !fs.existsSync(ffmpegPath)) {
   }
 }
 
-// CRITICAL AUDIO FIX: Allow automatic audio playback with sound without requiring gesture
+// CRITICAL AUDIO & VIDEO FIX: Allow automatic audio playback and hardware decoding
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 app.commandLine.appendSwitch('disable-features', 'PreloadMediaEngagementData');
+app.commandLine.appendSwitch('enable-features', 'PlatformHEVCDecoderSupport');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
 
 // Remove default OS application menu
 Menu.setApplicationMenu(null);
@@ -48,6 +52,140 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 const SAVED_WORDS_FILE = path.join(DATA_DIR, 'saved_words.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
+
+function cleanPath(p) {
+  if (!p) return '';
+  let cleaned = String(p).trim();
+  if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+  return cleaned;
+}
+
+const MEDIA_EXTENSIONS = new Set([
+  '.mp4', '.mkv', '.webm', '.mov', '.avi', '.m4v', '.ts', '.flv',
+  '.wmv', '.mpg', '.mpeg', '.m2ts', '.vob', '.3gp', '.ogv', '.m4a', '.mp3'
+]);
+
+function extractFilePathFromArgs(args) {
+  if (!Array.isArray(args)) return null;
+  const isDev = !app.isPackaged;
+  const startIndex = isDev ? 2 : 1;
+
+  // Pass 1: Look for explicit media extension
+  for (let i = startIndex; i < args.length; i++) {
+    const raw = args[i];
+    if (!raw) continue;
+    const cleaned = cleanPath(raw);
+    if (!cleaned || cleaned.startsWith('--') || cleaned.startsWith('-')) continue;
+
+    try {
+      const ext = path.extname(cleaned).toLowerCase();
+      if (MEDIA_EXTENSIONS.has(ext)) {
+        const resolved = path.resolve(cleaned);
+        if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+          return resolved;
+        }
+      }
+    } catch {}
+  }
+
+  // Pass 2: Look for any valid existing file
+  for (let i = startIndex; i < args.length; i++) {
+    const raw = args[i];
+    if (!raw) continue;
+    const cleaned = cleanPath(raw);
+    if (!cleaned || cleaned.startsWith('--') || cleaned.startsWith('-')) continue;
+
+    try {
+      const resolved = path.resolve(cleaned);
+      if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
+        return resolved;
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+function findAdjacentSubtitle(videoPath) {
+  try {
+    const dir = path.dirname(videoPath);
+    const ext = path.extname(videoPath);
+    const base = path.basename(videoPath, ext);
+
+    const candidates = [
+      path.join(dir, `${base}.srt`),
+      path.join(dir, `${base}.en.srt`),
+      path.join(dir, `${base}.vtt`),
+      path.join(dir, `${base}.en.vtt`),
+      path.join(dir, `${base}.ar.srt`)
+    ];
+
+    for (const c of candidates) {
+      if (fs.existsSync(c)) {
+        return c;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function prepareFilePayload(filePath) {
+  if (!filePath) return null;
+  try {
+    const resolvedPath = path.resolve(cleanPath(filePath));
+    if (!fs.existsSync(resolvedPath)) return null;
+    const stat = fs.statSync(resolvedPath);
+    if (!stat.isFile()) return null;
+
+    const subFile = findAdjacentSubtitle(resolvedPath);
+    let subContent = null;
+    if (subFile) {
+      try {
+        subContent = fs.readFileSync(subFile, 'utf-8');
+      } catch {}
+    }
+
+    return {
+      filePath: resolvedPath,
+      fileName: path.basename(resolvedPath),
+      fileUrl: pathToFileURL(resolvedPath).href,
+      subFile,
+      subContent
+    };
+  } catch (err) {
+    console.error('Error preparing file payload:', err);
+    return null;
+  }
+}
+
+// Single instance lock for Windows file association ("Open with" & second instance handling)
+let pendingFilePayload = null;
+const initialArgPath = extractFilePathFromArgs(process.argv);
+if (initialArgPath) {
+  pendingFilePayload = prepareFilePayload(initialArgPath);
+}
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (_event, commandLine) => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+
+      const secondPath = extractFilePathFromArgs(commandLine);
+      if (secondPath) {
+        const payload = prepareFilePayload(secondPath);
+        if (payload) {
+          mainWindow.webContents.send('app:open-file', payload);
+        }
+      }
+    }
+  });
+}
 
 function readJsonFile(filePath, defaultValue) {
   try {
@@ -106,6 +244,12 @@ function createWindow() {
     }
   });
 
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (pendingFilePayload) {
+      mainWindow.webContents.send('app:open-file', pendingFilePayload);
+    }
+  });
+
   mainWindow.loadFile('index.html');
 
   mainWindow.on('closed', () => {
@@ -126,6 +270,13 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+// IPC: Initial File for "Open with" or File Association Launch
+ipcMain.handle('app:get-initial-file', async () => {
+  const payload = pendingFilePayload;
+  pendingFilePayload = null;
+  return payload;
+});
+
 // IPC: Open Video File Dialog
 ipcMain.handle('dialog:open-video', async () => {
   if (!mainWindow) return null;
@@ -133,54 +284,14 @@ ipcMain.handle('dialog:open-video', async () => {
     title: 'Open Media File (WordTap VLC)',
     properties: ['openFile'],
     filters: [
-      { name: 'Video / Media Files', extensions: ['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v', 'ts', 'flv'] },
+      { name: 'Video / Media Files', extensions: ['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v', 'ts', 'flv', 'wmv', 'm4a', 'mp3'] },
       { name: 'All Files', extensions: ['*'] }
     ]
   });
 
   if (result.canceled || result.filePaths.length === 0) return null;
-  const filePath = result.filePaths[0];
-
-  // Auto-check for adjacent subtitle file with same base name
-  const subFile = findAdjacentSubtitle(filePath);
-  let subContent = null;
-  if (subFile) {
-    try {
-      subContent = fs.readFileSync(subFile, 'utf-8');
-    } catch {}
-  }
-
-  return {
-    filePath,
-    fileName: path.basename(filePath),
-    fileUrl: `file://${filePath.replace(/\\/g, '/')}`,
-    subFile,
-    subContent
-  };
+  return prepareFilePayload(result.filePaths[0]);
 });
-
-function findAdjacentSubtitle(videoPath) {
-  try {
-    const dir = path.dirname(videoPath);
-    const ext = path.extname(videoPath);
-    const base = path.basename(videoPath, ext);
-
-    const candidates = [
-      path.join(dir, `${base}.srt`),
-      path.join(dir, `${base}.en.srt`),
-      path.join(dir, `${base}.vtt`),
-      path.join(dir, `${base}.en.vtt`),
-      path.join(dir, `${base}.ar.srt`)
-    ];
-
-    for (const c of candidates) {
-      if (fs.existsSync(c)) {
-        return c;
-      }
-    }
-  } catch {}
-  return null;
-}
 
 // IPC: Open Subtitle File Dialog
 ipcMain.handle('dialog:open-subtitle', async () => {

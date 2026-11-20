@@ -10,6 +10,10 @@ contextBridge.exposeInMainWorld('WordTapAPI', {
     return file.path || '';
   },
   openVideoFile: () => ipcRenderer.invoke('dialog:open-video'),
+  getInitialFile: () => ipcRenderer.invoke('app:get-initial-file'),
+  onOpenFile: (callback) => {
+    ipcRenderer.on('app:open-file', (_event, payload) => callback(payload));
+  },
   openSubtitleFile: () => ipcRenderer.invoke('dialog:open-subtitle'),
   readSubtitleFile: (filePath) => ipcRenderer.invoke('fs:read-subtitle', filePath),
   getSavedWords: () => ipcRenderer.invoke('storage:get-words'),

@@ -289,6 +289,19 @@
       applySubSize(currentSubSizeIdx);
       updateVolumeDisplay();
       refreshSavedWordsCount();
+
+      // Check if launched directly with a video file (Windows Explorer "Open with" or double-click)
+      if (window.WordTapAPI && window.WordTapAPI.getInitialFile) {
+        try {
+          const initFile = await window.WordTapAPI.getInitialFile();
+          if (initFile && initFile.fileUrl) {
+            playVideoFile(initFile.fileUrl, initFile.fileName, initFile.subContent, initFile.filePath);
+            hideLoginGate();
+          }
+        } catch (err) {
+          console.warn('Initial file launch check:', err);
+        }
+      }
     } catch (e) {
       console.warn('Config load error:', e);
       showLoginGate();
@@ -1092,6 +1105,16 @@
 
   // Setup Event Listeners
   function setupEvents() {
+    // Listen for file opened via Windows Explorer "Open with" while app is already running
+    if (window.WordTapAPI && window.WordTapAPI.onOpenFile) {
+      window.WordTapAPI.onOpenFile((payload) => {
+        if (payload && payload.fileUrl) {
+          playVideoFile(payload.fileUrl, payload.fileName, payload.subContent, payload.filePath);
+          hideLoginGate();
+        }
+      });
+    }
+
     // Audio Unmute Banner
     audioUnmuteBanner.addEventListener('click', () => {
       video.muted = false;
