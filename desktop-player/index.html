@@ -129,6 +129,9 @@
           <div class="vlc-menu-dropdown" data-menu="tools">
             <button class="vlc-menu-btn menu-header-btn">Tools</button>
             <div class="vlc-dropdown-list">
+              <button class="vlc-dropdown-item" id="menu-item-options">
+                <span>Word Saving Mode & Options...</span>
+              </button>
               <button class="vlc-dropdown-item" id="menu-item-words">
                 <span>Saved Vocabulary List...</span>
               </button>
@@ -253,10 +256,10 @@
         </div>
 
         <button class="popover-save-btn" id="popover-btn-save">
-          <span>Save to WordTap</span>
+          <span>★ Save to WordTap</span>
         </button>
 
-        <div class="popover-footer">
+        <div class="popover-footer" id="popover-footer-text">
           Press <strong>Space</strong> or <strong>Esc</strong> to resume video
         </div>
       </div>
@@ -418,16 +421,67 @@
     <div class="modal-overlay" id="account-modal">
       <div class="modal-card">
         <div class="modal-header">
-          <h3>WordTap Account</h3>
+          <h3>WordTap Options & Account</h3>
           <button class="modal-close-btn" id="btn-close-account-modal">✕</button>
         </div>
+
+        <!-- Word Saving Mode (Exact match for Extension Screenshot) -->
+        <div class="ext-options-card">
+          <div class="ext-options-header">
+            <span>WORD SAVING MODE</span>
+          </div>
+
+          <!-- Segmented Control for Save Mode -->
+          <div class="segmented-control" role="radiogroup" aria-label="Word saving mode">
+            <button type="button" class="segment-btn" data-mode="manual" id="btn-mode-manual">
+              <span>⭐ Manual</span>
+            </button>
+            <button type="button" class="segment-btn active" data-mode="subtitles_only" id="btn-mode-subs">
+              <span>🎬 Subtitles</span>
+            </button>
+            <button type="button" class="segment-btn" data-mode="auto" id="btn-mode-auto">
+              <span>⚡ Auto</span>
+            </button>
+          </div>
+
+          <!-- Dynamic Helper Text -->
+          <div class="helper-text" id="save-mode-helper">
+            Auto-saves words clicked in video subtitles
+          </div>
+
+          <!-- Translate Into Language Row -->
+          <div class="select-row">
+            <label class="select-label" for="opt-target-lang">Translate into</label>
+            <select id="opt-target-lang" class="ext-lang-select" aria-label="Translate to language">
+              <option value="ar" selected>العربية (Arabic)</option>
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+              <option value="es">Español</option>
+              <option value="de">Deutsch</option>
+              <option value="it">Italiano</option>
+              <option value="tr">Türkçe</option>
+              <option value="ru">Русский</option>
+              <option value="zh">中文</option>
+              <option value="ja">日本語</option>
+            </select>
+          </div>
+
+          <!-- Film Pause Toggle -->
+          <div class="checkbox-row">
+            <label class="ext-checkbox-label" for="chk-pause-on-click">
+              <input type="checkbox" id="chk-pause-on-click" />
+              <span>Pause film when clicking a word</span>
+            </label>
+          </div>
+        </div>
+
         <div id="account-logged-out-view">
-          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Sign in to sync your saved words.</p>
+          <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; margin-top: 4px;">Sign in to sync your saved words to WordTap Cloud.</p>
           <div class="form-group" style="margin-bottom: 10px;">
             <label class="form-label">Email</label>
             <input type="email" class="form-input" id="auth-email" placeholder="you@example.com">
           </div>
-          <div class="form-group" style="margin-bottom: 16px;">
+          <div class="form-group" style="margin-bottom: 14px;">
             <label class="form-label">Password</label>
             <input type="password" class="form-input" id="auth-password" placeholder="••••••••">
           </div>
@@ -436,7 +490,7 @@
           </button>
         </div>
         <div id="account-logged-in-view" style="display: none;">
-          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; padding: 10px; margin-top: 4px; margin-bottom: 10px;">
             <div style="font-size: 10px; text-transform: uppercase; color: var(--success); font-weight: 700;">Connected</div>
             <div id="account-user-email" style="font-size: 13px; font-weight: 700; color: #fff; margin-top: 2px;">user@example.com</div>
           </div>

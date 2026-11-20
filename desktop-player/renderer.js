@@ -80,6 +80,16 @@
   const popoverTranslationAr = document.getElementById('popover-translation-ar');
   const popoverContextBox = document.getElementById('popover-context-box');
   const popoverBtnSave = document.getElementById('popover-btn-save');
+  const popoverFooterText = document.getElementById('popover-footer-text');
+
+  // Extension Word Saving Mode & Options Elements
+  const btnModeManual = document.getElementById('btn-mode-manual');
+  const btnModeSubs = document.getElementById('btn-mode-subs');
+  const btnModeAuto = document.getElementById('btn-mode-auto');
+  const saveModeHelper = document.getElementById('save-mode-helper');
+  const optTargetLang = document.getElementById('opt-target-lang');
+  const chkPauseOnClick = document.getElementById('chk-pause-on-click');
+  const menuItemOptions = document.getElementById('menu-item-options');
 
   // Mandatory Login Gate Elements
   const authGateScreen = document.getElementById('auth-gate-screen');
@@ -131,6 +141,10 @@
   let toastTimer = null;
   let userSession = null;
   let savedWords = [];
+  let translateSaveMode = 'subtitles_only'; // 'manual' | 'subtitles_only' | 'auto'
+  let pauseOnClick = false; // "dont stop the film when i click on word"
+  let targetLang = 'ar';
+  let popoverHideTimer = null;
   const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
   let currentSpeedIndex = 1;
   let currentMediaTitle = 'No media loaded';
@@ -167,6 +181,32 @@
     }
   }
 
+  // Sync UI with extension word saving mode & options
+  function syncOptionsUI() {
+    [btnModeManual, btnModeSubs, btnModeAuto].forEach(btn => {
+      if (btn) btn.classList.remove('active');
+    });
+    if (translateSaveMode === 'manual') {
+      if (btnModeManual) btnModeManual.classList.add('active');
+      if (saveModeHelper) saveModeHelper.textContent = 'Only saves when you click the save button';
+    } else if (translateSaveMode === 'auto') {
+      if (btnModeAuto) btnModeAuto.classList.add('active');
+      if (saveModeHelper) saveModeHelper.textContent = 'Auto-saves all clicked words immediately';
+    } else {
+      translateSaveMode = 'subtitles_only';
+      if (btnModeSubs) btnModeSubs.classList.add('active');
+      if (saveModeHelper) saveModeHelper.textContent = 'Auto-saves words clicked in video subtitles';
+    }
+
+    if (optTargetLang) {
+      optTargetLang.value = targetLang || 'ar';
+    }
+
+    if (chkPauseOnClick) {
+      chkPauseOnClick.checked = !!pauseOnClick;
+    }
+  }
+
   // Initialize App
   async function init() {
     initAudio();
@@ -187,6 +227,16 @@
       if (typeof config.subSizeIdx === 'number' && config.subSizeIdx >= 0 && config.subSizeIdx < subSizes.length) {
         currentSubSizeIdx = config.subSizeIdx;
       }
+      if (config.translateSaveMode) {
+        translateSaveMode = config.translateSaveMode;
+      }
+      if (typeof config.pauseOnClick === 'boolean') {
+        pauseOnClick = config.pauseOnClick;
+      }
+      if (config.targetLang) {
+        targetLang = config.targetLang;
+      }
+      syncOptionsUI();
       applySubSize(currentSubSizeIdx);
       refreshSavedWordsCount();
     } catch (e) {
@@ -327,11 +377,26 @@
     });
   }
 
-  // Word Click Handler - Auto Pause & Open Card
+  // Schedule popover dismiss timer (default 2600ms, paused while hovered)
+  function schedulePopoverClose(delayMs = 2600) {
+    clearTimeout(popoverHideTimer);
+    if (!wordPopover.dataset.hovered) {
+      popoverHideTimer = setTimeout(() => {
+        closePopover(false);
+      }, delayMs);
+    }
+  }
+
+  // Word Click Handler - Options Respecting & Extension Match
   async function onWordClick(element, cue) {
-    if (!video.paused) {
-      video.pause();
-      resumeVideoAfterPopover = true;
+    // Film pause behavior: only pause if user enabled "pauseOnClick" (default: false -> film does NOT stop)
+    if (pauseOnClick) {
+      if (!video.paused) {
+        video.pause();
+        resumeVideoAfterPopover = true;
+      } else {
+        resumeVideoAfterPopover = false;
+      }
     } else {
       resumeVideoAfterPopover = false;
     }
@@ -342,6 +407,7 @@
 
     activeWordData = {
       word: cleanWord,
+      cleanWord: cleanWord,
       rawWord: rawWord,
       contextSentence: contextSentence,
       translation: '',
@@ -371,15 +437,35 @@
       new RegExp(`\\b(${rawWord})\\b`, 'i'),
       '<strong style="color:var(--wt-gold);">$1</strong>'
     );
-    popoverBtnSave.classList.remove('saved');
-    popoverBtnSave.innerHTML = '<span>Save to WordTap</span>';
+
+    const isAlreadySaved = savedWords.some(w => (w.text || '').toLowerCase() === cleanWord.toLowerCase());
+    if (isAlreadySaved) {
+      popoverBtnSave.classList.add('saved');
+      popoverBtnSave.innerHTML = '<span>✓ Saved to WordTap</span>';
+    } else {
+      popoverBtnSave.classList.remove('saved');
+      popoverBtnSave.innerHTML = '<span>★ Save to WordTap</span>';
+    }
+
+    if (popoverFooterText) {
+      if (pauseOnClick) {
+        popoverFooterText.innerHTML = 'Press <strong>Space</strong> or <strong>Esc</strong> to resume video';
+      } else {
+        popoverFooterText.innerHTML = 'Hover to keep open • Auto-closes in 1s';
+      }
+    }
+
     wordPopover.classList.add('visible');
 
     speakWord(rawWord);
 
+    // Initial dismiss timer: stays for 2.6s unless mouse hovers over it
+    schedulePopoverClose(2600);
+
+    const langToUse = targetLang || 'ar';
     try {
       const res = await fetch(
-        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ar&dt=t&dt=bd&dt=qca&dt=at&q=${encodeURIComponent(cleanWord)}`
+        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(langToUse)}&dt=t&dt=bd&dt=qca&dt=at&q=${encodeURIComponent(cleanWord)}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -398,6 +484,12 @@
 
         popoverTranslationAr.textContent = translation || '—';
         popoverWordPos.textContent = pos;
+
+        // Auto-save logic: if 'subtitles_only' or 'auto' mode is active, auto-save to WordTap!
+        const willAutoSave = (translateSaveMode === 'auto' || translateSaveMode === 'subtitles_only');
+        if (willAutoSave && !isAlreadySaved) {
+          saveActiveWord(true);
+        }
       } else {
         popoverTranslationAr.textContent = 'تعذر الاتصال بالترجمة';
       }
@@ -405,6 +497,8 @@
       console.warn('Translation error:', err);
       popoverTranslationAr.textContent = 'خطأ في الترجمة';
     }
+
+    schedulePopoverClose(2600);
   }
 
   // Audio Pronunciation
@@ -428,6 +522,8 @@
 
   // Close Popover
   function closePopover(resume = false) {
+    clearTimeout(popoverHideTimer);
+    delete wordPopover.dataset.hovered;
     if (wordPopover.classList.contains('visible')) {
       wordPopover.classList.remove('visible');
       activeWordData = null;
@@ -438,23 +534,25 @@
   }
 
   // Save Word Handler
-  async function saveActiveWord() {
+  async function saveActiveWord(isAuto = false) {
     if (!activeWordData) return;
 
-    popoverBtnSave.innerHTML = '<span>Saving...</span>';
+    if (!isAuto) {
+      popoverBtnSave.innerHTML = '<span>Saving...</span>';
+    }
 
     const entry = {
       text: activeWordData.cleanWord || activeWordData.word,
       translation: activeWordData.translation || '',
       sentence: activeWordData.contextSentence || '',
       title: currentMediaTitle !== 'No media loaded' ? currentMediaTitle : 'WordTap VLC Video',
-      lang: 'ar',
+      lang: targetLang || 'ar',
       src: 'en',
       createdAt: new Date().toISOString()
     };
 
     await window.WordTapAPI.saveWord(entry);
-    refreshSavedWordsCount();
+    await refreshSavedWordsCount();
 
     if (userSession && userSession.access_token) {
       try {
@@ -465,8 +563,10 @@
     }
 
     popoverBtnSave.classList.add('saved');
-    popoverBtnSave.innerHTML = '<span>Saved to WordTap</span>';
-    showToast(`Saved: "${entry.text}"`);
+    popoverBtnSave.innerHTML = '<span>✓ Saved to WordTap</span>';
+    if (!isAuto) {
+      showToast(`Saved: "${entry.text}"`);
+    }
   }
 
   async function syncWordToSupabase(entry, token) {
@@ -1171,6 +1271,7 @@
     bindMenuItem('menu-item-sub-delay-minus', () => adjustSubtitleDelay(-100));
 
     // Tools Menu Actions
+    bindMenuItem('menu-item-options', () => accountModal.classList.add('open'));
     bindMenuItem('menu-item-words', openSavedWordsModal);
     bindMenuItem('menu-item-account', () => accountModal.classList.add('open'));
 
@@ -1198,7 +1299,49 @@
       if (activeWordData) speakWord(activeWordData.rawWord);
     });
 
-    popoverBtnSave.addEventListener('click', saveActiveWord);
+    popoverBtnSave.addEventListener('click', () => saveActiveWord(false));
+
+    // Popover Hover Dismiss Timing: Wait for 1 sec like extension before disappearing!
+    if (!wordPopover.dataset.hoverWired) {
+      wordPopover.dataset.hoverWired = '1';
+      wordPopover.addEventListener('mouseenter', () => {
+        wordPopover.dataset.hovered = '1';
+        clearTimeout(popoverHideTimer);
+      });
+      wordPopover.addEventListener('mouseleave', () => {
+        delete wordPopover.dataset.hovered;
+        clearTimeout(popoverHideTimer);
+        // Wait 1 second (1000ms) before closing popover
+        popoverHideTimer = setTimeout(() => {
+          closePopover(false);
+        }, 1000);
+      });
+    }
+
+    // Word Saving Mode & Options Controls
+    function setSaveMode(mode) {
+      translateSaveMode = mode;
+      syncOptionsUI();
+      window.WordTapAPI.saveConfig({ translateSaveMode: mode });
+    }
+
+    if (btnModeManual) btnModeManual.addEventListener('click', () => setSaveMode('manual'));
+    if (btnModeSubs) btnModeSubs.addEventListener('click', () => setSaveMode('subtitles_only'));
+    if (btnModeAuto) btnModeAuto.addEventListener('click', () => setSaveMode('auto'));
+
+    if (optTargetLang) {
+      optTargetLang.addEventListener('change', (e) => {
+        targetLang = e.target.value;
+        window.WordTapAPI.saveConfig({ targetLang });
+      });
+    }
+
+    if (chkPauseOnClick) {
+      chkPauseOnClick.addEventListener('change', (e) => {
+        pauseOnClick = e.target.checked;
+        window.WordTapAPI.saveConfig({ pauseOnClick });
+      });
+    }
 
     // Account Modal
     btnAccount.addEventListener('click', () => accountModal.classList.add('open'));

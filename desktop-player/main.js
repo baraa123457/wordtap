@@ -264,6 +264,8 @@ ipcMain.handle('storage:get-config', async () => {
   return readJsonFile(CONFIG_FILE, {
     session: null,
     targetLang: 'ar',
+    translateSaveMode: 'subtitles_only',
+    pauseOnClick: false,
     playbackSpeed: 1,
     subtitleDelayMs: 0,
     volume: 1.0,

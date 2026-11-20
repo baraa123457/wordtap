@@ -368,14 +368,14 @@ body {
 .sub-size-cinema .wt-word,
 .sub-size-cinema .wt-punct { font-size: 44px; }
 
-/* WordTap Desktop Precision Dictionary Tool */
+/* WordTap Dictionary Popover (Exact Match for User Extension Screenshot) */
 #word-popover {
   position: absolute;
   z-index: 60;
   width: 320px;
-  background: #1c1d22;
-  border: 1px solid #363842;
-  border-radius: 6px;
+  background: #18191e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
   padding: 14px 16px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
   display: flex;
@@ -406,8 +406,8 @@ body {
 }
 
 .popover-word {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 19px;
+  font-weight: 800;
   color: #ffffff;
   letter-spacing: -0.2px;
 }
@@ -416,20 +416,19 @@ body {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  background: #282a33;
-  border: 1px solid #3d404d;
-  color: #a4a7b5;
-  padding: 1px 5px;
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #a4a7b8;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 .popover-audio-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #e0e0e0;
-  width: 26px;
-  height: 26px;
-  border-radius: 4px;
+  background: rgba(250, 204, 59, 0.1);
+  border: 1px solid rgba(250, 204, 59, 0.35);
+  color: #facc3b;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -438,72 +437,191 @@ body {
 }
 
 .popover-audio-btn:hover {
-  background: #F36F21;
-  color: #fff;
-  border-color: #F36F21;
+  background: #facc3b;
+  color: #12152e;
+  transform: scale(1.05);
 }
 
 .popover-translation-box {
-  background: #141518;
+  background: #121316;
   border: 1px solid #282932;
-  border-right: 3px solid #F36F21;
-  border-radius: 4px;
-  padding: 8px 12px;
+  border-right: 3px solid #facc3b;
+  border-radius: 6px;
+  padding: 10px 14px;
   direction: rtl;
   text-align: right;
 }
 
 .popover-translation-ar {
   font-family: "Segoe UI Arabic", "Noto Sans Arabic", Tahoma, sans-serif;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
-  color: #ffffff;
+  color: #facc3b;
   line-height: 1.4;
 }
 
 .popover-context-box {
-  font-size: 11.5px;
-  color: #8c909e;
+  font-size: 12px;
+  color: #959cc2;
   line-height: 1.4;
   font-style: italic;
   max-height: 48px;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-left: 2px solid #444754;
+  border-left: 2px solid rgba(250, 204, 59, 0.4);
   padding-left: 8px;
 }
 
 .popover-save-btn {
-  background: #F36F21;
-  color: #ffffff;
+  background: #facc3b;
+  color: #12152e;
   border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: background 0.12s ease;
+  width: 100%;
+  transition: background 0.12s ease, transform 0.1s ease;
+  box-shadow: 0 2px 8px rgba(250, 204, 59, 0.25);
 }
 
 .popover-save-btn:hover {
-  background: #D9531E;
+  background: #ffe270;
+  transform: translateY(-1px);
 }
 
 .popover-save-btn.saved {
-  background: #10B981;
-  color: #fff;
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  box-shadow: none;
+  transform: none;
 }
 
 .popover-footer {
-  font-size: 10px;
-  color: #636775;
+  font-size: 10.5px;
+  color: #6b7280;
   text-align: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding-top: 4px;
+}
+
+/* WordTap Extension Options Component (Image 2 Match) */
+.ext-options-card {
+  background: #191a20;
+  border: 1px solid #2f313d;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 6px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ext-options-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7b8098;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.segmented-control {
+  display: flex;
+  background: #121317;
+  border: 1px solid #2b2c36;
+  border-radius: 6px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.segment-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: #8c90a2;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.segment-btn:hover {
+  color: #ffffff;
+}
+
+.segment-btn.active {
+  background: #252733;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.helper-text {
+  font-size: 11px;
+  color: #72768a;
+  line-height: 1.4;
+  margin-top: -2px;
+}
+
+.select-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.select-label {
+  font-size: 11.5px;
+  color: #9da0b3;
+  font-weight: 500;
+}
+
+.ext-lang-select {
+  background: #121317;
+  border: 1px solid #2e303d;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #8f93a6;
+  margin-top: 2px;
+}
+
+.ext-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ext-checkbox-label input {
+  cursor: pointer;
+  accent-color: #facc3b;
 }
 
 /* Bottom VLC Media Controls Bar */
