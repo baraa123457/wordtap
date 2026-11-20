@@ -157,10 +157,56 @@
   let vlsubSearchResults = [];
   let selectedVlsubIndex = -1;
 
+  // Web Audio Amplification Graph (VLC-Style Volume Boost up to 200%)
+  let audioCtx = null;
+  let masterGainNode = null;
+  let limiterNode = null;
+
+  function ensureWebAudioGraph() {
+    if (audioCtx) return;
+    try {
+      const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtxClass) return;
+      audioCtx = new AudioCtxClass();
+
+      // Master Gain: scales audio cleanly from 0.0 to 2.0 (0% - 200%)
+      masterGainNode = audioCtx.createGain();
+      masterGainNode.gain.setValueAtTime(userMuted ? 0 : userVolume, audioCtx.currentTime);
+
+      // Dynamics Compressor acts as a soft limiter when boosting > 100% to prevent harsh digital clipping
+      limiterNode = audioCtx.createDynamicsCompressor();
+      limiterNode.threshold.setValueAtTime(-1.5, audioCtx.currentTime);
+      limiterNode.knee.setValueAtTime(6, audioCtx.currentTime);
+      limiterNode.ratio.setValueAtTime(10, audioCtx.currentTime);
+      limiterNode.attack.setValueAtTime(0.002, audioCtx.currentTime);
+      limiterNode.release.setValueAtTime(0.15, audioCtx.currentTime);
+
+      masterGainNode.connect(limiterNode);
+      limiterNode.connect(audioCtx.destination);
+    } catch (e) {
+      console.warn('Web Audio Graph initialization notice:', e);
+    }
+  }
+
+  function hookAudioElement(element) {
+    if (!element || element._webAudioHooked) return;
+    try {
+      ensureWebAudioGraph();
+      if (audioCtx && masterGainNode) {
+        const srcNode = audioCtx.createMediaElementSource(element);
+        srcNode.connect(masterGainNode);
+        element._webAudioHooked = true;
+      }
+    } catch (err) {
+      console.warn('Could not hook media element to Web Audio:', err);
+    }
+  }
+
   // Explicit Audio Initialization
   function initAudio() {
-    userVolume = 1.0;
-    userMuted = false;
+    ensureWebAudioGraph();
+    hookAudioElement(video);
+    hookAudioElement(compatibleAudio);
     updateVolumeDisplay();
   }
 
@@ -236,8 +282,12 @@
       if (config.targetLang) {
         targetLang = config.targetLang;
       }
+      if (typeof config.volume === 'number' && config.volume >= 0 && config.volume <= 2.0) {
+        userVolume = config.volume;
+      }
       syncOptionsUI();
       applySubSize(currentSubSizeIdx);
+      updateVolumeDisplay();
       refreshSavedWordsCount();
     } catch (e) {
       console.warn('Config load error:', e);
@@ -736,8 +786,8 @@
     video.src = fileUrl;
     dropZone.classList.add('hidden');
 
-    // Make sure audio is completely unmuted and at 100% volume
-    userVolume = 1.0;
+    // Make sure audio element is hooked and display updated with current volume
+    hookAudioElement(video);
     userMuted = false;
     updateVolumeDisplay();
 
@@ -791,8 +841,9 @@
         isAudioTranscoded = true;
 
         // Ensure audio element has user's volume and unmuted state
+        hookAudioElement(compatibleAudio);
         compatibleAudio.muted = userMuted;
-        compatibleAudio.volume = userVolume;
+        compatibleAudio.volume = Math.max(0, Math.min(1.0, userVolume));
         updateVolumeDisplay();
 
         if (!video.paused) {
@@ -1599,29 +1650,75 @@
       showToast(subtitlesVisible ? 'Subtitles: Enabled' : 'Subtitles: Disabled');
     });
 
-    // Volume & Sound Handling (VLC Style with Percentage)
+    // Volume & Sound Handling (VLC Style with Percentage and Boost >100% up to 200%)
     function updateVolumeDisplay() {
+      ensureWebAudioGraph();
+      hookAudioElement(video);
+      hookAudioElement(compatibleAudio);
+
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+
       const pct = Math.round(userVolume * 100);
       volumeSlider.value = userVolume;
-      volumePercentLabel.textContent = (userMuted || userVolume === 0) ? 'Muted' : `${pct}%`;
+
+      // Update Slider Track Fill (VLC style with boost indicator)
+      const sliderRatio = Math.min(100, Math.max(0, (userVolume / 2.0) * 100));
+      if (userMuted || userVolume === 0) {
+        volumeSlider.style.background = 'rgba(255, 255, 255, 0.2)';
+      } else if (pct > 100) {
+        // Boost portion (>100%) shown in vibrant VLC orange/amber
+        volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 50%, #ff9800 50%, #ff9800 ${sliderRatio}%, rgba(255, 255, 255, 0.2) ${sliderRatio}%, rgba(255, 255, 255, 0.2) 100%)`;
+      } else {
+        volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 ${sliderRatio}%, rgba(255, 255, 255, 0.2) ${sliderRatio}%, rgba(255, 255, 255, 0.2) 100%)`;
+      }
 
       if (userMuted || userVolume === 0) {
+        volumePercentLabel.textContent = 'Muted';
+        volumePercentLabel.style.color = '#72768a';
+        volumePercentLabel.style.fontWeight = '600';
         iconVolHigh.style.display = 'none';
         iconVolMute.style.display = 'block';
-        if (compatibleAudio) compatibleAudio.muted = true;
-        video.muted = true;
       } else {
+        volumePercentLabel.textContent = `${pct}%`;
+        if (pct > 100) {
+          volumePercentLabel.style.color = '#F36F21';
+          volumePercentLabel.style.fontWeight = '700';
+        } else {
+          volumePercentLabel.style.color = '#9c9da6';
+          volumePercentLabel.style.fontWeight = '600';
+        }
         iconVolHigh.style.display = 'block';
         iconVolMute.style.display = 'none';
-        if (isAudioTranscoded) {
-          video.muted = true; // Video track is always silenced when streaming live audio
-          if (compatibleAudio) {
-            compatibleAudio.muted = false;
-            compatibleAudio.volume = userVolume;
-          }
-        } else {
-          video.muted = false;
-          video.volume = userVolume;
+      }
+
+      // Route volume through Web Audio Gain Node
+      if (masterGainNode && audioCtx) {
+        const targetGain = userMuted ? 0 : userVolume;
+        try {
+          masterGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+          masterGainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime);
+        } catch {}
+
+        if (video) {
+          video.muted = isAudioTranscoded ? true : userMuted;
+          video.volume = 1.0;
+        }
+        if (compatibleAudio) {
+          compatibleAudio.muted = !isAudioTranscoded ? true : userMuted;
+          compatibleAudio.volume = 1.0;
+        }
+      } else {
+        // Fallback for non-WebAudio environments (clamped to 1.0)
+        const clampedVol = Math.max(0, Math.min(1.0, userVolume));
+        if (video) {
+          video.muted = isAudioTranscoded ? true : userMuted;
+          video.volume = clampedVol;
+        }
+        if (compatibleAudio) {
+          compatibleAudio.muted = !isAudioTranscoded ? true : userMuted;
+          compatibleAudio.volume = clampedVol;
         }
       }
     }
@@ -1633,16 +1730,18 @@
     }
 
     function adjustVolume(delta) {
-      userVolume = Math.max(0, Math.min(1, Math.round((userVolume + delta) * 100) / 100));
+      userVolume = Math.max(0, Math.min(2.0, Math.round((userVolume + delta) * 100) / 100));
       if (userVolume > 0) userMuted = false;
       updateVolumeDisplay();
+      window.WordTapAPI.saveConfig({ volume: userVolume });
       showToast(`Volume: ${Math.round(userVolume * 100)}%`);
     }
 
     function setVolume(val) {
-      userVolume = Math.max(0, Math.min(1, val));
+      userVolume = Math.max(0, Math.min(2.0, Math.round(val * 100) / 100));
       if (userVolume > 0) userMuted = false;
       updateVolumeDisplay();
+      window.WordTapAPI.saveConfig({ volume: userVolume });
     }
 
     btnMute.addEventListener('click', toggleMute);
@@ -1650,6 +1749,15 @@
     volumeSlider.addEventListener('input', (e) => {
       setVolume(parseFloat(e.target.value));
     });
+
+    // Mouse wheel support on volume controls (VLC style)
+    const volumeGroup = document.querySelector('.volume-group');
+    if (volumeGroup) {
+      volumeGroup.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        adjustVolume(e.deltaY < 0 ? 0.05 : -0.05);
+      }, { passive: false });
+    }
 
     btnFullscreen.addEventListener('click', toggleFullscreen);
     video.addEventListener('dblclick', toggleFullscreen);
