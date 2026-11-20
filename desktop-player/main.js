@@ -372,7 +372,7 @@ ipcMain.handle('storage:save-word', async (_event, wordEntry) => {
 
 // IPC: User Account Configuration
 ipcMain.handle('storage:get-config', async () => {
-  return readJsonFile(CONFIG_FILE, {
+  const cfg = readJsonFile(CONFIG_FILE, {
     session: null,
     targetLang: 'ar',
     translateSaveMode: 'subtitles_only',
@@ -382,11 +382,14 @@ ipcMain.handle('storage:get-config', async () => {
     volume: 1.0,
     subSizeIdx: 1
   });
+  cfg.subtitleDelayMs = 0; // Always initialize subtitle sync at 0ms
+  return cfg;
 });
 
 ipcMain.handle('storage:save-config', async (_event, newConfig) => {
   const current = readJsonFile(CONFIG_FILE, {});
   const merged = { ...current, ...newConfig };
+  delete merged.subtitleDelayMs; // Subtitle delay is strictly per-video and always resets to 0ms
   writeJsonFile(CONFIG_FILE, merged);
   return merged;
 });

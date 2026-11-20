@@ -579,10 +579,8 @@
       } else {
         showLoginGate();
       }
-      if (config && config.subtitleDelayMs) {
-        subtitleDelayMs = config.subtitleDelayMs;
-        updateSyncDelayUI();
-      }
+      subtitleDelayMs = 0;
+      updateSyncDelayUI();
       if (config && typeof config.subSizeIdx === 'number' && config.subSizeIdx >= 0 && config.subSizeIdx < subSizes.length) {
         currentSubSizeIdx = config.subSizeIdx;
       }
@@ -717,6 +715,8 @@
 
   // Load Subtitles
   function loadSubtitles(content, label = 'Subtitle loaded') {
+    subtitleDelayMs = 0;
+    updateSyncDelayUI();
     cues = parseSubtitles(content);
     showToast(`Subtitles: ${cues.length} lines loaded`);
   }
@@ -1089,9 +1089,20 @@
   function adjustSubtitleDelay(deltaMs) {
     subtitleDelayMs += deltaMs;
     updateSyncDelayUI();
-    window.WordTapAPI.saveConfig({ subtitleDelayMs });
     const sign = subtitleDelayMs > 0 ? '+' : '';
     showToast(`Subtitle delay: ${sign}${subtitleDelayMs} ms`);
+  }
+
+  function resetSubtitleDelay() {
+    subtitleDelayMs = 0;
+    updateSyncDelayUI();
+    showToast('Subtitle sync reset to 0ms');
+  }
+
+  function resetAudioDelay() {
+    audioDelayMs = 0;
+    syncAudioWithVideo();
+    showToast('Audio sync reset to 0ms');
   }
 
   // Video Load Handler - GUARANTEED AUDIO & DOLBY/DTS TRANSCODING
@@ -1102,6 +1113,8 @@
     audioStreamStartTime = 0;
     liveAudioResyncing = false;
     audioDelayMs = 0;
+    subtitleDelayMs = 0;
+    updateSyncDelayUI();
 
     if (compatibleAudio) {
       compatibleAudio.pause();
@@ -1561,11 +1574,14 @@
     bindMenuItem('menu-item-stop', () => {
       video.pause();
       video.currentTime = 0;
+      subtitleDelayMs = 0;
+      audioDelayMs = 0;
+      updateSyncDelayUI();
       if (isAudioTranscoded && compatibleAudio) {
         compatibleAudio.pause();
         compatibleAudio.currentTime = 0;
       }
-      showToast('Stop');
+      showToast('Stop (Sync reset to 0ms)');
     });
     bindMenuItem('menu-item-replay', replayCurrentLine);
     bindMenuItem('menu-item-fwd', () => {
@@ -1595,6 +1611,7 @@
     });
     bindMenuItem('menu-item-audio-delay-plus', () => adjustAudioDelay(50));
     bindMenuItem('menu-item-audio-delay-minus', () => adjustAudioDelay(-50));
+    bindMenuItem('menu-item-audio-delay-reset', resetAudioDelay);
     bindMenuItem('menu-item-mute', toggleMute);
     bindMenuItem('menu-item-vol-up', () => adjustVolume(0.05));
     bindMenuItem('menu-item-vol-down', () => adjustVolume(-0.05));
@@ -1615,6 +1632,7 @@
     });
     bindMenuItem('menu-item-sub-delay-plus', () => adjustSubtitleDelay(100));
     bindMenuItem('menu-item-sub-delay-minus', () => adjustSubtitleDelay(-100));
+    bindMenuItem('menu-item-sub-delay-reset', resetSubtitleDelay);
 
     // Tools Menu Actions
     bindMenuItem('menu-item-options', () => accountModal.classList.add('open'));
@@ -1632,6 +1650,7 @@
     // Subtitle Sync
     btnSyncMinus.addEventListener('click', () => adjustSubtitleDelay(-100));
     btnSyncPlus.addEventListener('click', () => adjustSubtitleDelay(100));
+    syncDelayText.addEventListener('click', resetSubtitleDelay);
 
     // Subtitle Size
     btnSubSize.addEventListener('click', cycleSubSize);
@@ -1707,11 +1726,14 @@
     btnStop.addEventListener('click', () => {
       video.pause();
       video.currentTime = 0;
+      subtitleDelayMs = 0;
+      audioDelayMs = 0;
+      updateSyncDelayUI();
       if (isAudioTranscoded && compatibleAudio) {
         compatibleAudio.pause();
         compatibleAudio.removeAttribute('src');
       }
-      showToast('Stop');
+      showToast('Stop (Sync reset to 0ms)');
     });
 
     video.addEventListener('click', () => {
@@ -1740,6 +1762,18 @@
       if (isAudioTranscoded && compatibleAudio && !compatibleAudio.paused) {
         compatibleAudio.pause();
       }
+    });
+
+    video.addEventListener('ended', () => {
+      iconPlay.style.display = 'block';
+      iconPause.style.display = 'none';
+      subtitleDelayMs = 0;
+      audioDelayMs = 0;
+      updateSyncDelayUI();
+      if (isAudioTranscoded && compatibleAudio && !compatibleAudio.paused) {
+        compatibleAudio.pause();
+      }
+      showToast('Playback finished (Sync reset to 0ms)');
     });
 
     video.addEventListener('seeked', () => {

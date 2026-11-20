@@ -87,6 +87,9 @@
                 <span>Audio Delay -50ms</span>
                 <kbd>J</kbd>
               </button>
+              <button class="vlc-dropdown-item" id="menu-item-audio-delay-reset">
+                <span>Reset Audio Delay (0ms)</span>
+              </button>
               <div class="vlc-dropdown-sep"></div>
               <button class="vlc-dropdown-item" id="menu-item-mute">
                 <span>Mute / Unmute</span>
@@ -129,6 +132,9 @@
               <button class="vlc-dropdown-item" id="menu-item-sub-delay-minus">
                 <span>Delay -100ms</span>
                 <kbd>[</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-sub-delay-reset">
+                <span>Reset Subtitle Delay (0ms)</span>
               </button>
             </div>
           </div>
@@ -186,11 +192,11 @@
 
       <div class="menu-right">
         <!-- Sub Sync Adjuster -->
-        <div class="sync-delay-badge" title="Sync delay ([ / ] keys)">
+        <div class="sync-delay-badge" title="Subtitle sync ([ / ] keys). Click number to reset to 0ms">
           <span>Sub Sync:</span>
-          <button class="sync-btn" id="btn-sync-minus">−</button>
-          <span id="sync-delay-text">0ms</span>
-          <button class="sync-btn" id="btn-sync-plus">+</button>
+          <button class="sync-btn" id="btn-sync-minus" title="Delay -100ms ([)">−</button>
+          <span id="sync-delay-text" style="cursor:pointer;" title="Click to reset to 0ms">0ms</span>
+          <button class="sync-btn" id="btn-sync-plus" title="Delay +100ms (])">+</button>
         </div>
 
         <!-- Saved Words Count -->
