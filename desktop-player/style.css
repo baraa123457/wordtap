@@ -1,23 +1,23 @@
-/* WordTap VLC Media Player - Authentic Dark Interface */
+/* WordTap VLC Media Player - Authentic Desktop Interface Grounded in VLC Qt */
 :root {
-  --vlc-bg-main: #18191c;
-  --vlc-bg-panel: #222327;
-  --vlc-bg-control: #2b2c32;
-  --vlc-bg-hover: #363840;
+  --vlc-bg-main: #141416;
+  --vlc-bg-panel: #1e1f23;
+  --vlc-bg-control: #25262c;
+  --vlc-bg-hover: #32333b;
   --vlc-orange: #F36F21;
   --vlc-orange-dark: #D9531E;
-  --vlc-orange-glow: rgba(243, 111, 33, 0.4);
+  --vlc-orange-glow: rgba(243, 111, 33, 0.35);
   --wt-gold: #FACC3B;
   --wt-gold-hover: #e5b92e;
-  --wt-gold-glow: rgba(250, 204, 59, 0.35);
   --text-primary: #FFFFFF;
   --text-secondary: #A0A5B5;
   --text-dim: #6B7280;
   --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(243, 111, 33, 0.5);
+  --border-focus: rgba(243, 111, 33, 0.6);
   --success: #10B981;
   --danger: #EF4444;
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: Consolas, "Segoe UI Mono", "Courier New", monospace;
 }
 
 * {
@@ -49,11 +49,13 @@ body {
   flex-direction: column;
 }
 
-/* Top VLC Menu Bar */
+/* Top VLC Menu Bar - Authentic Qt Desktop Style */
 #top-vlc-menu {
-  background: var(--vlc-bg-panel);
-  border-bottom: 1px solid var(--border-subtle);
-  padding: 6px 14px;
+  background: #1e1f24;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  height: 28px;
+  min-height: 28px;
+  padding: 0 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -64,108 +66,116 @@ body {
 .menu-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
 }
 
 .vlc-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: default;
+  padding-right: 4px;
 }
 
 .vlc-cone-icon {
-  width: 22px;
-  height: 22px;
-  filter: drop-shadow(0 2px 5px rgba(243, 111, 33, 0.5));
+  width: 16px;
+  height: 16px;
 }
 
 .vlc-brand-title {
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 700;
-  color: #fff;
+  color: #eeeeee;
   letter-spacing: -0.2px;
 }
 
 .vlc-menu-items {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .vlc-menu-btn {
   background: none;
   border: none;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 4px;
+  color: #c4c5cc;
+  font-size: 11.5px;
+  font-weight: 400;
+  padding: 3px 8px;
+  border-radius: 2px;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: background 0.1s ease, color 0.1s ease;
 }
 
 .vlc-menu-btn:hover {
-  background: var(--vlc-bg-hover);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
 }
 
 .menu-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .sync-delay-badge {
-  font-size: 11px;
-  color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border-subtle);
-  padding: 3px 8px;
-  border-radius: 4px;
+  font-size: 10.5px;
+  color: #9da0ae;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 3px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  height: 20px;
 }
 
 .sync-btn {
   background: none;
   border: none;
-  color: var(--wt-gold);
+  color: #c0c3d0;
   cursor: pointer;
   font-weight: 700;
-  padding: 0 4px;
+  padding: 0 2px;
+  font-size: 11px;
+}
+
+.sync-btn:hover {
+  color: #ffffff;
 }
 
 .user-account-badge {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border-subtle);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #d1d3dc;
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 1px 8px;
+  border-radius: 3px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
-  transition: background 0.15s ease;
+  gap: 5px;
+  height: 20px;
+  transition: background 0.12s ease;
 }
 
 .user-account-badge:hover {
-  background: var(--vlc-bg-hover);
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
 }
 
 .account-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--text-dim);
 }
 
 .account-dot.online {
   background: var(--success);
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 5px rgba(16, 185, 129, 0.6);
 }
 
 /* Video Canvas */
@@ -205,7 +215,7 @@ body {
   display: none;
 }
 
-/* Drag & Drop Splash Area */
+/* Drag & Drop Splash Area - Authentic VLC Canvas */
 #drop-zone {
   position: absolute;
   inset: 0;
@@ -213,10 +223,10 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at center, #23252c 0%, #111215 100%);
+  background: #141417;
   z-index: 50;
   cursor: pointer;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.2s ease;
 }
 
 #drop-zone.hidden {
@@ -226,64 +236,66 @@ body {
 }
 
 .drop-card {
-  background: var(--vlc-bg-panel);
-  border: 1px solid var(--border-subtle);
-  padding: 44px 48px;
-  border-radius: 12px;
+  background: transparent;
+  border: none;
+  padding: 24px;
+  border-radius: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
-  max-width: 480px;
+  box-shadow: none;
+  max-width: 440px;
 }
 
 .vlc-cone-splash {
-  margin-bottom: 20px;
-  filter: drop-shadow(0 10px 24px rgba(243, 111, 33, 0.45));
+  margin-bottom: 18px;
+  filter: drop-shadow(0 6px 18px rgba(243, 111, 33, 0.35));
 }
 
 .drop-card h2 {
-  font-size: 22px;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 8px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #eeeeee;
+  margin-bottom: 6px;
+  letter-spacing: -0.2px;
 }
 
 .drop-card p {
-  color: var(--text-secondary);
-  font-size: 13px;
+  color: #888892;
+  font-size: 12px;
   line-height: 1.5;
-  margin-bottom: 24px;
+  margin-bottom: 22px;
 }
 
 .btn-vlc-primary {
-  background: var(--vlc-orange);
-  color: #fff;
-  border: none;
-  font-size: 14px;
-  font-weight: 700;
-  padding: 11px 24px;
-  border-radius: 6px;
+  background: #2b2c34;
+  color: #ffffff;
+  border: 1px solid #444755;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: background 0.15s ease, transform 0.1s ease;
-  box-shadow: 0 4px 14px var(--vlc-orange-glow);
+  transition: background 0.12s ease, border-color 0.12s ease;
+  box-shadow: none;
 }
 
 .btn-vlc-primary:hover {
-  background: var(--vlc-orange-dark);
-  transform: translateY(-1px);
+  background: #373944;
+  border-color: #595c6e;
+  transform: none;
 }
 
-/* Subtitle Display Container */
+/* Authentic VLC Subtitle Display */
 #subtitle-container {
   position: absolute;
-  bottom: 30px;
-  left: 6%;
-  right: 6%;
+  bottom: 46px;
+  left: 4%;
+  right: 4%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -294,74 +306,85 @@ body {
 
 .subtitle-line {
   display: inline-block;
-  background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(6px);
-  padding: 6px 16px;
-  border-radius: 6px;
-  margin-top: 4px;
+  background: transparent;
+  padding: 2px 8px;
+  margin-top: 2px;
   text-align: center;
   pointer-events: auto;
-  line-height: 1.5;
+  line-height: 1.35;
 }
 
-/* Interactive Word Chips */
+/* Interactive Word Chips - Authentic Movie Font & Stroke */
 .wt-word {
   display: inline-block;
-  color: #ffffff;
-  font-size: 26px;
-  font-weight: 600;
-  padding: 1px 4px;
-  border-radius: 4px;
+  color: #FFFFFF;
+  font-family: Arial, "Trebuchet MS", "Segoe UI", sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  padding: 0 1px;
   cursor: pointer;
-  transition: all 0.12s ease;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.9);
-  margin: 0 1px;
+  letter-spacing: 0.2px;
+  text-shadow:
+    2px 2px 2px #000000,
+    -2px -2px 2px #000000,
+    2px -2px 2px #000000,
+    -2px 2px 2px #000000,
+    0 3px 6px rgba(0, 0, 0, 0.95);
+  transition: color 0.1s ease, border-color 0.1s ease;
+  border-bottom: 2px solid transparent;
 }
 
 .wt-word:hover {
-  background: var(--wt-gold);
-  color: #0c0e14 !important;
-  text-shadow: none;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px var(--wt-gold-glow);
-  font-weight: 700;
+  color: #FFE600 !important;
+  border-bottom: 2px solid #F36F21;
+  text-shadow:
+    2px 2px 2px #000000,
+    -2px -2px 2px #000000,
+    2px -2px 2px #000000,
+    -2px 2px 2px #000000;
 }
 
 .wt-punct {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 26px;
-  font-weight: 500;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+  color: #FFFFFF;
+  font-family: Arial, "Trebuchet MS", "Segoe UI", sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-shadow:
+    2px 2px 2px #000000,
+    -2px -2px 2px #000000,
+    2px -2px 2px #000000,
+    -2px 2px 2px #000000,
+    0 3px 6px rgba(0, 0, 0, 0.95);
 }
 
 /* Subtitle Font Size Classes */
 .sub-size-compact .wt-word,
-.sub-size-compact .wt-punct { font-size: 20px; }
+.sub-size-compact .wt-punct { font-size: 22px; }
 .sub-size-standard .wt-word,
-.sub-size-standard .wt-punct { font-size: 26px; }
+.sub-size-standard .wt-punct { font-size: 28px; }
 .sub-size-large .wt-word,
-.sub-size-large .wt-punct { font-size: 34px; }
+.sub-size-large .wt-punct { font-size: 36px; }
 .sub-size-cinema .wt-word,
-.sub-size-cinema .wt-punct { font-size: 42px; }
+.sub-size-cinema .wt-punct { font-size: 44px; }
 
-/* WordTap Floating Card Popover */
+/* WordTap Desktop Precision Dictionary Tool */
 #word-popover {
   position: absolute;
   z-index: 60;
   width: 320px;
-  background: rgba(24, 25, 30, 0.96);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  padding: 18px 20px;
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.85);
+  background: #1c1d22;
+  border: 1px solid #363842;
+  border-radius: 6px;
+  padding: 14px 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   opacity: 0;
-  transform: scale(0.95);
+  transform: scale(0.97);
   pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.12s ease, transform 0.12s ease;
 }
 
 #word-popover.visible {
@@ -383,108 +406,114 @@ body {
 }
 
 .popover-word {
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 700;
   color: #ffffff;
+  letter-spacing: -0.2px;
 }
 
 .popover-pos {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
-  padding: 2px 6px;
-  border-radius: 4px;
+  background: #282a33;
+  border: 1px solid #3d404d;
+  color: #a4a7b5;
+  padding: 1px 5px;
+  border-radius: 3px;
 }
 
 .popover-audio-btn {
-  background: rgba(250, 204, 59, 0.15);
-  border: 1px solid rgba(250, 204, 59, 0.3);
-  color: var(--wt-gold);
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.12s ease;
 }
 
 .popover-audio-btn:hover {
-  background: var(--wt-gold);
-  color: #000;
+  background: #F36F21;
+  color: #fff;
+  border-color: #F36F21;
 }
 
 .popover-translation-box {
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 6px;
-  padding: 10px 14px;
-  border-right: 3px solid var(--wt-gold);
+  background: #141518;
+  border: 1px solid #282932;
+  border-right: 3px solid #F36F21;
+  border-radius: 4px;
+  padding: 8px 12px;
   direction: rtl;
   text-align: right;
 }
 
 .popover-translation-ar {
-  font-size: 19px;
+  font-family: "Segoe UI Arabic", "Noto Sans Arabic", Tahoma, sans-serif;
+  font-size: 17px;
   font-weight: 700;
-  color: var(--wt-gold);
+  color: #ffffff;
   line-height: 1.4;
 }
 
 .popover-context-box {
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: 11.5px;
+  color: #8c909e;
   line-height: 1.4;
   font-style: italic;
   max-height: 48px;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-left: 2px solid rgba(255, 255, 255, 0.15);
+  border-left: 2px solid #444754;
   padding-left: 8px;
 }
 
 .popover-save-btn {
-  background: var(--wt-gold);
-  color: #0c0e14;
+  background: #F36F21;
+  color: #ffffff;
   border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 9px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: background 0.15s ease;
+  transition: background 0.12s ease;
 }
 
 .popover-save-btn:hover {
-  background: var(--wt-gold-hover);
+  background: #D9531E;
 }
 
 .popover-save-btn.saved {
-  background: var(--success);
+  background: #10B981;
   color: #fff;
 }
 
 .popover-footer {
-  font-size: 11px;
-  color: var(--text-dim);
+  font-size: 10px;
+  color: #636775;
   text-align: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
   padding-top: 4px;
 }
 
 /* Bottom VLC Media Controls Bar */
 #vlc-bottom-bar {
-  background: var(--vlc-bg-panel);
-  border-top: 1px solid var(--border-subtle);
-  padding: 10px 16px 12px 16px;
+  background: #1c1d21;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 14px 8px 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
   z-index: 40;
   flex-shrink: 0;
 }
@@ -493,7 +522,7 @@ body {
 .scrubber-container {
   position: relative;
   width: 100%;
-  height: 8px;
+  height: 10px;
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -502,7 +531,7 @@ body {
 .scrubber-track {
   width: 100%;
   height: 4px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.16);
   border-radius: 2px;
   position: relative;
   transition: height 0.1s ease;
@@ -517,7 +546,7 @@ body {
   left: 0;
   top: 0;
   bottom: 0;
-  background: var(--vlc-orange);
+  background: #F36F21;
   border-radius: 2px;
   width: 0%;
 }
@@ -528,9 +557,9 @@ body {
   transform: translate(-50%, -50%) scale(0);
   width: 12px;
   height: 12px;
-  background: #fff;
+  background: #ffffff;
   border-radius: 50%;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
   transition: transform 0.1s ease;
 }
 
@@ -542,14 +571,17 @@ body {
   position: absolute;
   bottom: 16px;
   transform: translateX(-50%);
-  background: #111;
-  color: #fff;
+  background: #141518;
+  border: 1px solid #36373e;
+  color: #eeeeee;
+  font-family: Consolas, "Segoe UI Mono", monospace;
   font-size: 11px;
   font-weight: 600;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 2px;
   pointer-events: none;
   opacity: 0;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
 /* Controls Buttons Row */
@@ -563,38 +595,41 @@ body {
 .controls-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .vlc-ctrl-btn {
   background: none;
   border: 1px solid transparent;
-  color: #fff;
+  color: #d8d8de;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 32px;
-  border-radius: 4px;
-  transition: background 0.12s ease;
+  width: 28px;
+  height: 28px;
+  border-radius: 3px;
+  transition: background 0.1s ease, color 0.1s ease;
 }
 
 .vlc-ctrl-btn:hover {
-  background: var(--vlc-bg-hover);
-  border-color: var(--border-subtle);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .vlc-ctrl-btn.active {
-  color: var(--vlc-orange);
+  color: #F36F21;
 }
 
 .time-display {
+  font-family: Consolas, "Segoe UI Mono", monospace;
   font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-weight: 500;
+  color: #9c9da6;
   font-variant-numeric: tabular-nums;
   margin-left: 8px;
+  letter-spacing: 0.3px;
 }
 
 /* Volume Bar with Percentage (VLC Style) */
@@ -602,13 +637,13 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-right: 6px;
+  margin-right: 4px;
 }
 
 .volume-slider {
   -webkit-appearance: none;
   appearance: none;
-  width: 80px;
+  width: 76px;
   height: 4px;
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.2);
@@ -619,56 +654,66 @@ body {
 .volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: var(--vlc-orange);
+  background: #F36F21;
   cursor: pointer;
 }
 
 .volume-percent-label {
+  font-family: Consolas, "Segoe UI Mono", monospace;
   font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  min-width: 34px;
+  font-weight: 600;
+  color: #9c9da6;
+  min-width: 32px;
 }
 
-/* Toast HUD */
+/* Authentic VLC On-Screen Display (OSD) */
 #toast {
   position: absolute;
-  top: 50px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-10px);
-  background: rgba(20, 22, 28, 0.95);
-  border: 1px solid var(--border-subtle);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 20px;
+  top: 24px;
+  right: 32px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  color: #FFFFFF;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 0;
   z-index: 70;
   opacity: 0;
   pointer-events: none;
-  transition: all 0.2s ease;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  text-shadow:
+    2px 2px 0 #000000,
+    -1px -1px 0 #000000,
+    1px -1px 0 #000000,
+    -1px 1px 0 #000000,
+    0 2px 6px rgba(0, 0, 0, 0.85);
 }
 
 #toast.show {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: none;
 }
 
-/* Mandatory Upfront Login Gate Screen */
+/* Mandatory Upfront Login Gate Screen - Authentic Desktop Client Style */
 .auth-gate-overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, #262935 0%, #0d0e12 100%);
+  background: rgba(15, 15, 18, 0.96);
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 1;
   visibility: visible;
-  transition: opacity 0.25s ease, visibility 0.25s ease;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
 .auth-gate-overlay.hidden {
@@ -678,13 +723,13 @@ body {
 }
 
 .auth-gate-card {
-  width: 440px;
+  width: 380px;
   max-width: 90vw;
-  background: var(--vlc-bg-panel);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 36px 32px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9);
+  background: #1e1f24;
+  border: 1px solid #363842;
+  border-radius: 6px;
+  padding: 30px 28px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -692,37 +737,39 @@ body {
 }
 
 .auth-gate-logo {
-  filter: drop-shadow(0 10px 24px rgba(243, 111, 33, 0.5));
-  margin-bottom: 12px;
+  filter: drop-shadow(0 4px 12px rgba(243, 111, 33, 0.35));
+  margin-bottom: 10px;
 }
 
 .auth-gate-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .auth-gate-header h2 {
-  font-size: 22px;
-  font-weight: 800;
-  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  color: #eeeeee;
+  letter-spacing: -0.2px;
 }
 
 .vlc-badge {
-  background: var(--vlc-orange);
+  background: #F36F21;
   color: #fff;
   font-size: 9px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 4px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 2px;
+  letter-spacing: 0.5px;
 }
 
 .auth-gate-subtitle {
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.5;
-  color: var(--text-secondary);
-  margin-bottom: 22px;
+  color: #9295a3;
+  margin-bottom: 18px;
 }
 
 .auth-gate-form {

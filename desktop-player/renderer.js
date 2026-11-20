@@ -210,12 +210,15 @@
   }
 
   function showToast(msg) {
+    if (!toastEl) return;
     clearTimeout(toastTimer);
-    toastEl.textContent = msg;
+    // Authentic VLC On-Screen Display: Clean desktop typography without emoji clutter
+    const cleanMsg = String(msg).replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E0}-\u{1F1FF}🔊⏹✓★↺⏪⏩]/gu, '').trim();
+    toastEl.textContent = cleanMsg || msg;
     toastEl.classList.add('show');
     toastTimer = setTimeout(() => {
       toastEl.classList.remove('show');
-    }, 2000);
+    }, 1500);
   }
 
   // Subtitle Sizing
@@ -290,7 +293,7 @@
   // Load Subtitles
   function loadSubtitles(content, label = 'Subtitle loaded') {
     cues = parseSubtitles(content);
-    showToast(`${label} (${cues.length} lines)`);
+    showToast(`Subtitles: ${cues.length} lines loaded`);
   }
 
   // Interactive Subtitle Rendering on Screen
@@ -369,7 +372,7 @@
       '<strong style="color:var(--wt-gold);">$1</strong>'
     );
     popoverBtnSave.classList.remove('saved');
-    popoverBtnSave.innerHTML = '<span>★ Save to WordTap</span>';
+    popoverBtnSave.innerHTML = '<span>Save to WordTap</span>';
     wordPopover.classList.add('visible');
 
     speakWord(rawWord);
@@ -462,8 +465,8 @@
     }
 
     popoverBtnSave.classList.add('saved');
-    popoverBtnSave.innerHTML = '<span>✓ Saved in WordTap!</span>';
-    showToast(`Saved "${entry.text}" to WordTap!`);
+    popoverBtnSave.innerHTML = '<span>Saved to WordTap</span>';
+    showToast(`Saved: "${entry.text}"`);
   }
 
   async function syncWordToSupabase(entry, token) {
@@ -567,20 +570,20 @@
     updateAccountUI();
     accountModal.classList.remove('open');
     showLoginGate();
-    showToast('Signed out from WordTap');
+    showToast('Signed out');
   }
 
   async function pushPendingOfflineWords() {
     if (!userSession || !userSession.access_token) return;
     const words = await window.WordTapAPI.getSavedWords();
     if (!words || words.length === 0) return;
-    showToast(`Syncing ${words.length} saved words to WordTap...`);
+    showToast(`Syncing ${words.length} words...`);
     for (const w of words) {
       try {
         await syncWordToSupabase(w, userSession.access_token);
       } catch {}
     }
-    showToast('All words synced to cloud!');
+    showToast('Words synced');
   }
 
   // Load Saved Words Modal
@@ -613,7 +616,7 @@
     updateSyncDelayUI();
     window.WordTapAPI.saveConfig({ subtitleDelayMs });
     const sign = subtitleDelayMs > 0 ? '+' : '';
-    showToast(`Subtitle sync: ${sign}${subtitleDelayMs}ms`);
+    showToast(`Subtitle delay: ${sign}${subtitleDelayMs} ms`);
   }
 
   // Video Load Handler - GUARANTEED AUDIO & DOLBY/DTS TRANSCODING
@@ -649,7 +652,7 @@
     if (subContent) {
       loadSubtitles(subContent, 'Auto-loaded matching subtitle');
     }
-    showToast(`Playing: ${fileName}`);
+    showToast(fileName);
 
     // Automatic Dolby AC3 / E-AC3 / DTS Audio Stream Probing & Real-Time Transcoding
     if (filePath && window.WordTapAPI && window.WordTapAPI.probeAudio) {
@@ -657,7 +660,7 @@
         const info = await window.WordTapAPI.probeAudio(filePath);
         if (info && info.needsTranscode) {
           const codecName = (info.codecs && info.codecs.length > 0) ? info.codecs.join('/') : 'DDP 5.1';
-          showToast(`🔊 Detected Dolby ${codecName}. Streaming live audio...`);
+          showToast(`Audio: Dolby ${codecName}`);
           startLiveAudioStream(0);
         }
       } catch (e) {
@@ -696,11 +699,11 @@
           const p = compatibleAudio.play();
           if (p !== undefined) p.catch(() => {});
         }
-        showToast('🔊 Live Dolby DDP 5.1 / AC3 sound active!');
+        showToast('Audio: Dolby Digital Plus 5.1 (Direct)');
       }
     } catch (err) {
       console.error('Live audio stream error:', err);
-      showToast('Live audio error: ' + err.message);
+      showToast('Audio error: ' + err.message);
     }
   }
 
@@ -842,7 +845,7 @@
         <tr class="vlsub-row" data-idx="${idx}">
           <td class="td-filename" title="${item.fileName}">${item.fileName}</td>
           <td class="td-lang">${item.langName}</td>
-          <td class="td-rating" style="text-align:center;">★ ${rating}</td>
+          <td class="td-rating" style="text-align:center;">${rating}</td>
           <td class="td-dl" style="text-align:right;">${dls}</td>
         </tr>
       `;
@@ -886,12 +889,12 @@
       const res = await window.WordTapAPI.downloadVLSub(item.id);
       if (res && res.ok && res.srtContent) {
         loadSubtitles(res.srtContent, `VLsub: ${item.fileName}`);
-        vlsubStatusText.textContent = '✓ Subtitle loaded successfully into player!';
+        vlsubStatusText.textContent = 'Subtitle loaded successfully into player';
         vlsubStatusText.className = 'vlsub-status-message success';
         setTimeout(() => {
           closeVLsubModal();
         }, 500);
-        showToast(`✓ VLsub: Loaded "${item.fileName}"! Tap any word to translate.`);
+        showToast(`Subtitles: ${item.fileName}`);
       } else {
         vlsubStatusText.textContent = 'Download error: ' + (res ? res.error : 'Unknown');
         btnVlsubDownload.disabled = false;
@@ -923,7 +926,7 @@
     if (isFS) {
       iconFsEnter.style.display = 'none';
       iconFsExit.style.display = 'block';
-      showToast('Fullscreen (Press F or Esc to exit)');
+      showToast('Fullscreen');
     } else {
       iconFsEnter.style.display = 'block';
       iconFsExit.style.display = 'none';
@@ -1118,16 +1121,16 @@
         compatibleAudio.pause();
         compatibleAudio.currentTime = 0;
       }
-      showToast('⏹ Stopped');
+      showToast('Stop');
     });
     bindMenuItem('menu-item-replay', replayCurrentLine);
     bindMenuItem('menu-item-fwd', () => {
       video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
-      showToast('⏩ +5s');
+      showToast('+00:05');
     });
     bindMenuItem('menu-item-back', () => {
       video.currentTime = Math.max(0, video.currentTime - 5);
-      showToast('⏪ -5s');
+      showToast('-00:05');
     });
     bindMenuItem('menu-item-speed', () => {
       currentSpeedIndex = (currentSpeedIndex + 1) % speeds.length;
@@ -1162,7 +1165,7 @@
       subtitlesVisible = !subtitlesVisible;
       btnToggleSub.classList.toggle('active', subtitlesVisible);
       renderSubtitle(currentCue);
-      showToast(subtitlesVisible ? 'Subtitles On' : 'Subtitles Off');
+      showToast(subtitlesVisible ? 'Subtitles: Enabled' : 'Subtitles: Disabled');
     });
     bindMenuItem('menu-item-sub-delay-plus', () => adjustSubtitleDelay(100));
     bindMenuItem('menu-item-sub-delay-minus', () => adjustSubtitleDelay(-100));
@@ -1247,7 +1250,7 @@
         compatibleAudio.pause();
         compatibleAudio.removeAttribute('src');
       }
-      showToast('⏹ Stopped');
+      showToast('Stop');
     });
 
     video.addEventListener('click', () => {
@@ -1404,7 +1407,7 @@
           startLiveAudioStream(target);
         }
         video.play().catch(() => {});
-        showToast('↺ Replaying line');
+        showToast('Replaying line');
       } else if (cues.length > 0) {
         const cur = video.currentTime - (subtitleDelayMs / 1000);
         const prevCue = [...cues].reverse().find(c => c.start <= cur);
@@ -1415,7 +1418,7 @@
             startLiveAudioStream(target);
           }
           video.play().catch(() => {});
-          showToast('↺ Replaying line');
+          showToast('Replaying line');
         }
       }
     }
@@ -1426,13 +1429,13 @@
       const target = Math.max(0, video.currentTime - 5);
       video.currentTime = target;
       if (isAudioTranscoded && currentFilePath) startLiveAudioStream(target);
-      showToast('⏪ -5s');
+      showToast('-00:05');
     });
     btnSeekFwd.addEventListener('click', () => {
       const target = Math.min(video.duration || 0, video.currentTime + 5);
       video.currentTime = target;
       if (isAudioTranscoded && currentFilePath) startLiveAudioStream(target);
-      showToast('⏩ +5s');
+      showToast('+00:05');
     });
 
     // Speed Selector
@@ -1450,7 +1453,7 @@
       subtitlesVisible = !subtitlesVisible;
       btnToggleSub.classList.toggle('active', subtitlesVisible);
       renderSubtitle(currentCue);
-      showToast(subtitlesVisible ? 'Subtitles On' : 'Subtitles Off');
+      showToast(subtitlesVisible ? 'Subtitles: Enabled' : 'Subtitles: Disabled');
     });
 
     // Volume & Sound Handling (VLC Style with Percentage)
@@ -1604,12 +1607,12 @@
         const target = Math.max(0, video.currentTime - 5);
         video.currentTime = target;
         if (isAudioTranscoded && currentFilePath) startLiveAudioStream(target);
-        showToast('⏪ -5s');
+        showToast('-00:05');
       } else if (e.code === 'ArrowRight') {
         const target = Math.min(video.duration || 0, video.currentTime + 5);
         video.currentTime = target;
         if (isAudioTranscoded && currentFilePath) startLiveAudioStream(target);
-        showToast('⏩ +5s');
+        showToast('+00:05');
       } else if (e.code === 'ArrowUp') {
         adjustVolume(0.05);
       } else if (e.code === 'ArrowDown') {
