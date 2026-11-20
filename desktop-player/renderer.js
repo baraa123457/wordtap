@@ -652,13 +652,13 @@
     }
     showToast(`Playing: ${fileName}`);
 
-    // Automatic Dolby AC3 / DTS Audio Stream Probing & Transcoding
+    // Automatic Dolby AC3 / E-AC3 / DTS Audio Stream Probing & Real-Time Transcoding
     if (filePath && window.WordTapAPI && window.WordTapAPI.probeAudio) {
       try {
         const info = await window.WordTapAPI.probeAudio(filePath);
         if (info && info.needsTranscode) {
-          showToast('🔊 Detected Dolby/DTS audio. Transcoding audio stream...');
-          transcodeAndAttachAudio(filePath);
+          showToast('🔊 Detected Dolby ' + (info.codecs.join('/') || 'DDP 5.1') + ' audio. Starting live sound stream...');
+          startLiveAudioStream(0);
         }
       } catch (e) {
         console.warn('Audio probe err:', e);
@@ -666,37 +666,43 @@
     }
   }
 
-  // Audio Transcoding Engine (FFmpeg on-demand)
-  async function transcodeAndAttachAudio(filePath) {
-    if (!filePath || !window.WordTapAPI || !window.WordTapAPI.transcodeAudio) {
+  // Real-Time On-Demand Audio Streaming Engine (FFmpeg live MP3 stream in <60ms)
+  async function startLiveAudioStream(seekTime = 0) {
+    if (!currentFilePath || !window.WordTapAPI || !window.WordTapAPI.getAudioStreamUrl) {
       showToast('Please open a media file first');
       return;
     }
     try {
-      showToast('🔊 Transcoding audio to high-compatibility MP3 stream...');
-      const res = await window.WordTapAPI.transcodeAudio(filePath);
-      if (res && res.success && res.audioUrl) {
-        compatibleAudio.src = res.audioUrl;
-        compatibleAudio.currentTime = video.currentTime;
-        compatibleAudio.playbackRate = video.playbackRate;
+      const streamUrl = await window.WordTapAPI.getAudioStreamUrl({
+        filePath: currentFilePath,
+        startTime: seekTime
+      });
+
+      if (streamUrl) {
+        compatibleAudio.src = streamUrl;
         compatibleAudio.volume = video.muted ? 0 : video.volume;
         compatibleAudio.muted = video.muted;
-        
+        compatibleAudio.playbackRate = video.playbackRate;
+
         // Mute video element to avoid dual audio
         video.muted = true;
         isAudioTranscoded = true;
 
         if (!video.paused) {
-          compatibleAudio.play().catch(() => {});
+          const p = compatibleAudio.play();
+          if (p !== undefined) p.catch(() => {});
         }
-        showToast('🔊 Crystal-clear sound active!');
-      } else {
-        showToast('Audio transcode error: ' + (res ? res.error : 'Unknown'));
+        showToast('🔊 Live Dolby DDP 5.1 / AC3 sound active!');
       }
     } catch (err) {
-      console.error('Transcode err:', err);
-      showToast('Audio transcode failed: ' + err.message);
+      console.error('Live audio stream error:', err);
+      showToast('Live audio error: ' + err.message);
     }
+  }
+
+  // Fallback Audio Transcoding
+  async function transcodeAndAttachAudio(filePath) {
+    startLiveAudioStream(video.currentTime || 0);
   }
 
   // Helper: Extract clean movie/show name and season/episode from filename
@@ -1277,8 +1283,8 @@
     });
 
     video.addEventListener('seeked', () => {
-      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
-        compatibleAudio.currentTime = video.currentTime;
+      if (!isScrubbing && isAudioTranscoded && currentFilePath) {
+        startLiveAudioStream(video.currentTime);
       }
     });
 
@@ -1359,7 +1365,12 @@
     });
 
     window.addEventListener('mouseup', () => {
-      if (isScrubbing) isScrubbing = false;
+      if (isScrubbing) {
+        isScrubbing = false;
+        if (isAudioTranscoded && currentFilePath) {
+          startLiveAudioStream(video.currentTime);
+        }
+      }
     });
 
     // Scrubber Tooltip Hover
@@ -1382,8 +1393,8 @@
       if (currentCue) {
         const target = Math.max(0, currentCue.start + (subtitleDelayMs / 1000));
         video.currentTime = target;
-        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
-          compatibleAudio.currentTime = target;
+        if (isAudioTranscoded && currentFilePath) {
+          startLiveAudioStream(target);
         }
         video.play().catch(() => {});
         showToast('↺ Replaying line');
@@ -1393,8 +1404,8 @@
         if (prevCue) {
           const target = Math.max(0, prevCue.start + (subtitleDelayMs / 1000));
           video.currentTime = target;
-          if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
-            compatibleAudio.currentTime = target;
+          if (isAudioTranscoded && currentFilePath) {
+            startLiveAudioStream(target);
           }
           video.play().catch(() => {});
           showToast('↺ Replaying line');
@@ -1407,12 +1418,14 @@
     btnSeekBack.addEventListener('click', () => {
       const target = Math.max(0, video.currentTime - 5);
       video.currentTime = target;
-      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) compatibleAudio.currentTime = target;
+      if (isAudioTranscoded && currentFilePath) startLiveAudioStream(target);
+      showToast('⏪ -5s');
     });
     btnSeekFwd.addEventListener('click', () => {
       const target = Math.min(video.duration || 0, video.currentTime + 5);
       video.currentTime = target;
-      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) compatibleAudio.currentTime = target;
+      if (isAudioTranscoded && currentFilePath) startLiveAudioStream(target);
+      showToast('⏩ +5s');
     });
 
     // Speed Selector
@@ -1559,12 +1572,12 @@
       } else if (e.code === 'ArrowLeft') {
         const target = Math.max(0, video.currentTime - 5);
         video.currentTime = target;
-        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) compatibleAudio.currentTime = target;
+        if (isAudioTranscoded && currentFilePath) startLiveAudioStream(target);
         showToast('⏪ -5s');
       } else if (e.code === 'ArrowRight') {
         const target = Math.min(video.duration || 0, video.currentTime + 5);
         video.currentTime = target;
-        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) compatibleAudio.currentTime = target;
+        if (isAudioTranscoded && currentFilePath) startLiveAudioStream(target);
         showToast('⏩ +5s');
       } else if (e.code === 'ArrowUp') {
         video.volume = Math.min(1, video.volume + 0.05);

@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('WordTapAPI', {
   // Audio Fix & Transcoding APIs
   probeAudio: (filePath) => ipcRenderer.invoke('audio:probe', filePath),
   transcodeAudio: (filePath) => ipcRenderer.invoke('audio:transcode', filePath),
+  getAudioStreamUrl: (params) => ipcRenderer.invoke('audio:get-stream-url', params),
   // VLsub OpenSubtitles APIs
   calculateVLSubHash: (filePath) => ipcRenderer.invoke('vlsub:calculate-hash', filePath),
   searchVLSub: (params) => ipcRenderer.invoke('vlsub:search', params),

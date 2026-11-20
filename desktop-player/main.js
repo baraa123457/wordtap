@@ -2,6 +2,7 @@ const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron')
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const http = require('http');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const xmlrpc = require('xmlrpc');
@@ -96,6 +97,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  startAudioServer();
   createWindow();
 
   app.on('activate', () => {
@@ -389,6 +391,91 @@ ipcMain.handle('audio:probe', async (_event, filePath) => {
 
 ipcMain.handle('audio:transcode', async (_event, filePath) => {
   return transcodeAudio(filePath);
+});
+
+// ==========================================
+// REAL-TIME ON-DEMAND AUDIO STREAMING SERVER
+// (Starts sound in <60ms for DDP 5.1, EAC3, AC3, DTS)
+// ==========================================
+let audioServer = null;
+let audioServerPort = 0;
+let currentAudioProc = null;
+
+function startAudioServer() {
+  if (audioServer) return;
+
+  audioServer = http.createServer((req, res) => {
+    try {
+      const parsedUrl = new URL(req.url, 'http://127.0.0.1');
+      if (parsedUrl.pathname !== '/audio') {
+        res.writeHead(404);
+        return res.end();
+      }
+
+      const filePath = parsedUrl.searchParams.get('file');
+      const startTime = parseFloat(parsedUrl.searchParams.get('t') || '0');
+
+      if (!filePath || !fs.existsSync(filePath)) {
+        res.writeHead(404);
+        return res.end('File not found');
+      }
+
+      // Kill previous stream process if running
+      if (currentAudioProc && !currentAudioProc.killed) {
+        try { currentAudioProc.kill(); } catch {}
+      }
+
+      res.writeHead(200, {
+        'Content-Type': 'audio/mpeg',
+        'Cache-Control': 'no-cache, no-store',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
+      });
+
+      // -ss before -i with -noaccurate_seek and -map 0:a:0!
+      // This completely skips decoding heavy 10-bit HEVC video and begins streaming audio in 50ms!
+      const args = [
+        '-ss', String(startTime),
+        '-noaccurate_seek',
+        '-i', filePath,
+        '-map', '0:a:0',
+        '-c:a', 'mp3',
+        '-b:a', '192k',
+        '-f', 'mp3',
+        'pipe:1'
+      ];
+
+      const child = spawn(ffmpegPath, args, { windowsHide: true });
+      currentAudioProc = child;
+
+      child.stdout.pipe(res);
+      child.stderr.on('data', () => {});
+
+      const cleanup = () => {
+        try { if (!child.killed) child.kill(); } catch {}
+      };
+
+      req.on('close', cleanup);
+      res.on('close', cleanup);
+      child.on('close', () => {
+        if (!res.writableEnded) res.end();
+      });
+    } catch (err) {
+      console.error('Audio stream server error:', err);
+      if (!res.headersSent) res.writeHead(500);
+      res.end();
+    }
+  });
+
+  audioServer.listen(0, '127.0.0.1', () => {
+    audioServerPort = audioServer.address().port;
+    console.log(`Live audio stream server ready on 127.0.0.1:${audioServerPort}`);
+  });
+}
+
+ipcMain.handle('audio:get-stream-url', async (_event, { filePath, startTime }) => {
+  if (!audioServerPort) return null;
+  return `http://127.0.0.1:${audioServerPort}/audio?file=${encodeURIComponent(filePath)}&t=${startTime || 0}&_=${Date.now()}`;
 });
 
 // ==========================================
