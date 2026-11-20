@@ -20,7 +20,7 @@ type Props = {
 export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, onHintUsed }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const locked = phase !== "answering";
-  const [hintUsed, setHintUsed] = useState(false);
+  const [hintCount, setHintCount] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const parsed = parseSourceContext(q.context);
   const sentence = q.sentence || parsed.sentence;
@@ -31,7 +31,7 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
 
   useEffect(() => {
     input.current?.focus();
-    setHintUsed(false);
+    setHintCount(0);
     if (!q.speak || !canSpeak()) return;
     let stopTimer: ReturnType<typeof setTimeout> | null = null;
     const timer = setTimeout(() => {
@@ -52,14 +52,26 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
     if (!locked && value.trim() !== "") onSubmit();
   }
 
-  function revealFirstLetter() {
-    if (hintUsed || locked) return;
-    setHintUsed(true);
+  function revealNextLetter() {
+    if (locked) return;
+    setHintCount((c) => c + 1);
     onHintUsed?.();
-    const firstChar = cleanAnswer[0] || "";
-    if (!value.startsWith(firstChar)) {
-      onChange(firstChar);
+
+    const target = cleanAnswer;
+    const current = value;
+
+    let matchLen = 0;
+    while (
+      matchLen < current.length &&
+      matchLen < target.length &&
+      current[matchLen].toLowerCase() === target[matchLen].toLowerCase()
+    ) {
+      matchLen++;
     }
+
+    const nextLen = Math.min(target.length, matchLen + 1);
+    const nextVal = target.slice(0, nextLen);
+    onChange(nextVal);
     input.current?.focus();
   }
 
@@ -194,7 +206,7 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
           style={{ minHeight: "3.75rem" }}
         />
 
-        {/* Answer length indicator and first-letter hint */}
+        {/* Answer length indicator and progressive hint */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted">
           <div className="flex flex-wrap items-center gap-1 font-mono tracking-widest select-none">
             {cleanAnswer.split("").map((ch, idx) => (
@@ -202,7 +214,7 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
                 key={idx}
                 className="inline-block border-b-2 border-line w-3.5 text-center font-bold text-ink"
               >
-                {hintUsed && idx === 0 ? ch : " "}
+                {idx < Math.max(hintCount, value.length) ? cleanAnswer[idx] : " "}
               </span>
             ))}
             <span className="ms-1.5 font-sans text-xs text-muted/70 tracking-normal whitespace-nowrap">
@@ -210,13 +222,13 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
             </span>
           </div>
 
-          {!hintUsed && !locked ? (
+          {value.trim().toLowerCase() !== cleanAnswer.toLowerCase() && !locked ? (
             <button
               type="button"
               className="btn btn-quiet min-h-9 px-3 py-1 text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:bg-subtitle/10 transition-colors cursor-pointer shrink-0"
-              onClick={revealFirstLetter}
+              onClick={revealNextLetter}
             >
-              💡 Show first letter
+              💡 {hintCount === 0 && value.length === 0 ? "Hint" : "Next letter (+1)"}
             </button>
           ) : null}
         </div>

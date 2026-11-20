@@ -57,16 +57,49 @@ export function MissingWordExercise({
   const [state, setState] = useState<"answering" | "wrong" | "correct">("answering");
 
   const hintLevel = wrongAttempts + hintClicks;
-  const hint = useMemo(
-    () => buildProgressiveHint(masked.hiddenWord, hintLevel),
-    [masked.hiddenWord, hintLevel],
-  );
-  const canShowMoreHint = hintLevel < 4 && masked.letterCount > 2;
-
   const faultAnalysis = useMemo(
     () => (answer.trim() ? analyzeAnswerFaults(answer, masked.hiddenWord) : null),
     [answer, masked.hiddenWord],
   );
+
+  const hint = useMemo(
+    () => buildProgressiveHint(masked.hiddenWord, hintLevel, answer.trim().length),
+    [masked.hiddenWord, hintLevel, answer],
+  );
+  const canShowMoreHint =
+    answer.trim().toLowerCase() !== masked.hiddenWord.trim().toLowerCase() &&
+    masked.letterCount > 1;
+
+  const handleHintClick = () => {
+    setHintClicks((c) => c + 1);
+
+    const target = masked.hiddenWord;
+    const current = answer.trim();
+
+    // Find how many characters match target from the start (case-insensitive)
+    let matchLen = 0;
+    while (
+      matchLen < current.length &&
+      matchLen < target.length &&
+      current[matchLen].toLowerCase() === target[matchLen].toLowerCase()
+    ) {
+      matchLen++;
+    }
+
+    // Give the next letter!
+    const nextLen = Math.min(target.length, matchLen + 1);
+    const nextAnswer = target.slice(0, nextLen);
+    setAnswer(nextAnswer);
+
+    if (inputRef.current) {
+      inputRef.current.focus();
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.setSelectionRange(nextAnswer.length, nextAnswer.length);
+        }
+      }, 0);
+    }
+  };
 
   const closenessTip = useMemo(() => {
     const cleanGuess = answer.trim().toLowerCase();
@@ -167,24 +200,21 @@ export function MissingWordExercise({
             {canShowMoreHint || (faultAnalysis && faultAnalysis.hasFault) ? (
               <button
                 type="button"
-                onClick={() => {
-                  setHintClicks((c) => c + 1);
-                  inputRef.current?.focus();
-                }}
+                onClick={handleHintClick}
                 aria-label={
                   faultAnalysis?.hasFault
-                    ? "Show fault letter analysis"
-                    : hint
-                    ? "Reveal another hint letter"
-                    : "Show a hint"
+                    ? "Fix fault letter"
+                    : "Reveal next hint letter"
                 }
                 className="btn btn-quiet min-h-11 px-3.5 text-xs font-semibold text-amber-700 dark:text-subtitle border border-subtitle/35 bg-subtitle/10 hover:bg-subtitle/20 cursor-pointer inline-flex items-center gap-1.5"
               >
                 <LightbulbIcon size={14} className="text-amber-800 dark:text-subtitle" />
                 <span>
                   {faultAnalysis?.hasFault && faultAnalysis?.firstWrongChar
-                    ? "Fault hint"
-                    : hint
+                    ? "Fix fault"
+                    : answer.trim().length > 0
+                    ? "Next letter (+1)"
+                    : hintClicks > 0
                     ? "More hint"
                     : "Hint"}
                 </span>
@@ -216,12 +246,12 @@ export function MissingWordExercise({
                 <strong className="text-amber-800 dark:text-subtitle">
                   {faultAnalysis?.hasFault && faultAnalysis?.firstWrongChar ? "Fault Hint:" : "Hint:"}
                 </strong>{" "}
-                {faultAnalysis?.hasFault && faultAnalysis?.firstWrongChar ? (
+                {faultAnalysis?.firstWrongChar ? (
                   <span className="font-semibold text-bad">
                     Letter #{faultAnalysis.firstWrongIndex + 1} &ldquo;{faultAnalysis.firstWrongChar}&rdquo; is wrong
                     {faultAnalysis.expectedChar ? ` — change it to “${faultAnalysis.expectedChar}”` : " — remove it"}
                   </span>
-                ) : faultAnalysis && !faultAnalysis.hasFault && answer.trim().length > 0 ? (
+                ) : faultAnalysis && faultAnalysis.firstWrongIndex === -1 && answer.trim().length > 0 ? (
                   <span className="font-semibold text-ok">
                     &ldquo;{answer.trim()}&rdquo; is correct so far! Next letter is &ldquo;{faultAnalysis.expectedChar}&rdquo;
                   </span>
@@ -235,13 +265,10 @@ export function MissingWordExercise({
             {canShowMoreHint ? (
               <button
                 type="button"
-                onClick={() => {
-                  setHintClicks((c) => c + 1);
-                  inputRef.current?.focus();
-                }}
+                onClick={handleHintClick}
                 className="text-xs font-bold text-amber-800 dark:text-subtitle underline underline-offset-4 hover:opacity-80 cursor-pointer shrink-0"
               >
-                Reveal more →
+                {answer.trim().length > 0 ? "Add next letter (+1) →" : "Reveal more →"}
               </button>
             ) : null}
           </div>

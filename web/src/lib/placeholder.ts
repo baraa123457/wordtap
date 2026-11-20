@@ -260,19 +260,30 @@ export function parseYouGlishCaption(
  *  - level === 3: first 2 letters and last letter revealed (e.g. "re......t")
  *  - level >= 4: first ~half of letters and last letter revealed (e.g. "relu....t")
  */
-export function buildProgressiveHint(hiddenWord: string, hintLevel: number): string | null {
+export function buildProgressiveHint(
+  hiddenWord: string,
+  hintLevel: number,
+  revealedCount?: number,
+): string | null {
   const chars = Array.from(hiddenWord.trim());
   if (chars.length <= 2 || hintLevel < 1) return null;
 
-  const prefixCount =
+  const basePrefix =
     hintLevel === 1
       ? 1
       : hintLevel === 2
       ? 1
       : hintLevel === 3
       ? Math.min(2, chars.length - 2)
-      : Math.min(Math.max(2, Math.ceil(chars.length / 2) - 1), chars.length - 2);
-  const revealLast = hintLevel >= 2;
+      : hintLevel === 4
+      ? Math.min(Math.max(2, Math.ceil(chars.length / 2) - 1), chars.length - 2)
+      : Math.min(chars.length, Math.max(2, Math.ceil(chars.length / 2) - 1) + (hintLevel - 4));
+
+  const prefixCount = Math.min(
+    chars.length,
+    Math.max(basePrefix, revealedCount ?? 0),
+  );
+  const revealLast = hintLevel >= 2 && chars.length > 3;
 
   return chars
     .map((ch, idx) => {

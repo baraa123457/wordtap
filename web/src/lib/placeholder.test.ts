@@ -52,6 +52,20 @@ describe("Stage 2 exact 1-dot-per-character placeholder rule", () => {
     expect(buildProgressiveHint("reluctant", 2)).toBe("r.......t");
     expect(buildProgressiveHint("reluctant", 3)).toBe("re......t");
     expect(buildProgressiveHint("reluctant", 4)).toBe("relu....t");
+    expect(buildProgressiveHint("reluctant", 5)).toBe("reluc...t");
+    expect(buildProgressiveHint("reluctant", 6)).toBe("reluct..t");
+    expect(buildProgressiveHint("reluctant", 7)).toBe("relucta.t");
+    expect(buildProgressiveHint("reluctant", 8)).toBe("reluctant");
+  });
+
+  it("accurately detects partial correct prefix without reporting false wrong char", () => {
+    const analysis = analyzeAnswerFaults("hierarc", "hierarchal");
+    expect(analysis.hasFault).toBe(true);
+    expect(analysis.isCorrect).toBe(false);
+    expect(analysis.firstWrongIndex).toBe(-1);
+    expect(analysis.firstWrongChar).toBeNull();
+    expect(analysis.expectedChar).toBe("h");
+    expect(analysis.correctPrefix).toBe("hierarc");
   });
 
   it("parses official YouGlish [[[target word]]] markers accurately", () => {
