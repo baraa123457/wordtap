@@ -5,6 +5,9 @@
   const WEBSITE_URL = "https://wordtap.vercel.app";
 
   // Elements
+  const appContainer = document.getElementById('app-container');
+  const topVlcMenu = document.getElementById('top-vlc-menu');
+  const vlcBottomBar = document.getElementById('vlc-bottom-bar');
   const video = document.getElementById('main-video');
   const dropZone = document.getElementById('drop-zone');
   const subtitleContainer = document.getElementById('subtitle-container');
@@ -601,6 +604,12 @@
       updateVolumeDisplay();
       refreshSavedWordsCount();
 
+      if (window.WordTapAPI && window.WordTapAPI.isFullscreen) {
+        window.WordTapAPI.isFullscreen().then(isFS => {
+          if (isFS) setFullscreenState(true);
+        }).catch(() => {});
+      }
+
       // Check if launched directly with a video file (Windows Explorer "Open with" or double-click)
       if (window.WordTapAPI && window.WordTapAPI.getInitialFile) {
         try {
@@ -792,14 +801,16 @@
     const rect = element.getBoundingClientRect();
     const popoverWidth = 320;
     const popoverHeight = 220;
+    const wrapper = document.getElementById('video-wrapper');
+    const wrapperRect = wrapper ? wrapper.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
 
-    let left = rect.left + (rect.width / 2) - (popoverWidth / 2);
+    let left = (rect.left - wrapperRect.left) + (rect.width / 2) - (popoverWidth / 2);
     if (left < 16) left = 16;
-    if (left + popoverWidth > window.innerWidth - 16) left = window.innerWidth - popoverWidth - 16;
+    if (left + popoverWidth > wrapperRect.width - 16) left = wrapperRect.width - popoverWidth - 16;
 
-    let top = rect.top - popoverHeight - 14;
-    if (top < 70) {
-      top = rect.bottom + 14;
+    let top = (rect.top - wrapperRect.top) - popoverHeight - 14;
+    if (top < 16) {
+      top = (rect.bottom - wrapperRect.top) + 14;
     }
 
     wordPopover.style.left = `${left}px`;
@@ -906,6 +917,7 @@
         video.play().catch(() => {});
       }
     }
+    resetControlsTimeout();
   }
 
   // Save Word Handler
@@ -1418,36 +1430,80 @@
     }
   }
 
-  // Fullscreen Management
-  async function toggleFullscreen() {
-    if (window.WordTapAPI && window.WordTapAPI.toggleFullscreen) {
-      const isFS = await window.WordTapAPI.toggleFullscreen();
-      updateFullscreenIcons(isFS);
-    } else if (!document.fullscreenElement) {
-      document.getElementById('app-container').requestFullscreen().catch(() => {});
-      updateFullscreenIcons(true);
-    } else {
-      document.exitFullscreen().catch(() => {});
-      updateFullscreenIcons(false);
+  // Fullscreen & Controls Auto-Hide Management (VLC Cinema Style)
+  let isFullscreenActive = false;
+  let controlsTimeout = null;
+  const CONTROLS_HIDE_DELAY_MS = 2500;
+  let isMouseOverControls = false;
+  let lastMouseX = -1;
+  let lastMouseY = -1;
+
+  function showControls() {
+    appContainer.classList.remove('controls-hidden');
+    if (controlsTimeout) {
+      clearTimeout(controlsTimeout);
+      controlsTimeout = null;
     }
   }
 
-  function updateFullscreenIcons(isFS) {
-    if (isFS) {
+  function hideControls() {
+    if (!isFullscreenActive) return;
+    if (video.paused) return;
+    if (isScrubbing) return;
+    if (isMouseOverControls) return;
+    if (wordPopover && wordPopover.classList.contains('visible')) return;
+    if (document.querySelector('.vlc-menu-dropdown.open')) return;
+    if (document.querySelector('.modal-overlay.open, #login-gate-overlay:not(.hidden)')) return;
+
+    appContainer.classList.add('controls-hidden');
+  }
+
+  function resetControlsTimeout() {
+    showControls();
+    if (isFullscreenActive && !video.paused) {
+      if (controlsTimeout) clearTimeout(controlsTimeout);
+      controlsTimeout = setTimeout(hideControls, CONTROLS_HIDE_DELAY_MS);
+    }
+  }
+
+  function setFullscreenState(isFS) {
+    isFullscreenActive = !!isFS;
+    if (isFullscreenActive) {
+      appContainer.classList.add('is-fullscreen');
       iconFsEnter.style.display = 'none';
       iconFsExit.style.display = 'block';
       showToast('Fullscreen');
+      resetControlsTimeout();
     } else {
+      appContainer.classList.remove('is-fullscreen');
+      showControls();
       iconFsEnter.style.display = 'block';
       iconFsExit.style.display = 'none';
     }
   }
 
+  async function toggleFullscreen() {
+    if (window.WordTapAPI && window.WordTapAPI.toggleFullscreen) {
+      const isFS = await window.WordTapAPI.toggleFullscreen();
+      setFullscreenState(isFS);
+    } else if (!document.fullscreenElement) {
+      document.getElementById('app-container').requestFullscreen().catch(() => {});
+      setFullscreenState(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      setFullscreenState(false);
+    }
+  }
+
   if (window.WordTapAPI && window.WordTapAPI.onFullscreenChange) {
     window.WordTapAPI.onFullscreenChange((isFS) => {
-      updateFullscreenIcons(isFS);
+      setFullscreenState(isFS);
     });
   }
+
+  document.addEventListener('fullscreenchange', () => {
+    setFullscreenState(!!document.fullscreenElement);
+  });
 
   // Setup Event Listeners
   function setupEvents() {
@@ -1527,6 +1583,7 @@
     function closeAllMenus() {
       menuDropdowns.forEach(d => d.classList.remove('open'));
       isAnyMenuOpen = false;
+      resetControlsTimeout();
     }
 
     menuDropdowns.forEach(dropdown => {
@@ -1754,6 +1811,7 @@
         }
         syncAudioWithVideo();
       }
+      resetControlsTimeout();
     });
 
     video.addEventListener('pause', () => {
@@ -1762,6 +1820,7 @@
       if (isAudioTranscoded && compatibleAudio && !compatibleAudio.paused) {
         compatibleAudio.pause();
       }
+      showControls();
     });
 
     video.addEventListener('ended', () => {
@@ -1773,6 +1832,7 @@
       if (isAudioTranscoded && compatibleAudio && !compatibleAudio.paused) {
         compatibleAudio.pause();
       }
+      showControls();
       showToast('Playback finished (Sync reset to 0ms)');
     });
 
@@ -1862,6 +1922,7 @@
         if (isAudioTranscoded && currentFilePath) {
           startLiveAudioStream(video.currentTime);
         }
+        resetControlsTimeout();
       }
     });
 
@@ -1957,9 +2018,36 @@
     btnFullscreen.addEventListener('click', toggleFullscreen);
     video.addEventListener('dblclick', toggleFullscreen);
 
-    // Drag & Drop Handling
-    const appContainer = document.getElementById('app-container');
+    // Mouse & Keyboard Activity Tracking for Fullscreen Auto-Hide Controls
+    appContainer.addEventListener('mousemove', (e) => {
+      if (e.clientX === lastMouseX && e.clientY === lastMouseY) return;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+      resetControlsTimeout();
+    });
 
+    appContainer.addEventListener('mousedown', resetControlsTimeout);
+    document.addEventListener('keydown', resetControlsTimeout);
+
+    topVlcMenu.addEventListener('mouseenter', () => {
+      isMouseOverControls = true;
+      showControls();
+    });
+    topVlcMenu.addEventListener('mouseleave', () => {
+      isMouseOverControls = false;
+      resetControlsTimeout();
+    });
+
+    vlcBottomBar.addEventListener('mouseenter', () => {
+      isMouseOverControls = true;
+      showControls();
+    });
+    vlcBottomBar.addEventListener('mouseleave', () => {
+      isMouseOverControls = false;
+      resetControlsTimeout();
+    });
+
+    // Drag & Drop Handling
     appContainer.addEventListener('dragover', (e) => {
       e.preventDefault();
     });
