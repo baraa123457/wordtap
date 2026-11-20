@@ -87,6 +87,16 @@
   const savedWordsListContainer = document.getElementById('saved-words-list-container');
   const btnSavedOpenWeb = document.getElementById('btn-saved-open-web');
 
+  // Auth Gate Elements
+  const authGateScreen = document.getElementById('auth-gate-screen');
+  const gateLoginForm = document.getElementById('gate-login-form');
+  const gateEmail = document.getElementById('gate-email');
+  const gatePassword = document.getElementById('gate-password');
+  const gateAuthError = document.getElementById('gate-auth-error');
+  const btnGateSignin = document.getElementById('btn-gate-signin');
+  const btnGateOffline = document.getElementById('btn-gate-offline');
+  const btnGateCreateAcc = document.getElementById('btn-gate-create-acc');
+
   // Subtitle Sizes
   const subSizes = [
     { label: 'Size 20px', cls: 'sub-size-compact' },
@@ -112,13 +122,33 @@
   const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
   let currentSpeedIndex = 1;
 
+  // Auth Gate helpers
+  function showLoginGate() {
+    if (authGateScreen) {
+      authGateScreen.classList.remove('hidden');
+      if (gateAuthError) gateAuthError.style.display = 'none';
+      setTimeout(() => {
+        if (gateEmail) gateEmail.focus();
+      }, 100);
+    }
+  }
+
+  function hideLoginGate() {
+    if (authGateScreen) {
+      authGateScreen.classList.add('hidden');
+    }
+  }
+
   // Initialize
   async function init() {
     try {
       const config = await window.WordTapAPI.getConfig();
-      if (config.session) {
+      if (config.session && config.session.access_token) {
         userSession = config.session;
         updateAccountUI();
+        hideLoginGate();
+      } else {
+        showLoginGate();
       }
       if (config.subtitleDelayMs) {
         subtitleDelayMs = config.subtitleDelayMs;
@@ -131,6 +161,7 @@
       refreshSavedWordsCount();
     } catch (e) {
       console.warn('Config load error:', e);
+      showLoginGate();
     }
     setupEvents();
   }
@@ -566,6 +597,7 @@
     await window.WordTapAPI.saveConfig({ session: null });
     updateAccountUI();
     accountModal.classList.remove('open');
+    showLoginGate();
     showToast('Signed out from WordTap');
   }
 
@@ -672,6 +704,72 @@
 
   // Setup Event Listeners
   function setupEvents() {
+    // Auth Gate Form Submit
+    if (gateLoginForm) {
+      gateLoginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = gateEmail.value.trim();
+        const password = gatePassword.value;
+        if (!email || !password) return;
+
+        btnGateSignin.disabled = true;
+        btnGateSignin.innerHTML = '<span>Signing in...</span>';
+        if (gateAuthError) gateAuthError.style.display = 'none';
+
+        try {
+          const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+            method: 'POST',
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error_description || data.msg || 'Incorrect email or password');
+          }
+
+          userSession = {
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
+            expires_at: data.expires_at || Math.floor(Date.now() / 1000) + (data.expires_in || 3600),
+            email: data.user ? data.user.email : email,
+            user_id: data.user ? data.user.id : ''
+          };
+
+          await window.WordTapAPI.saveConfig({ session: userSession });
+          updateAccountUI();
+          hideLoginGate();
+          showToast(`Welcome back, ${userSession.email}!`);
+          pushPendingOfflineWords();
+        } catch (err) {
+          if (gateAuthError) {
+            gateAuthError.textContent = err.message || 'Login failed. Please check credentials.';
+            gateAuthError.style.display = 'block';
+          }
+        } finally {
+          btnGateSignin.disabled = false;
+          btnGateSignin.innerHTML = '<span>Sign In & Open Player</span> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+        }
+      });
+    }
+
+    if (btnGateOffline) {
+      btnGateOffline.addEventListener('click', () => {
+        hideLoginGate();
+        showToast('Running in Offline Mode');
+      });
+    }
+
+    if (btnGateCreateAcc) {
+      btnGateCreateAcc.addEventListener('click', () => {
+        window.WordTapAPI.openExternal(WEBSITE_URL);
+      });
+    }
+
     // Open Video
     btnOpenVideo.addEventListener('click', async () => {
       const res = await window.WordTapAPI.openVideoFile();
