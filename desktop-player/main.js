@@ -2,13 +2,17 @@ const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron')
 const path = require('path');
 const fs = require('fs');
 
-// Completely disable the default Electron application menu (File, Edit, View, Window, Help)
+// CRITICAL AUDIO FIX: Allow automatic audio playback with sound without requiring gesture
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+app.commandLine.appendSwitch('disable-features', 'PreloadMediaEngagementData');
+
+// Remove default OS application menu
 Menu.setApplicationMenu(null);
 
 let mainWindow = null;
 
-// Determine path for saved words
-const DATA_DIR = path.join(app.getPath('userData'), 'WordTapPlayer');
+// Determine path for saved words and configuration
+const DATA_DIR = path.join(app.getPath('userData'), 'WordTapVLC');
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
@@ -40,17 +44,18 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,
-    minWidth: 840,
-    minHeight: 560,
-    backgroundColor: '#0c0e14',
-    title: 'WordTap VLC Player',
+    minWidth: 860,
+    minHeight: 580,
+    backgroundColor: '#1b1b1e',
+    title: 'WordTap VLC Media Player',
     autoHideMenuBar: true,
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      webSecurity: false, // Allows streaming local video files and local subtitles seamlessly
+      webSecurity: false, // Allows streaming local video and audio files from hard drive
+      backgroundThrottling: false,
       sandbox: false
     }
   });
@@ -73,7 +78,6 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
 
-  // Handle window close
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -95,10 +99,10 @@ app.on('window-all-closed', () => {
 ipcMain.handle('dialog:open-video', async () => {
   if (!mainWindow) return null;
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Open Video File',
+    title: 'Open Media File (WordTap VLC)',
     properties: ['openFile'],
     filters: [
-      { name: 'Video Files', extensions: ['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v'] },
+      { name: 'Video / Media Files', extensions: ['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v', 'ts', 'flv'] },
       { name: 'All Files', extensions: ['*'] }
     ]
   });
@@ -124,7 +128,6 @@ ipcMain.handle('dialog:open-video', async () => {
   };
 });
 
-// Helper: Check for adjacent subtitle files
 function findAdjacentSubtitle(videoPath) {
   try {
     const dir = path.dirname(videoPath);
@@ -231,7 +234,9 @@ ipcMain.handle('storage:get-config', async () => {
     session: null,
     targetLang: 'ar',
     playbackSpeed: 1,
-    subtitleDelayMs: 0
+    subtitleDelayMs: 0,
+    volume: 1.0,
+    subSizeIdx: 1
   });
 });
 

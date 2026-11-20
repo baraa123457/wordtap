@@ -1,4 +1,4 @@
-// WordTap VLC Player - Core Renderer Script
+// WordTap VLC Media Player - Core Renderer Script
 (() => {
   const SUPABASE_URL = "https://vjjilwbhvoxfigrokqch.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_YzMg6sNWjpwwfP2T-apa-Q_c3EHVBNa";
@@ -7,15 +7,16 @@
   // Elements
   const video = document.getElementById('main-video');
   const dropZone = document.getElementById('drop-zone');
-  const nowPlayingTitle = document.getElementById('now-playing-title');
   const subtitleContainer = document.getElementById('subtitle-container');
   const wordPopover = document.getElementById('word-popover');
   const toastEl = document.getElementById('toast');
+  const audioUnmuteBanner = document.getElementById('audio-unmute-banner');
 
-  // Controls
+  // VLC Controls
   const btnPlayPause = document.getElementById('btn-play-pause');
   const iconPlay = document.getElementById('icon-play');
   const iconPause = document.getElementById('icon-pause');
+  const btnStop = document.getElementById('btn-stop');
   const btnReplayLine = document.getElementById('btn-replay-line');
   const btnSeekBack = document.getElementById('btn-seek-back');
   const btnSeekFwd = document.getElementById('btn-seek-fwd');
@@ -23,7 +24,6 @@
   const totalDurationEl = document.getElementById('total-duration');
   const scrubberContainer = document.getElementById('scrubber-container');
   const scrubberPlayed = document.getElementById('scrubber-played');
-  const scrubberBuffer = document.getElementById('scrubber-buffer');
   const scrubberThumb = document.getElementById('scrubber-thumb');
   const timeTooltip = document.getElementById('time-tooltip');
   const btnSpeed = document.getElementById('btn-speed');
@@ -32,27 +32,25 @@
   const iconVolHigh = document.getElementById('icon-vol-high');
   const iconVolMute = document.getElementById('icon-vol-mute');
   const volumeSlider = document.getElementById('volume-slider');
+  const volumePercentLabel = document.getElementById('volume-percent-label');
   const btnFullscreen = document.getElementById('btn-fullscreen');
   const iconFsEnter = document.getElementById('icon-fs-enter');
   const iconFsExit = document.getElementById('icon-fs-exit');
 
-  // Header & Navigation
+  // Menu Bar Controls
+  const btnOpenVideo = document.getElementById('btn-open-video');
+  const btnOpenSub = document.getElementById('btn-open-sub');
+  const btnSubSize = document.getElementById('btn-sub-size');
+  const btnHelp = document.getElementById('btn-help');
   const btnSyncMinus = document.getElementById('btn-sync-minus');
   const btnSyncPlus = document.getElementById('btn-sync-plus');
   const syncDelayText = document.getElementById('sync-delay-text');
-  const btnSubSize = document.getElementById('btn-sub-size');
-  const subSizeLabel = document.getElementById('sub-size-label');
-  const btnToggleScript = document.getElementById('btn-toggle-script');
-  const btnOpenVideo = document.getElementById('btn-open-video');
-  const btnOpenSub = document.getElementById('btn-open-sub');
-  const subBtnLabel = document.getElementById('sub-btn-label');
   const btnSplashOpenVideo = document.getElementById('btn-splash-open-video');
   const btnSavedWords = document.getElementById('btn-saved-words');
   const savedWordsCount = document.getElementById('saved-words-count');
   const btnAccount = document.getElementById('btn-account');
   const accountStatusDot = document.getElementById('account-status-dot');
   const accountLabel = document.getElementById('account-label');
-  const btnHelp = document.getElementById('btn-help');
 
   // Popover elements
   const popoverWordText = document.getElementById('popover-word-text');
@@ -62,11 +60,15 @@
   const popoverContextBox = document.getElementById('popover-context-box');
   const popoverBtnSave = document.getElementById('popover-btn-save');
 
-  // Dialogue Script Drawer
-  const scriptDrawer = document.getElementById('script-drawer');
-  const btnCloseScript = document.getElementById('btn-close-script');
-  const scriptSearchInput = document.getElementById('script-search-input');
-  const drawerCuesList = document.getElementById('drawer-cues-list');
+  // Mandatory Login Gate Elements
+  const authGateScreen = document.getElementById('auth-gate-screen');
+  const gateLoginForm = document.getElementById('gate-login-form');
+  const gateEmail = document.getElementById('gate-email');
+  const gatePassword = document.getElementById('gate-password');
+  const gateAuthError = document.getElementById('gate-auth-error');
+  const btnGateSignin = document.getElementById('btn-gate-signin');
+  const btnGateOffline = document.getElementById('btn-gate-offline');
+  const btnGateCreateAcc = document.getElementById('btn-gate-create-acc');
 
   // Modals
   const helpModal = document.getElementById('help-modal');
@@ -87,22 +89,12 @@
   const savedWordsListContainer = document.getElementById('saved-words-list-container');
   const btnSavedOpenWeb = document.getElementById('btn-saved-open-web');
 
-  // Auth Gate Elements
-  const authGateScreen = document.getElementById('auth-gate-screen');
-  const gateLoginForm = document.getElementById('gate-login-form');
-  const gateEmail = document.getElementById('gate-email');
-  const gatePassword = document.getElementById('gate-password');
-  const gateAuthError = document.getElementById('gate-auth-error');
-  const btnGateSignin = document.getElementById('btn-gate-signin');
-  const btnGateOffline = document.getElementById('btn-gate-offline');
-  const btnGateCreateAcc = document.getElementById('btn-gate-create-acc');
-
   // Subtitle Sizes
   const subSizes = [
-    { label: 'Size 20px', cls: 'sub-size-compact' },
-    { label: 'Size 26px', cls: 'sub-size-standard' },
-    { label: 'Size 34px', cls: 'sub-size-large' },
-    { label: 'Size 42px', cls: 'sub-size-cinema' }
+    { label: '20px', cls: 'sub-size-compact' },
+    { label: '26px', cls: 'sub-size-standard' },
+    { label: '34px', cls: 'sub-size-large' },
+    { label: '42px', cls: 'sub-size-cinema' }
   ];
   let currentSubSizeIdx = 1;
 
@@ -115,12 +107,22 @@
   let activeWordData = null;
   let resumeVideoAfterPopover = false;
   let isScrubbing = false;
-  let idleTimer = null;
   let toastTimer = null;
   let userSession = null;
   let savedWords = [];
   const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
   let currentSpeedIndex = 1;
+  let currentMediaTitle = 'No media loaded';
+
+  // Explicit Audio Initialization
+  function initAudio() {
+    video.muted = false;
+    video.volume = 1.0;
+    volumeSlider.value = 1.0;
+    volumePercentLabel.textContent = '100%';
+    iconVolHigh.style.display = 'block';
+    iconVolMute.style.display = 'none';
+  }
 
   // Auth Gate helpers
   function showLoginGate() {
@@ -139,8 +141,10 @@
     }
   }
 
-  // Initialize
+  // Initialize App
   async function init() {
+    initAudio();
+
     try {
       const config = await window.WordTapAPI.getConfig();
       if (config.session && config.session.access_token) {
@@ -193,7 +197,7 @@
     subSizes.forEach(s => subtitleContainer.classList.remove(s.cls));
     const size = subSizes[index];
     subtitleContainer.classList.add(size.cls);
-    if (subSizeLabel) subSizeLabel.textContent = size.label;
+    if (btnSubSize) btnSubSize.textContent = `Font Size (${size.label})`;
   }
 
   function cycleSubSize() {
@@ -260,9 +264,7 @@
   // Load Subtitles
   function loadSubtitles(content, label = 'Subtitle loaded') {
     cues = parseSubtitles(content);
-    subBtnLabel.textContent = cues.length > 0 ? `Subtitles (${cues.length})` : 'Load Subtitle';
     showToast(`${label} (${cues.length} lines)`);
-    renderScriptDrawer();
   }
 
   // Interactive Subtitle Rendering on Screen
@@ -292,65 +294,6 @@
       el.addEventListener('click', (e) => {
         e.stopPropagation();
         onWordClick(el, cue);
-      });
-    });
-  }
-
-  // Dialogue Script Drawer Rendering
-  function renderScriptDrawer(filterText = '') {
-    if (!drawerCuesList) return;
-    if (cues.length === 0) {
-      drawerCuesList.innerHTML = '<div class="drawer-empty-msg">No subtitle cues loaded yet. Open a video or load a subtitle (.srt) file.</div>';
-      return;
-    }
-
-    const query = filterText.trim().toLowerCase();
-    let html = '';
-
-    cues.forEach((cue, index) => {
-      if (query && !cue.text.toLowerCase().includes(query)) return;
-
-      const tokens = cue.text.match(/([a-zA-Z0-9]+(?:'[a-zA-Z0-9]+)?|[^\s\w]+|\s+)/g) || [cue.text];
-      let wordsHtml = '';
-      for (const tok of tokens) {
-        if (/^[a-zA-Z0-9]+(?:'[a-zA-Z0-9]+)?$/.test(tok)) {
-          wordsHtml += `<span class="drawer-cue-word" data-word="${tok.toLowerCase()}" data-raw="${tok}">${tok}</span>`;
-        } else {
-          wordsHtml += tok;
-        }
-      }
-
-      html += `
-        <div class="drawer-cue-item ${index === activeCueIdx ? 'active' : ''}" id="drawer-cue-${index}" data-index="${index}">
-          <div class="drawer-cue-time" data-start="${cue.start}">⏱️ ${formatTime(cue.start)}</div>
-          <div class="drawer-cue-text">${wordsHtml}</div>
-        </div>
-      `;
-    });
-
-    drawerCuesList.innerHTML = html;
-
-    // Attach listeners in drawer
-    drawerCuesList.querySelectorAll('.drawer-cue-time').forEach(el => {
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const start = parseFloat(el.dataset.start);
-        if (!isNaN(start)) {
-          video.currentTime = Math.max(0, start + (subtitleDelayMs / 1000));
-          video.play();
-        }
-      });
-    });
-
-    drawerCuesList.querySelectorAll('.drawer-cue-word').forEach(el => {
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const cueItem = el.closest('.drawer-cue-item');
-        const cueIdx = parseInt(cueItem.dataset.index, 10);
-        const cue = cues[cueIdx];
-        if (cue) {
-          onWordClick(el, cue);
-        }
       });
     });
   }
@@ -397,7 +340,7 @@
     popoverTranslationAr.textContent = 'جاري الترجمة...';
     popoverContextBox.innerHTML = contextSentence.replace(
       new RegExp(`\\b(${rawWord})\\b`, 'i'),
-      '<strong style="color:var(--accent-gold);">$1</strong>'
+      '<strong style="color:var(--wt-gold);">$1</strong>'
     );
     popoverBtnSave.classList.remove('saved');
     popoverBtnSave.innerHTML = '<span>★ Save to WordTap</span>';
@@ -460,7 +403,7 @@
       wordPopover.classList.remove('visible');
       activeWordData = null;
       if (resume && resumeVideoAfterPopover) {
-        video.play();
+        video.play().catch(() => {});
       }
     }
   }
@@ -475,7 +418,7 @@
       text: activeWordData.cleanWord || activeWordData.word,
       translation: activeWordData.translation || '',
       sentence: activeWordData.contextSentence || '',
-      title: nowPlayingTitle.textContent !== 'No video loaded' ? nowPlayingTitle.textContent : 'WordTap VLC Video',
+      title: currentMediaTitle !== 'No media loaded' ? currentMediaTitle : 'WordTap VLC Video',
       lang: 'ar',
       src: 'en',
       createdAt: new Date().toISOString()
@@ -588,7 +531,7 @@
     } catch (err) {
       alert(`Sign in error: ${err.message}`);
     } finally {
-      btnAuthSignin.textContent = 'Sign In & Connect';
+      btnAuthSignin.textContent = 'Sign In';
     }
   }
 
@@ -618,19 +561,13 @@
   function openSavedWordsModal() {
     let html = '';
     if (savedWords.length === 0) {
-      html = '<div style="color:var(--text-muted); text-align:center; padding:20px;">No words saved yet. Click any subtitle word during video playback to save it!</div>';
+      html = '<div style="color:var(--text-secondary); text-align:center; padding:20px;">No words saved yet. Click any subtitle word during video playback to save it!</div>';
     } else {
       for (const w of savedWords) {
         html += `
           <div class="saved-word-row">
-            <div class="saved-word-left">
-              <span class="saved-word-title">${w.text}</span>
-              <span class="saved-word-ar">${w.translation || ''}</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="saved-word-count">Seen ${w.count || 1}x</span>
-              <button style="background:none; border:none; cursor:pointer; color:var(--accent-gold);" onclick="window.speakWordDirect('${w.text}')">🔊</button>
-            </div>
+            <span class="saved-word-title">${w.text}</span>
+            <span class="saved-word-ar">${w.translation || ''}</span>
           </div>
         `;
       }
@@ -638,8 +575,6 @@
     savedWordsListContainer.innerHTML = html;
     savedWordsModal.classList.add('open');
   }
-
-  window.speakWordDirect = (text) => speakWord(text);
 
   // Subtitle Synchronization Adjustment
   function updateSyncDelayUI() {
@@ -655,16 +590,31 @@
     showToast(`Subtitle sync: ${sign}${subtitleDelayMs}ms`);
   }
 
-  // Video Load Handler
+  // Video Load Handler - GUARANTEED AUDIO
   function playVideoFile(fileUrl, fileName, subContent = null) {
+    currentMediaTitle = fileName;
     video.src = fileUrl;
-    nowPlayingTitle.textContent = fileName;
     dropZone.classList.add('hidden');
-    video.play().catch(() => {});
+
+    // Make sure audio is completely unmuted and at 100% volume
+    video.muted = false;
+    video.volume = 1.0;
+    volumeSlider.value = 1.0;
+    volumePercentLabel.textContent = '100%';
+
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((err) => {
+        console.warn('Autoplay error:', err);
+        // Show unmute banner if browser restricted audio
+        audioUnmuteBanner.style.display = 'block';
+      });
+    }
 
     if (subContent) {
       loadSubtitles(subContent, 'Auto-loaded matching subtitle');
     }
+    showToast(`Playing: ${fileName}`);
   }
 
   // Fullscreen Management
@@ -698,12 +648,16 @@
     });
   }
 
-  document.addEventListener('fullscreenchange', () => {
-    updateFullscreenIcons(Boolean(document.fullscreenElement));
-  });
-
   // Setup Event Listeners
   function setupEvents() {
+    // Audio Unmute Banner
+    audioUnmuteBanner.addEventListener('click', () => {
+      video.muted = false;
+      video.volume = 1.0;
+      video.play().catch(() => {});
+      audioUnmuteBanner.style.display = 'none';
+    });
+
     // Auth Gate Form Submit
     if (gateLoginForm) {
       gateLoginForm.addEventListener('submit', async (e) => {
@@ -713,7 +667,7 @@
         if (!email || !password) return;
 
         btnGateSignin.disabled = true;
-        btnGateSignin.innerHTML = '<span>Signing in...</span>';
+        btnGateSignin.textContent = 'Signing in...';
         if (gateAuthError) gateAuthError.style.display = 'none';
 
         try {
@@ -752,7 +706,7 @@
           }
         } finally {
           btnGateSignin.disabled = false;
-          btnGateSignin.innerHTML = '<span>Sign In & Open Player</span> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+          btnGateSignin.textContent = 'Sign In & Open Player';
         }
       });
     }
@@ -800,19 +754,6 @@
     // Subtitle Size
     btnSubSize.addEventListener('click', cycleSubSize);
 
-    // Dialogue Script Drawer Toggle
-    btnToggleScript.addEventListener('click', () => {
-      scriptDrawer.classList.toggle('open');
-    });
-
-    btnCloseScript.addEventListener('click', () => {
-      scriptDrawer.classList.remove('open');
-    });
-
-    scriptSearchInput.addEventListener('input', (e) => {
-      renderScriptDrawer(e.target.value);
-    });
-
     // Shortcuts Help Modal
     btnHelp.addEventListener('click', () => helpModal.classList.add('open'));
     btnCloseHelp.addEventListener('click', () => helpModal.classList.remove('open'));
@@ -843,13 +784,20 @@
         return;
       }
       if (video.paused) {
-        video.play();
+        video.muted = false;
+        video.play().catch(() => {});
       } else {
         video.pause();
       }
     }
 
     btnPlayPause.addEventListener('click', togglePlay);
+    btnStop.addEventListener('click', () => {
+      video.pause();
+      video.currentTime = 0;
+      showToast('⏹ Stopped');
+    });
+
     video.addEventListener('click', () => {
       if (wordPopover.classList.contains('visible')) {
         closePopover(false);
@@ -861,6 +809,7 @@
     video.addEventListener('play', () => {
       iconPlay.style.display = 'none';
       iconPause.style.display = 'block';
+      audioUnmuteBanner.style.display = 'none';
     });
 
     video.addEventListener('pause', () => {
@@ -898,32 +847,11 @@
           activeCueIdx = foundIdx;
           currentCue = cues[foundIdx];
           renderSubtitle(currentCue);
-
-          // Update active item in drawer
-          if (drawerCuesList) {
-            drawerCuesList.querySelectorAll('.drawer-cue-item.active').forEach(el => el.classList.remove('active'));
-            const activeEl = document.getElementById(`drawer-cue-${activeCueIdx}`);
-            if (activeEl) {
-              activeEl.classList.add('active');
-              if (scriptDrawer.classList.contains('open')) {
-                activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-              }
-            }
-          }
         } else if (foundIdx === -1 && currentCue !== null) {
           activeCueIdx = -1;
           currentCue = null;
           renderSubtitle(null);
         }
-      }
-    });
-
-    // Buffer Progress
-    video.addEventListener('progress', () => {
-      if (video.buffered.length > 0 && video.duration > 0) {
-        const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-        const pct = (bufferedEnd / video.duration) * 100;
-        scrubberBuffer.style.width = `${pct}%`;
       }
     });
 
@@ -970,14 +898,14 @@
     function replayCurrentLine() {
       if (currentCue) {
         video.currentTime = Math.max(0, currentCue.start + (subtitleDelayMs / 1000));
-        video.play();
+        video.play().catch(() => {});
         showToast('↺ Replaying line');
       } else if (cues.length > 0) {
         const cur = video.currentTime - (subtitleDelayMs / 1000);
         const prevCue = [...cues].reverse().find(c => c.start <= cur);
         if (prevCue) {
           video.currentTime = Math.max(0, prevCue.start + (subtitleDelayMs / 1000));
-          video.play();
+          video.play().catch(() => {});
           showToast('↺ Replaying line');
         }
       }
@@ -1009,29 +937,36 @@
       showToast(subtitlesVisible ? 'Subtitles On' : 'Subtitles Off');
     });
 
-    // Volume & Mute
-    function updateVolumeUI() {
+    // Volume & Sound Handling (VLC Style with Percentage)
+    function updateVolumeDisplay() {
+      const pct = Math.round(video.volume * 100);
+      volumeSlider.value = video.volume;
+      volumePercentLabel.textContent = `${pct}%`;
+
       if (video.muted || video.volume === 0) {
         iconVolHigh.style.display = 'none';
         iconVolMute.style.display = 'block';
-        volumeSlider.value = 0;
+        volumePercentLabel.textContent = 'Muted';
       } else {
         iconVolHigh.style.display = 'block';
         iconVolMute.style.display = 'none';
-        volumeSlider.value = video.volume;
       }
     }
 
     btnMute.addEventListener('click', () => {
       video.muted = !video.muted;
-      updateVolumeUI();
+      updateVolumeDisplay();
+      showToast(video.muted ? 'Muted' : `Volume: ${Math.round(video.volume * 100)}%`);
     });
 
     volumeSlider.addEventListener('input', (e) => {
-      video.volume = parseFloat(e.target.value);
+      const val = parseFloat(e.target.value);
+      video.volume = val;
       video.muted = false;
-      updateVolumeUI();
+      updateVolumeDisplay();
     });
+
+    video.addEventListener('volumechange', updateVolumeDisplay);
 
     btnFullscreen.addEventListener('click', toggleFullscreen);
     video.addEventListener('dblclick', toggleFullscreen);
@@ -1041,18 +976,10 @@
 
     appContainer.addEventListener('dragover', (e) => {
       e.preventDefault();
-      dropZone.classList.add('dragover');
-    });
-
-    appContainer.addEventListener('dragleave', (e) => {
-      if (e.target === dropZone) {
-        dropZone.classList.remove('dragover');
-      }
     });
 
     appContainer.addEventListener('drop', async (e) => {
       e.preventDefault();
-      dropZone.classList.remove('dragover');
 
       if (e.dataTransfer.files.length > 0) {
         const file = e.dataTransfer.files[0];
@@ -1064,7 +991,7 @@
             loadSubtitles(re.target.result, `Loaded ${file.name}`);
           };
           reader.readAsText(file);
-        } else if (['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v'].includes(ext)) {
+        } else if (['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v', 'ts', 'flv'].includes(ext)) {
           const fileUrl = URL.createObjectURL(file);
           playVideoFile(fileUrl, file.name);
 
@@ -1080,7 +1007,7 @@
       }
     });
 
-    // Keyboard Shortcuts (Space, Left, Right, F, M, S, [, ], A, D, ?)
+    // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
@@ -1090,8 +1017,6 @@
       } else if (e.code === 'Escape') {
         if (wordPopover.classList.contains('visible')) {
           closePopover(true);
-        } else if (scriptDrawer.classList.contains('open')) {
-          scriptDrawer.classList.remove('open');
         } else if (helpModal.classList.contains('open')) {
           helpModal.classList.remove('open');
         } else if (accountModal.classList.contains('open')) {
@@ -1109,7 +1034,7 @@
         toggleFullscreen();
       } else if (e.code === 'KeyM') {
         video.muted = !video.muted;
-        updateVolumeUI();
+        updateVolumeDisplay();
       } else if (e.code === 'KeyS') {
         replayCurrentLine();
       } else if (e.code === 'KeyC') {
@@ -1118,8 +1043,6 @@
         renderSubtitle(currentCue);
       } else if (e.code === 'KeyA') {
         cycleSubSize();
-      } else if (e.code === 'KeyD') {
-        scriptDrawer.classList.toggle('open');
       } else if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) {
         helpModal.classList.toggle('open');
       } else if (e.code === 'ArrowLeft') {
@@ -1131,11 +1054,11 @@
       } else if (e.code === 'ArrowUp') {
         video.volume = Math.min(1, video.volume + 0.05);
         video.muted = false;
-        updateVolumeUI();
+        updateVolumeDisplay();
         showToast(`Volume: ${Math.round(video.volume * 100)}%`);
       } else if (e.code === 'ArrowDown') {
         video.volume = Math.max(0, video.volume - 0.05);
-        updateVolumeUI();
+        updateVolumeDisplay();
         showToast(`Volume: ${Math.round(video.volume * 100)}%`);
       } else if (e.code === 'BracketLeft') {
         adjustSubtitleDelay(-100);
@@ -1143,22 +1066,7 @@
         adjustSubtitleDelay(100);
       }
     });
-
-    // Auto-Hide Controls on Inactivity
-    function resetIdleTimer() {
-      appContainer.classList.remove('idle-hidden');
-      clearTimeout(idleTimer);
-      if (!video.paused && !wordPopover.classList.contains('visible') && !scriptDrawer.classList.contains('open')) {
-        idleTimer = setTimeout(() => {
-          appContainer.classList.add('idle-hidden');
-        }, 2800);
-      }
-    }
-
-    window.addEventListener('mousemove', resetIdleTimer);
-    window.addEventListener('mousedown', resetIdleTimer);
   }
 
-  // Start initialization
   init();
 })();
