@@ -202,18 +202,188 @@
     }
   }
 
-  // Explicit Audio Initialization
-  function initAudio() {
+  // Volume & Sound Handling (VLC Style with Percentage and Boost >100% up to 200%)
+  function updateVolumeDisplay() {
     ensureWebAudioGraph();
     hookAudioElement(video);
     hookAudioElement(compatibleAudio);
+
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+
+    const pct = Math.round(userVolume * 100);
+    if (volumeSlider) volumeSlider.value = userVolume;
+
+    // Update Slider Track Fill (VLC style with boost indicator)
+    const sliderRatio = Math.min(100, Math.max(0, (userVolume / 2.0) * 100));
+    if (volumeSlider) {
+      if (userMuted || userVolume === 0) {
+        volumeSlider.style.background = 'rgba(255, 255, 255, 0.2)';
+      } else if (pct > 100) {
+        // Boost portion (>100%) shown in vibrant VLC orange/amber
+        volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 50%, #ff9800 50%, #ff9800 ${sliderRatio}%, rgba(255, 255, 255, 0.2) ${sliderRatio}%, rgba(255, 255, 255, 0.2) 100%)`;
+      } else {
+        volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 ${sliderRatio}%, rgba(255, 255, 255, 0.2) ${sliderRatio}%, rgba(255, 255, 255, 0.2) 100%)`;
+      }
+    }
+
+    if (volumePercentLabel) {
+      if (userMuted || userVolume === 0) {
+        volumePercentLabel.textContent = 'Muted';
+        volumePercentLabel.style.color = '#72768a';
+        volumePercentLabel.style.fontWeight = '600';
+        if (iconVolHigh) iconVolHigh.style.display = 'none';
+        if (iconVolMute) iconVolMute.style.display = 'block';
+      } else {
+        volumePercentLabel.textContent = `${pct}%`;
+        if (pct > 100) {
+          volumePercentLabel.style.color = '#F36F21';
+          volumePercentLabel.style.fontWeight = '700';
+        } else {
+          volumePercentLabel.style.color = '#9c9da6';
+          volumePercentLabel.style.fontWeight = '600';
+        }
+        if (iconVolHigh) iconVolHigh.style.display = 'block';
+        if (iconVolMute) iconVolMute.style.display = 'none';
+      }
+    }
+
+    // Route volume through Web Audio Gain Node
+    if (masterGainNode && audioCtx) {
+      const targetGain = userMuted ? 0 : userVolume;
+      try {
+        masterGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+        masterGainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime);
+      } catch {}
+
+      if (video) {
+        video.muted = isAudioTranscoded ? true : userMuted;
+        video.volume = 1.0;
+      }
+      if (compatibleAudio) {
+        compatibleAudio.muted = !isAudioTranscoded ? true : userMuted;
+        compatibleAudio.volume = 1.0;
+      }
+    } else {
+      // Fallback for non-WebAudio environments (clamped to 1.0)
+      const clampedVol = Math.max(0, Math.min(1.0, userVolume));
+      if (video) {
+        video.muted = isAudioTranscoded ? true : userMuted;
+        video.volume = clampedVol;
+      }
+      if (compatibleAudio) {
+        compatibleAudio.muted = !isAudioTranscoded ? true : userMuted;
+        compatibleAudio.volume = clampedVol;
+      }
+    }
+  }
+
+  function toggleMute() {
+    userMuted = !userMuted;
     updateVolumeDisplay();
+    showToast(userMuted ? 'Muted' : `Volume: ${Math.round(userVolume * 100)}%`);
+  }
+
+  function adjustVolume(delta) {
+    userVolume = Math.max(0, Math.min(2.0, Math.round((userVolume + delta) * 100) / 100));
+    if (userVolume > 0) userMuted = false;
+    updateVolumeDisplay();
+    if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
+      window.WordTapAPI.saveConfig({ volume: userVolume });
+    }
+    showToast(`Volume: ${Math.round(userVolume * 100)}%`);
+  }
+
+  function setVolume(val) {
+    userVolume = Math.max(0, Math.min(2.0, Math.round(val * 100) / 100));
+    if (userVolume > 0) userMuted = false;
+    updateVolumeDisplay();
+    if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
+      window.WordTapAPI.saveConfig({ volume: userVolume });
+    }
+  }
+
+  function togglePlay() {
+    if (wordPopover && wordPopover.classList.contains('visible')) {
+      closePopover(true);
+      return;
+    }
+    if (!video) return;
+    if (video.paused) {
+      if (!isAudioTranscoded) {
+        video.muted = userMuted;
+      }
+      video.play().catch(() => {});
+      if (isAudioTranscoded && currentFilePath) {
+        const streamElapsed = compatibleAudio ? (compatibleAudio.currentTime || 0) : 0;
+        const currentAudioMovieTime = audioStreamStartTime + streamElapsed;
+        if (Math.abs(video.currentTime - currentAudioMovieTime) > 0.8 || !compatibleAudio.src) {
+          startLiveAudioStream(video.currentTime);
+        } else {
+          compatibleAudio.play().catch(() => {
+            startLiveAudioStream(video.currentTime);
+          });
+        }
+      }
+    } else {
+      video.pause();
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+        compatibleAudio.pause();
+      }
+    }
+  }
+
+  function replayCurrentLine() {
+    if (!video) return;
+    if (currentCue) {
+      const target = Math.max(0, currentCue.start + (subtitleDelayMs / 1000));
+      video.currentTime = target;
+      if (isAudioTranscoded && currentFilePath) {
+        startLiveAudioStream(target);
+      }
+      video.play().catch(() => {});
+      showToast('Replaying line');
+    } else if (cues.length > 0) {
+      const cur = video.currentTime - (subtitleDelayMs / 1000);
+      const prevCue = [...cues].reverse().find(c => c.start <= cur);
+      if (prevCue) {
+        const target = Math.max(0, prevCue.start + (subtitleDelayMs / 1000));
+        video.currentTime = target;
+        if (isAudioTranscoded && currentFilePath) {
+          startLiveAudioStream(target);
+        }
+        video.play().catch(() => {});
+        showToast('Replaying line');
+      }
+    }
+  }
+
+  function closeAllMenus() {
+    const menuDropdowns = document.querySelectorAll('.vlc-menu-dropdown');
+    menuDropdowns.forEach(d => d.classList.remove('open'));
+  }
+
+  // Explicit Audio Initialization
+  function initAudio() {
+    try {
+      ensureWebAudioGraph();
+      hookAudioElement(video);
+      hookAudioElement(compatibleAudio);
+      updateVolumeDisplay();
+    } catch (err) {
+      console.warn('initAudio notice:', err);
+    }
   }
 
   // Auth Gate helpers
   function showLoginGate() {
     if (authGateScreen) {
       authGateScreen.classList.remove('hidden');
+      authGateScreen.style.display = 'flex';
+      authGateScreen.style.visibility = 'visible';
+      authGateScreen.style.opacity = '1';
+      authGateScreen.style.pointerEvents = 'auto';
       if (gateAuthError) gateAuthError.style.display = 'none';
       setTimeout(() => {
         if (gateEmail) gateEmail.focus();
@@ -224,6 +394,103 @@
   function hideLoginGate() {
     if (authGateScreen) {
       authGateScreen.classList.add('hidden');
+      authGateScreen.style.display = 'none';
+      authGateScreen.style.visibility = 'hidden';
+      authGateScreen.style.opacity = '0';
+      authGateScreen.style.pointerEvents = 'none';
+    }
+  }
+
+  let authGateSetupDone = false;
+  function setupAuthGate() {
+    if (authGateSetupDone) return;
+    authGateSetupDone = true;
+
+    // Continue as Guest (Offline Mode)
+    if (btnGateOffline) {
+      btnGateOffline.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        hideLoginGate();
+        showToast('Running in Offline Mode');
+      });
+    }
+
+    // Create WordTap Account link
+    if (btnGateCreateAcc) {
+      btnGateCreateAcc.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.WordTapAPI && window.WordTapAPI.openExternal) {
+          window.WordTapAPI.openExternal(WEBSITE_URL + '/signup');
+        }
+      });
+    }
+
+    // Gate Login Form submission
+    if (gateLoginForm) {
+      gateLoginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const email = gateEmail ? gateEmail.value.trim() : '';
+        const password = gatePassword ? gatePassword.value : '';
+        if (!email || !password) {
+          if (gateAuthError) {
+            gateAuthError.textContent = 'Please enter both your email address and password.';
+            gateAuthError.style.display = 'block';
+          }
+          return;
+        }
+
+        if (btnGateSignin) {
+          btnGateSignin.disabled = true;
+          btnGateSignin.textContent = 'Signing in...';
+        }
+        if (gateAuthError) gateAuthError.style.display = 'none';
+
+        try {
+          const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+            method: 'POST',
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error_description || data.msg || data.message || 'Incorrect email or password');
+          }
+
+          userSession = {
+            access_token: data.access_token,
+            refresh_token: data.refresh_token,
+            expires_at: data.expires_at || Math.floor(Date.now() / 1000) + (data.expires_in || 3600),
+            email: data.user ? data.user.email : email,
+            user_id: data.user ? data.user.id : ''
+          };
+
+          if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
+            await window.WordTapAPI.saveConfig({ session: userSession });
+          }
+          updateAccountUI();
+          hideLoginGate();
+          showToast(`Welcome back, ${userSession.email}!`);
+          pushPendingOfflineWords();
+        } catch (err) {
+          if (gateAuthError) {
+            gateAuthError.textContent = err.message || 'Login failed. Please check credentials or continue as guest.';
+            gateAuthError.style.display = 'block';
+          }
+        } finally {
+          if (btnGateSignin) {
+            btnGateSignin.disabled = false;
+            btnGateSignin.textContent = 'Sign In & Open Player';
+          }
+        }
+      });
     }
   }
 
@@ -255,34 +522,41 @@
 
   // Initialize App
   async function init() {
-    initAudio();
+    setupAuthGate();
+    setupEvents();
+
+    try {
+      initAudio();
+    } catch (e) {
+      console.warn('initAudio error:', e);
+    }
 
     try {
       const config = await window.WordTapAPI.getConfig();
-      if (config.session && config.session.access_token) {
+      if (config && config.session && config.session.access_token) {
         userSession = config.session;
         updateAccountUI();
         hideLoginGate();
       } else {
         showLoginGate();
       }
-      if (config.subtitleDelayMs) {
+      if (config && config.subtitleDelayMs) {
         subtitleDelayMs = config.subtitleDelayMs;
         updateSyncDelayUI();
       }
-      if (typeof config.subSizeIdx === 'number' && config.subSizeIdx >= 0 && config.subSizeIdx < subSizes.length) {
+      if (config && typeof config.subSizeIdx === 'number' && config.subSizeIdx >= 0 && config.subSizeIdx < subSizes.length) {
         currentSubSizeIdx = config.subSizeIdx;
       }
-      if (config.translateSaveMode) {
+      if (config && config.translateSaveMode) {
         translateSaveMode = config.translateSaveMode;
       }
-      if (typeof config.pauseOnClick === 'boolean') {
+      if (config && typeof config.pauseOnClick === 'boolean') {
         pauseOnClick = config.pauseOnClick;
       }
-      if (config.targetLang) {
+      if (config && config.targetLang) {
         targetLang = config.targetLang;
       }
-      if (typeof config.volume === 'number' && config.volume >= 0 && config.volume <= 2.0) {
+      if (config && typeof config.volume === 'number' && config.volume >= 0 && config.volume <= 2.0) {
         userVolume = config.volume;
       }
       syncOptionsUI();
@@ -306,7 +580,6 @@
       console.warn('Config load error:', e);
       showLoginGate();
     }
-    setupEvents();
   }
 
   // Formatting helpers
@@ -1123,71 +1396,8 @@
       audioUnmuteBanner.style.display = 'none';
     });
 
-    // Auth Gate Form Submit
-    if (gateLoginForm) {
-      gateLoginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = gateEmail.value.trim();
-        const password = gatePassword.value;
-        if (!email || !password) return;
-
-        btnGateSignin.disabled = true;
-        btnGateSignin.textContent = 'Signing in...';
-        if (gateAuthError) gateAuthError.style.display = 'none';
-
-        try {
-          const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-            method: 'POST',
-            headers: {
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
-          });
-
-          const data = await res.json();
-          if (!res.ok) {
-            throw new Error(data.error_description || data.msg || 'Incorrect email or password');
-          }
-
-          userSession = {
-            access_token: data.access_token,
-            refresh_token: data.refresh_token,
-            expires_at: data.expires_at || Math.floor(Date.now() / 1000) + (data.expires_in || 3600),
-            email: data.user ? data.user.email : email,
-            user_id: data.user ? data.user.id : ''
-          };
-
-          await window.WordTapAPI.saveConfig({ session: userSession });
-          updateAccountUI();
-          hideLoginGate();
-          showToast(`Welcome back, ${userSession.email}!`);
-          pushPendingOfflineWords();
-        } catch (err) {
-          if (gateAuthError) {
-            gateAuthError.textContent = err.message || 'Login failed. Please check credentials.';
-            gateAuthError.style.display = 'block';
-          }
-        } finally {
-          btnGateSignin.disabled = false;
-          btnGateSignin.textContent = 'Sign In & Open Player';
-        }
-      });
-    }
-
-    if (btnGateOffline) {
-      btnGateOffline.addEventListener('click', () => {
-        hideLoginGate();
-        showToast('Running in Offline Mode');
-      });
-    }
-
-    if (btnGateCreateAcc) {
-      btnGateCreateAcc.addEventListener('click', () => {
-        window.WordTapAPI.openExternal(WEBSITE_URL);
-      });
-    }
+    // Setup Auth Gate Listeners (Immediate & Responsive)
+    setupAuthGate();
 
     // Open Video
     btnOpenVideo.addEventListener('click', async () => {
@@ -1429,35 +1639,7 @@
     btnCloseSavedModal.addEventListener('click', () => savedWordsModal.classList.remove('open'));
     btnSavedOpenWeb.addEventListener('click', () => window.WordTapAPI.openExternal(WEBSITE_URL));
 
-    // Play/Pause
-    function togglePlay() {
-      if (wordPopover.classList.contains('visible')) {
-        closePopover(true);
-        return;
-      }
-      if (video.paused) {
-        if (!isAudioTranscoded) {
-          video.muted = userMuted;
-        }
-        video.play().catch(() => {});
-        if (isAudioTranscoded && currentFilePath) {
-          const streamElapsed = compatibleAudio ? (compatibleAudio.currentTime || 0) : 0;
-          const currentAudioMovieTime = audioStreamStartTime + streamElapsed;
-          if (Math.abs(video.currentTime - currentAudioMovieTime) > 0.8 || !compatibleAudio.src) {
-            startLiveAudioStream(video.currentTime);
-          } else {
-            compatibleAudio.play().catch(() => {
-              startLiveAudioStream(video.currentTime);
-            });
-          }
-        }
-      } else {
-        video.pause();
-        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
-          compatibleAudio.pause();
-        }
-      }
-    }
+    // Play/Pause button and actions
 
     btnPlayPause.addEventListener('click', togglePlay);
     btnStop.addEventListener('click', () => {
@@ -1673,100 +1855,7 @@
       showToast(subtitlesVisible ? 'Subtitles: Enabled' : 'Subtitles: Disabled');
     });
 
-    // Volume & Sound Handling (VLC Style with Percentage and Boost >100% up to 200%)
-    function updateVolumeDisplay() {
-      ensureWebAudioGraph();
-      hookAudioElement(video);
-      hookAudioElement(compatibleAudio);
-
-      if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume().catch(() => {});
-      }
-
-      const pct = Math.round(userVolume * 100);
-      volumeSlider.value = userVolume;
-
-      // Update Slider Track Fill (VLC style with boost indicator)
-      const sliderRatio = Math.min(100, Math.max(0, (userVolume / 2.0) * 100));
-      if (userMuted || userVolume === 0) {
-        volumeSlider.style.background = 'rgba(255, 255, 255, 0.2)';
-      } else if (pct > 100) {
-        // Boost portion (>100%) shown in vibrant VLC orange/amber
-        volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 50%, #ff9800 50%, #ff9800 ${sliderRatio}%, rgba(255, 255, 255, 0.2) ${sliderRatio}%, rgba(255, 255, 255, 0.2) 100%)`;
-      } else {
-        volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 ${sliderRatio}%, rgba(255, 255, 255, 0.2) ${sliderRatio}%, rgba(255, 255, 255, 0.2) 100%)`;
-      }
-
-      if (userMuted || userVolume === 0) {
-        volumePercentLabel.textContent = 'Muted';
-        volumePercentLabel.style.color = '#72768a';
-        volumePercentLabel.style.fontWeight = '600';
-        iconVolHigh.style.display = 'none';
-        iconVolMute.style.display = 'block';
-      } else {
-        volumePercentLabel.textContent = `${pct}%`;
-        if (pct > 100) {
-          volumePercentLabel.style.color = '#F36F21';
-          volumePercentLabel.style.fontWeight = '700';
-        } else {
-          volumePercentLabel.style.color = '#9c9da6';
-          volumePercentLabel.style.fontWeight = '600';
-        }
-        iconVolHigh.style.display = 'block';
-        iconVolMute.style.display = 'none';
-      }
-
-      // Route volume through Web Audio Gain Node
-      if (masterGainNode && audioCtx) {
-        const targetGain = userMuted ? 0 : userVolume;
-        try {
-          masterGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-          masterGainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime);
-        } catch {}
-
-        if (video) {
-          video.muted = isAudioTranscoded ? true : userMuted;
-          video.volume = 1.0;
-        }
-        if (compatibleAudio) {
-          compatibleAudio.muted = !isAudioTranscoded ? true : userMuted;
-          compatibleAudio.volume = 1.0;
-        }
-      } else {
-        // Fallback for non-WebAudio environments (clamped to 1.0)
-        const clampedVol = Math.max(0, Math.min(1.0, userVolume));
-        if (video) {
-          video.muted = isAudioTranscoded ? true : userMuted;
-          video.volume = clampedVol;
-        }
-        if (compatibleAudio) {
-          compatibleAudio.muted = !isAudioTranscoded ? true : userMuted;
-          compatibleAudio.volume = clampedVol;
-        }
-      }
-    }
-
-    function toggleMute() {
-      userMuted = !userMuted;
-      updateVolumeDisplay();
-      showToast(userMuted ? 'Muted' : `Volume: ${Math.round(userVolume * 100)}%`);
-    }
-
-    function adjustVolume(delta) {
-      userVolume = Math.max(0, Math.min(2.0, Math.round((userVolume + delta) * 100) / 100));
-      if (userVolume > 0) userMuted = false;
-      updateVolumeDisplay();
-      window.WordTapAPI.saveConfig({ volume: userVolume });
-      showToast(`Volume: ${Math.round(userVolume * 100)}%`);
-    }
-
-    function setVolume(val) {
-      userVolume = Math.max(0, Math.min(2.0, Math.round(val * 100) / 100));
-      if (userVolume > 0) userMuted = false;
-      updateVolumeDisplay();
-      window.WordTapAPI.saveConfig({ volume: userVolume });
-    }
-
+    // Volume & Sound Handling Listeners (uses outer scoped functions)
     btnMute.addEventListener('click', toggleMute);
 
     volumeSlider.addEventListener('input', (e) => {
@@ -1899,5 +1988,6 @@
     });
   }
 
+  setupAuthGate();
   init();
 })();
