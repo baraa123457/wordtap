@@ -136,21 +136,18 @@
   let currentMediaTitle = 'No media loaded';
   let currentFilePath = null;
   let isAudioTranscoded = false;
+  let audioStreamStartTime = 0;
+  let liveAudioResyncing = false;
+  let userVolume = 1.0;
+  let userMuted = false;
   let vlsubSearchResults = [];
   let selectedVlsubIndex = -1;
 
   // Explicit Audio Initialization
   function initAudio() {
-    video.muted = false;
-    video.volume = 1.0;
-    if (compatibleAudio) {
-      compatibleAudio.volume = 1.0;
-      compatibleAudio.muted = false;
-    }
-    volumeSlider.value = 1.0;
-    volumePercentLabel.textContent = '100%';
-    iconVolHigh.style.display = 'block';
-    iconVolMute.style.display = 'none';
+    userVolume = 1.0;
+    userMuted = false;
+    updateVolumeDisplay();
   }
 
   // Auth Gate helpers
@@ -624,6 +621,9 @@
     currentMediaTitle = fileName;
     currentFilePath = filePath;
     isAudioTranscoded = false;
+    audioStreamStartTime = 0;
+    liveAudioResyncing = false;
+
     if (compatibleAudio) {
       compatibleAudio.pause();
       compatibleAudio.removeAttribute('src');
@@ -634,10 +634,9 @@
     dropZone.classList.add('hidden');
 
     // Make sure audio is completely unmuted and at 100% volume
-    video.muted = false;
-    video.volume = 1.0;
-    volumeSlider.value = 1.0;
-    volumePercentLabel.textContent = '100%';
+    userVolume = 1.0;
+    userMuted = false;
+    updateVolumeDisplay();
 
     const playPromise = video.play();
     if (playPromise !== undefined) {
@@ -657,7 +656,8 @@
       try {
         const info = await window.WordTapAPI.probeAudio(filePath);
         if (info && info.needsTranscode) {
-          showToast('🔊 Detected Dolby ' + (info.codecs.join('/') || 'DDP 5.1') + ' audio. Starting live sound stream...');
+          const codecName = (info.codecs && info.codecs.length > 0) ? info.codecs.join('/') : 'DDP 5.1';
+          showToast(`🔊 Detected Dolby ${codecName}. Streaming live audio...`);
           startLiveAudioStream(0);
         }
       } catch (e) {
@@ -673,6 +673,7 @@
       return;
     }
     try {
+      audioStreamStartTime = seekTime;
       const streamUrl = await window.WordTapAPI.getAudioStreamUrl({
         filePath: currentFilePath,
         startTime: seekTime
@@ -680,13 +681,16 @@
 
       if (streamUrl) {
         compatibleAudio.src = streamUrl;
-        compatibleAudio.volume = video.muted ? 0 : video.volume;
-        compatibleAudio.muted = video.muted;
         compatibleAudio.playbackRate = video.playbackRate;
 
-        // Mute video element to avoid dual audio
+        // Video element must stay muted so its unsupported audio track doesn't clash
         video.muted = true;
         isAudioTranscoded = true;
+
+        // Ensure audio element has user's volume and unmuted state
+        compatibleAudio.muted = userMuted;
+        compatibleAudio.volume = userVolume;
+        updateVolumeDisplay();
 
         if (!video.paused) {
           const p = compatibleAudio.play();
@@ -1142,22 +1146,9 @@
       }
       transcodeAndAttachAudio(currentFilePath);
     });
-    bindMenuItem('menu-item-mute', () => {
-      video.muted = !video.muted;
-      updateVolumeDisplay();
-      showToast(video.muted ? 'Muted' : `Volume: ${Math.round(video.volume * 100)}%`);
-    });
-    bindMenuItem('menu-item-vol-up', () => {
-      video.volume = Math.min(1, video.volume + 0.05);
-      video.muted = false;
-      updateVolumeDisplay();
-      showToast(`Volume: ${Math.round(video.volume * 100)}%`);
-    });
-    bindMenuItem('menu-item-vol-down', () => {
-      video.volume = Math.max(0, video.volume - 0.05);
-      updateVolumeDisplay();
-      showToast(`Volume: ${Math.round(video.volume * 100)}%`);
-    });
+    bindMenuItem('menu-item-mute', toggleMute);
+    bindMenuItem('menu-item-vol-up', () => adjustVolume(0.05));
+    bindMenuItem('menu-item-vol-down', () => adjustVolume(-0.05));
 
     // Subtitle Menu Actions
     bindMenuItem('menu-item-add-sub', async () => {
@@ -1226,11 +1217,19 @@
       }
       if (video.paused) {
         if (!isAudioTranscoded) {
-          video.muted = false;
+          video.muted = userMuted;
         }
         video.play().catch(() => {});
-        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
-          compatibleAudio.play().catch(() => {});
+        if (isAudioTranscoded && currentFilePath) {
+          const streamElapsed = compatibleAudio ? (compatibleAudio.currentTime || 0) : 0;
+          const currentAudioMovieTime = audioStreamStartTime + streamElapsed;
+          if (Math.abs(video.currentTime - currentAudioMovieTime) > 0.8 || !compatibleAudio.src) {
+            startLiveAudioStream(video.currentTime);
+          } else {
+            compatibleAudio.play().catch(() => {
+              startLiveAudioStream(video.currentTime);
+            });
+          }
         }
       } else {
         video.pause();
@@ -1244,9 +1243,9 @@
     btnStop.addEventListener('click', () => {
       video.pause();
       video.currentTime = 0;
-      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+      if (isAudioTranscoded && compatibleAudio) {
         compatibleAudio.pause();
-        compatibleAudio.currentTime = 0;
+        compatibleAudio.removeAttribute('src');
       }
       showToast('⏹ Stopped');
     });
@@ -1263,8 +1262,16 @@
       iconPlay.style.display = 'none';
       iconPause.style.display = 'block';
       audioUnmuteBanner.style.display = 'none';
-      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src && compatibleAudio.paused) {
-        compatibleAudio.play().catch(() => {});
+      if (isAudioTranscoded && currentFilePath) {
+        const streamElapsed = compatibleAudio ? (compatibleAudio.currentTime || 0) : 0;
+        const currentAudioMovieTime = audioStreamStartTime + streamElapsed;
+        if (Math.abs(video.currentTime - currentAudioMovieTime) > 0.8 || !compatibleAudio.src) {
+          startLiveAudioStream(video.currentTime);
+        } else if (compatibleAudio.paused) {
+          compatibleAudio.play().catch(() => {
+            startLiveAudioStream(video.currentTime);
+          });
+        }
       }
     });
 
@@ -1276,15 +1283,13 @@
       }
     });
 
-    video.addEventListener('seeking', () => {
-      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
-        compatibleAudio.currentTime = video.currentTime;
-      }
-    });
-
     video.addEventListener('seeked', () => {
       if (!isScrubbing && isAudioTranscoded && currentFilePath) {
-        startLiveAudioStream(video.currentTime);
+        const streamElapsed = compatibleAudio ? (compatibleAudio.currentTime || 0) : 0;
+        const currentAudioMovieTime = audioStreamStartTime + streamElapsed;
+        if (Math.abs(video.currentTime - currentAudioMovieTime) > 0.6) {
+          startLiveAudioStream(video.currentTime);
+        }
       }
     });
 
@@ -1309,11 +1314,16 @@
         scrubberThumb.style.left = `${pct}%`;
       }
 
-      // Keep Transcoded Audio in 100% Lip Sync
-      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src && !compatibleAudio.paused && !video.paused) {
-        const diff = Math.abs(compatibleAudio.currentTime - video.currentTime);
-        if (diff > 0.12) {
-          compatibleAudio.currentTime = video.currentTime;
+      // Keep Transcoded Audio in 100% Lip Sync with Video Timeline
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src && !compatibleAudio.paused && !video.paused && !isScrubbing && !liveAudioResyncing) {
+        const streamElapsed = compatibleAudio.currentTime || 0;
+        const currentAudioMovieTime = audioStreamStartTime + streamElapsed;
+        const drift = Math.abs(cur - currentAudioMovieTime);
+        if (drift > 1.5) {
+          liveAudioResyncing = true;
+          startLiveAudioStream(cur).finally(() => {
+            setTimeout(() => { liveAudioResyncing = false; }, 800);
+          });
         }
       }
 
@@ -1347,9 +1357,6 @@
       if (video.duration) {
         const targetTime = pos * video.duration;
         video.currentTime = targetTime;
-        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
-          compatibleAudio.currentTime = targetTime;
-        }
       }
     }
 
@@ -1448,39 +1455,55 @@
 
     // Volume & Sound Handling (VLC Style with Percentage)
     function updateVolumeDisplay() {
-      const pct = Math.round(video.volume * 100);
-      volumeSlider.value = video.volume;
-      volumePercentLabel.textContent = `${pct}%`;
+      const pct = Math.round(userVolume * 100);
+      volumeSlider.value = userVolume;
+      volumePercentLabel.textContent = (userMuted || userVolume === 0) ? 'Muted' : `${pct}%`;
 
-      if (video.muted || video.volume === 0) {
+      if (userMuted || userVolume === 0) {
         iconVolHigh.style.display = 'none';
         iconVolMute.style.display = 'block';
-        volumePercentLabel.textContent = 'Muted';
-        if (isAudioTranscoded && compatibleAudio) compatibleAudio.muted = true;
+        if (compatibleAudio) compatibleAudio.muted = true;
+        video.muted = true;
       } else {
         iconVolHigh.style.display = 'block';
         iconVolMute.style.display = 'none';
-        if (isAudioTranscoded && compatibleAudio) {
-          compatibleAudio.muted = false;
-          compatibleAudio.volume = video.volume;
+        if (isAudioTranscoded) {
+          video.muted = true; // Video track is always silenced when streaming live audio
+          if (compatibleAudio) {
+            compatibleAudio.muted = false;
+            compatibleAudio.volume = userVolume;
+          }
+        } else {
+          video.muted = false;
+          video.volume = userVolume;
         }
       }
     }
 
-    btnMute.addEventListener('click', () => {
-      video.muted = !video.muted;
+    function toggleMute() {
+      userMuted = !userMuted;
       updateVolumeDisplay();
-      showToast(video.muted ? 'Muted' : `Volume: ${Math.round(video.volume * 100)}%`);
-    });
+      showToast(userMuted ? 'Muted' : `Volume: ${Math.round(userVolume * 100)}%`);
+    }
+
+    function adjustVolume(delta) {
+      userVolume = Math.max(0, Math.min(1, Math.round((userVolume + delta) * 100) / 100));
+      if (userVolume > 0) userMuted = false;
+      updateVolumeDisplay();
+      showToast(`Volume: ${Math.round(userVolume * 100)}%`);
+    }
+
+    function setVolume(val) {
+      userVolume = Math.max(0, Math.min(1, val));
+      if (userVolume > 0) userMuted = false;
+      updateVolumeDisplay();
+    }
+
+    btnMute.addEventListener('click', toggleMute);
 
     volumeSlider.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      video.volume = val;
-      video.muted = false;
-      updateVolumeDisplay();
+      setVolume(parseFloat(e.target.value));
     });
-
-    video.addEventListener('volumechange', updateVolumeDisplay);
 
     btnFullscreen.addEventListener('click', toggleFullscreen);
     video.addEventListener('dblclick', toggleFullscreen);
@@ -1507,11 +1530,12 @@
           reader.readAsText(file);
         } else if (['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v', 'ts', 'flv'].includes(ext)) {
           const fileUrl = URL.createObjectURL(file);
-          playVideoFile(fileUrl, file.name, null, file.path);
+          const droppedPath = (window.WordTapAPI && window.WordTapAPI.getPathForFile) ? window.WordTapAPI.getPathForFile(file) : (file.path || '');
+          playVideoFile(fileUrl, file.name, null, droppedPath);
 
-          if (file.path) {
+          if (droppedPath) {
             const adjacentResult = await window.WordTapAPI.readSubtitleFile(
-              file.path.replace(/\.[^/.]+$/, '.srt')
+              droppedPath.replace(/\.[^/.]+$/, '.srt')
             );
             if (adjacentResult && adjacentResult.content) {
               loadSubtitles(adjacentResult.content, 'Auto-loaded adjacent .srt');
@@ -1529,6 +1553,14 @@
             closeVLsubModal();
           }
         }
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyO') {
+        e.preventDefault();
+        window.WordTapAPI.openVideoFile().then(res => {
+          if (res) playVideoFile(res.fileUrl, res.fileName, res.subContent, res.filePath);
+        });
         return;
       }
 
@@ -1557,8 +1589,7 @@
       } else if (e.code === 'KeyF') {
         toggleFullscreen();
       } else if (e.code === 'KeyM') {
-        video.muted = !video.muted;
-        updateVolumeDisplay();
+        toggleMute();
       } else if (e.code === 'KeyS') {
         replayCurrentLine();
       } else if (e.code === 'KeyC') {
@@ -1580,14 +1611,9 @@
         if (isAudioTranscoded && currentFilePath) startLiveAudioStream(target);
         showToast('⏩ +5s');
       } else if (e.code === 'ArrowUp') {
-        video.volume = Math.min(1, video.volume + 0.05);
-        video.muted = false;
-        updateVolumeDisplay();
-        showToast(`Volume: ${Math.round(video.volume * 100)}%`);
+        adjustVolume(0.05);
       } else if (e.code === 'ArrowDown') {
-        video.volume = Math.max(0, video.volume - 0.05);
-        updateVolumeDisplay();
-        showToast(`Volume: ${Math.round(video.volume * 100)}%`);
+        adjustVolume(-0.05);
       } else if (e.code === 'BracketLeft') {
         adjustSubtitleDelay(-100);
       } else if (e.code === 'BracketRight') {

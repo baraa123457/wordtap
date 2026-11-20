@@ -1,6 +1,14 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('WordTapAPI', {
+  getPathForFile: (file) => {
+    try {
+      if (webUtils && webUtils.getPathForFile) {
+        return webUtils.getPathForFile(file);
+      }
+    } catch {}
+    return file.path || '';
+  },
   openVideoFile: () => ipcRenderer.invoke('dialog:open-video'),
   openSubtitleFile: () => ipcRenderer.invoke('dialog:open-subtitle'),
   readSubtitleFile: (filePath) => ipcRenderer.invoke('fs:read-subtitle', filePath),

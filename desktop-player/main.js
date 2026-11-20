@@ -15,6 +15,23 @@ try {
   console.warn('ffmpeg installer error:', e);
 }
 
+// Fallback search paths for packaged or unpacked app
+if (!ffmpegPath || !fs.existsSync(ffmpegPath)) {
+  const candidates = [
+    path.join(__dirname, 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
+    path.join(process.resourcesPath || '', 'app', 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
+    path.join(process.resourcesPath || '', 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
+    'C:\\ffmpeg\\bin\\ffmpeg.exe',
+    'ffmpeg.exe'
+  ];
+  for (const c of candidates) {
+    if (c && fs.existsSync(c)) {
+      ffmpegPath = c;
+      break;
+    }
+  }
+}
+
 // CRITICAL AUDIO FIX: Allow automatic audio playback with sound without requiring gesture
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 app.commandLine.appendSwitch('disable-features', 'PreloadMediaEngagementData');
@@ -293,6 +310,10 @@ function probeAudio(filePath) {
     const child = spawn(ffmpegPath, ['-i', filePath]);
     let output = '';
     child.stderr.on('data', d => output += d.toString());
+    child.on('error', (err) => {
+      console.warn('probeAudio spawn error:', err);
+      resolve({ hasAudio: false, needsTranscode: false, codecs: [], audioStreams: [] });
+    });
     child.on('close', () => {
       const audioStreams = [];
       const codecs = [];
@@ -438,6 +459,7 @@ function startAudioServer() {
         '-ss', String(startTime),
         '-noaccurate_seek',
         '-i', filePath,
+        '-vn',
         '-map', '0:a:0',
         '-c:a', 'mp3',
         '-b:a', '192k',
@@ -474,6 +496,12 @@ function startAudioServer() {
 }
 
 ipcMain.handle('audio:get-stream-url', async (_event, { filePath, startTime }) => {
+  if (!audioServerPort) {
+    startAudioServer();
+    for (let i = 0; i < 20 && !audioServerPort; i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+  }
   if (!audioServerPort) return null;
   return `http://127.0.0.1:${audioServerPort}/audio?file=${encodeURIComponent(filePath)}&t=${startTime || 0}&_=${Date.now()}`;
 });
