@@ -1,0 +1,15 @@
+1
+00:00:01,000 --> 00:00:04,500
+Welcome to WordTap Desktop Player!
+
+2
+00:00:05,000 --> 00:00:09,000
+Click any subtitle word like revolutionary or extraordinary to see its translation.
+
+3
+00:00:09,500 --> 00:00:14,000
+Playback automatically pauses so you can listen to the pronunciation and save it.
+
+4
+00:00:14,500 --> 00:00:19,000
+Saved vocabulary synchronizes directly with your WordTap account and flashcard decks!

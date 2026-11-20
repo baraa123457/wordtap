@@ -1,0 +1,21 @@
+{
+  "name": "wordtap-player",
+  "version": "1.0.0",
+  "description": "WordTap Desktop Video Player with Interactive Subtitles and Word Sync",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "wordtap",
+    "video-player",
+    "subtitles",
+    "vlc",
+    "language-learning"
+  ],
+  "author": "WordTap",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.2.1"
+  }
+}
