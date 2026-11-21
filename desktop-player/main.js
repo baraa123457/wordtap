@@ -131,6 +131,56 @@ function findAdjacentSubtitle(videoPath) {
   return null;
 }
 
+function saveSubtitleToDisk(videoPath, rawFileName, langCode, content) {
+  try {
+    let cleanName = (rawFileName || '').replace(/[/\\?%*:|"<>]/g, '_').trim();
+    if (!cleanName.toLowerCase().endsWith('.srt') && !cleanName.toLowerCase().endsWith('.vtt')) {
+      cleanName = cleanName ? `${cleanName}.srt` : `subtitle.${langCode || 'en'}.srt`;
+    }
+
+    // Option A: Save in the same folder as the video (just like VLC does)
+    if (videoPath) {
+      try {
+        const videoDir = path.dirname(videoPath);
+        if (fs.existsSync(videoDir)) {
+          const targetPath = path.join(videoDir, cleanName);
+          fs.writeFileSync(targetPath, content, 'utf-8');
+          console.log(`Saved subtitle next to video: ${targetPath}`);
+          return targetPath;
+        }
+      } catch (err) {
+        console.warn('Could not save subtitle next to video (permissions/readonly):', err);
+      }
+    }
+
+    // Option B: Fallback to user Downloads folder
+    try {
+      const downloadsDir = app.getPath('downloads');
+      if (fs.existsSync(downloadsDir)) {
+        const targetPath = path.join(downloadsDir, cleanName);
+        fs.writeFileSync(targetPath, content, 'utf-8');
+        console.log(`Saved subtitle in Downloads: ${targetPath}`);
+        return targetPath;
+      }
+    } catch (err) {
+      console.warn('Could not save subtitle in downloads:', err);
+    }
+
+    // Option C: Fallback to DATA_DIR/subtitles
+    const subsDir = path.join(DATA_DIR, 'subtitles');
+    if (!fs.existsSync(subsDir)) {
+      fs.mkdirSync(subsDir, { recursive: true });
+    }
+    const targetPath = path.join(subsDir, cleanName);
+    fs.writeFileSync(targetPath, content, 'utf-8');
+    console.log(`Saved subtitle in AppData: ${targetPath}`);
+    return targetPath;
+  } catch (err) {
+    console.error('Fatal error in saveSubtitleToDisk:', err);
+    return null;
+  }
+}
+
 function prepareFilePayload(filePath) {
   if (!filePath) return null;
   try {
@@ -139,12 +189,32 @@ function prepareFilePayload(filePath) {
     const stat = fs.statSync(resolvedPath);
     if (!stat.isFile()) return null;
 
-    const subFile = findAdjacentSubtitle(resolvedPath);
+    // Check media history first to see if a subtitle and sync offset were previously chosen
+    const cfg = readJsonFile(CONFIG_FILE, {});
+    const history = (cfg.mediaHistory && cfg.mediaHistory[resolvedPath]) || null;
+
+    let subFile = null;
     let subContent = null;
-    if (subFile) {
+    let subtitleDelayMs = 0;
+    let savedTime = 0;
+
+    if (history && history.subPath && fs.existsSync(history.subPath)) {
+      subFile = history.subPath;
       try {
         subContent = fs.readFileSync(subFile, 'utf-8');
+        subtitleDelayMs = typeof history.subtitleDelayMs === 'number' ? history.subtitleDelayMs : 0;
+        savedTime = typeof history.savedTime === 'number' ? history.savedTime : 0;
       } catch {}
+    }
+
+    // If no previous subtitle from history, look for adjacent subtitle file next to video
+    if (!subContent) {
+      subFile = findAdjacentSubtitle(resolvedPath);
+      if (subFile) {
+        try {
+          subContent = fs.readFileSync(subFile, 'utf-8');
+        } catch {}
+      }
     }
 
     return {
@@ -152,7 +222,9 @@ function prepareFilePayload(filePath) {
       fileName: path.basename(resolvedPath),
       fileUrl: pathToFileURL(resolvedPath).href,
       subFile,
-      subContent
+      subContent,
+      subtitleDelayMs,
+      savedTime
     };
   } catch (err) {
     console.error('Error preparing file payload:', err);
@@ -271,11 +343,84 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// IPC: Initial File for "Open with" or File Association Launch
+// IPC: Initial File for "Open with", File Association, or Resume Last Session
 ipcMain.handle('app:get-initial-file', async () => {
-  const payload = pendingFilePayload;
-  pendingFilePayload = null;
-  return payload;
+  if (pendingFilePayload) {
+    const payload = pendingFilePayload;
+    pendingFilePayload = null;
+    return payload;
+  }
+
+  // If no CLI file was given, check for the latest session to restore video, subtitle, and sync!
+  try {
+    const cfg = readJsonFile(CONFIG_FILE, {});
+    if (cfg.lastMedia && cfg.lastMedia.filePath && fs.existsSync(cfg.lastMedia.filePath)) {
+      const last = cfg.lastMedia;
+      let subFile = last.subPath || null;
+      let subContent = null;
+      if (subFile && fs.existsSync(subFile)) {
+        try {
+          subContent = fs.readFileSync(subFile, 'utf-8');
+        } catch {}
+      } else if (last.subContent) {
+        subContent = last.subContent;
+      }
+
+      return {
+        filePath: last.filePath,
+        fileName: last.fileName || path.basename(last.filePath),
+        fileUrl: pathToFileURL(last.filePath).href,
+        subFile,
+        subContent,
+        subtitleDelayMs: typeof last.subtitleDelayMs === 'number' ? last.subtitleDelayMs : 0,
+        savedTime: typeof last.savedTime === 'number' ? last.savedTime : 0,
+        isRestoredSession: true
+      };
+    }
+  } catch (err) {
+    console.error('Error loading last media session:', err);
+  }
+
+  return null;
+});
+
+// IPC: Media Session & Subtitle Sync Persistence
+ipcMain.handle('app:save-media-session', async (_event, sessionData) => {
+  if (!sessionData || !sessionData.filePath) return { ok: false };
+  try {
+    const cfg = readJsonFile(CONFIG_FILE, {});
+    if (!cfg.mediaHistory) cfg.mediaHistory = {};
+
+    const existing = cfg.mediaHistory[sessionData.filePath] || {};
+    const updated = {
+      ...existing,
+      filePath: sessionData.filePath,
+      fileName: sessionData.fileName || path.basename(sessionData.filePath),
+      subPath: sessionData.subPath !== undefined ? sessionData.subPath : (existing.subPath || null),
+      subFileName: sessionData.subFileName !== undefined ? sessionData.subFileName : (existing.subFileName || null),
+      subtitleDelayMs: typeof sessionData.subtitleDelayMs === 'number' ? sessionData.subtitleDelayMs : (existing.subtitleDelayMs || 0),
+      savedTime: typeof sessionData.savedTime === 'number' ? sessionData.savedTime : (existing.savedTime || 0),
+      lastPlayed: Date.now()
+    };
+
+    cfg.mediaHistory[sessionData.filePath] = updated;
+    cfg.lastMedia = {
+      ...updated,
+      subContent: sessionData.subContent || existing.subContent || null
+    };
+
+    writeJsonFile(CONFIG_FILE, cfg);
+    return { ok: true };
+  } catch (err) {
+    console.error('Error saving media session:', err);
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('app:get-media-history', async (_event, filePath) => {
+  if (!filePath) return null;
+  const cfg = readJsonFile(CONFIG_FILE, {});
+  return (cfg.mediaHistory && cfg.mediaHistory[filePath]) || null;
 });
 
 // IPC: Open Video File Dialog
@@ -748,8 +893,22 @@ ipcMain.handle('vlsub:search', async (_event, params) => {
   }
 });
 
-ipcMain.handle('vlsub:download', async (_event, subId) => {
+ipcMain.handle('vlsub:download', async (_event, params) => {
   try {
+    let subId;
+    let videoPath = null;
+    let fileName = 'subtitle.srt';
+    let langCode = 'en';
+
+    if (typeof params === 'object' && params !== null) {
+      subId = params.subId;
+      videoPath = params.videoPath || null;
+      fileName = params.fileName || fileName;
+      langCode = params.langCode || langCode;
+    } else {
+      subId = params;
+    }
+
     const token = await getValidToken();
     const client = getOpenSubtitlesClient();
 
@@ -766,7 +925,16 @@ ipcMain.handle('vlsub:download', async (_event, subId) => {
           const rawBase64 = res.data[0].data;
           const gzBuf = Buffer.from(rawBase64, 'base64');
           const unzipped = zlib.gunzipSync(gzBuf).toString('utf-8');
-          resolve({ ok: true, srtContent: unzipped });
+
+          // Download & save the .srt file directly to disk (matching VLC behavior)
+          const savedPath = saveSubtitleToDisk(videoPath, fileName, langCode, unzipped);
+
+          resolve({
+            ok: true,
+            srtContent: unzipped,
+            savedPath,
+            fileName: savedPath ? path.basename(savedPath) : fileName
+          });
         } catch (unzipErr) {
           resolve({ ok: false, error: 'Failed to decompress subtitle: ' + unzipErr.message });
         }

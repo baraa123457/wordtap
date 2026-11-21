@@ -33,5 +33,8 @@ contextBridge.exposeInMainWorld('WordTapAPI', {
   // VLsub OpenSubtitles APIs
   calculateVLSubHash: (filePath) => ipcRenderer.invoke('vlsub:calculate-hash', filePath),
   searchVLSub: (params) => ipcRenderer.invoke('vlsub:search', params),
-  downloadVLSub: (subId) => ipcRenderer.invoke('vlsub:download', subId)
+  downloadVLSub: (params) => ipcRenderer.invoke('vlsub:download', params),
+  // Session & Media History Persistence APIs
+  saveMediaSession: (session) => ipcRenderer.invoke('app:save-media-session', session),
+  getMediaHistory: (filePath) => ipcRenderer.invoke('app:get-media-history', filePath)
 });

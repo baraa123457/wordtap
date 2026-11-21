@@ -152,6 +152,28 @@
   let currentSpeedIndex = 1;
   let currentMediaTitle = 'No media loaded';
   let currentFilePath = null;
+  let currentSubPath = null;
+  let currentSubFileName = null;
+  let currentSubContent = null;
+  let lastSessionSaveTime = 0;
+
+  function saveCurrentMediaSession() {
+    if (!currentFilePath || !window.WordTapAPI || !window.WordTapAPI.saveMediaSession) return;
+    try {
+      window.WordTapAPI.saveMediaSession({
+        filePath: currentFilePath,
+        fileName: currentMediaTitle,
+        subPath: currentSubPath,
+        subFileName: currentSubFileName,
+        subContent: currentSubContent,
+        subtitleDelayMs: subtitleDelayMs,
+        savedTime: (video && !isNaN(video.currentTime)) ? video.currentTime : 0
+      });
+    } catch (e) {
+      console.warn('Failed to save media session:', e);
+    }
+  }
+
   let isAudioTranscoded = false;
   let audioStreamStartTime = 0;
   let liveAudioResyncing = false;
@@ -611,13 +633,25 @@
         }).catch(() => {});
       }
 
-      // Check if launched directly with a video file (Windows Explorer "Open with" or double-click)
+      // Check if launched directly with a video file (Windows Explorer "Open with" or double-click) or resume latest session
       if (window.WordTapAPI && window.WordTapAPI.getInitialFile) {
         try {
           const initFile = await window.WordTapAPI.getInitialFile();
           if (initFile && initFile.fileUrl) {
-            playVideoFile(initFile.fileUrl, initFile.fileName, initFile.subContent, initFile.filePath);
+            playVideoFile(
+              initFile.fileUrl,
+              initFile.fileName,
+              initFile.subContent,
+              initFile.filePath,
+              initFile.subtitleDelayMs || 0,
+              initFile.savedTime || 0,
+              initFile.subFile
+            );
             hideLoginGate();
+            if (initFile.isRestoredSession) {
+              const syncStr = (initFile.subtitleDelayMs !== 0) ? ` (Sync: ${initFile.subtitleDelayMs > 0 ? '+' : ''}${initFile.subtitleDelayMs}ms)` : '';
+              showToast(`Resumed: ${initFile.fileName}${syncStr}`);
+            }
           }
         } catch (err) {
           console.warn('Initial file launch check:', err);
@@ -724,10 +758,16 @@
   }
 
   // Load Subtitles
-  function loadSubtitles(content, label = 'Subtitle loaded') {
-    subtitleDelayMs = 0;
-    updateSyncDelayUI();
+  function loadSubtitles(content, label = 'Subtitle loaded', subFilePath = null, preserveSync = false) {
+    if (!preserveSync) {
+      subtitleDelayMs = 0;
+      updateSyncDelayUI();
+    }
     cues = parseSubtitles(content);
+    currentSubContent = content;
+    if (subFilePath) currentSubPath = subFilePath;
+    currentSubFileName = label;
+    saveCurrentMediaSession();
     showToast(`Subtitles: ${cues.length} lines loaded`);
   }
 
@@ -1208,6 +1248,7 @@
   function adjustSubtitleDelay(deltaMs) {
     subtitleDelayMs += deltaMs;
     updateSyncDelayUI();
+    saveCurrentMediaSession();
     const sign = subtitleDelayMs > 0 ? '+' : '';
     showToast(`Subtitle delay: ${sign}${subtitleDelayMs} ms`);
   }
@@ -1215,6 +1256,7 @@
   function resetSubtitleDelay() {
     subtitleDelayMs = 0;
     updateSyncDelayUI();
+    saveCurrentMediaSession();
     showToast('Subtitle sync reset to 0ms');
   }
 
@@ -1225,14 +1267,15 @@
   }
 
   // Video Load Handler - GUARANTEED AUDIO & DOLBY/DTS TRANSCODING
-  async function playVideoFile(fileUrl, fileName, subContent = null, filePath = null) {
+  async function playVideoFile(fileUrl, fileName, subContent = null, filePath = null, initSubDelay = 0, savedTime = 0, subPath = null) {
     currentMediaTitle = fileName;
     currentFilePath = filePath;
+    currentSubPath = subPath || null;
     isAudioTranscoded = false;
     audioStreamStartTime = 0;
     liveAudioResyncing = false;
     audioDelayMs = 0;
-    subtitleDelayMs = 0;
+    subtitleDelayMs = typeof initSubDelay === 'number' ? initSubDelay : 0;
     updateSyncDelayUI();
 
     if (compatibleAudio) {
@@ -1250,8 +1293,28 @@
     updateVolumeDisplay();
 
     if (subContent) {
-      loadSubtitles(subContent, 'Auto-loaded matching subtitle');
+      loadSubtitles(subContent, subPath ? subPath.split(/[/\\]/).pop() : 'Subtitle', subPath, true);
+    } else {
+      cues = [];
+      currentCue = null;
+      activeCueIdx = -1;
+      subtitleContainer.innerHTML = '';
+      currentSubContent = null;
+      currentSubPath = null;
+      currentSubFileName = null;
     }
+
+    if (savedTime && savedTime > 0) {
+      const onMeta = () => {
+        video.removeEventListener('loadedmetadata', onMeta);
+        if (video.duration && savedTime < video.duration) {
+          video.currentTime = savedTime;
+        }
+      };
+      video.addEventListener('loadedmetadata', onMeta);
+    }
+
+    saveCurrentMediaSession();
     showToast(fileName);
 
     // Automatic Dolby AC3 / E-AC3 / DTS Audio Stream Probing & Real-Time Transcoding
@@ -1515,15 +1578,20 @@
     vlsubStatusText.textContent = `Downloading ${item.fileName}...`;
 
     try {
-      const res = await window.WordTapAPI.downloadVLSub(item.id);
+      const res = await window.WordTapAPI.downloadVLSub({
+        subId: item.id,
+        videoPath: currentFilePath,
+        fileName: item.fileName,
+        langCode: item.langCode
+      });
       if (res && res.ok && res.srtContent) {
-        loadSubtitles(res.srtContent, `VLsub: ${item.fileName}`);
-        vlsubStatusText.textContent = 'Subtitle loaded successfully into player';
+        loadSubtitles(res.srtContent, `VLsub: ${res.fileName || item.fileName}`, res.savedPath, false);
+        vlsubStatusText.textContent = res.savedPath ? `Saved to disk: ${res.fileName}` : 'Subtitle loaded successfully into player';
         vlsubStatusText.className = 'vlsub-status-message success';
         setTimeout(() => {
           closeVLsubModal();
-        }, 500);
-        showToast(`Subtitles: ${item.fileName}`);
+        }, 600);
+        showToast(res.savedPath ? `Saved & Loaded: ${res.fileName}` : `Subtitles: ${item.fileName}`);
       } else {
         vlsubStatusText.textContent = 'Download error: ' + (res ? res.error : 'Unknown');
         btnVlsubDownload.disabled = false;
@@ -1618,7 +1686,15 @@
     if (window.WordTapAPI && window.WordTapAPI.onOpenFile) {
       window.WordTapAPI.onOpenFile((payload) => {
         if (payload && payload.fileUrl) {
-          playVideoFile(payload.fileUrl, payload.fileName, payload.subContent, payload.filePath);
+          playVideoFile(
+            payload.fileUrl,
+            payload.fileName,
+            payload.subContent,
+            payload.filePath,
+            payload.subtitleDelayMs || 0,
+            payload.savedTime || 0,
+            payload.subFile
+          );
           hideLoginGate();
         }
       });
@@ -1640,14 +1716,30 @@
       closeAllMenus();
       const res = await window.WordTapAPI.openVideoFile();
       if (res) {
-        playVideoFile(res.fileUrl, res.fileName, res.subContent, res.filePath);
+        playVideoFile(
+          res.fileUrl,
+          res.fileName,
+          res.subContent,
+          res.filePath,
+          res.subtitleDelayMs || 0,
+          res.savedTime || 0,
+          res.subFile
+        );
       }
     });
 
     btnSplashOpenVideo.addEventListener('click', async () => {
       const res = await window.WordTapAPI.openVideoFile();
       if (res) {
-        playVideoFile(res.fileUrl, res.fileName, res.subContent, res.filePath);
+        playVideoFile(
+          res.fileUrl,
+          res.fileName,
+          res.subContent,
+          res.filePath,
+          res.subtitleDelayMs || 0,
+          res.savedTime || 0,
+          res.subFile
+        );
       }
     });
 
@@ -1656,7 +1748,7 @@
       closeAllMenus();
       const res = await window.WordTapAPI.openSubtitleFile();
       if (res && res.content) {
-        loadSubtitles(res.content, `Loaded ${res.fileName}`);
+        loadSubtitles(res.content, `Loaded ${res.fileName}`, res.filePath, false);
       }
     });
 
@@ -1784,7 +1876,7 @@
     bindMenuItem('menu-item-add-sub', async () => {
       const res = await window.WordTapAPI.openSubtitleFile();
       if (res && res.content) {
-        loadSubtitles(res.content, `Loaded ${res.fileName}`);
+        loadSubtitles(res.content, `Loaded ${res.fileName}`, res.filePath, false);
       }
     });
     bindMenuItem('menu-item-sub-vlsub', openVLsubModal);
@@ -1979,6 +2071,13 @@
       // Continuous sample-accurate audio sync
       syncAudioWithVideo();
 
+      // Periodic media session persistence (every 4s)
+      const now = Date.now();
+      if (now - lastSessionSaveTime > 4000) {
+        lastSessionSaveTime = now;
+        saveCurrentMediaSession();
+      }
+
       // Check Subtitles
       if (cues.length > 0) {
         const adjustedTime = cur - (subtitleDelayMs / 1000);
@@ -2167,26 +2266,54 @@
         const ext = file.name.split('.').pop().toLowerCase();
 
         if (['srt', 'vtt', 'sub'].includes(ext)) {
+          const droppedSubPath = (window.WordTapAPI && window.WordTapAPI.getPathForFile) ? window.WordTapAPI.getPathForFile(file) : (file.path || '');
           const reader = new FileReader();
           reader.onload = (re) => {
-            loadSubtitles(re.target.result, `Loaded ${file.name}`);
+            loadSubtitles(re.target.result, `Loaded ${file.name}`, droppedSubPath, false);
           };
           reader.readAsText(file);
         } else if (['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v', 'ts', 'flv'].includes(ext)) {
           const fileUrl = URL.createObjectURL(file);
           const droppedPath = (window.WordTapAPI && window.WordTapAPI.getPathForFile) ? window.WordTapAPI.getPathForFile(file) : (file.path || '');
-          playVideoFile(fileUrl, file.name, null, droppedPath);
+          
+          let hist = null;
+          if (droppedPath && window.WordTapAPI && window.WordTapAPI.getMediaHistory) {
+            try {
+              hist = await window.WordTapAPI.getMediaHistory(droppedPath);
+            } catch {}
+          }
 
+          if (hist && hist.subPath) {
+            const histSub = await window.WordTapAPI.readSubtitleFile(hist.subPath);
+            if (histSub && histSub.content) {
+              playVideoFile(fileUrl, file.name, histSub.content, droppedPath, hist.subtitleDelayMs || 0, hist.savedTime || 0, hist.subPath);
+              return;
+            }
+          }
+
+          let adjContent = null;
+          let adjPath = null;
           if (droppedPath) {
             const adjacentResult = await window.WordTapAPI.readSubtitleFile(
               droppedPath.replace(/\.[^/.]+$/, '.srt')
             );
             if (adjacentResult && adjacentResult.content) {
-              loadSubtitles(adjacentResult.content, 'Auto-loaded adjacent .srt');
+              adjContent = adjacentResult.content;
+              adjPath = adjacentResult.filePath;
             }
           }
+
+          playVideoFile(fileUrl, file.name, adjContent, droppedPath, 0, 0, adjPath);
         }
       }
+    });
+
+    // Session Persistence on Unload and Pause
+    window.addEventListener('beforeunload', () => {
+      saveCurrentMediaSession();
+    });
+    video.addEventListener('pause', () => {
+      saveCurrentMediaSession();
     });
 
     // Keyboard Shortcuts
