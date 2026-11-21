@@ -579,6 +579,7 @@
         userSession = config.session;
         updateAccountUI();
         hideLoginGate();
+        pushPendingOfflineWords();
       } else {
         showLoginGate();
       }
@@ -929,6 +930,57 @@
     resetControlsTimeout();
   }
 
+  // Auth Token Manager with Automatic Refresh
+  let tokenRefreshPromise = null;
+
+  async function getValidToken(force = false) {
+    if (!userSession) return null;
+    const now = Math.floor(Date.now() / 1000);
+
+    if (!force && userSession.access_token && userSession.expires_at && (userSession.expires_at - 60 > now)) {
+      return userSession.access_token;
+    }
+
+    if (userSession.refresh_token) {
+      if (!tokenRefreshPromise) {
+        tokenRefreshPromise = (async () => {
+          try {
+            const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+              method: 'POST',
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ refresh_token: userSession.refresh_token })
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              userSession.access_token = data.access_token;
+              userSession.refresh_token = data.refresh_token;
+              userSession.expires_at = Math.floor(Date.now() / 1000) + (data.expires_in || 3600);
+              if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
+                await window.WordTapAPI.saveConfig({ session: userSession });
+              }
+              updateAccountUI();
+              return userSession.access_token;
+            } else {
+              console.warn('Refresh token rejected:', res.status);
+            }
+          } catch (e) {
+            console.warn('Error refreshing token:', e);
+          } finally {
+            tokenRefreshPromise = null;
+          }
+          return userSession.access_token;
+        })();
+      }
+      return await tokenRefreshPromise;
+    }
+
+    return userSession.access_token;
+  }
+
   // Save Word Handler
   async function saveActiveWord(isAuto = false) {
     if (!activeWordData) return;
@@ -944,17 +996,22 @@
       title: currentMediaTitle !== 'No media loaded' ? currentMediaTitle : 'WordTap VLC Video',
       lang: targetLang || 'ar',
       src: 'en',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      synced: false
     };
 
     await window.WordTapAPI.saveWord(entry);
     await refreshSavedWordsCount();
 
-    if (userSession && userSession.access_token) {
+    if (userSession) {
       try {
-        await syncWordToSupabase(entry, userSession.access_token);
+        const ok = await syncWordToSupabase(entry);
+        if (ok) {
+          entry.synced = true;
+          await window.WordTapAPI.saveWord(entry);
+        }
       } catch (err) {
-        console.warn('Supabase sync background fail (will retry):', err);
+        console.warn('Supabase sync background fail (queued locally):', err);
       }
     }
 
@@ -965,19 +1022,25 @@
     }
   }
 
-  async function syncWordToSupabase(entry, token) {
+  async function syncWordToSupabase(entry) {
+    let token = await getValidToken();
+    if (!token) return false;
+
+    const sentence = entry.sentence || '';
+    const title = entry.title || '';
+    const titleContext = sentence ? `"${sentence}" — ${title}` : title;
+
     const payload = {
       p_text: entry.text,
-      p_translation: entry.translation,
-      p_src_lang: 'en',
-      p_target_lang: 'ar',
-      p_source_title: `"${entry.sentence}" — ${entry.title}`,
+      p_translation: entry.translation || '',
+      p_src_lang: entry.src || 'en',
+      p_target_lang: entry.lang || 'ar',
+      p_source_title: titleContext,
       p_source_url: 'wordtap-vlc-player',
-      p_times: 1,
-      p_sentence: entry.sentence
+      p_times: entry.count || 1
     };
 
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/save_word`, {
+    let res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/save_word`, {
       method: 'POST',
       headers: {
         apikey: SUPABASE_ANON_KEY,
@@ -987,9 +1050,27 @@
       body: JSON.stringify(payload)
     });
 
-    if (!res.ok) {
-      throw new Error(`Sync failed: HTTP ${res.status}`);
+    if (res.status === 401) {
+      token = await getValidToken(true);
+      if (token) {
+        res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/save_word`, {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+      }
     }
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Sync failed: HTTP ${res.status}: ${errText}`);
+    }
+
+    return true;
   }
 
   async function refreshSavedWordsCount() {
@@ -1070,16 +1151,33 @@
   }
 
   async function pushPendingOfflineWords() {
-    if (!userSession || !userSession.access_token) return;
+    if (!userSession) return;
+    const token = await getValidToken();
+    if (!token) return;
+
     const words = await window.WordTapAPI.getSavedWords();
     if (!words || words.length === 0) return;
-    showToast(`Syncing ${words.length} words...`);
-    for (const w of words) {
+
+    const unsynced = words.filter(w => !w.synced);
+    if (unsynced.length === 0) return;
+
+    showToast(`Syncing ${unsynced.length} words to website...`);
+    let syncedAny = false;
+    for (const w of unsynced) {
       try {
-        await syncWordToSupabase(w, userSession.access_token);
-      } catch {}
+        const ok = await syncWordToSupabase(w);
+        if (ok) {
+          w.synced = true;
+          await window.WordTapAPI.saveWord(w);
+          syncedAny = true;
+        }
+      } catch (err) {
+        console.warn('Sync word failed:', w.text, err);
+      }
     }
-    showToast('Words synced');
+    if (syncedAny) {
+      showToast('All words synced to website');
+    }
   }
 
   // Load Saved Words Modal

@@ -190,7 +190,8 @@ if (!gotTheLock) {
 function readJsonFile(filePath, defaultValue) {
   try {
     if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      const raw = fs.readFileSync(filePath, 'utf-8').replace(/^\uFEFF/, '');
+      return JSON.parse(raw);
     }
   } catch (err) {
     console.error(`Error reading ${filePath}:`, err);
