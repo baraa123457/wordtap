@@ -292,7 +292,7 @@ function createWindow() {
     backgroundColor: '#1b1b1e',
     title: 'WordTap VLC Media Player',
     autoHideMenuBar: true,
-    icon: path.join(__dirname, 'icon.png'),
+    icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

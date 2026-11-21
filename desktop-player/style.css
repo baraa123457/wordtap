@@ -250,7 +250,7 @@ body {
 
 .vlc-cone-splash {
   margin-bottom: 18px;
-  filter: drop-shadow(0 6px 18px rgba(243, 111, 33, 0.35));
+  filter: drop-shadow(0 8px 24px rgba(21, 24, 51, 0.7)) drop-shadow(0 2px 8px rgba(255, 210, 63, 0.25));
 }
 
 .drop-card h2 {
@@ -862,7 +862,7 @@ body {
 }
 
 .auth-gate-logo {
-  filter: drop-shadow(0 4px 12px rgba(243, 111, 33, 0.35));
+  filter: drop-shadow(0 8px 24px rgba(21, 24, 51, 0.7)) drop-shadow(0 2px 8px rgba(255, 210, 63, 0.25));
   margin-bottom: 10px;
 }
 
