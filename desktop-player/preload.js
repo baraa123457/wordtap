@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('WordTapAPI', {
   readSubtitleFile: (filePath) => ipcRenderer.invoke('fs:read-subtitle', filePath),
   getSavedWords: () => ipcRenderer.invoke('storage:get-words'),
   saveWord: (entry) => ipcRenderer.invoke('storage:save-word', entry),
+  deleteSavedWord: (wordText) => ipcRenderer.invoke('storage:delete-word', wordText),
   getConfig: () => ipcRenderer.invoke('storage:get-config'),
   saveConfig: (config) => ipcRenderer.invoke('storage:save-config', config),
   openExternal: (url) => ipcRenderer.invoke('shell:open-external', url),

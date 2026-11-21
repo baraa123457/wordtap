@@ -1015,24 +1015,75 @@ body {
 }
 
 .saved-words-list {
-  max-height: 260px;
+  max-height: 290px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-right: 2px;
 }
 
 .saved-word-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
+  padding: 8px 12px;
   background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 6px;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.2s ease, transform 0.2s ease;
 }
 
-.saved-word-title { font-weight: 700; color: #fff; font-size: 13px; }
-.saved-word-ar { color: var(--wt-gold); font-size: 13px; direction: rtl; }
+.saved-word-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.saved-word-title {
+  font-weight: 700;
+  color: #fff;
+  font-size: 13.5px;
+  letter-spacing: 0.2px;
+}
+
+.saved-word-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.saved-word-ar {
+  color: var(--wt-gold);
+  font-size: 13.5px;
+  font-weight: 600;
+  direction: rtl;
+}
+
+.btn-delete-saved-word {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
+}
+
+.btn-delete-saved-word:hover {
+  color: #EF4444;
+  background: rgba(239, 68, 68, 0.15);
+  transform: scale(1.1);
+}
+
+.btn-delete-saved-word:focus-visible {
+  outline: 2px solid #EF4444 !important;
+  outline-offset: 2px !important;
+}
 
 /* ==========================================
    VLC Menu Bar Dropdowns

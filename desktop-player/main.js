@@ -528,6 +528,15 @@ ipcMain.handle('storage:save-word', async (_event, wordEntry) => {
   return { ok: true, total: words.length };
 });
 
+ipcMain.handle('storage:delete-word', async (_event, wordText) => {
+  if (!wordText || typeof wordText !== 'string') return { ok: false, error: 'Invalid word' };
+  const target = wordText.trim().toLowerCase();
+  const words = readJsonFile(SAVED_WORDS_FILE, []);
+  const filtered = words.filter(w => (w.text || '').trim().toLowerCase() !== target);
+  writeJsonFile(SAVED_WORDS_FILE, filtered);
+  return { ok: true, total: filtered.length };
+});
+
 // IPC: User Account Configuration
 ipcMain.handle('storage:get-config', async () => {
   const cfg = readJsonFile(CONFIG_FILE, {

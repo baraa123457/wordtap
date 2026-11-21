@@ -1186,16 +1186,27 @@
     return userSession.access_token;
   }
 
-  // Save Word Handler
+  // Save or Toggle Word Handler
   async function saveActiveWord(isAuto = false) {
     if (!activeWordData) return;
+    const targetWord = (activeWordData.cleanWord || activeWordData.word || '').trim();
+    if (!targetWord) return;
+
+    const isAlreadySaved = savedWords.some(w => (w.text || '').trim().toLowerCase() === targetWord.toLowerCase());
+    if (!isAuto && isAlreadySaved) {
+      // Toggle off / delete word
+      await deleteWordEntry(targetWord);
+      popoverBtnSave.classList.remove('saved');
+      popoverBtnSave.innerHTML = '<span>★ Save to WordTap</span>';
+      return;
+    }
 
     if (!isAuto) {
       popoverBtnSave.innerHTML = '<span>Saving...</span>';
     }
 
     const entry = {
-      text: activeWordData.cleanWord || activeWordData.word,
+      text: targetWord,
       translation: activeWordData.translation || '',
       sentence: activeWordData.contextSentence || '',
       title: currentMediaTitle !== 'No media loaded' ? currentMediaTitle : 'WordTap VLC Video',
@@ -1385,23 +1396,162 @@
     }
   }
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  async function syncDeleteToSupabase(wordText) {
+    let token = await getValidToken();
+    if (!token) return false;
+
+    const payload = {
+      p_text: wordText,
+      p_src_lang: 'auto'
+    };
+
+    try {
+      let res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/delete_word_by_text`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.status === 401) {
+        token = await getValidToken(true);
+        if (token) {
+          res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/delete_word_by_text`, {
+            method: 'POST',
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+        }
+      }
+
+      // Also ensure deletion from words table directly
+      await fetch(`${SUPABASE_URL}/rest/v1/words?text=ilike.${encodeURIComponent(wordText)}`, {
+        method: 'DELETE',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`
+        }
+      }).catch(() => {});
+
+      return true;
+    } catch (err) {
+      console.warn('Sync delete to Supabase error:', err);
+      return false;
+    }
+  }
+
+  async function deleteWordEntry(wordText) {
+    if (!wordText) return false;
+    const clean = wordText.trim();
+    try {
+      if (window.WordTapAPI && window.WordTapAPI.deleteSavedWord) {
+        await window.WordTapAPI.deleteSavedWord(clean);
+      }
+      savedWords = savedWords.filter(w => (w.text || '').trim().toLowerCase() !== clean.toLowerCase());
+      if (savedWordsCount) {
+        savedWordsCount.textContent = `${savedWords.length} Word${savedWords.length === 1 ? '' : 's'}`;
+      }
+
+      if (userSession) {
+        syncDeleteToSupabase(clean).catch(err => console.warn('Supabase delete sync warning:', err));
+      }
+
+      if (activeWordData && (activeWordData.cleanWord || '').toLowerCase() === clean.toLowerCase()) {
+        if (popoverBtnSave) {
+          popoverBtnSave.classList.remove('saved');
+          popoverBtnSave.innerHTML = '<span>★ Save to WordTap</span>';
+        }
+      }
+
+      showToast(`Deleted "${clean}"`);
+      return true;
+    } catch (err) {
+      console.error('Failed to delete word:', err);
+      showToast(`Failed to delete "${clean}"`);
+      return false;
+    }
+  }
+
   // Load Saved Words Modal
   function openSavedWordsModal() {
-    let html = '';
+    renderSavedWordsList();
+    if (savedWordsModal) {
+      savedWordsModal.classList.add('open');
+    }
+  }
+
+  function renderSavedWordsList() {
+    if (!savedWordsListContainer) return;
     if (savedWords.length === 0) {
-      html = '<div style="color:var(--text-secondary); text-align:center; padding:20px;">No words saved yet. Click any subtitle word during video playback to save it!</div>';
-    } else {
-      for (const w of savedWords) {
-        html += `
-          <div class="saved-word-row">
-            <span class="saved-word-title">${w.text}</span>
-            <span class="saved-word-ar">${w.translation || ''}</span>
+      savedWordsListContainer.innerHTML = `
+        <div style="color:var(--text-secondary); text-align:center; padding:28px 12px; font-size:13px; line-height:1.5;">
+          No words saved yet.<br>
+          <span style="font-size:11.5px; color:var(--text-dim); margin-top:4px; display:inline-block;">Click any subtitle word during video playback to save it!</span>
+        </div>`;
+      return;
+    }
+
+    let html = '';
+    for (const w of savedWords) {
+      const text = escapeHtml(w.text || '');
+      const trans = escapeHtml(w.translation || '');
+      html += `
+        <div class="saved-word-row" data-word="${text}">
+          <span class="saved-word-title">${text}</span>
+          <div class="saved-word-right">
+            <span class="saved-word-ar">${trans}</span>
+            <button type="button" class="btn-delete-saved-word" data-word="${text}" title="Delete word" aria-label="Delete ${text}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+            </button>
           </div>
-        `;
-      }
+        </div>
+      `;
     }
     savedWordsListContainer.innerHTML = html;
-    savedWordsModal.classList.add('open');
+
+    // Attach click handlers to delete buttons
+    savedWordsListContainer.querySelectorAll('.btn-delete-saved-word').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const word = btn.getAttribute('data-word');
+        if (!word) return;
+        const row = btn.closest('.saved-word-row');
+        if (row) {
+          row.style.opacity = '0';
+          row.style.transform = 'translateX(12px)';
+          row.style.pointerEvents = 'none';
+          setTimeout(() => {
+            row.remove();
+            if (savedWords.length === 0) {
+              renderSavedWordsList();
+            }
+          }, 180);
+        }
+        await deleteWordEntry(word);
+      });
+    });
   }
 
   // Subtitle Synchronization Adjustment
