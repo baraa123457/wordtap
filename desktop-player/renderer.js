@@ -817,13 +817,19 @@
       btn.classList.toggle('active', sz === subCustomSize);
     });
 
-    // Color pills
+    // Color pills & custom wrap highlight
+    let matchedPreset = false;
     document.querySelectorAll('.sub-color-pill').forEach(pill => {
       const col = pill.getAttribute('data-color');
       const isMatch = col && col.toLowerCase() === subTextColor.toLowerCase();
       pill.classList.toggle('active', isMatch);
+      if (isMatch) matchedPreset = true;
     });
     if (subCustomColor) subCustomColor.value = subTextColor;
+    const customColorWrap = document.querySelector('.custom-color-picker-wrap');
+    if (customColorWrap) {
+      customColorWrap.classList.toggle('active', !matchedPreset);
+    }
 
     // Background control buttons
     if (subBgStyleControl) {

@@ -639,21 +639,24 @@
     </div>
 
     <!-- Subtitle Style & Customization Modal -->
-    <div class="modal-overlay" id="subtitle-style-modal">
+    <div class="modal-overlay" id="subtitle-style-modal" role="dialog" aria-modal="true" aria-labelledby="sub-style-modal-title">
       <div class="modal-card sub-style-card">
         <div class="modal-header">
           <div style="display: flex; align-items: center; gap: 8px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FACC3B" stroke-width="2">
               <path d="M4 7V4h16v3M9 20h6M12 4v16"/>
             </svg>
-            <h3 style="margin: 0;">Subtitle Style & Options</h3>
+            <h3 id="sub-style-modal-title" style="margin: 0; font-size: 15px; font-weight: 700; color: #FFFFFF;">Subtitle Style & Options</h3>
           </div>
-          <button class="modal-close-btn" id="btn-close-sub-style">✕</button>
+          <button class="modal-close-btn" id="btn-close-sub-style" aria-label="Close subtitle settings">✕</button>
         </div>
 
         <!-- Live Subtitle Preview Area -->
         <div class="sub-style-preview-box">
-          <div class="sub-style-preview-label">Live Preview</div>
+          <div class="sub-style-preview-header">
+            <span class="sub-style-preview-label">Live Cinema Preview</span>
+            <span class="sub-style-preview-hint">Interactive · Click words to test translation</span>
+          </div>
           <div class="sub-style-preview-stage" id="sub-style-preview-stage">
             <div class="subtitle-line" id="sub-style-preview-line">
               <span class="wt-word" data-word="you're">You're</span>
@@ -667,20 +670,20 @@
         </div>
 
         <div class="sub-style-controls-grid">
-          <!-- Font Family Row -->
+          <!-- Font Family Row with inline preview styles -->
           <div class="sub-style-group">
             <label class="sub-style-label" for="sub-select-font">Font Family</label>
-            <select id="sub-select-font" class="sub-style-select">
-              <option value='Arial, "Trebuchet MS", sans-serif'>Arial (Classic Cinema)</option>
-              <option value='"Trebuchet MS", Arial, sans-serif'>Trebuchet MS (Rounded / Readable)</option>
-              <option value='"Segoe UI", Tahoma, sans-serif'>Segoe UI (Windows System)</option>
-              <option value='Roboto, Inter, -apple-system, sans-serif'>Roboto / Inter (Modern Sans)</option>
-              <option value='Verdana, Geneva, sans-serif'>Verdana (Wide High Legibility)</option>
-              <option value='Tahoma, Arial, sans-serif'>Tahoma (Clean Compact)</option>
-              <option value='Impact, "Arial Black", sans-serif'>Impact (Heavy Cinema Caps)</option>
-              <option value='Cairo, "Segoe UI", Arial, sans-serif'>Cairo (Arabic & English)</option>
-              <option value='Georgia, "Times New Roman", serif'>Georgia (Elegant Serif)</option>
-              <option value='"Courier New", Consolas, monospace'>Courier New (Typewriter / Monospace)</option>
+            <select id="sub-select-font" class="sub-style-select" aria-label="Subtitle Font Family">
+              <option value='Arial, "Trebuchet MS", sans-serif' style="font-family: Arial, sans-serif;">Arial (Classic Cinema)</option>
+              <option value='"Trebuchet MS", Arial, sans-serif' style="font-family: 'Trebuchet MS', sans-serif;">Trebuchet MS (Rounded / Readable)</option>
+              <option value='"Segoe UI", Tahoma, sans-serif' style="font-family: 'Segoe UI', sans-serif;">Segoe UI (Windows System)</option>
+              <option value='Roboto, Inter, -apple-system, sans-serif' style="font-family: Roboto, Inter, sans-serif;">Roboto / Inter (Modern Sans)</option>
+              <option value='Verdana, Geneva, sans-serif' style="font-family: Verdana, sans-serif;">Verdana (Wide High Legibility)</option>
+              <option value='Tahoma, Arial, sans-serif' style="font-family: Tahoma, sans-serif;">Tahoma (Clean Compact)</option>
+              <option value='Impact, "Arial Black", sans-serif' style="font-family: Impact, sans-serif;">Impact (Heavy Cinema Caps)</option>
+              <option value='Cairo, "Segoe UI", Arial, sans-serif' style="font-family: Cairo, 'Segoe UI', sans-serif;">Cairo (Arabic & English)</option>
+              <option value='Georgia, "Times New Roman", serif' style="font-family: Georgia, serif;">Georgia (Elegant Serif)</option>
+              <option value='"Courier New", Consolas, monospace' style="font-family: 'Courier New', monospace;">Courier New (Typewriter / Monospace)</option>
             </select>
           </div>
 
@@ -689,12 +692,12 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
               <label class="sub-style-label" for="sub-size-slider">Font Size</label>
               <div class="sub-size-display-wrap">
-                <input type="number" id="sub-size-input" class="sub-num-input" min="14" max="64" value="28">
+                <input type="number" id="sub-size-input" class="sub-num-input" min="14" max="64" value="28" aria-label="Font size in pixels">
                 <span style="font-size: 11px; color: #888;">px</span>
               </div>
             </div>
-            <input type="range" id="sub-size-slider" class="sub-range-slider" min="14" max="64" value="28" step="1">
-            <div class="sub-presets-row">
+            <input type="range" id="sub-size-slider" class="sub-range-slider" min="14" max="64" value="28" step="1" aria-label="Font size slider">
+            <div class="sub-presets-row" role="group" aria-label="Font size presets">
               <button type="button" class="sub-preset-btn" data-size="22">Compact (22px)</button>
               <button type="button" class="sub-preset-btn active" data-size="28">Standard (28px)</button>
               <button type="button" class="sub-preset-btn" data-size="36">Large (36px)</button>
@@ -705,15 +708,15 @@
           <!-- Text Color & Custom Color Picker -->
           <div class="sub-style-group">
             <label class="sub-style-label">Text Color</label>
-            <div class="sub-colors-wrap">
-              <button type="button" class="sub-color-pill active" data-color="#FFFFFF" style="background: #FFFFFF;" title="White"></button>
-              <button type="button" class="sub-color-pill" data-color="#FFE600" style="background: #FFE600;" title="Bright Yellow"></button>
-              <button type="button" class="sub-color-pill" data-color="#FFD23F" style="background: #FFD23F;" title="Gold Yellow"></button>
-              <button type="button" class="sub-color-pill" data-color="#00FFCC" style="background: #00FFCC;" title="Cyan"></button>
-              <button type="button" class="sub-color-pill" data-color="#A3E635" style="background: #A3E635;" title="Lime Green"></button>
-              <button type="button" class="sub-color-pill" data-color="#FFAA00" style="background: #FFAA00;" title="Amber"></button>
+            <div class="sub-colors-wrap" role="group" aria-label="Subtitle text colors">
+              <button type="button" class="sub-color-pill active" data-color="#FFFFFF" style="background: #FFFFFF;" aria-label="Pure White (#FFFFFF)" title="Pure White"></button>
+              <button type="button" class="sub-color-pill" data-color="#FFE600" style="background: #FFE600;" aria-label="Cinema Yellow (#FFE600)" title="Cinema Yellow"></button>
+              <button type="button" class="sub-color-pill" data-color="#FFD23F" style="background: #FFD23F;" aria-label="Gold Yellow (#FFD23F)" title="Gold Yellow"></button>
+              <button type="button" class="sub-color-pill" data-color="#00FFCC" style="background: #00FFCC;" aria-label="Cyan Teal (#00FFCC)" title="Cyan Teal"></button>
+              <button type="button" class="sub-color-pill" data-color="#A3E635" style="background: #A3E635;" aria-label="Lime Green (#A3E635)" title="Lime Green"></button>
+              <button type="button" class="sub-color-pill" data-color="#FFAA00" style="background: #FFAA00;" aria-label="Amber Orange (#FFAA00)" title="Amber Orange"></button>
               <div class="custom-color-picker-wrap" title="Pick custom color">
-                <input type="color" id="sub-custom-color" value="#FFFFFF" class="color-picker-input">
+                <input type="color" id="sub-custom-color" value="#FFFFFF" class="color-picker-input" aria-label="Custom color picker">
                 <span class="custom-color-label">Custom</span>
               </div>
             </div>
@@ -722,7 +725,7 @@
           <!-- Background Box Style -->
           <div class="sub-style-group">
             <label class="sub-style-label">Background Style</label>
-            <div class="segmented-control" id="sub-bg-style-control">
+            <div class="segmented-control" id="sub-bg-style-control" role="group" aria-label="Subtitle background style">
               <button type="button" class="segment-btn active" data-bg="none">
                 <span>None (Clear)</span>
               </button>
@@ -738,7 +741,7 @@
           <!-- Font Weight -->
           <div class="sub-style-group">
             <label class="sub-style-label">Font Weight</label>
-            <div class="segmented-control" id="sub-weight-control">
+            <div class="segmented-control" id="sub-weight-control" role="group" aria-label="Subtitle font weight">
               <button type="button" class="segment-btn active" data-weight="700">
                 <span>Bold (700)</span>
               </button>
@@ -757,7 +760,7 @@
               <label class="sub-style-label" for="sub-offset-slider">Bottom Position Offset</label>
               <span id="sub-offset-value" style="font-size: 12px; font-weight: 700; color: #fff;">46px</span>
             </div>
-            <input type="range" id="sub-offset-slider" class="sub-range-slider" min="10" max="140" value="46" step="2">
+            <input type="range" id="sub-offset-slider" class="sub-range-slider" min="10" max="140" value="46" step="2" aria-label="Bottom position offset slider">
             <div style="font-size: 10.5px; color: #888; margin-top: 2px;">Adjust to place subtitles cleanly over or under letterbox black bars.</div>
           </div>
         </div>
