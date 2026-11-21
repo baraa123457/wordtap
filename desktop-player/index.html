@@ -758,10 +758,20 @@
           <div class="sub-style-group">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
               <label class="sub-style-label" for="sub-offset-slider">Bottom Position Offset</label>
-              <span id="sub-offset-value" style="font-size: 12px; font-weight: 700; color: #fff;">46px</span>
+              <div class="sub-size-display-wrap">
+                <input type="number" id="sub-offset-input" class="sub-num-input" min="-100" max="1200" value="46" aria-label="Bottom position offset in pixels">
+                <span style="font-size: 11px; color: #888;">px</span>
+              </div>
             </div>
-            <input type="range" id="sub-offset-slider" class="sub-range-slider" min="10" max="140" value="46" step="2" aria-label="Bottom position offset slider">
-            <div style="font-size: 10.5px; color: #888; margin-top: 2px;">Adjust to place subtitles cleanly over or under letterbox black bars.</div>
+            <input type="range" id="sub-offset-slider" class="sub-range-slider" min="0" max="600" value="46" step="1" aria-label="Bottom position offset slider">
+            <div class="sub-presets-row" role="group" aria-label="Position offset presets">
+              <button type="button" class="sub-offset-preset-btn" data-offset="0">Flush (0px)</button>
+              <button type="button" class="sub-offset-preset-btn" data-offset="20">Low (20px)</button>
+              <button type="button" class="sub-offset-preset-btn active" data-offset="46">Default (46px)</button>
+              <button type="button" class="sub-offset-preset-btn" data-offset="120">Bar (120px)</button>
+              <button type="button" class="sub-offset-preset-btn" data-offset="240">High (240px)</button>
+            </div>
+            <div style="font-size: 10.5px; color: #888; margin-top: 4px;">Drag slider (0px to 600px) or type any exact pixel value into the input box to position subtitles anywhere.</div>
           </div>
         </div>
 

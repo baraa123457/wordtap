@@ -1695,7 +1695,8 @@ body {
   margin-top: 4px;
 }
 
-.sub-preset-btn {
+.sub-preset-btn,
+.sub-offset-preset-btn {
   flex: 1;
   background: #1E2338;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1710,13 +1711,15 @@ body {
   min-height: 32px;
 }
 
-.sub-preset-btn:hover {
+.sub-preset-btn:hover,
+.sub-offset-preset-btn:hover {
   background: #252B44;
   color: #fff;
   border-color: rgba(255, 255, 255, 0.25);
 }
 
-.sub-preset-btn.active {
+.sub-preset-btn.active,
+.sub-offset-preset-btn.active {
   background: rgba(243, 111, 33, 0.2);
   border-color: var(--vlc-orange);
   color: #FFFFFF;
@@ -1822,6 +1825,7 @@ body {
 .sub-style-select:focus-visible,
 .sub-num-input:focus-visible,
 .sub-preset-btn:focus-visible,
+.sub-offset-preset-btn:focus-visible,
 .sub-color-pill:focus-visible,
 .sub-range-slider:focus-visible,
 .sub-style-card .segment-btn:focus-visible,

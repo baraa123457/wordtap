@@ -135,6 +135,7 @@
   const subBgStyleControl = document.getElementById('sub-bg-style-control');
   const subWeightControl = document.getElementById('sub-weight-control');
   const subOffsetSlider = document.getElementById('sub-offset-slider');
+  const subOffsetInput = document.getElementById('sub-offset-input');
   const subOffsetValue = document.getElementById('sub-offset-value');
   const subStylePreviewLine = document.getElementById('sub-style-preview-line');
   const btnOpenSubStyleFromOptions = document.getElementById('btn-open-sub-style-from-options');
@@ -808,13 +809,20 @@
     if (subSelectFont) subSelectFont.value = subFontFamily;
     if (subSizeSlider) subSizeSlider.value = subCustomSize;
     if (subSizeInput) subSizeInput.value = subCustomSize;
-    if (subOffsetSlider) subOffsetSlider.value = subBottomOffset;
+    if (subOffsetSlider) subOffsetSlider.value = Math.max(0, Math.min(600, subBottomOffset));
+    if (subOffsetInput) subOffsetInput.value = subBottomOffset;
     if (subOffsetValue) subOffsetValue.textContent = `${subBottomOffset}px`;
 
-    // Presets buttons
+    // Size preset buttons
     document.querySelectorAll('.sub-preset-btn').forEach(btn => {
       const sz = parseInt(btn.getAttribute('data-size'), 10);
       btn.classList.toggle('active', sz === subCustomSize);
+    });
+
+    // Position offset presets buttons
+    document.querySelectorAll('.sub-offset-preset-btn').forEach(btn => {
+      const off = parseInt(btn.getAttribute('data-offset'), 10);
+      btn.classList.toggle('active', off === subBottomOffset);
     });
 
     // Color pills & custom wrap highlight
@@ -2159,14 +2167,37 @@
       });
     }
 
-    // Vertical Offset slider
+    // Vertical Offset slider & direct number input & presets
     if (subOffsetSlider) {
       subOffsetSlider.addEventListener('input', (e) => {
-        subBottomOffset = parseInt(e.target.value, 10) || 46;
+        const val = parseInt(e.target.value, 10);
+        subBottomOffset = isNaN(val) ? 46 : val;
+        if (subOffsetInput) subOffsetInput.value = subBottomOffset;
         if (subOffsetValue) subOffsetValue.textContent = `${subBottomOffset}px`;
         saveSubtitleAppearance(false);
       });
     }
+
+    if (subOffsetInput) {
+      const handleOffsetInput = (e) => {
+        let val = parseInt(e.target.value, 10);
+        if (isNaN(val)) val = 46;
+        subBottomOffset = val;
+        if (subOffsetSlider) subOffsetSlider.value = Math.max(0, Math.min(600, val));
+        if (subOffsetValue) subOffsetValue.textContent = `${subBottomOffset}px`;
+        saveSubtitleAppearance(false);
+      };
+      subOffsetInput.addEventListener('change', handleOffsetInput);
+      subOffsetInput.addEventListener('input', handleOffsetInput);
+    }
+
+    document.querySelectorAll('.sub-offset-preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.getAttribute('data-offset'), 10);
+        subBottomOffset = isNaN(val) ? 46 : val;
+        saveSubtitleAppearance(false);
+      });
+    });
 
     // Reset Defaults
     if (btnSubResetDefaults) {
