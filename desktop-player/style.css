@@ -18,6 +18,16 @@
   --danger: #EF4444;
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   --font-mono: Consolas, "Segoe UI Mono", "Courier New", monospace;
+  /* Subtitle Custom Appearance Tokens */
+  --sub-font-size: 28px;
+  --sub-font-family: Arial, "Trebuchet MS", "Segoe UI", sans-serif;
+  --sub-text-color: #FFFFFF;
+  --sub-font-weight: 700;
+  --sub-bottom-offset: 46px;
+  --sub-bg-color: transparent;
+  --sub-bg-padding: 2px 8px;
+  --sub-bg-radius: 4px;
+  --sub-text-shadow: 2px 2px 2px #000000, -2px -2px 2px #000000, 2px -2px 2px #000000, -2px 2px 2px #000000, 0 3px 6px rgba(0, 0, 0, 0.95);
 }
 
 * {
@@ -293,7 +303,7 @@ body {
 /* Authentic VLC Subtitle Display */
 #subtitle-container {
   position: absolute;
-  bottom: 46px;
+  bottom: var(--sub-bottom-offset, 46px);
   left: 4%;
   right: 4%;
   display: flex;
@@ -302,34 +312,32 @@ body {
   justify-content: center;
   z-index: 35;
   pointer-events: none;
+  transition: bottom 0.15s ease;
 }
 
 .subtitle-line {
   display: inline-block;
-  background: transparent;
-  padding: 2px 8px;
+  background: var(--sub-bg-color, transparent);
+  padding: var(--sub-bg-padding, 2px 8px);
+  border-radius: var(--sub-bg-radius, 4px);
   margin-top: 2px;
   text-align: center;
   pointer-events: auto;
   line-height: 1.35;
+  transition: background 0.15s ease;
 }
 
 /* Interactive Word Chips - Authentic Movie Font & Stroke */
 .wt-word {
   display: inline-block;
-  color: #FFFFFF;
-  font-family: Arial, "Trebuchet MS", "Segoe UI", sans-serif;
-  font-size: 28px;
-  font-weight: 700;
+  color: var(--sub-text-color, #FFFFFF);
+  font-family: var(--sub-font-family, Arial, "Trebuchet MS", "Segoe UI", sans-serif);
+  font-size: var(--sub-font-size, 28px);
+  font-weight: var(--sub-font-weight, 700);
   padding: 0 1px;
   cursor: pointer;
   letter-spacing: 0.2px;
-  text-shadow:
-    2px 2px 2px #000000,
-    -2px -2px 2px #000000,
-    2px -2px 2px #000000,
-    -2px 2px 2px #000000,
-    0 3px 6px rgba(0, 0, 0, 0.95);
+  text-shadow: var(--sub-text-shadow);
   transition: color 0.1s ease, border-color 0.1s ease;
   border-bottom: 2px solid transparent;
 }
@@ -337,25 +345,15 @@ body {
 .wt-word:hover {
   color: #FFE600 !important;
   border-bottom: 2px solid #F36F21;
-  text-shadow:
-    2px 2px 2px #000000,
-    -2px -2px 2px #000000,
-    2px -2px 2px #000000,
-    -2px 2px 2px #000000;
 }
 
 .wt-punct {
-  color: #FFFFFF;
-  font-family: Arial, "Trebuchet MS", "Segoe UI", sans-serif;
-  font-size: 28px;
-  font-weight: 700;
+  color: var(--sub-text-color, #FFFFFF);
+  font-family: var(--sub-font-family, Arial, "Trebuchet MS", "Segoe UI", sans-serif);
+  font-size: var(--sub-font-size, 28px);
+  font-weight: var(--sub-font-weight, 700);
   letter-spacing: 0.2px;
-  text-shadow:
-    2px 2px 2px #000000,
-    -2px -2px 2px #000000,
-    2px -2px 2px #000000,
-    -2px 2px 2px #000000,
-    0 3px 6px rgba(0, 0, 0, 0.95);
+  text-shadow: var(--sub-text-shadow);
 }
 
 /* Subtitle Font Size Classes */
@@ -1468,7 +1466,7 @@ body {
 }
 
 #app-container.is-fullscreen #subtitle-container {
-  bottom: 76px;
+  bottom: calc(var(--sub-bottom-offset, 46px) + 24px);
   transition: bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -1500,9 +1498,238 @@ body {
 }
 
 #app-container.is-fullscreen.controls-hidden #subtitle-container {
-  bottom: 30px;
+  bottom: var(--sub-bottom-offset, 30px);
 }
 
 #app-container.is-fullscreen.controls-hidden #toast {
   top: 24px;
+}
+
+/* ==========================================
+   Subtitle Style & Font Customization Modal
+   ========================================== */
+.sub-style-card {
+  width: 520px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  gap: 16px;
+}
+
+.sub-style-preview-box {
+  background: radial-gradient(circle at 50% 30%, #1a1e36 0%, #0c0e18 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 16px;
+  position: relative;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.sub-style-preview-label {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.sub-style-preview-stage {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.sub-style-controls-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sub-style-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sub-style-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sub-style-select {
+  width: 100%;
+  background: var(--vlc-bg-control);
+  color: #fff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+}
+
+.sub-style-select:focus {
+  border-color: var(--vlc-orange);
+}
+
+.sub-size-display-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sub-num-input {
+  width: 54px;
+  background: var(--vlc-bg-control);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  padding: 2px 4px;
+  outline: none;
+}
+
+.sub-num-input:focus {
+  border-color: var(--vlc-orange);
+}
+
+.sub-range-slider {
+  width: 100%;
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--vlc-bg-control);
+  outline: none;
+  cursor: pointer;
+}
+
+.sub-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--vlc-orange);
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  transition: transform 0.1s ease;
+}
+
+.sub-range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.sub-presets-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.sub-preset-btn {
+  flex: 1;
+  background: var(--vlc-bg-control);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 5px 2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.sub-preset-btn:hover {
+  background: var(--vlc-bg-hover);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sub-preset-btn.active {
+  background: rgba(243, 111, 33, 0.18);
+  border-color: var(--vlc-orange);
+  color: #fff;
+  font-weight: 700;
+}
+
+.sub-colors-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sub-color-pill {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  outline: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.sub-color-pill:hover {
+  transform: scale(1.15);
+}
+
+.sub-color-pill.active {
+  border-color: var(--vlc-orange);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4), 0 2px 6px rgba(0,0,0,0.6);
+  transform: scale(1.1);
+}
+
+.custom-color-picker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--vlc-bg-control);
+  padding: 3px 8px;
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+}
+
+.color-picker-input {
+  -webkit-appearance: none;
+  border: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  background: transparent;
+  padding: 0;
+}
+
+.color-picker-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-picker-input::-webkit-color-swatch {
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+}
+
+.custom-color-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
 }

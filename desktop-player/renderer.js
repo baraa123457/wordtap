@@ -123,12 +123,36 @@
   const savedWordsListContainer = document.getElementById('saved-words-list-container');
   const btnSavedOpenWeb = document.getElementById('btn-saved-open-web');
 
-  // Subtitle Sizes
+  // Subtitle Style & Customization Modal Elements
+  const subtitleStyleModal = document.getElementById('subtitle-style-modal');
+  const btnCloseSubStyle = document.getElementById('btn-close-sub-style');
+  const btnSubApplyClose = document.getElementById('btn-sub-apply-close');
+  const btnSubResetDefaults = document.getElementById('btn-sub-reset-defaults');
+  const subSelectFont = document.getElementById('sub-select-font');
+  const subSizeSlider = document.getElementById('sub-size-slider');
+  const subSizeInput = document.getElementById('sub-size-input');
+  const subCustomColor = document.getElementById('sub-custom-color');
+  const subBgStyleControl = document.getElementById('sub-bg-style-control');
+  const subWeightControl = document.getElementById('sub-weight-control');
+  const subOffsetSlider = document.getElementById('sub-offset-slider');
+  const subOffsetValue = document.getElementById('sub-offset-value');
+  const subStylePreviewLine = document.getElementById('sub-style-preview-line');
+  const btnOpenSubStyleFromOptions = document.getElementById('btn-open-sub-style-from-options');
+
+  // Subtitle Appearance Customization State
+  let subCustomSize = 28;
+  let subFontFamily = 'Arial, "Trebuchet MS", sans-serif';
+  let subTextColor = '#FFFFFF';
+  let subBgStyle = 'none'; // 'none' | 'translucent' | 'solid'
+  let subFontWeight = '700';
+  let subBottomOffset = 46;
+
+  // Subtitle Sizes (Legacy Presets)
   const subSizes = [
-    { label: '20px', cls: 'sub-size-compact' },
-    { label: '26px', cls: 'sub-size-standard' },
-    { label: '34px', cls: 'sub-size-large' },
-    { label: '42px', cls: 'sub-size-cinema' }
+    { label: '22px', cls: 'sub-size-compact', size: 22 },
+    { label: '28px', cls: 'sub-size-standard', size: 28 },
+    { label: '36px', cls: 'sub-size-large', size: 36 },
+    { label: '44px', cls: 'sub-size-cinema', size: 44 }
   ];
   let currentSubSizeIdx = 1;
 
@@ -623,8 +647,17 @@
       }
       subtitleDelayMs = 0;
       updateSyncDelayUI();
-      if (config && typeof config.subSizeIdx === 'number' && config.subSizeIdx >= 0 && config.subSizeIdx < subSizes.length) {
-        currentSubSizeIdx = config.subSizeIdx;
+      if (config) {
+        if (typeof config.subCustomSize === 'number' && config.subCustomSize >= 14 && config.subCustomSize <= 72) {
+          subCustomSize = config.subCustomSize;
+        } else if (typeof config.subSizeIdx === 'number' && config.subSizeIdx >= 0 && config.subSizeIdx < subSizes.length) {
+          subCustomSize = subSizes[config.subSizeIdx].size || 28;
+        }
+        if (config.subFontFamily) subFontFamily = config.subFontFamily;
+        if (config.subTextColor) subTextColor = config.subTextColor;
+        if (config.subBgStyle) subBgStyle = config.subBgStyle;
+        if (config.subFontWeight) subFontWeight = config.subFontWeight;
+        if (typeof config.subBottomOffset === 'number') subBottomOffset = config.subBottomOffset;
       }
       if (config && config.translateSaveMode) {
         translateSaveMode = config.translateSaveMode;
@@ -639,7 +672,7 @@
         userVolume = config.volume;
       }
       syncOptionsUI();
-      applySubSize(currentSubSizeIdx);
+      applySubtitleAppearance();
       updateVolumeDisplay();
       refreshSavedWordsCount();
 
@@ -705,19 +738,120 @@
     }, 1500);
   }
 
-  // Subtitle Sizing
+  // Comprehensive Subtitle Appearance & Style Management
+  function applySubtitleAppearance() {
+    document.documentElement.style.setProperty('--sub-font-size', `${subCustomSize}px`);
+    document.documentElement.style.setProperty('--sub-font-family', subFontFamily);
+    document.documentElement.style.setProperty('--sub-text-color', subTextColor);
+    document.documentElement.style.setProperty('--sub-font-weight', subFontWeight);
+    document.documentElement.style.setProperty('--sub-bottom-offset', `${subBottomOffset}px`);
+
+    let bgColor = 'transparent';
+    let padding = '2px 8px';
+    if (subBgStyle === 'translucent') {
+      bgColor = 'rgba(0, 0, 0, 0.65)';
+      padding = '4px 12px';
+    } else if (subBgStyle === 'solid') {
+      bgColor = '#000000';
+      padding = '4px 12px';
+    }
+    document.documentElement.style.setProperty('--sub-bg-color', bgColor);
+    document.documentElement.style.setProperty('--sub-bg-padding', padding);
+
+    if (btnSubSize) {
+      btnSubSize.innerHTML = `<span>Font Size (${subCustomSize}px)</span><kbd>A</kbd>`;
+    }
+
+    syncSubStyleModalUI();
+  }
+
+  function saveSubtitleAppearance(showNotification = false) {
+    applySubtitleAppearance();
+    if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
+      window.WordTapAPI.saveConfig({
+        subCustomSize,
+        subFontFamily,
+        subTextColor,
+        subBgStyle,
+        subFontWeight,
+        subBottomOffset
+      });
+    }
+    if (showNotification) {
+      const fontName = subFontFamily.split(',')[0].replace(/['"]/g, '').trim();
+      showToast(`Subtitle: ${subCustomSize}px | ${fontName}`);
+    }
+  }
+
   function applySubSize(index) {
-    subSizes.forEach(s => subtitleContainer.classList.remove(s.cls));
-    const size = subSizes[index];
-    subtitleContainer.classList.add(size.cls);
-    if (btnSubSize) btnSubSize.textContent = `Font Size (${size.label})`;
+    if (index >= 0 && index < subSizes.length) {
+      subCustomSize = subSizes[index].size || 28;
+      saveSubtitleAppearance(false);
+    }
   }
 
   function cycleSubSize() {
-    currentSubSizeIdx = (currentSubSizeIdx + 1) % subSizes.length;
-    applySubSize(currentSubSizeIdx);
-    window.WordTapAPI.saveConfig({ subSizeIdx: currentSubSizeIdx });
-    showToast(`Subtitle: ${subSizes[currentSubSizeIdx].label}`);
+    const presetSizes = [22, 28, 36, 44];
+    const currentIdx = presetSizes.indexOf(subCustomSize);
+    const nextIdx = (currentIdx + 1) % presetSizes.length;
+    subCustomSize = presetSizes[nextIdx];
+    saveSubtitleAppearance(true);
+  }
+
+  function adjustSubCustomSize(delta) {
+    subCustomSize = Math.max(14, Math.min(72, subCustomSize + delta));
+    saveSubtitleAppearance(true);
+  }
+
+  function syncSubStyleModalUI() {
+    if (!subtitleStyleModal) return;
+    if (subSelectFont) subSelectFont.value = subFontFamily;
+    if (subSizeSlider) subSizeSlider.value = subCustomSize;
+    if (subSizeInput) subSizeInput.value = subCustomSize;
+    if (subOffsetSlider) subOffsetSlider.value = subBottomOffset;
+    if (subOffsetValue) subOffsetValue.textContent = `${subBottomOffset}px`;
+
+    // Presets buttons
+    document.querySelectorAll('.sub-preset-btn').forEach(btn => {
+      const sz = parseInt(btn.getAttribute('data-size'), 10);
+      btn.classList.toggle('active', sz === subCustomSize);
+    });
+
+    // Color pills
+    document.querySelectorAll('.sub-color-pill').forEach(pill => {
+      const col = pill.getAttribute('data-color');
+      const isMatch = col && col.toLowerCase() === subTextColor.toLowerCase();
+      pill.classList.toggle('active', isMatch);
+    });
+    if (subCustomColor) subCustomColor.value = subTextColor;
+
+    // Background control buttons
+    if (subBgStyleControl) {
+      subBgStyleControl.querySelectorAll('.segment-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-bg') === subBgStyle);
+      });
+    }
+
+    // Weight control buttons
+    if (subWeightControl) {
+      subWeightControl.querySelectorAll('.segment-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-weight') === subFontWeight);
+      });
+    }
+  }
+
+  function openSubtitleStyleModal() {
+    closeAllMenus();
+    if (subtitleStyleModal) {
+      syncSubStyleModalUI();
+      subtitleStyleModal.classList.add('open');
+    }
+  }
+
+  function closeSubtitleStyleModal() {
+    if (subtitleStyleModal) {
+      subtitleStyleModal.classList.remove('open');
+    }
   }
 
   // Subtitle Parsing (.srt, .vtt)
@@ -1907,6 +2041,9 @@
       }
     });
     bindMenuItem('menu-item-sub-vlsub', openVLsubModal);
+    bindMenuItem('menu-item-sub-style', openSubtitleStyleModal);
+    bindMenuItem('menu-item-sub-size-plus', () => adjustSubCustomSize(2));
+    bindMenuItem('menu-item-sub-size-minus', () => adjustSubCustomSize(-2));
     bindMenuItem('menu-item-toggle-sub', () => {
       subtitlesVisible = !subtitlesVisible;
       btnToggleSub.classList.toggle('active', subtitlesVisible);
@@ -1937,6 +2074,116 @@
 
     // Subtitle Size
     btnSubSize.addEventListener('click', cycleSubSize);
+
+    // Subtitle Style & Customization Modal Controls
+    if (btnOpenSubStyleFromOptions) {
+      btnOpenSubStyleFromOptions.addEventListener('click', () => {
+        accountModal.classList.remove('open');
+        openSubtitleStyleModal();
+      });
+    }
+    if (btnCloseSubStyle) btnCloseSubStyle.addEventListener('click', closeSubtitleStyleModal);
+    if (btnSubApplyClose) btnSubApplyClose.addEventListener('click', closeSubtitleStyleModal);
+
+    if (subSelectFont) {
+      subSelectFont.addEventListener('change', (e) => {
+        subFontFamily = e.target.value;
+        saveSubtitleAppearance(false);
+      });
+    }
+
+    if (subSizeSlider) {
+      subSizeSlider.addEventListener('input', (e) => {
+        subCustomSize = parseInt(e.target.value, 10) || 28;
+        if (subSizeInput) subSizeInput.value = subCustomSize;
+        saveSubtitleAppearance(false);
+      });
+    }
+
+    if (subSizeInput) {
+      subSizeInput.addEventListener('change', (e) => {
+        const val = Math.max(14, Math.min(72, parseInt(e.target.value, 10) || 28));
+        subCustomSize = val;
+        subSizeInput.value = val;
+        if (subSizeSlider) subSizeSlider.value = val;
+        saveSubtitleAppearance(false);
+      });
+    }
+
+    // Size preset buttons
+    document.querySelectorAll('.sub-preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        subCustomSize = parseInt(btn.getAttribute('data-size'), 10) || 28;
+        saveSubtitleAppearance(false);
+      });
+    });
+
+    // Color pills
+    document.querySelectorAll('.sub-color-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        subTextColor = pill.getAttribute('data-color') || '#FFFFFF';
+        saveSubtitleAppearance(false);
+      });
+    });
+
+    if (subCustomColor) {
+      subCustomColor.addEventListener('input', (e) => {
+        subTextColor = e.target.value;
+        saveSubtitleAppearance(false);
+      });
+    }
+
+    // Background control
+    if (subBgStyleControl) {
+      subBgStyleControl.querySelectorAll('.segment-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          subBgStyle = btn.getAttribute('data-bg') || 'none';
+          saveSubtitleAppearance(false);
+        });
+      });
+    }
+
+    // Weight control
+    if (subWeightControl) {
+      subWeightControl.querySelectorAll('.segment-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          subFontWeight = btn.getAttribute('data-weight') || '700';
+          saveSubtitleAppearance(false);
+        });
+      });
+    }
+
+    // Vertical Offset slider
+    if (subOffsetSlider) {
+      subOffsetSlider.addEventListener('input', (e) => {
+        subBottomOffset = parseInt(e.target.value, 10) || 46;
+        if (subOffsetValue) subOffsetValue.textContent = `${subBottomOffset}px`;
+        saveSubtitleAppearance(false);
+      });
+    }
+
+    // Reset Defaults
+    if (btnSubResetDefaults) {
+      btnSubResetDefaults.addEventListener('click', () => {
+        subCustomSize = 28;
+        subFontFamily = 'Arial, "Trebuchet MS", sans-serif';
+        subTextColor = '#FFFFFF';
+        subBgStyle = 'none';
+        subFontWeight = '700';
+        subBottomOffset = 46;
+        saveSubtitleAppearance(true);
+        showToast('Subtitle style reset to default');
+      });
+    }
+
+    // Preview words interactive click
+    const previewWords = document.querySelectorAll('#sub-style-preview-stage .wt-word');
+    previewWords.forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onWordClick(el, { text: "You're my new partner. That's right!" });
+      });
+    });
 
     // Shortcuts Help Modal
     btnHelp.addEventListener('click', () => helpModal.classList.add('open'));
@@ -2353,7 +2600,9 @@
     window.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
         if (e.code === 'Escape') {
-          if (vlsubModal && vlsubModal.classList.contains('open')) {
+          if (subtitleStyleModal && subtitleStyleModal.classList.contains('open')) {
+            closeSubtitleStyleModal();
+          } else if (vlsubModal && vlsubModal.classList.contains('open')) {
             closeVLsubModal();
           }
         }
@@ -2368,12 +2617,36 @@
         return;
       }
 
+      if (e.altKey && e.code === 'KeyS') {
+        e.preventDefault();
+        if (subtitleStyleModal && subtitleStyleModal.classList.contains('open')) {
+          closeSubtitleStyleModal();
+        } else {
+          openSubtitleStyleModal();
+        }
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+        e.preventDefault();
+        adjustSubCustomSize(2);
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && (e.key === '-' || e.key === '_')) {
+        e.preventDefault();
+        adjustSubCustomSize(-2);
+        return;
+      }
+
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
       } else if (e.code === 'Escape') {
         closeAllMenus();
-        if (vlsubModal && vlsubModal.classList.contains('open')) {
+        if (subtitleStyleModal && subtitleStyleModal.classList.contains('open')) {
+          closeSubtitleStyleModal();
+        } else if (vlsubModal && vlsubModal.classList.contains('open')) {
           closeVLsubModal();
         } else if (wordPopover.classList.contains('visible')) {
           closePopover(true);

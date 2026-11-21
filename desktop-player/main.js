@@ -538,7 +538,13 @@ ipcMain.handle('storage:get-config', async () => {
     playbackSpeed: 1,
     subtitleDelayMs: 0,
     volume: 1.0,
-    subSizeIdx: 1
+    subSizeIdx: 1,
+    subCustomSize: 28,
+    subFontFamily: 'Arial, "Trebuchet MS", sans-serif',
+    subTextColor: '#FFFFFF',
+    subBgStyle: 'none',
+    subFontWeight: '700',
+    subBottomOffset: 46
   });
   cfg.subtitleDelayMs = 0; // Always initialize subtitle sync at 0ms
   return cfg;

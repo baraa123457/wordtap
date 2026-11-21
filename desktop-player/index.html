@@ -113,6 +113,10 @@
                 <span>Download Subtitles (VLsub)</span>
               </button>
               <div class="vlc-dropdown-sep"></div>
+              <button class="vlc-dropdown-item highlight-action" id="menu-item-sub-style">
+                <span>🎨 Subtitle Style & Options...</span>
+                <kbd>Alt+S</kbd>
+              </button>
               <button class="vlc-dropdown-item" id="menu-item-toggle-sub">
                 <span>Toggle Subtitles</span>
                 <kbd>C</kbd>
@@ -121,6 +125,15 @@
                 <span>Font Size (A)</span>
                 <kbd>A</kbd>
               </button>
+              <button class="vlc-dropdown-item" id="menu-item-sub-size-plus">
+                <span>Font Size +2px</span>
+                <kbd>Ctrl+=</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-sub-size-minus">
+                <span>Font Size -2px</span>
+                <kbd>Ctrl+-</kbd>
+              </button>
+              <div class="vlc-dropdown-sep"></div>
               <button class="vlc-dropdown-item" id="menu-item-sub-delay-plus">
                 <span>Delay +100ms</span>
                 <kbd>]</kbd>
@@ -476,6 +489,12 @@
               <span>Pause film when clicking a word</span>
             </label>
           </div>
+
+          <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+            <button type="button" class="btn-vlc-primary" id="btn-open-sub-style-from-options" style="width: 100%; justify-content: center; font-size: 12.5px; padding: 7px 12px;">
+              <span>🎨 Customize Subtitle Fonts & Size...</span>
+            </button>
+          </div>
         </div>
 
         <div id="account-logged-out-view">
@@ -615,6 +634,141 @@
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subtitle Style & Customization Modal -->
+    <div class="modal-overlay" id="subtitle-style-modal">
+      <div class="modal-card sub-style-card">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FACC3B" stroke-width="2">
+              <path d="M4 7V4h16v3M9 20h6M12 4v16"/>
+            </svg>
+            <h3 style="margin: 0;">Subtitle Style & Options</h3>
+          </div>
+          <button class="modal-close-btn" id="btn-close-sub-style">✕</button>
+        </div>
+
+        <!-- Live Subtitle Preview Area -->
+        <div class="sub-style-preview-box">
+          <div class="sub-style-preview-label">Live Preview</div>
+          <div class="sub-style-preview-stage" id="sub-style-preview-stage">
+            <div class="subtitle-line" id="sub-style-preview-line">
+              <span class="wt-word" data-word="you're">You're</span>
+              <span class="wt-word" data-word="my">my</span>
+              <span class="wt-word" data-word="new">new</span>
+              <span class="wt-word" data-word="partner">partner</span><span class="wt-punct">.</span>
+              <span class="wt-word" data-word="that's">That's</span>
+              <span class="wt-word" data-word="right">right</span><span class="wt-punct">!</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sub-style-controls-grid">
+          <!-- Font Family Row -->
+          <div class="sub-style-group">
+            <label class="sub-style-label" for="sub-select-font">Font Family</label>
+            <select id="sub-select-font" class="sub-style-select">
+              <option value='Arial, "Trebuchet MS", sans-serif'>Arial (Classic Cinema)</option>
+              <option value='"Trebuchet MS", Arial, sans-serif'>Trebuchet MS (Rounded / Readable)</option>
+              <option value='"Segoe UI", Tahoma, sans-serif'>Segoe UI (Windows System)</option>
+              <option value='Roboto, Inter, -apple-system, sans-serif'>Roboto / Inter (Modern Sans)</option>
+              <option value='Verdana, Geneva, sans-serif'>Verdana (Wide High Legibility)</option>
+              <option value='Tahoma, Arial, sans-serif'>Tahoma (Clean Compact)</option>
+              <option value='Impact, "Arial Black", sans-serif'>Impact (Heavy Cinema Caps)</option>
+              <option value='Cairo, "Segoe UI", Arial, sans-serif'>Cairo (Arabic & English)</option>
+              <option value='Georgia, "Times New Roman", serif'>Georgia (Elegant Serif)</option>
+              <option value='"Courier New", Consolas, monospace'>Courier New (Typewriter / Monospace)</option>
+            </select>
+          </div>
+
+          <!-- Font Size (Custom Slider + Number + Presets) -->
+          <div class="sub-style-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="sub-style-label" for="sub-size-slider">Font Size</label>
+              <div class="sub-size-display-wrap">
+                <input type="number" id="sub-size-input" class="sub-num-input" min="14" max="64" value="28">
+                <span style="font-size: 11px; color: #888;">px</span>
+              </div>
+            </div>
+            <input type="range" id="sub-size-slider" class="sub-range-slider" min="14" max="64" value="28" step="1">
+            <div class="sub-presets-row">
+              <button type="button" class="sub-preset-btn" data-size="22">Compact (22px)</button>
+              <button type="button" class="sub-preset-btn active" data-size="28">Standard (28px)</button>
+              <button type="button" class="sub-preset-btn" data-size="36">Large (36px)</button>
+              <button type="button" class="sub-preset-btn" data-size="44">Cinema (44px)</button>
+            </div>
+          </div>
+
+          <!-- Text Color & Custom Color Picker -->
+          <div class="sub-style-group">
+            <label class="sub-style-label">Text Color</label>
+            <div class="sub-colors-wrap">
+              <button type="button" class="sub-color-pill active" data-color="#FFFFFF" style="background: #FFFFFF;" title="White"></button>
+              <button type="button" class="sub-color-pill" data-color="#FFE600" style="background: #FFE600;" title="Bright Yellow"></button>
+              <button type="button" class="sub-color-pill" data-color="#FFD23F" style="background: #FFD23F;" title="Gold Yellow"></button>
+              <button type="button" class="sub-color-pill" data-color="#00FFCC" style="background: #00FFCC;" title="Cyan"></button>
+              <button type="button" class="sub-color-pill" data-color="#A3E635" style="background: #A3E635;" title="Lime Green"></button>
+              <button type="button" class="sub-color-pill" data-color="#FFAA00" style="background: #FFAA00;" title="Amber"></button>
+              <div class="custom-color-picker-wrap" title="Pick custom color">
+                <input type="color" id="sub-custom-color" value="#FFFFFF" class="color-picker-input">
+                <span class="custom-color-label">Custom</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Background Box Style -->
+          <div class="sub-style-group">
+            <label class="sub-style-label">Background Style</label>
+            <div class="segmented-control" id="sub-bg-style-control">
+              <button type="button" class="segment-btn active" data-bg="none">
+                <span>None (Clear)</span>
+              </button>
+              <button type="button" class="segment-btn" data-bg="translucent">
+                <span>Box (65%)</span>
+              </button>
+              <button type="button" class="segment-btn" data-bg="solid">
+                <span>Solid (100%)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Font Weight -->
+          <div class="sub-style-group">
+            <label class="sub-style-label">Font Weight</label>
+            <div class="segmented-control" id="sub-weight-control">
+              <button type="button" class="segment-btn active" data-weight="700">
+                <span>Bold (700)</span>
+              </button>
+              <button type="button" class="segment-btn" data-weight="600">
+                <span>Medium (600)</span>
+              </button>
+              <button type="button" class="segment-btn" data-weight="400">
+                <span>Normal (400)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Vertical Position Offset -->
+          <div class="sub-style-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="sub-style-label" for="sub-offset-slider">Bottom Position Offset</label>
+              <span id="sub-offset-value" style="font-size: 12px; font-weight: 700; color: #fff;">46px</span>
+            </div>
+            <input type="range" id="sub-offset-slider" class="sub-range-slider" min="10" max="140" value="46" step="2">
+            <div style="font-size: 10.5px; color: #888; margin-top: 2px;">Adjust to place subtitles cleanly over or under letterbox black bars.</div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+          <button type="button" class="vlc-ctrl-btn" id="btn-sub-reset-defaults" style="padding: 6px 14px; font-size: 12px; color: #aaa;">
+            Reset to Defaults
+          </button>
+          <button type="button" class="btn-vlc-primary" id="btn-sub-apply-close" style="padding: 6px 20px;">
+            Done
+          </button>
         </div>
       </div>
     </div>
