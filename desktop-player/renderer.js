@@ -156,19 +156,35 @@
   let currentSubFileName = null;
   let currentSubContent = null;
   let lastSessionSaveTime = 0;
+  let activeSavedTime = 0;
 
-  function saveCurrentMediaSession() {
-    if (!currentFilePath || !window.WordTapAPI || !window.WordTapAPI.saveMediaSession) return;
+  function saveCurrentMediaSession(isSync = false) {
+    if (!currentFilePath || !window.WordTapAPI) return;
+    
+    let curTime = 0;
+    if (video && !isNaN(video.currentTime) && video.currentTime > 0) {
+      curTime = video.currentTime;
+      activeSavedTime = curTime;
+    } else if (activeSavedTime > 0) {
+      curTime = activeSavedTime;
+    }
+
+    const sessionData = {
+      filePath: currentFilePath,
+      fileName: currentMediaTitle,
+      subPath: currentSubPath,
+      subFileName: currentSubFileName,
+      subContent: currentSubContent,
+      subtitleDelayMs: subtitleDelayMs,
+      savedTime: curTime
+    };
+
     try {
-      window.WordTapAPI.saveMediaSession({
-        filePath: currentFilePath,
-        fileName: currentMediaTitle,
-        subPath: currentSubPath,
-        subFileName: currentSubFileName,
-        subContent: currentSubContent,
-        subtitleDelayMs: subtitleDelayMs,
-        savedTime: (video && !isNaN(video.currentTime)) ? video.currentTime : 0
-      });
+      if (isSync && window.WordTapAPI.saveMediaSessionSync) {
+        window.WordTapAPI.saveMediaSessionSync(sessionData);
+      } else if (window.WordTapAPI.saveMediaSession) {
+        window.WordTapAPI.saveMediaSession(sessionData);
+      }
     } catch (e) {
       console.warn('Failed to save media session:', e);
     }
@@ -649,8 +665,9 @@
             );
             hideLoginGate();
             if (initFile.isRestoredSession) {
-              const syncStr = (initFile.subtitleDelayMs !== 0) ? ` (Sync: ${initFile.subtitleDelayMs > 0 ? '+' : ''}${initFile.subtitleDelayMs}ms)` : '';
-              showToast(`Resumed: ${initFile.fileName}${syncStr}`);
+              const timeFormatted = formatTime(initFile.savedTime || 0);
+              const syncStr = (initFile.subtitleDelayMs !== 0) ? ` | Sync: ${initFile.subtitleDelayMs > 0 ? '+' : ''}${initFile.subtitleDelayMs}ms` : '';
+              showToast(`Resumed at ${timeFormatted}${syncStr}`);
             }
           }
         } catch (err) {
@@ -1276,6 +1293,7 @@
     liveAudioResyncing = false;
     audioDelayMs = 0;
     subtitleDelayMs = typeof initSubDelay === 'number' ? initSubDelay : 0;
+    activeSavedTime = (typeof savedTime === 'number' && savedTime > 0) ? savedTime : 0;
     updateSyncDelayUI();
 
     if (compatibleAudio) {
@@ -1304,18 +1322,7 @@
       currentSubFileName = null;
     }
 
-    if (savedTime && savedTime > 0) {
-      const onMeta = () => {
-        video.removeEventListener('loadedmetadata', onMeta);
-        if (video.duration && savedTime < video.duration) {
-          video.currentTime = savedTime;
-        }
-      };
-      video.addEventListener('loadedmetadata', onMeta);
-    }
-
-    saveCurrentMediaSession();
-    showToast(fileName);
+    const targetSeek = activeSavedTime;
 
     // Automatic Dolby AC3 / E-AC3 / DTS Audio Stream Probing & Real-Time Transcoding
     if (filePath && window.WordTapAPI && window.WordTapAPI.probeAudio) {
@@ -1324,8 +1331,15 @@
         if (info && info.needsTranscode) {
           const codecName = (info.codecs && info.codecs.length > 0) ? info.codecs.join('/') : 'DDP 5.1';
           showToast(`Audio: Dolby ${codecName}`);
-          video.currentTime = 0;
-          await startLiveAudioStream(0);
+          try { video.currentTime = targetSeek; } catch (e) {}
+          await startLiveAudioStream(targetSeek);
+          const p = video.play();
+          if (p !== undefined) {
+            p.catch((err) => {
+              console.warn('Autoplay warning:', err);
+              audioUnmuteBanner.style.display = 'block';
+            });
+          }
           return;
         }
       } catch (e) {
@@ -1334,6 +1348,18 @@
     }
 
     // Default play for standard native audio formats (AAC, MP3, etc.)
+    if (targetSeek > 0) {
+      if (video.readyState >= 1) {
+        try { video.currentTime = targetSeek; } catch (e) {}
+      } else {
+        const onLoaded = () => {
+          video.removeEventListener('loadedmetadata', onLoaded);
+          try { video.currentTime = targetSeek; } catch (e) {}
+        };
+        video.addEventListener('loadedmetadata', onLoaded);
+      }
+    }
+
     const playPromise = video.play();
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
@@ -1375,17 +1401,18 @@
         // Hardware-lock event: Align video frame to the audio stream's exact presentation time the instant sound begins!
         const onAudioPlaying = () => {
           compatibleAudio.removeEventListener('playing', onAudioPlaying);
-          if (isAudioTranscoded && !video.paused) {
+          if (isAudioTranscoded) {
             const elapsed = compatibleAudio.currentTime || 0;
             video.currentTime = Math.max(0, audioStreamStartTime + elapsed + (audioDelayMs / 1000));
+            if (video.paused) {
+              video.play().catch(() => {});
+            }
           }
         };
         compatibleAudio.addEventListener('playing', onAudioPlaying);
 
-        if (!video.paused) {
-          const p = compatibleAudio.play();
-          if (p !== undefined) p.catch(() => {});
-        }
+        const p = compatibleAudio.play();
+        if (p !== undefined) p.catch(() => {});
         showToast('Audio: Dolby Digital Plus 5.1 (Direct)');
 
         // Start active precision lip-sync loop (100ms interval)
@@ -2071,11 +2098,11 @@
       // Continuous sample-accurate audio sync
       syncAudioWithVideo();
 
-      // Periodic media session persistence (every 4s)
+      // Periodic media session persistence (every 2s)
       const now = Date.now();
-      if (now - lastSessionSaveTime > 4000) {
+      if (now - lastSessionSaveTime > 2000) {
         lastSessionSaveTime = now;
-        saveCurrentMediaSession();
+        saveCurrentMediaSession(false);
       }
 
       // Check Subtitles
@@ -2308,12 +2335,18 @@
       }
     });
 
-    // Session Persistence on Unload and Pause
+    // Session Persistence on Unload, Pause, and Seek
     window.addEventListener('beforeunload', () => {
-      saveCurrentMediaSession();
+      saveCurrentMediaSession(true);
+    });
+    window.addEventListener('unload', () => {
+      saveCurrentMediaSession(true);
     });
     video.addEventListener('pause', () => {
-      saveCurrentMediaSession();
+      saveCurrentMediaSession(false);
+    });
+    video.addEventListener('seeked', () => {
+      saveCurrentMediaSession(false);
     });
 
     // Keyboard Shortcuts

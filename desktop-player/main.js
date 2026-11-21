@@ -189,7 +189,7 @@ function prepareFilePayload(filePath) {
     const stat = fs.statSync(resolvedPath);
     if (!stat.isFile()) return null;
 
-    // Check media history first to see if a subtitle and sync offset were previously chosen
+    // Check media history first to see if a subtitle, sync offset, and playback position were previously saved
     const cfg = readJsonFile(CONFIG_FILE, {});
     const history = (cfg.mediaHistory && cfg.mediaHistory[resolvedPath]) || null;
 
@@ -198,13 +198,15 @@ function prepareFilePayload(filePath) {
     let subtitleDelayMs = 0;
     let savedTime = 0;
 
-    if (history && history.subPath && fs.existsSync(history.subPath)) {
-      subFile = history.subPath;
-      try {
-        subContent = fs.readFileSync(subFile, 'utf-8');
-        subtitleDelayMs = typeof history.subtitleDelayMs === 'number' ? history.subtitleDelayMs : 0;
-        savedTime = typeof history.savedTime === 'number' ? history.savedTime : 0;
-      } catch {}
+    if (history) {
+      subtitleDelayMs = typeof history.subtitleDelayMs === 'number' ? history.subtitleDelayMs : 0;
+      savedTime = typeof history.savedTime === 'number' ? history.savedTime : 0;
+      if (history.subPath && fs.existsSync(history.subPath)) {
+        subFile = history.subPath;
+        try {
+          subContent = fs.readFileSync(subFile, 'utf-8');
+        } catch {}
+      }
     }
 
     // If no previous subtitle from history, look for adjacent subtitle file next to video
@@ -384,9 +386,8 @@ ipcMain.handle('app:get-initial-file', async () => {
   return null;
 });
 
-// IPC: Media Session & Subtitle Sync Persistence
-ipcMain.handle('app:save-media-session', async (_event, sessionData) => {
-  if (!sessionData || !sessionData.filePath) return { ok: false };
+function persistMediaSession(sessionData) {
+  if (!sessionData || !sessionData.filePath) return false;
   try {
     const cfg = readJsonFile(CONFIG_FILE, {});
     if (!cfg.mediaHistory) cfg.mediaHistory = {};
@@ -410,11 +411,22 @@ ipcMain.handle('app:save-media-session', async (_event, sessionData) => {
     };
 
     writeJsonFile(CONFIG_FILE, cfg);
-    return { ok: true };
+    return true;
   } catch (err) {
     console.error('Error saving media session:', err);
-    return { ok: false, error: err.message };
+    return false;
   }
+}
+
+// IPC: Media Session & Subtitle Sync Persistence
+ipcMain.handle('app:save-media-session', async (_event, sessionData) => {
+  const ok = persistMediaSession(sessionData);
+  return { ok };
+});
+
+ipcMain.on('app:save-media-session-sync', (event, sessionData) => {
+  const ok = persistMediaSession(sessionData);
+  event.returnValue = ok;
 });
 
 ipcMain.handle('app:get-media-history', async (_event, filePath) => {
