@@ -727,10 +727,17 @@ async function saveWord(entry) {
   if (!entry || !entry.text || !isValidWordToSave(entry.text)) {
     return { ok: false, error: "Invalid word" };
   }
+  const { session } = await chrome.storage.local.get("session");
+  if (!session) {
+    return {
+      ok: false,
+      error: "Failed to save · Please sign in to WordTap",
+      cloud: "signed-out",
+      notSignedIn: true,
+    };
+  }
   await saveLocal(entry);
   if (!configured()) return { ok: true, cloud: "local" };
-  const { session } = await chrome.storage.local.get("session");
-  if (!session) return { ok: true, cloud: "signed-out" };
   try {
     await flush();
     // A run that started before this tap won't include it; run once more if needed.

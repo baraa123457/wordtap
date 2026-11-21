@@ -180,8 +180,8 @@
   const SAVE_NOTES = {
     synced:       { text: "✓ Saved to your WordTap account", warn: false },
     queued:       { text: "✓ Saved · will sync when online", warn: true },
-    "signed-out": { text: "✓ Saved here · sign in to sync", warn: true },
-    local:        { text: "✓ Saved on this device", warn: true }
+    "signed-out": { text: "Failed to save · Please sign in to WordTap", warn: true },
+    local:        { text: "Failed to save · Please sign in to WordTap", warn: true }
   };
 
   // ── Context Validity Helper (prevents "Extension context invalidated") ────
@@ -1287,12 +1287,13 @@
     const currentToken = token ?? tipToken;
     safeSendMessage({ type: "save", entry }, (saved) => {
       if (!isContextValid() || currentToken !== tipToken) return;
-      if (!saved || !saved.ok) {
-        setStatus("Could not save word", true);
+      if (!saved || !saved.ok || saved.cloud === "signed-out") {
+        const msg = (saved && saved.error) || "Failed to save · Please sign in";
+        setStatus(msg, true);
         return;
       }
       savedWordsSet.add(normWord(entry.text));
-      const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+      const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.synced;
       setStatus(note.text, note.warn);
       saveBtn.hidden = true;
     });
@@ -1382,12 +1383,19 @@
     setStatus("Saving…", false);
     safeSendMessage({ type: "save", entry: lastEntry }, (saved) => {
       if (!isContextValid()) return;
-      if (!saved || !saved.ok) {
-        setStatus("Could not save word", true);
+      if (!saved || !saved.ok || saved.cloud === "signed-out") {
+        const msg = (saved && saved.error) || "Failed to save · Please sign in";
+        setStatus(msg, true);
         setSaveBtnState(false);
+        saveBtn.innerHTML = `⚠️ Failed to save`;
+        setTimeout(() => {
+          if (!saveBtn.classList.contains("saved")) {
+            setSaveBtnState(false);
+          }
+        }, 2500);
         return;
       }
-      const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+      const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.synced;
       setStatus(note.text, note.warn);
       setSaveBtnState(true);
       savedWordsSet.add(normWord(lastEntry.text));
@@ -1476,13 +1484,15 @@
       setStatus("Saving…", false);
       safeSendMessage({ type: "save", entry: lastEntry }, (saved) => {
         if (!isContextValid()) return;
-        if (saved && saved.ok) {
+        if (saved && saved.ok && saved.cloud !== "signed-out") {
           savedWordsSet.add(normWord(lastEntry.text));
-          const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+          const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.synced;
           setStatus(note.text, note.warn);
           setSaveBtnState(true);
         } else {
-          setStatus("Could not save word", true);
+          const msg = (saved && saved.error) || "Failed to save · Please sign in";
+          setStatus(msg, true);
+          setSaveBtnState(false);
         }
       });
     }

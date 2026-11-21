@@ -54,9 +54,9 @@
   // What the tooltip says about where a saved word went.
   const SAVE_NOTES = {
     synced: { text: "✓ Saved to your WordTap account", warn: false },
-    queued: { text: "✓ Saved here · will sync when you're online", warn: true },
-    "signed-out": { text: "✓ Saved here · sign in from the toolbar icon to sync", warn: true },
-    local: { text: "✓ Saved on this device", warn: true },
+    queued: { text: "✓ Saved · will sync when online", warn: true },
+    "signed-out": { text: "Failed to save · Please sign in to WordTap", warn: true },
+    local: { text: "Failed to save · Please sign in to WordTap", warn: true },
   };
 
   function isContextValid() {
@@ -393,12 +393,17 @@
           safeSendMessage({ type: "history:add", entry: currentPendingEntry });
           safeSendMessage({ type: "save", entry: currentPendingEntry }, (saved) => {
             if (!isContextValid()) return;
-            if (saved && saved.ok) {
+            if (saved && saved.ok && saved.cloud !== "signed-out") {
               savedWordsSet.add(normWord(newText));
-              const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+              const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.synced;
               setNote(note.text, note.warn);
               saveBtn.classList.add("saved");
               saveBtn.textContent = "✓ In your words";
+            } else {
+              saveBtn.classList.remove("saved");
+              saveBtn.textContent = "⭐ + Save to My Words";
+              const msg = (saved && saved.error) || "Failed to save · Please sign in";
+              setNote(msg, true);
             }
           });
         }
@@ -458,12 +463,17 @@
       setNote("Saving…", false);
       safeSendMessage({ type: "save", entry: currentPendingEntry }, (saved) => {
         if (!isContextValid()) return;
-        if (saved && saved.ok) {
+        if (saved && saved.ok && saved.cloud !== "signed-out") {
           savedWordsSet.add(normWord(currentPendingEntry.text));
-          const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+          const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.synced;
           setNote(note.text, note.warn);
           saveBtn.classList.add("saved");
           saveBtn.textContent = "✓ In your words";
+        } else {
+          saveBtn.classList.remove("saved");
+          saveBtn.textContent = "⭐ + Save to My Words";
+          const msg = (saved && saved.error) || "Failed to save · Please sign in";
+          setNote(msg, true);
         }
       });
     }
@@ -499,16 +509,17 @@
     saveBtn.textContent = "Saving…";
     safeSendMessage({ type: "save", entry: currentPendingEntry }, (saved) => {
       if (!isContextValid()) return;
-      if (saved && saved.ok) {
+      if (saved && saved.ok && saved.cloud !== "signed-out") {
         saveBtn.classList.add("saved");
         saveBtn.textContent = "✓ In your words";
         savedWordsSet.add(normWord(currentPendingEntry.text));
-        const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+        const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.synced;
         setNote(note.text, note.warn);
       } else {
         saveBtn.classList.remove("saved");
         saveBtn.textContent = "⭐ + Save to My Words";
-        setNote("Could not save this word", true);
+        const msg = (saved && saved.error) || "Failed to save · Please sign in";
+        setNote(msg, true);
       }
     });
   });
@@ -619,12 +630,17 @@
               setNote("Saving…", false);
               safeSendMessage({ type: "save", entry: currentPendingEntry }, (saved) => {
                 if (!isContextValid()) return;
-                if (saved && saved.ok) {
+                if (saved && saved.ok && saved.cloud !== "signed-out") {
                   savedWordsSet.add(normWord(currentPendingEntry.text));
-                  const n = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+                  const n = SAVE_NOTES[saved.cloud] || SAVE_NOTES.synced;
                   setNote(n.text, n.warn);
                   saveBtn.classList.add("saved");
                   saveBtn.textContent = "✓ In your words";
+                } else {
+                  saveBtn.classList.remove("saved");
+                  saveBtn.textContent = "⭐ + Save to My Words";
+                  const msg = (saved && saved.error) || "Failed to save · Please sign in";
+                  setNote(msg, true);
                 }
               });
             } else {
@@ -1077,12 +1093,13 @@
         }
         safeSendMessage({ type: "save", entry }, (saved) => {
           if (!isContextValid() || token !== tipToken) return;
-          if (!saved || !saved.ok) {
-            setNote("Could not save this word", true);
+          if (!saved || !saved.ok || saved.cloud === "signed-out") {
+            const msg = (saved && saved.error) || "Failed to save · Please sign in";
+            setNote(msg, true);
             return;
           }
           savedWordsSet.add(normWord(entry.text));
-          const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.local;
+          const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.synced;
           setNote(note.text, note.warn);
         });
       });
