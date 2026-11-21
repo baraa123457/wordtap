@@ -19,7 +19,7 @@ import type { Stats, Word } from "@/lib/schemas";
 import { useLoad } from "@/hooks/useLoad";
 import { ErrorState } from "@/components/StateViews";
 import { MasteryDots } from "@/components/MasteryDots";
-import { FireIcon } from "@/components/Icons";
+import { ColdFireIcon, FireIcon } from "@/components/Icons";
 import { TranslatorCard } from "@/components/TranslatorCard";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
@@ -146,7 +146,7 @@ export default function DashboardPage() {
 
   const eff = useMemo(() => {
     if (!currentStats || !currentWords) {
-      return { streak: 0, todayXp: 0, practicedToday: false };
+      return { streak: 0, todayXp: 0, practicedToday: false, isCold: false, coldDaysLeft: 0 };
     }
     return effectiveStats(currentStats, todayStr, currentWords);
   }, [currentStats, todayStr, currentWords]);
@@ -324,12 +324,28 @@ export default function DashboardPage() {
           </div>
           <span className="flex items-center gap-1.5 text-xs sm:text-sm">
             {eff.streak > 0 ? (
-              <>
-                <FireIcon size={17} className="text-orange-500 animate-pulse" />
-                <span className="font-bold text-ink">
-                  {eff.streak}-day streak
-                </span>
-              </>
+              eff.isCold ? (
+                <>
+                  <ColdFireIcon size={17} className="text-cyan-400 dark:text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
+                  <span className="font-bold text-ink">
+                    {eff.streak}-day streak
+                  </span>
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-cyan-500/10 border border-cyan-500/25 px-2 py-0.5 text-[10.5px] font-extrabold text-cyan-600 dark:text-cyan-300"
+                    title={`Cold streak: You have ${eff.coldDaysLeft} ${eff.coldDaysLeft === 1 ? "day" : "days"} to practice before your streak resets.`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                    Cold · {eff.coldDaysLeft}d left
+                  </span>
+                </>
+              ) : (
+                <>
+                  <FireIcon size={17} className="text-orange-500 animate-pulse drop-shadow-[0_0_8px_rgba(249,115,22,0.4)]" />
+                  <span className="font-bold text-ink">
+                    {eff.streak}-day streak
+                  </span>
+                </>
+              )
             ) : (
               <span className="text-muted text-xs">No streak yet</span>
             )}
@@ -356,6 +372,8 @@ export default function DashboardPage() {
                 : dueCount > 0
                 ? eff.practicedToday
                   ? "Streak maintained today! Keep practicing anytime to reinforce more words."
+                  : eff.isCold
+                  ? `Your streak is cold! Review your words today to reignite your flame (${eff.coldDaysLeft} ${eff.coldDaysLeft === 1 ? "day" : "days"} left).`
                   : "Review your words now to reinforce your memory and maintain your streak."
                 : nextDue
                 ? `Next review ${formatDueIn(nextDue, now)}. Keep up the momentum!`

@@ -44,6 +44,52 @@ export function FireIcon({ size = 18, className = "" }: { size?: number; classNa
   );
 }
 
+export function ColdFireIcon({ size = 18, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={`inline-block shrink-0 ${className}`}
+      aria-hidden="true"
+    >
+      <path
+        d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"
+        fill="currentColor"
+      />
+      <circle cx="12" cy="15" r="1.2" fill="#ffffff" />
+      <path d="M12 11.5v7M8.5 15h7M9.5 12.5l5 5M9.5 17.5l5-5" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function SnowflakeIcon({ size = 18, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`inline-block shrink-0 ${className}`}
+      aria-hidden="true"
+    >
+      <line x1="12" y1="2" x2="12" y2="22" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+      <line x1="19.07" y1="4.93" x2="4.93" y2="19.07" />
+      <polyline points="10 4 12 2 14 4" />
+      <polyline points="10 20 12 22 14 20" />
+      <polyline points="4 10 2 12 4 14" />
+      <polyline points="20 10 22 12 20 14" />
+    </svg>
+  );
+}
+
 export function SunIcon({ size = 18 }: { size?: number }) {
   return (
     <svg {...base} width={size} height={size}>
