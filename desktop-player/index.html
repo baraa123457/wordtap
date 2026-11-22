@@ -179,6 +179,11 @@
                 <span style="font-weight:600;">VLsub</span>
               </button>
               <div class="vlc-dropdown-sep"></div>
+              <button class="vlc-dropdown-item" id="menu-item-theme-toggle">
+                <span id="menu-theme-text">Toggle Light / Dark Mode</span>
+                <kbd>T</kbd>
+              </button>
+              <div class="vlc-dropdown-sep"></div>
               <button class="vlc-dropdown-item" id="menu-item-fs">
                 <span>Fullscreen Interface</span>
                 <kbd>F</kbd>
@@ -220,6 +225,25 @@
         <button class="user-account-badge" id="btn-account">
           <span class="account-dot" id="account-status-dot"></span>
           <span id="account-label">WordTap Sync</span>
+        </button>
+
+        <!-- Theme Toggle Button (Light / Dark Mode) -->
+        <button class="user-account-badge" id="btn-theme-toggle" title="Switch Theme (Light / Dark) [T]" aria-label="Toggle light or dark theme">
+          <svg class="theme-icon-sun" id="theme-icon-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="theme-icon-moon" id="theme-icon-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <span id="theme-label" style="font-size:11px;font-weight:600;">Theme</span>
         </button>
       </div>
     </div>
@@ -425,21 +449,22 @@
           <button class="modal-close-btn" id="btn-close-help">✕</button>
         </div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:12px; color:var(--text-secondary); margin-top:4px;">
-          <div><strong style="color:#fff;">Space</strong>: Play / Pause</div>
-          <div><strong style="color:#fff;">S</strong>: Replay Line</div>
-          <div><strong style="color:#fff;">[ / ]</strong>: Speed ±0.1x</div>
-          <div><strong style="color:#fff;">- / +</strong>: Speed ±0.5x</div>
-          <div><strong style="color:#fff;">=</strong>: Normal Speed (1.0x)</div>
-          <div><strong style="color:#fff;">M</strong>: Mute / Unmute</div>
-          <div><strong style="color:#fff;">G / H</strong>: Sub Sync ±50ms</div>
-          <div><strong style="color:#fff;">J / K</strong>: Audio Sync ±50ms</div>
-          <div><strong style="color:#fff;">A</strong>: Cycle Subtitle Size</div>
-          <div><strong style="color:#fff;">Left / Right</strong>: Seek ±5s</div>
-          <div><strong style="color:#fff;">Up / Down</strong>: Volume ±5%</div>
-          <div><strong style="color:#fff;">C</strong>: Subtitles On / Off</div>
-          <div><strong style="color:#fff;">F</strong>: Fullscreen</div>
-          <div><strong style="color:#fff;">Ctrl + O</strong>: Open Media</div>
-          <div><strong style="color:#fff;">Esc</strong>: Close Popover</div>
+          <div><strong style="color:var(--ink);">Space</strong>: Play / Pause</div>
+          <div><strong style="color:var(--ink);">S</strong>: Replay Line</div>
+          <div><strong style="color:var(--ink);">[ / ]</strong>: Speed ±0.1x</div>
+          <div><strong style="color:var(--ink);">- / +</strong>: Speed ±0.5x</div>
+          <div><strong style="color:var(--ink);">=</strong>: Normal Speed (1.0x)</div>
+          <div><strong style="color:var(--ink);">M</strong>: Mute / Unmute</div>
+          <div><strong style="color:var(--ink);">T</strong>: Light / Dark Mode</div>
+          <div><strong style="color:var(--ink);">G / H</strong>: Sub Sync ±50ms</div>
+          <div><strong style="color:var(--ink);">J / K</strong>: Audio Sync ±50ms</div>
+          <div><strong style="color:var(--ink);">A</strong>: Cycle Subtitle Size</div>
+          <div><strong style="color:var(--ink);">Left / Right</strong>: Seek ±5s</div>
+          <div><strong style="color:var(--ink);">Up / Down</strong>: Volume ±5%</div>
+          <div><strong style="color:var(--ink);">C</strong>: Subtitles On / Off</div>
+          <div><strong style="color:var(--ink);">F</strong>: Fullscreen</div>
+          <div><strong style="color:var(--ink);">Ctrl + O</strong>: Open Media</div>
+          <div><strong style="color:var(--ink);">Esc</strong>: Close Popover</div>
         </div>
       </div>
     </div>
@@ -499,6 +524,22 @@
               <input type="checkbox" id="chk-pause-on-click" />
               <span>Pause film when clicking a word</span>
             </label>
+          </div>
+
+          <!-- App Theme (Dark / Light Mode) -->
+          <div class="ext-options-header" style="margin-top: 10px;">
+            <span>APP THEME</span>
+          </div>
+          <div class="segmented-control" id="theme-segmented-control" role="radiogroup" aria-label="Theme mode" style="margin-bottom: 8px;">
+            <button type="button" class="segment-btn active" data-theme-val="dark" id="btn-theme-dark">
+              <span>🌙 Dark</span>
+            </button>
+            <button type="button" class="segment-btn" data-theme-val="light" id="btn-theme-light">
+              <span>☀️ Light</span>
+            </button>
+            <button type="button" class="segment-btn" data-theme-val="system" id="btn-theme-system">
+              <span>💻 System</span>
+            </button>
           </div>
 
           <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08);">

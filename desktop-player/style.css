@@ -62,6 +62,299 @@
   --sub-text-shadow: 2px 2px 2px #000000, -2px -2px 2px #000000, 2px -2px 2px #000000, -2px 2px 2px #000000, 0 3px 6px rgba(0, 0, 0, 0.95);
 }
 
+/* ==========================================================================
+   WordTap Light Mode: Daylight Cinema Theme
+   ========================================================================== */
+html[data-theme="light"],
+body.light-theme {
+  /* WordTap Brand Colors (Daylight Cinema) */
+  --bg: #f2f4fa;
+  --surface: #ffffff;
+  --surface-elevated: #f8f9fe;
+  --surface-glass: rgba(255, 255, 255, 0.88);
+  --surface-translucent: rgba(242, 244, 250, 0.85);
+  --ink: #12152e;
+  --muted: #5e658a;
+  --text-dim: #878ea8;
+  --line: rgba(30, 37, 80, 0.1);
+  --line-strong: rgba(30, 37, 80, 0.18);
+
+  /* Cinema Screen & Chrome */
+  --screen: #0a0c1b; /* Video display stays high-contrast theater black */
+  --bar: #ffffff;
+  --bar-glass: rgba(255, 255, 255, 0.88);
+  --screen-line: rgba(30, 37, 80, 0.12);
+  --screen-ink: #12152e;
+  --screen-muted: #5e658a;
+
+  /* Signature Subtitle Yellow / Gold Accent */
+  --subtitle: #facc3b;
+  --subtitle-edge: #d9a714;
+  --subtitle-ink: #1a1400;
+  --wt-gold: #facc3b;
+  --wt-gold-hover: #e6b823;
+  --vlc-orange: #facc3b;
+  --vlc-orange-dark: #d9a714;
+  --vlc-orange-glow: rgba(250, 204, 59, 0.35);
+
+  /* Status & Feedback */
+  --ok: #10b981;
+  --ok-soft: #ecfdf5;
+  --ok-ink: #065f46;
+  --bad: #ef4444;
+  --bad-soft: #fef2f2;
+  --bad-ink: #991b1b;
+}
+
+/* Light Theme Specific Component Polish */
+body.light-theme #top-vlc-menu {
+  background: rgba(255, 255, 255, 0.86);
+  border-bottom: 1px solid rgba(30, 37, 80, 0.08);
+  box-shadow: 0 1px 3px rgba(30, 37, 80, 0.04);
+}
+
+body.light-theme .vlc-brand-title {
+  color: #12152e;
+}
+
+body.light-theme .vlc-menu-dropdown .menu-header-btn {
+  color: #5e658a;
+}
+
+body.light-theme .vlc-menu-dropdown:hover .menu-header-btn,
+body.light-theme .vlc-menu-dropdown.open .menu-header-btn {
+  background: rgba(30, 37, 80, 0.06);
+  color: #12152e;
+}
+
+body.light-theme .vlc-dropdown-list {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(30, 37, 80, 0.1);
+  box-shadow: 0 16px 40px rgba(30, 37, 80, 0.14), 0 2px 6px rgba(30, 37, 80, 0.06);
+}
+
+body.light-theme .vlc-dropdown-item {
+  color: #12152e;
+}
+
+body.light-theme .vlc-dropdown-item:hover {
+  background: rgba(250, 204, 59, 0.22);
+  color: #12152e;
+}
+
+body.light-theme .vlc-dropdown-item kbd {
+  background: rgba(30, 37, 80, 0.06);
+  color: #5e658a;
+}
+
+body.light-theme .vlc-dropdown-sep {
+  background: rgba(30, 37, 80, 0.08);
+}
+
+body.light-theme .user-account-badge,
+body.light-theme .sync-delay-badge {
+  background: rgba(30, 37, 80, 0.05);
+  border-color: rgba(30, 37, 80, 0.1);
+  color: #12152e;
+}
+
+body.light-theme .user-account-badge:hover,
+body.light-theme .sync-delay-badge:hover {
+  background: rgba(30, 37, 80, 0.09);
+  color: #12152e;
+}
+
+body.light-theme #vlc-bottom-bar {
+  background: rgba(255, 255, 255, 0.88);
+  border-top: 1px solid rgba(30, 37, 80, 0.08);
+  box-shadow: 0 -1px 3px rgba(30, 37, 80, 0.04);
+}
+
+body.light-theme .scrubber-track {
+  background: rgba(30, 37, 80, 0.12);
+}
+
+body.light-theme .vlc-ctrl-btn {
+  background: rgba(30, 37, 80, 0.05);
+  border-color: rgba(30, 37, 80, 0.08);
+  color: #5e658a;
+}
+
+body.light-theme .vlc-ctrl-btn:hover {
+  background: rgba(30, 37, 80, 0.1);
+  border-color: rgba(30, 37, 80, 0.14);
+  color: #12152e;
+}
+
+body.light-theme .vlc-ctrl-btn.active {
+  background: rgba(250, 204, 59, 0.22);
+  border-color: rgba(250, 204, 59, 0.5);
+  color: #1a1400;
+}
+
+body.light-theme .time-display {
+  color: #5e658a;
+}
+
+body.light-theme #time-tooltip {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(30, 37, 80, 0.12);
+  color: #12152e;
+  box-shadow: 0 4px 14px rgba(30, 37, 80, 0.12);
+}
+
+body.light-theme .speed-group {
+  background: rgba(30, 37, 80, 0.05);
+  border-color: rgba(30, 37, 80, 0.08);
+}
+
+body.light-theme .speed-badge-btn {
+  color: #12152e;
+}
+
+body.light-theme .speed-step-btn {
+  color: #5e658a;
+}
+
+body.light-theme .speed-step-btn:hover {
+  color: #12152e;
+  background: rgba(30, 37, 80, 0.08);
+}
+
+body.light-theme .speed-slider {
+  background: rgba(30, 37, 80, 0.12);
+}
+
+body.light-theme .volume-slider {
+  background: rgba(30, 37, 80, 0.12);
+}
+
+body.light-theme .volume-percent-label {
+  color: #5e658a;
+}
+
+body.light-theme #word-popover {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(30, 37, 80, 0.1);
+  box-shadow: 0 20px 50px rgba(30, 37, 80, 0.16), 0 0 0 1px rgba(30, 37, 80, 0.06);
+}
+
+body.light-theme .popover-word {
+  color: #12152e;
+}
+
+body.light-theme .popover-pos {
+  background: rgba(30, 37, 80, 0.06);
+  color: #5e658a;
+  border-color: rgba(30, 37, 80, 0.1);
+}
+
+body.light-theme .popover-translation-box {
+  background: #f8f9fe;
+  border-color: rgba(30, 37, 80, 0.09);
+  color: #12152e;
+}
+
+body.light-theme .popover-translation {
+  color: #12152e;
+}
+
+body.light-theme .popover-context-box {
+  background: #f8f9fe;
+  border-color: rgba(30, 37, 80, 0.09);
+  color: #5e658a;
+}
+
+body.light-theme .modal-card {
+  background: #ffffff;
+  border-color: rgba(30, 37, 80, 0.1);
+  box-shadow: 0 24px 64px rgba(30, 37, 80, 0.18), 0 0 0 1px rgba(30, 37, 80, 0.06);
+}
+
+body.light-theme .modal-header h3 {
+  color: #12152e;
+}
+
+body.light-theme .modal-close-btn {
+  background: rgba(30, 37, 80, 0.05);
+  border-color: rgba(30, 37, 80, 0.08);
+  color: #5e658a;
+}
+
+body.light-theme .modal-close-btn:hover {
+  background: rgba(30, 37, 80, 0.1);
+  color: #12152e;
+}
+
+body.light-theme .saved-word-row {
+  background: rgba(30, 37, 80, 0.03);
+  border-color: rgba(30, 37, 80, 0.07);
+}
+
+body.light-theme .saved-word-row:hover {
+  background: rgba(30, 37, 80, 0.06);
+}
+
+body.light-theme .saved-word-orig {
+  color: #12152e;
+}
+
+body.light-theme .vlsub-input-box,
+body.light-theme .auth-input,
+body.light-theme .style-select,
+body.light-theme .style-input {
+  background: #f8f9fe;
+  border-color: rgba(30, 37, 80, 0.12);
+  color: #12152e;
+}
+
+body.light-theme .vlsub-table th {
+  background: #f0f2f8;
+  color: #5e658a;
+  border-color: rgba(30, 37, 80, 0.08);
+}
+
+body.light-theme .vlsub-table td {
+  color: #12152e;
+  border-color: rgba(30, 37, 80, 0.06);
+}
+
+body.light-theme .vlsub-table tr:hover td {
+  background: rgba(250, 204, 59, 0.14);
+}
+
+body.light-theme .auth-gate-card {
+  background: #ffffff;
+  border-color: rgba(30, 37, 80, 0.1);
+  box-shadow: 0 24px 64px rgba(30, 37, 80, 0.18);
+}
+
+body.light-theme .auth-gate-title {
+  color: #12152e;
+}
+
+body.light-theme .auth-gate-desc {
+  color: #5e658a;
+}
+
+body.light-theme .shortcut-item {
+  color: #12152e;
+}
+
+body.light-theme .shortcut-item kbd {
+  background: rgba(30, 37, 80, 0.06);
+  color: #5e658a;
+}
+
+body.light-theme .drop-card {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(30, 37, 80, 0.12);
+}
+
+body.light-theme .drop-title {
+  color: #12152e;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

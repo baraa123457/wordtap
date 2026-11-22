@@ -55,6 +55,70 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+// ---------- Theme Management (Dark / Light / Auto) ----------
+const themeToggleBtn = $("themeToggleBtn");
+const themeIconSun = $("themeIconSun");
+const themeIconMoon = $("themeIconMoon");
+const themeSegmentedControl = $("themeSegmentedControl");
+let currentTheme = "system";
+
+function applyTheme(theme) {
+  currentTheme = theme || "system";
+  let effective = currentTheme;
+  if (effective === "system") {
+    effective = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  if (effective === "light") {
+    document.documentElement.setAttribute("data-theme", "light");
+    if (themeIconSun) themeIconSun.style.display = "block";
+    if (themeIconMoon) themeIconMoon.style.display = "none";
+  } else {
+    document.documentElement.setAttribute("data-theme", "dark");
+    if (themeIconSun) themeIconSun.style.display = "none";
+    if (themeIconMoon) themeIconMoon.style.display = "block";
+  }
+
+  if (themeSegmentedControl) {
+    const buttons = themeSegmentedControl.querySelectorAll(".segment-btn");
+    buttons.forEach((btn) => {
+      const isSel = btn.dataset.themeVal === currentTheme;
+      btn.classList.toggle("active", isSel);
+      btn.setAttribute("aria-checked", isSel ? "true" : "false");
+    });
+  }
+
+  chrome.storage.local.set({ theme: currentTheme });
+}
+
+function toggleTheme() {
+  const isLight = document.documentElement.getAttribute("data-theme") === "light";
+  applyTheme(isLight ? "dark" : "light");
+}
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener("click", toggleTheme);
+}
+
+if (themeSegmentedControl) {
+  themeSegmentedControl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".segment-btn");
+    if (btn && btn.dataset.themeVal) {
+      applyTheme(btn.dataset.themeVal);
+    }
+  });
+}
+
+chrome.storage.local.get({ theme: "system" }, (res) => {
+  applyTheme(res.theme || "system");
+});
+
+if (window.matchMedia) {
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (currentTheme === "system") applyTheme("system");
+  });
+}
+
 // ---------- Master On/Off Switch ----------
 function updateEnabledUI(isEnabled) {
   const homeBody = $("homeBody");

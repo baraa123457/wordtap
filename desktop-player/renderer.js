@@ -98,6 +98,18 @@
   const chkPauseOnClick = document.getElementById('chk-pause-on-click');
   const menuItemOptions = document.getElementById('menu-item-options');
 
+  // Theme Toggle Elements
+  const btnThemeToggle = document.getElementById('btn-theme-toggle');
+  const themeIconSun = document.getElementById('theme-icon-sun');
+  const themeIconMoon = document.getElementById('theme-icon-moon');
+  const themeLabel = document.getElementById('theme-label');
+  const menuItemThemeToggle = document.getElementById('menu-item-theme-toggle');
+  const menuThemeText = document.getElementById('menu-theme-text');
+  const btnThemeDark = document.getElementById('btn-theme-dark');
+  const btnThemeLight = document.getElementById('btn-theme-light');
+  const btnThemeSystem = document.getElementById('btn-theme-system');
+  let currentTheme = 'dark';
+
   // Mandatory Login Gate Elements
   const authGateScreen = document.getElementById('auth-gate-screen');
   const gateLoginForm = document.getElementById('gate-login-form');
@@ -279,6 +291,58 @@
     }
   }
 
+  // Theme Management (Dark Cinema / Daylight Light Mode)
+  function applyTheme(themeName, showToastFeedback = false) {
+    currentTheme = themeName || 'dark';
+    let effective = currentTheme;
+    if (effective === 'system') {
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      effective = prefersDark ? 'dark' : 'light';
+    }
+
+    if (effective === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      document.body.classList.add('light-theme');
+      document.body.classList.remove('dark-theme');
+      if (themeIconSun) themeIconSun.style.display = 'block';
+      if (themeIconMoon) themeIconMoon.style.display = 'none';
+      if (themeLabel) themeLabel.textContent = 'Light';
+      if (menuThemeText) menuThemeText.textContent = 'Switch to Dark Mode';
+      if (btnThemeToggle) btnThemeToggle.title = 'Switch to Dark Mode [T]';
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.body.classList.add('dark-theme');
+      document.body.classList.remove('light-theme');
+      if (themeIconSun) themeIconSun.style.display = 'none';
+      if (themeIconMoon) themeIconMoon.style.display = 'block';
+      if (themeLabel) themeLabel.textContent = 'Dark';
+      if (menuThemeText) menuThemeText.textContent = 'Switch to Light Mode';
+      if (btnThemeToggle) btnThemeToggle.title = 'Switch to Light Mode [T]';
+    }
+
+    // Update segmented control buttons in options if present
+    if (btnThemeDark) btnThemeDark.classList.toggle('active', currentTheme === 'dark');
+    if (btnThemeLight) btnThemeLight.classList.toggle('active', currentTheme === 'light');
+    if (btnThemeSystem) btnThemeSystem.classList.toggle('active', currentTheme === 'system');
+
+    try {
+      localStorage.setItem('wordtap_theme', currentTheme);
+      if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
+        window.WordTapAPI.saveConfig({ theme: currentTheme });
+      }
+    } catch {}
+
+    if (showToastFeedback) {
+      showToast(effective === 'light' ? '☀️ Light Mode Enabled' : '🌙 Dark Mode Enabled');
+    }
+  }
+
+  function toggleTheme() {
+    const isCurrentlyLight = document.body.classList.contains('light-theme');
+    const nextTheme = isCurrentlyLight ? 'dark' : 'light';
+    applyTheme(nextTheme, true);
+  }
+
   let isAudioTranscoded = false;
   let audioStreamStartTime = 0;
   let liveAudioResyncing = false;
@@ -346,13 +410,15 @@
     // Update Slider Track Fill (VLC style with boost indicator)
     const sliderRatio = Math.min(100, Math.max(0, (userVolume / 2.0) * 100));
     if (volumeSlider) {
+      const isLight = document.body && document.body.classList.contains('light-theme');
+      const emptyBg = isLight ? 'rgba(30, 37, 80, 0.12)' : 'rgba(255, 255, 255, 0.2)';
       if (userMuted || userVolume === 0) {
-        volumeSlider.style.background = 'rgba(255, 255, 255, 0.2)';
+        volumeSlider.style.background = emptyBg;
       } else if (pct > 100) {
         // Boost portion (>100%) shown in vibrant VLC orange/amber
-        volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 50%, #ff9800 50%, #ff9800 ${sliderRatio}%, rgba(255, 255, 255, 0.2) ${sliderRatio}%, rgba(255, 255, 255, 0.2) 100%)`;
+        volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 50%, #ff9800 50%, #ff9800 ${sliderRatio}%, ${emptyBg} ${sliderRatio}%, ${emptyBg} 100%)`;
       } else {
-        volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 ${sliderRatio}%, rgba(255, 255, 255, 0.2) ${sliderRatio}%, rgba(255, 255, 255, 0.2) 100%)`;
+        volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 ${sliderRatio}%, ${emptyBg} ${sliderRatio}%, ${emptyBg} 100%)`;
       }
     }
 
@@ -734,6 +800,21 @@
       if (config && typeof config.volume === 'number' && config.volume >= 0 && config.volume <= 2.0) {
         userVolume = config.volume;
       }
+      if (config && config.theme) {
+        currentTheme = config.theme;
+      } else {
+        currentTheme = localStorage.getItem('wordtap_theme') || 'dark';
+      }
+      applyTheme(currentTheme, false);
+
+      if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+          if (currentTheme === 'system') {
+            applyTheme('system', false);
+          }
+        });
+      }
+
       syncOptionsUI();
       applySubtitleAppearance();
       updateVolumeDisplay();
@@ -2336,7 +2417,22 @@
 
     // View Menu Actions (EXACT MATCH FOR USER SCREENSHOT!)
     bindMenuItem('menu-item-vlsub', openVLsubModal);
+    bindMenuItem('menu-item-theme-toggle', toggleTheme);
     bindMenuItem('menu-item-fs', toggleFullscreen);
+
+    // Theme Toggle Controls
+    if (btnThemeToggle) {
+      btnThemeToggle.addEventListener('click', toggleTheme);
+    }
+    if (btnThemeDark) {
+      btnThemeDark.addEventListener('click', () => applyTheme('dark', true));
+    }
+    if (btnThemeLight) {
+      btnThemeLight.addEventListener('click', () => applyTheme('light', true));
+    }
+    if (btnThemeSystem) {
+      btnThemeSystem.addEventListener('click', () => applyTheme('system', true));
+    }
 
     // Help Menu Actions
     bindMenuItem('menu-item-help-shortcuts', () => helpModal.classList.add('open'));
@@ -2998,6 +3094,8 @@
         toggleFullscreen();
       } else if (e.code === 'KeyM') {
         toggleMute();
+      } else if (e.code === 'KeyT') {
+        toggleTheme();
       } else if (e.code === 'KeyS') {
         replayCurrentLine();
       } else if (e.code === 'KeyC') {
