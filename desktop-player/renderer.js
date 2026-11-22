@@ -948,18 +948,28 @@
     const fontDisplayName = getFontDisplayName(subFontFamily);
     const menuFontText = document.getElementById('menu-font-text');
     if (menuFontText) {
-      menuFontText.textContent = `Font: ${fontDisplayName}`;
+      menuFontText.textContent = `Font Type: ${fontDisplayName}`;
     }
     const menuSizeText = document.getElementById('menu-size-text');
     if (menuSizeText) {
-      menuSizeText.textContent = `Font Size (${subCustomSize}px)`;
+      menuSizeText.textContent = `Font Size: ${subCustomSize}px`;
     }
-    if (btnSubFont) {
-      btnSubFont.innerHTML = `<span>Font: ${fontDisplayName}</span><kbd>Alt+F</kbd>`;
-    }
-    if (btnSubSize) {
-      btnSubSize.innerHTML = `<span>Font Size (${subCustomSize}px)</span><kbd>Alt+A</kbd>`;
-    }
+
+    // Update active checkmarks in Font Family flyout submenu
+    const fontItems = document.querySelectorAll('.sub-font-item');
+    fontItems.forEach(item => {
+      const f = item.getAttribute('data-font');
+      const key = item.getAttribute('data-font-key');
+      const isActive = f === subFontFamily || (key && subFontFamily && subFontFamily.toLowerCase().includes(key.toLowerCase()));
+      item.classList.toggle('active', !!isActive);
+    });
+
+    // Update active checkmarks in Font Size flyout submenu
+    const sizeItems = document.querySelectorAll('.sub-size-item');
+    sizeItems.forEach(item => {
+      const sz = parseInt(item.getAttribute('data-size'), 10);
+      item.classList.toggle('active', sz === subCustomSize);
+    });
 
     syncSubStyleModalUI();
   }
@@ -2544,9 +2554,51 @@
     btnSyncPlus.addEventListener('click', () => adjustSubtitleDelay(100));
     syncDelayText.addEventListener('click', resetSubtitleDelay);
 
-    // Subtitle Font & Size
-    if (btnSubFont) btnSubFont.addEventListener('click', cycleSubFont);
-    btnSubSize.addEventListener('click', cycleSubSize);
+    // Subtitle Font & Size Actions
+    if (btnSubFont) {
+      btnSubFont.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllMenus();
+        cycleSubFont();
+      });
+    }
+    if (btnSubSize) {
+      btnSubSize.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllMenus();
+        cycleSubSize();
+      });
+    }
+
+    // Submenu Individual Font Family Items Click
+    document.querySelectorAll('.sub-font-item').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllMenus();
+        const family = btn.getAttribute('data-font');
+        if (family) {
+          subFontFamily = family;
+          saveSubtitleAppearance(true);
+        }
+      });
+    });
+
+    // Submenu Individual Font Size Items Click
+    document.querySelectorAll('.sub-size-item').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllMenus();
+        const sz = parseInt(btn.getAttribute('data-size'), 10);
+        if (!isNaN(sz)) {
+          subCustomSize = sz;
+          saveSubtitleAppearance(true);
+        }
+      });
+    });
+
+    bindMenuItem('menu-sub-size-plus-item', () => adjustSubCustomSize(2));
+    bindMenuItem('menu-sub-size-minus-item', () => adjustSubCustomSize(-2));
+    bindMenuItem('menu-sub-size-custom-item', openSubtitleStyleModal);
 
     // Subtitle Style & Customization Modal Controls
     if (btnOpenSubStyleFromOptions) {

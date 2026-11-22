@@ -162,14 +162,110 @@
                 <kbd>C</kbd>
               </button>
               <div class="vlc-dropdown-sep"></div>
-              <button class="vlc-dropdown-item" id="btn-sub-font" title="Click to cycle font family">
-                <span id="menu-font-text">Font: Arial (Classic Cinema)</span>
-                <kbd>Alt+F</kbd>
-              </button>
-              <button class="vlc-dropdown-item" id="btn-sub-size" title="Click to cycle font size presets">
-                <span id="menu-size-text">Font Size (31px)</span>
-                <kbd>Alt+A</kbd>
-              </button>
+
+              <!-- Font Type (Family) Flyout Submenu -->
+              <div class="vlc-dropdown-submenu" id="menu-sub-font-wrapper">
+                <button class="vlc-dropdown-item vlc-submenu-trigger" id="btn-sub-font" type="button" title="Select or cycle font family">
+                  <span id="menu-font-text">Font Type: Arial</span>
+                  <div class="submenu-tail">
+                    <kbd>Alt+F</kbd>
+                    <span class="vlc-submenu-arrow">›</span>
+                  </div>
+                </button>
+                <div class="vlc-submenu-list" id="menu-font-family-list" role="menu" aria-label="Font Family Options">
+                  <button class="vlc-dropdown-item sub-font-item" data-font='Arial, "Trebuchet MS", sans-serif' data-font-key="Arial" style="font-family: Arial, sans-serif;">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Arial (Classic Cinema)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-font-item" data-font='"Trebuchet MS", Arial, sans-serif' data-font-key="Trebuchet" style="font-family: 'Trebuchet MS', sans-serif;">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Trebuchet MS (Rounded)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-font-item" data-font='"Segoe UI", Tahoma, sans-serif' data-font-key="Segoe" style="font-family: 'Segoe UI', sans-serif;">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Segoe UI (Windows System)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-font-item" data-font='Roboto, Inter, -apple-system, sans-serif' data-font-key="Roboto" style="font-family: Roboto, Inter, sans-serif;">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Roboto / Inter (Modern Sans)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-font-item" data-font='Verdana, Geneva, sans-serif' data-font-key="Verdana" style="font-family: Verdana, sans-serif;">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Verdana (Wide Legibility)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-font-item" data-font='Tahoma, Arial, sans-serif' data-font-key="Tahoma" style="font-family: Tahoma, sans-serif;">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Tahoma (Clean Compact)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-font-item" data-font='Impact, "Arial Black", sans-serif' data-font-key="Impact" style="font-family: Impact, sans-serif;">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Impact (Heavy Cinema)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-font-item" data-font='Cairo, "Segoe UI", Arial, sans-serif' data-font-key="Cairo" style="font-family: Cairo, 'Segoe UI', sans-serif;">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Cairo (Arabic &amp; English)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-font-item" data-font='Georgia, "Times New Roman", serif' data-font-key="Georgia" style="font-family: Georgia, serif;">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Georgia (Serif)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-font-item" data-font='"Courier New", Consolas, monospace' data-font-key="Courier" style="font-family: 'Courier New', monospace;">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Courier New (Monospace)</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Font Size Flyout Submenu -->
+              <div class="vlc-dropdown-submenu" id="menu-sub-size-wrapper">
+                <button class="vlc-dropdown-item vlc-submenu-trigger" id="btn-sub-size" type="button" title="Select or cycle font size">
+                  <span id="menu-size-text">Font Size: 31px</span>
+                  <div class="submenu-tail">
+                    <kbd>Alt+A</kbd>
+                    <span class="vlc-submenu-arrow">›</span>
+                  </div>
+                </button>
+                <div class="vlc-submenu-list" id="menu-font-size-list" role="menu" aria-label="Font Size Options">
+                  <button class="vlc-dropdown-item sub-size-item" data-size="22">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Compact (22px)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-size-item" data-size="28">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Standard (28px)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-size-item" data-size="31">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Medium (31px)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-size-item" data-size="36">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Large (36px)</span>
+                  </button>
+                  <button class="vlc-dropdown-item sub-size-item" data-size="44">
+                    <span class="vlc-menu-check">✓</span>
+                    <span class="vlc-menu-label">Cinema (44px)</span>
+                  </button>
+                  <div class="vlc-dropdown-sep"></div>
+                  <button class="vlc-dropdown-item" id="menu-sub-size-plus-item">
+                    <span class="vlc-menu-check"></span>
+                    <span class="vlc-menu-label">Increase (+2px)</span>
+                    <kbd>Ctrl+=</kbd>
+                  </button>
+                  <button class="vlc-dropdown-item" id="menu-sub-size-minus-item">
+                    <span class="vlc-menu-check"></span>
+                    <span class="vlc-menu-label">Decrease (-2px)</span>
+                    <kbd>Ctrl+-</kbd>
+                  </button>
+                  <div class="vlc-dropdown-sep"></div>
+                  <button class="vlc-dropdown-item highlight-action" id="menu-sub-size-custom-item">
+                    <span class="vlc-menu-check"></span>
+                    <span class="vlc-menu-label">Custom Size &amp; Style...</span>
+                    <kbd>Alt+S</kbd>
+                  </button>
+                </div>
+              </div>
+
               <button class="vlc-dropdown-item" id="menu-item-sub-size-plus">
                 <span>Font Size +2px</span>
                 <kbd>Ctrl+=</kbd>
@@ -798,7 +894,8 @@
             <input type="range" id="sub-size-slider" class="sub-range-slider" min="14" max="64" value="28" step="1" aria-label="Font size slider">
             <div class="sub-presets-row" role="group" aria-label="Font size presets">
               <button type="button" class="sub-preset-btn" data-size="22">Compact (22px)</button>
-              <button type="button" class="sub-preset-btn active" data-size="28">Standard (28px)</button>
+              <button type="button" class="sub-preset-btn" data-size="28">Standard (28px)</button>
+              <button type="button" class="sub-preset-btn" data-size="31">Medium (31px)</button>
               <button type="button" class="sub-preset-btn" data-size="36">Large (36px)</button>
               <button type="button" class="sub-preset-btn" data-size="44">Cinema (44px)</button>
             </div>
