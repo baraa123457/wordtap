@@ -6,9 +6,9 @@
   "scripts": {
     "start": "electron .",
     "package-win": "electron-packager . \"WordTap-VLC-Player\" --platform=win32 --arch=x64 --icon=icon.ico --out=dist --overwrite",
-    "build-dist": "electron-builder --win nsis msi zip",
-    "build-exe": "electron-builder --win nsis",
-    "build-msi": "electron-builder --win msi"
+    "build-dist": "electron-builder --win",
+    "build-exe": "electron-builder --win --target=nsis",
+    "build-msi": "electron-builder --win --target=msi"
   },
   "build": {
     "appId": "com.wordtap.player",
@@ -63,6 +63,7 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^33.2.1",
+    "electron-builder": "^26.18.0",
     "electron-packager": "^17.1.2"
   },
   "dependencies": {

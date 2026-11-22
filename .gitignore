@@ -4,6 +4,7 @@ web/node_modules/
 extension/node_modules/
 desktop-player/node_modules/
 desktop-player/dist/
+desktop-player/dist-installers/
 
 # Next.js build
 web/.next/

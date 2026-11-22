@@ -32,14 +32,11 @@ jobs:
         working-directory: desktop-player
         run: |
           npm install
-          npm install --save-dev electron-builder
 
       - name: Build Windows Installers (NSIS .exe, WiX .msi, and Portable .zip)
         working-directory: desktop-player
         run: |
-          npx electron-builder --win nsis msi zip
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          npx electron-builder --win --publish never
 
       - name: Determine Tag Name
         id: tag_info
@@ -73,7 +70,8 @@ jobs:
 
             #### 🚀 Highlights & Features:
             - **VLC Core Engine**: Plays MKV, MP4, AVI, WebM, and HEVC 4K/HDR with hardware acceleration.
-            - **200% VLC Volume Boost**: Clear speech and dialogue amplification up to +6 dB.
+            - **VLC Aspect Ratio Control**: Full support for 16:9, 4:3, 16:10, 2.35:1, and automatic DAR container detection (Press `A`).
+            - **Hardware-Direct Audio**: Crystal-clear native audio output with 200% volume amplification.
             - **Automatic Dolby AC3 / DTS 5.1 Transcoding**: Real-time audio stream transcoding with zero lip-sync drift.
             - **VLC Speed Bar & Hotkeys**: Fine-tune speed from `0.25x` to `3.0x` with `[` / `]` hotkeys.
             - **VLsub OpenSubtitles Integration**: Search and auto-download subtitles inside the player.
