@@ -9,7 +9,7 @@ import { Logo } from "@/components/Logo";
 import { SubtitleDemo } from "@/components/SubtitleDemo";
 import { RealAppShowcase } from "@/components/RealAppShowcase";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { FilmIcon } from "@/components/Icons";
+import { FilmIcon, DownloadIcon } from "@/components/Icons";
 
 export function LandingClient() {
   const router = useRouter();
@@ -77,6 +77,13 @@ export function LandingClient() {
           >
             <FilmIcon size={14} className="text-amber-800 dark:text-subtitle" />
             <span>{isAr ? "مكتبة المسلسلات" : "Show Decks"}</span>
+          </Link>
+          <Link
+            href="/download"
+            className="hidden sm:inline-flex btn btn-quiet min-h-9 px-3 text-xs font-semibold items-center gap-1.5"
+          >
+            <DownloadIcon size={14} className="text-amber-800 dark:text-subtitle" />
+            <span>{isAr ? "التحميلات" : "Downloads"}</span>
           </Link>
           <Link
             href="/pricing"
@@ -206,12 +213,13 @@ export function LandingClient() {
             </li>
           </ol>
 
-          <div className="pt-2">
+          <div className="pt-2 flex flex-wrap gap-3">
             <Link
-              href="/extension"
+              href="/download"
               className="inline-flex items-center gap-2 btn btn-primary px-5 py-2.5 font-bold shadow-sm"
             >
-              <span>{isAr ? "تحميل إضافة كروم مجاناً" : "Get the Chrome Extension"}</span>
+              <DownloadIcon size={16} />
+              <span>{isAr ? "تحميل التطبيق والإضافة مجاناً" : "Download App & Extension"}</span>
               <span>{isAr ? "←" : "→"}</span>
             </Link>
           </div>
@@ -228,8 +236,8 @@ export function LandingClient() {
             </span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium">
-            <Link href="/extension" className="hover:text-ink transition-colors">
-              {isAr ? "الإضافة" : "Extension"}
+            <Link href="/download" className="hover:text-ink transition-colors font-semibold text-amber-800 dark:text-subtitle">
+              {isAr ? "التحميلات (التطبيق والإضافة)" : "Downloads"}
             </Link>
             <Link href="/privacy" className="hover:text-ink transition-colors">
               {isAr ? "الخصوصية" : "Privacy Policy"}

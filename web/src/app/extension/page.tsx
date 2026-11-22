@@ -64,9 +64,18 @@ export default function ExtensionPage() {
         <div className="apple-card p-6 sm:p-8 relative overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
             <div className="space-y-2 max-w-xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-subtitle/15 border border-subtitle/30 text-xs font-bold text-ink">
-                <span className="w-2 h-2 rounded-full bg-subtitle animate-pulse" />
-                <span>WordTap Chrome Extension</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-subtitle/15 border border-subtitle/30 text-xs font-bold text-ink">
+                  <span className="w-2 h-2 rounded-full bg-subtitle animate-pulse" />
+                  <span>WordTap Chrome Extension</span>
+                </div>
+                <Link
+                  href="/download"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 text-xs font-semibold text-muted hover:text-ink border border-line transition-all"
+                >
+                  <span>Windows Player (.msi / setup)</span>
+                  <span>→</span>
+                </Link>
               </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">
                 Learn languages while watching your favorite shows.

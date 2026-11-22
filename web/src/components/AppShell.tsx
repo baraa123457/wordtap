@@ -13,6 +13,7 @@ const AUTH_LINKS = [
   { href: "/decks", label: "Decks", shortLabel: "Decks" },
   { href: "/words", label: "My words", shortLabel: "Words" },
   { href: "/history", label: "History", shortLabel: "History" },
+  { href: "/download", label: "Downloads", shortLabel: "Downloads" },
   { href: "/pricing", label: "Pro", shortLabel: "Pro", isPro: true },
   { href: "/settings", label: "Settings", shortLabel: "Settings" },
 ] as const;
@@ -20,8 +21,8 @@ const AUTH_LINKS = [
 const GUEST_LINKS = [
   { href: "/", label: "Home", shortLabel: "Home" },
   { href: "/decks", label: "Decks", shortLabel: "Decks" },
+  { href: "/download", label: "Downloads", shortLabel: "Downloads" },
   { href: "/pricing", label: "Pro", shortLabel: "Pro", isPro: true },
-  { href: "/extension", label: "Extension", shortLabel: "Extension" },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -48,12 +49,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             {isSignedIn && email ? (
               <>
                 <Link
-                  href="/extension"
+                  href="/download"
                   className="btn btn-quiet min-h-9 px-2 sm:px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-                  title="Download & Install Chrome Extension"
+                  title="Download Desktop App & Browser Extension"
                 >
                   <DownloadIcon size={13} className="text-muted" />
-                  <span className="hidden xl:inline">Extension</span>
+                  <span className="hidden xl:inline">Downloads</span>
                 </Link>
                 <span
                   className="hidden xl:inline max-w-32 2xl:max-w-44 truncate text-xs font-medium text-muted"

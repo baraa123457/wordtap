@@ -3,6 +3,7 @@ import { getSupabase, isSupabaseConfigured } from "./supabase";
 export type AnalyticsEvent =
   | "signup"
   | "extension_connected"
+  | "desktop_player_download"
   | "first_word_saved"
   | "first_practice_completed"
   | "day2_return"
