@@ -6,14 +6,14 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "./ThemeToggle";
 import { Logo } from "./Logo";
-import { StarIcon } from "./Icons";
+import { StarIcon, DownloadIcon } from "./Icons";
 
 const AUTH_LINKS = [
   { href: "/dashboard", label: "Dashboard", shortLabel: "Dashboard" },
   { href: "/decks", label: "Decks", shortLabel: "Decks" },
   { href: "/words", label: "My words", shortLabel: "Words" },
   { href: "/history", label: "History", shortLabel: "History" },
-  { href: "/download", label: "Downloads", shortLabel: "Downloads" },
+  { href: "/download", label: "Downloads", shortLabel: "Downloads", isDownload: true },
   { href: "/pricing", label: "Pro", shortLabel: "Pro", isPro: true },
   { href: "/settings", label: "Settings", shortLabel: "Settings" },
 ] as const;
@@ -21,7 +21,7 @@ const AUTH_LINKS = [
 const GUEST_LINKS = [
   { href: "/", label: "Home", shortLabel: "Home" },
   { href: "/decks", label: "Decks", shortLabel: "Decks" },
-  { href: "/download", label: "Downloads", shortLabel: "Downloads" },
+  { href: "/download", label: "Downloads", shortLabel: "Downloads", isDownload: true },
   { href: "/pricing", label: "Pro", shortLabel: "Pro", isPro: true },
 ] as const;
 
@@ -99,6 +99,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                           size={12}
                           filled
                           className="text-amber-500 dark:text-subtitle"
+                        />
+                        <span>{link.label}</span>
+                      </span>
+                    ) : ("isDownload" in link && link.isDownload) ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <DownloadIcon
+                          size={12}
+                          className="shrink-0 opacity-80"
                         />
                         <span>{link.label}</span>
                       </span>
