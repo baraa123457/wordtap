@@ -68,6 +68,7 @@
   // Menu Bar Controls
   const btnOpenVideo = document.getElementById('btn-open-video');
   const btnOpenSub = document.getElementById('btn-open-sub');
+  const btnSubFont = document.getElementById('btn-sub-font');
   const btnSubSize = document.getElementById('btn-sub-size');
   const btnHelp = document.getElementById('btn-help');
   const btnSyncMinus = document.getElementById('btn-sync-minus');
@@ -402,18 +403,54 @@
     setAspectRatio(item.value, item.label, true);
   }
 
-  // Volume & Sound Handling (Direct Native Hardware-Locked Audio - 100% Reliable)
+  // Web Audio API Gain Pipeline for true sound amplification up to 150%
+  let audioContext = null;
+  let videoSourceNode = null;
+  let videoGainNode = null;
+  let compatibleAudioSourceNode = null;
+  let compatibleAudioGainNode = null;
+
+  function ensureAudioNodes() {
+    try {
+      if (!audioContext) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          audioContext = new AudioCtx();
+        }
+      }
+      if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume().catch(() => {});
+      }
+      if (audioContext && !videoSourceNode && video) {
+        videoSourceNode = audioContext.createMediaElementSource(video);
+        videoGainNode = audioContext.createGain();
+        videoSourceNode.connect(videoGainNode);
+        videoGainNode.connect(audioContext.destination);
+      }
+      if (audioContext && !compatibleAudioSourceNode && compatibleAudio) {
+        compatibleAudioSourceNode = audioContext.createMediaElementSource(compatibleAudio);
+        compatibleAudioGainNode = audioContext.createGain();
+        compatibleAudioSourceNode.connect(compatibleAudioGainNode);
+        compatibleAudioGainNode.connect(audioContext.destination);
+      }
+    } catch (e) {
+      console.warn('AudioContext / GainNode setup:', e);
+    }
+  }
+
+  // Volume & Sound Handling (Direct Native Hardware-Locked Audio - 100% Reliable with 150% Boost)
   function updateVolumeDisplay() {
     if (typeof userVolume !== 'number' || isNaN(userVolume) || userVolume < 0) {
       userVolume = 1.0;
     }
-    userVolume = Math.min(2.0, Math.max(0, userVolume));
+    userVolume = Math.min(1.5, Math.max(0, userVolume));
 
     const pct = Math.round(userVolume * 100);
     if (volumeSlider) volumeSlider.value = userVolume;
 
-    // Update Slider Track Fill (VLC style with boost indicator)
-    const sliderRatio = Math.min(100, Math.max(0, (userVolume / 2.0) * 100));
+    // Update Slider Track Fill (VLC style with boost indicator up to 150%)
+    const sliderRatio = Math.min(100, Math.max(0, (userVolume / 1.5) * 100));
+    const normalRatio = (1.0 / 1.5) * 100; // ~66.7% (100% mark)
     if (volumeSlider) {
       const isLight = document.body && document.body.classList.contains('light-theme');
       const emptyBg = isLight ? 'rgba(30, 37, 80, 0.12)' : 'rgba(255, 255, 255, 0.2)';
@@ -421,7 +458,7 @@
         volumeSlider.style.background = emptyBg;
       } else if (pct > 100) {
         // Boost portion (>100%) shown in vibrant VLC orange/amber
-        volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 50%, #ff9800 50%, #ff9800 ${sliderRatio}%, ${emptyBg} ${sliderRatio}%, ${emptyBg} 100%)`;
+        volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 ${normalRatio}%, #ff9800 ${normalRatio}%, #ff9800 ${sliderRatio}%, ${emptyBg} ${sliderRatio}%, ${emptyBg} 100%)`;
       } else {
         volumeSlider.style.background = `linear-gradient(to right, #F36F21 0%, #F36F21 ${sliderRatio}%, ${emptyBg} ${sliderRatio}%, ${emptyBg} 100%)`;
       }
@@ -448,19 +485,31 @@
       }
     }
 
-    // Direct Native Audio Routing - 100% Guaranteed Sound Output
-    const effectiveVol = userMuted ? 0 : Math.max(0, Math.min(1.0, userVolume));
-    if (video) {
-      video.muted = isAudioTranscoded ? true : (userMuted || userVolume === 0);
-      video.volume = isAudioTranscoded ? 0 : effectiveVol;
+    // Direct Native Audio Routing with Gain Amplification up to 150%
+    const isMuted = userMuted || userVolume === 0;
+    const targetGain = isMuted ? 0 : userVolume;
+
+    if (videoGainNode) {
+      video.muted = isAudioTranscoded ? true : isMuted;
+      video.volume = isAudioTranscoded ? 0 : 1.0;
+      videoGainNode.gain.value = isAudioTranscoded ? 0 : targetGain;
+    } else if (video) {
+      video.muted = isAudioTranscoded ? true : isMuted;
+      video.volume = isAudioTranscoded ? 0 : Math.max(0, Math.min(1.0, userVolume));
     }
-    if (compatibleAudio) {
-      compatibleAudio.muted = !isAudioTranscoded ? true : (userMuted || userVolume === 0);
-      compatibleAudio.volume = !isAudioTranscoded ? 0 : effectiveVol;
+
+    if (compatibleAudioGainNode) {
+      compatibleAudio.muted = !isAudioTranscoded ? true : isMuted;
+      compatibleAudio.volume = !isAudioTranscoded ? 0 : 1.0;
+      compatibleAudioGainNode.gain.value = !isAudioTranscoded ? 0 : targetGain;
+    } else if (compatibleAudio) {
+      compatibleAudio.muted = !isAudioTranscoded ? true : isMuted;
+      compatibleAudio.volume = !isAudioTranscoded ? 0 : Math.max(0, Math.min(1.0, userVolume));
     }
   }
 
   function toggleMute() {
+    ensureAudioNodes();
     userMuted = !userMuted;
     if (!userMuted && userVolume <= 0.05) {
       userVolume = 1.0;
@@ -470,7 +519,8 @@
   }
 
   function adjustVolume(delta) {
-    userVolume = Math.max(0, Math.min(2.0, Math.round((userVolume + delta) * 100) / 100));
+    ensureAudioNodes();
+    userVolume = Math.max(0, Math.min(1.5, Math.round((userVolume + delta) * 100) / 100));
     if (userVolume > 0) userMuted = false;
     updateVolumeDisplay();
     if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
@@ -480,7 +530,8 @@
   }
 
   function setVolume(val) {
-    userVolume = Math.max(0, Math.min(2.0, Math.round(val * 100) / 100));
+    ensureAudioNodes();
+    userVolume = Math.max(0, Math.min(1.5, Math.round(val * 100) / 100));
     if (userVolume > 0) userMuted = false;
     updateVolumeDisplay();
     if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
@@ -528,6 +579,8 @@
       return;
     }
     if (!video) return;
+    ensureAudioNodes();
+    updateVolumeDisplay();
     if (video.paused) {
       if (!isAudioTranscoded) {
         video.muted = userMuted;
@@ -557,6 +610,8 @@
 
   function replayCurrentLine() {
     if (!video) return;
+    ensureAudioNodes();
+    updateVolumeDisplay();
     if (currentCue) {
       const target = Math.max(0, currentCue.start + (subtitleDelayMs / 1000));
       video.currentTime = target;
@@ -782,7 +837,7 @@
       if (config && config.targetLang) {
         targetLang = config.targetLang;
       }
-      if (config && typeof config.volume === 'number' && config.volume > 0.05 && config.volume <= 2.0) {
+      if (config && typeof config.volume === 'number' && config.volume > 0.05 && config.volume <= 1.5) {
         userVolume = config.volume;
       } else {
         userVolume = 1.0;
@@ -890,11 +945,51 @@
     document.documentElement.style.setProperty('--sub-bg-color', bgColor);
     document.documentElement.style.setProperty('--sub-bg-padding', padding);
 
+    const fontDisplayName = getFontDisplayName(subFontFamily);
+    const menuFontText = document.getElementById('menu-font-text');
+    if (menuFontText) {
+      menuFontText.textContent = `Font: ${fontDisplayName}`;
+    }
+    const menuSizeText = document.getElementById('menu-size-text');
+    if (menuSizeText) {
+      menuSizeText.textContent = `Font Size (${subCustomSize}px)`;
+    }
+    if (btnSubFont) {
+      btnSubFont.innerHTML = `<span>Font: ${fontDisplayName}</span><kbd>Alt+F</kbd>`;
+    }
     if (btnSubSize) {
-      btnSubSize.innerHTML = `<span>Font Size (${subCustomSize}px)</span><kbd>A</kbd>`;
+      btnSubSize.innerHTML = `<span>Font Size (${subCustomSize}px)</span><kbd>Alt+A</kbd>`;
     }
 
     syncSubStyleModalUI();
+  }
+
+  const availableFonts = [
+    { name: 'Arial (Classic Cinema)', family: 'Arial, "Trebuchet MS", sans-serif' },
+    { name: 'Trebuchet MS (Rounded)', family: '"Trebuchet MS", Arial, sans-serif' },
+    { name: 'Segoe UI (Windows System)', family: '"Segoe UI", Tahoma, sans-serif' },
+    { name: 'Roboto / Inter (Modern Sans)', family: 'Roboto, Inter, -apple-system, sans-serif' },
+    { name: 'Verdana (Wide Legibility)', family: 'Verdana, Geneva, sans-serif' },
+    { name: 'Tahoma (Clean Compact)', family: 'Tahoma, Arial, sans-serif' },
+    { name: 'Impact (Heavy Cinema)', family: 'Impact, "Arial Black", sans-serif' },
+    { name: 'Cairo (Arabic & English)', family: 'Cairo, "Segoe UI", Arial, sans-serif' },
+    { name: 'Georgia (Serif)', family: 'Georgia, "Times New Roman", serif' },
+    { name: 'Courier New (Monospace)', family: '"Courier New", Consolas, monospace' }
+  ];
+
+  function getFontDisplayName(family) {
+    if (!family) return 'Arial (Classic Cinema)';
+    const found = availableFonts.find(f => f.family === family || family.toLowerCase().includes(f.name.split(' ')[0].toLowerCase()));
+    if (found) return found.name;
+    return family.split(',')[0].replace(/['"]/g, '').trim();
+  }
+
+  function cycleSubFont() {
+    let currentIdx = availableFonts.findIndex(f => f.family === subFontFamily || subFontFamily.includes(f.name.split(' ')[0]));
+    if (currentIdx === -1) currentIdx = 0;
+    const nextIdx = (currentIdx + 1) % availableFonts.length;
+    subFontFamily = availableFonts[nextIdx].family;
+    saveSubtitleAppearance(true);
   }
 
   function saveSubtitleAppearance(showNotification = false) {
@@ -910,7 +1005,7 @@
       });
     }
     if (showNotification) {
-      const fontName = subFontFamily.split(',')[0].replace(/['"]/g, '').trim();
+      const fontName = getFontDisplayName(subFontFamily);
       showToast(`Subtitle: ${subCustomSize}px | ${fontName}`);
     }
   }
@@ -923,7 +1018,7 @@
   }
 
   function cycleSubSize() {
-    const presetSizes = [22, 28, 36, 44];
+    const presetSizes = [22, 28, 31, 36, 44];
     const currentIdx = presetSizes.indexOf(subCustomSize);
     const nextIdx = (currentIdx + 1) % presetSizes.length;
     subCustomSize = presetSizes[nextIdx];
@@ -2449,7 +2544,8 @@
     btnSyncPlus.addEventListener('click', () => adjustSubtitleDelay(100));
     syncDelayText.addEventListener('click', resetSubtitleDelay);
 
-    // Subtitle Size
+    // Subtitle Font & Size
+    if (btnSubFont) btnSubFont.addEventListener('click', cycleSubFont);
     btnSubSize.addEventListener('click', cycleSubSize);
 
     // Subtitle Style & Customization Modal Controls
@@ -3061,6 +3157,18 @@
         } else {
           openSubtitleStyleModal();
         }
+        return;
+      }
+
+      if (e.altKey && e.code === 'KeyF') {
+        e.preventDefault();
+        cycleSubFont();
+        return;
+      }
+
+      if (e.altKey && e.code === 'KeyA') {
+        e.preventDefault();
+        cycleSubSize();
         return;
       }
 

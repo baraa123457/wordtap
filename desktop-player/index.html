@@ -161,8 +161,14 @@
                 <span>Toggle Subtitles</span>
                 <kbd>C</kbd>
               </button>
-              <button class="vlc-dropdown-item" id="btn-sub-size">
-                <span>Font Size Presets</span>
+              <div class="vlc-dropdown-sep"></div>
+              <button class="vlc-dropdown-item" id="btn-sub-font" title="Click to cycle font family">
+                <span id="menu-font-text">Font: Arial (Classic Cinema)</span>
+                <kbd>Alt+F</kbd>
+              </button>
+              <button class="vlc-dropdown-item" id="btn-sub-size" title="Click to cycle font size presets">
+                <span id="menu-size-text">Font Size (31px)</span>
+                <kbd>Alt+A</kbd>
               </button>
               <button class="vlc-dropdown-item" id="menu-item-sub-size-plus">
                 <span>Font Size +2px</span>
@@ -416,7 +422,7 @@
               <svg id="icon-vol-high" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
               <svg id="icon-vol-mute" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><line x1="1" y1="1" x2="23" y2="23"/><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M17 9l4 4M21 9l-4 4"/></svg>
             </button>
-            <input type="range" class="volume-slider" id="volume-slider" min="0" max="2" step="0.01" value="1" title="Volume (up to 200%)">
+            <input type="range" class="volume-slider" id="volume-slider" min="0" max="1.5" step="0.01" value="1" title="Volume (up to 150%)">
             <span class="volume-percent-label" id="volume-percent-label">100%</span>
           </div>
 
