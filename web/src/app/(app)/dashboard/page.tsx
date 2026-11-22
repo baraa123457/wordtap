@@ -101,7 +101,7 @@ function GoalDropdown({
         <div
           role="listbox"
           aria-label="Daily goal options"
-          className="absolute bottom-full right-0 z-50 mb-2 min-w-[130px] rounded-2xl border border-line bg-surface p-1.5 shadow-2xl backdrop-blur-xl"
+          className="absolute top-full right-0 z-50 mt-1.5 min-w-[130px] rounded-2xl border border-line bg-surface p-1.5 shadow-2xl backdrop-blur-xl"
         >
           {GOALS.map((g) => {
             const isSelected = g === value;

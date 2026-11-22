@@ -77,9 +77,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Segmented Navigation Capsule (Row 2 on mobile/tablet, Center on wide desktop) */}
           <nav
             aria-label="Main Navigation"
-            className="order-3 flex w-full shrink min-w-0 items-center justify-center py-0.5 lg:order-2 lg:w-auto lg:py-0"
+            className="order-3 flex w-full shrink min-w-0 items-center justify-start sm:justify-center overflow-x-auto no-scrollbar py-0.5 lg:order-2 lg:w-auto lg:py-0"
           >
-            <div className="apple-segmented-container apple-segmented-fit mx-auto items-center justify-center px-1 sm:px-1.5">
+            <div className="apple-segmented-container apple-segmented-fit mx-auto items-center justify-center px-1 sm:px-1.5 shrink-0">
               {navLinks.map((link) => {
                 const active =
                   pathname === link.href ||
@@ -91,7 +91,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     href={link.href}
                     aria-current={active ? "page" : undefined}
                     data-active={active ? "true" : undefined}
-                    className="apple-segmented-item whitespace-nowrap min-h-[38px] px-2.5 sm:px-3 lg:px-2.5 xl:px-3.5 py-1 text-xs sm:text-sm flex items-center justify-center"
+                    className="apple-segmented-item whitespace-nowrap min-h-[38px] px-2 sm:px-3 lg:px-2.5 xl:px-3.5 py-1 text-xs sm:text-sm flex items-center justify-center shrink-0"
                   >
                     {("isPro" in link && link.isPro) ? (
                       <span className="inline-flex items-center gap-1.5">
@@ -100,7 +100,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                           filled
                           className="text-amber-500 dark:text-subtitle"
                         />
-                        <span>{link.label}</span>
+                        <span className="hidden sm:inline">{link.label}</span>
+                        <span className="sm:hidden">{link.shortLabel}</span>
                       </span>
                     ) : ("isDownload" in link && link.isDownload) ? (
                       <span className="inline-flex items-center gap-1.5">
@@ -108,7 +109,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                           size={12}
                           className="shrink-0 opacity-80"
                         />
-                        <span>{link.label}</span>
+                        <span className="hidden sm:inline">{link.label}</span>
+                        <span className="sm:hidden">{link.shortLabel}</span>
                       </span>
                     ) : link.label === link.shortLabel ? (
                       link.label

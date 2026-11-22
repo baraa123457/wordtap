@@ -94,7 +94,7 @@ export default function SettingsPage() {
     setDeleteError(null);
     try {
       await deleteAccount();
-      router.push("/signup");
+      router.push("/");
     } catch (e: unknown) {
       setDeleteError(e instanceof Error ? e.message : "Failed to delete account");
       setDeleteBusy(false);

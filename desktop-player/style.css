@@ -1370,6 +1370,11 @@ body {
   padding: 0;
 }
 
+#btn-play-pause #icon-play {
+  display: block;
+  margin: 0 auto;
+}
+
 #btn-play-pause:hover {
   background: var(--wt-gold-hover);
   transform: scale(1.08);
@@ -1596,11 +1601,66 @@ body {
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 24px 26px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8);
   display: flex;
   flex-direction: column;
   gap: 16px;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   animation: appleModalEnter 0.22s var(--apple-ease) forwards;
+}
+
+.sub-style-card,
+.modal-card,
+.vlsub-window {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+body.light-theme .sub-style-card,
+body.light-theme .modal-card,
+body.light-theme .vlsub-window {
+  scrollbar-color: rgba(30, 37, 80, 0.25) transparent;
+}
+
+.sub-style-card::-webkit-scrollbar,
+.modal-card::-webkit-scrollbar,
+.vlsub-window::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.sub-style-card::-webkit-scrollbar-track,
+.modal-card::-webkit-scrollbar-track,
+.vlsub-window::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sub-style-card::-webkit-scrollbar-thumb,
+.modal-card::-webkit-scrollbar-thumb,
+.vlsub-window::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.sub-style-card::-webkit-scrollbar-thumb:hover,
+.modal-card::-webkit-scrollbar-thumb:hover,
+.vlsub-window::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+body.light-theme .sub-style-card::-webkit-scrollbar-thumb,
+body.light-theme .modal-card::-webkit-scrollbar-thumb,
+body.light-theme .vlsub-window::-webkit-scrollbar-thumb {
+  background: rgba(30, 37, 80, 0.22);
+}
+
+body.light-theme .sub-style-card::-webkit-scrollbar-thumb:hover,
+body.light-theme .modal-card::-webkit-scrollbar-thumb:hover,
+body.light-theme .vlsub-window::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 37, 80, 0.4);
 }
 
 .modal-header {
@@ -2110,9 +2170,13 @@ body {
   margin-top: 16px;
   padding-top: 14px;
   border-top: 1px solid var(--line);
+  transform: translateZ(0);
 }
 
 .btn-sub-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: 1px solid var(--line);
   color: var(--muted);
@@ -2122,10 +2186,12 @@ body {
   padding: 8px 16px;
   border-radius: 9px;
   cursor: pointer;
-  white-space: nowrap;
+  white-space: nowrap !important;
+  word-break: keep-all;
   flex-shrink: 0;
   min-width: max-content;
   transition: all 140ms ease;
+  outline: none;
 }
 
 .btn-sub-reset:hover {
@@ -2143,10 +2209,12 @@ body {
   border-radius: 20px;
   width: 730px;
   max-width: 95vw;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transform: translateZ(0);
+  backface-visibility: hidden;
   animation: appleModalEnter 0.2s var(--apple-ease) forwards;
 }
 

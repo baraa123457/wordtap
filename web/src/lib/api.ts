@@ -377,12 +377,17 @@ export async function updateWordDetails(
       p_times: word.times_seen || 1,
     });
     if (rpcErr) throw new Error(rpcErr.message);
-    if (word.box > 0) {
-      await supabase
-        .from("words")
-        .update({ box: word.box, next_review: word.next_review })
-        .eq("text", taggedText);
-    }
+    const srsUpdate: Record<string, unknown> = {
+      box: word.box,
+      next_review: word.next_review,
+    };
+    if (word.last_practiced) srsUpdate.last_practiced = word.last_practiced;
+    if (typeof word.correct_count === "number") srsUpdate.correct_count = word.correct_count;
+    if (typeof word.wrong_count === "number") srsUpdate.wrong_count = word.wrong_count;
+    await supabase
+      .from("words")
+      .update(srsUpdate)
+      .eq("text", taggedText);
     return;
   }
   if (error) throw new Error(error.message);

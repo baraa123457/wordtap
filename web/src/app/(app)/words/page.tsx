@@ -28,10 +28,10 @@ type SourceFilter = "all" | "subtitles" | "web" | "ocr" | "translator" | "app";
 const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "subtitles", label: "Subtitles" },
+  { id: "app", label: "App" },
   { id: "web", label: "Web" },
   { id: "ocr", label: "OCR" },
   { id: "translator", label: "Translator" },
-  { id: "app", label: "App" },
 ];
 
 function inferWordSource(w: Word): Exclude<SourceFilter, "all"> {
@@ -873,12 +873,12 @@ export default function WordsPage() {
             </div>
           ) : null}
 
-          {sourceCounts.size > 1 ? (
+          {all.length > 0 ? (
             <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 max-w-full min-w-0">
               <span className="text-xs font-semibold text-muted shrink-0">Source:</span>
-              <div className="py-0.5 max-w-full min-w-0">
+              <div className="py-0.5 max-w-full min-w-0 overflow-x-auto no-scrollbar">
                 <div className="apple-segmented-container apple-segmented-fit">
-                  {SOURCE_FILTERS.filter((sf) => sf.id === "all" || sf.id === "app" || (sourceCounts.get(sf.id) || 0) > 0).map((sf) => (
+                  {SOURCE_FILTERS.map((sf) => (
                     <button
                       key={sf.id}
                       type="button"

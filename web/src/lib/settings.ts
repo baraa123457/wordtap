@@ -62,12 +62,57 @@ export function getStoredSettings(): UserSettings {
     if (!raw || raw === "undefined" || raw === "null" || raw.trim() === "") return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return DEFAULT_SETTINGS;
-    const settings = { ...DEFAULT_SETTINGS, ...parsed };
+
+    const validModes: PracticeMode[] = ["mixed", "typing", "choice", "dictation"];
+    const validThemes: ThemeMode[] = ["light", "dark", "system"];
+    const validGenders: VoiceGender[] = ["female", "male", "auto"];
+    const validTones: VoiceTone[] = ["soft", "natural", "deep", "energetic"];
+    const validSaveModes: TranslateSaveMode[] = ["auto", "manual", "subtitles_only"];
+
+    const sessionSize =
+      typeof parsed.sessionSize === "number" && parsed.sessionSize >= 3 && parsed.sessionSize <= 100
+        ? Math.round(parsed.sessionSize)
+        : DEFAULT_SETTINGS.sessionSize;
+
+    const speechRate =
+      typeof parsed.speechRate === "number" && parsed.speechRate >= 0.5 && parsed.speechRate <= 2.0
+        ? parsed.speechRate
+        : DEFAULT_SETTINGS.speechRate;
+
+    const autoAdvanceDelayMs =
+      typeof parsed.autoAdvanceDelayMs === "number" && parsed.autoAdvanceDelayMs >= 200 && parsed.autoAdvanceDelayMs <= 5000
+        ? Math.round(parsed.autoAdvanceDelayMs)
+        : DEFAULT_SETTINGS.autoAdvanceDelayMs;
+
+    const practiceMode = validModes.includes(parsed.practiceMode)
+      ? parsed.practiceMode
+      : DEFAULT_SETTINGS.practiceMode;
+
+    const theme = validThemes.includes(parsed.theme) ? parsed.theme : DEFAULT_SETTINGS.theme;
+    const voiceGender = validGenders.includes(parsed.voiceGender) ? parsed.voiceGender : DEFAULT_SETTINGS.voiceGender;
+    const voiceTone = validTones.includes(parsed.voiceTone) ? parsed.voiceTone : DEFAULT_SETTINGS.voiceTone;
+    const translateSaveMode = validSaveModes.includes(parsed.translateSaveMode)
+      ? parsed.translateSaveMode
+      : DEFAULT_SETTINGS.translateSaveMode;
+
+    const settings: UserSettings = {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      sessionSize,
+      speechRate,
+      autoAdvanceDelayMs,
+      practiceMode,
+      theme,
+      voiceGender,
+      voiceTone,
+      translateSaveMode,
+    };
+
     if (typeof parsed.enableChoice !== "boolean" || typeof parsed.enableTyping !== "boolean") {
-      if (parsed.practiceMode === "typing") {
+      if (settings.practiceMode === "typing") {
         settings.enableTyping = true;
         settings.enableChoice = false;
-      } else if (parsed.practiceMode === "choice") {
+      } else if (settings.practiceMode === "choice") {
         settings.enableChoice = true;
         settings.enableTyping = false;
       } else {

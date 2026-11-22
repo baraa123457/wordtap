@@ -1,7 +1,7 @@
 import { getStoredSettings, type VoiceGender, type VoiceTone } from "./settings";
 
 export function canSpeak(): boolean {
-  return typeof window !== "undefined";
+  return typeof window !== "undefined" && ("speechSynthesis" in window || typeof Audio !== "undefined");
 }
 
 const LANG_LOCALES: Record<string, string> = {

@@ -574,6 +574,8 @@ export function PracticeSession({
           onCheck={check}
           onSkip={() => evaluate("wrong")}
           onContinue={advance}
+          autoAdvance={settings.autoAdvance}
+          autoAdvanceDelayMs={settings.autoAdvanceDelayMs}
         />
       ) : null}
     </div>

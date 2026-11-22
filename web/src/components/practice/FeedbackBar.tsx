@@ -16,6 +16,8 @@ type Props = {
   onCheck: () => void;
   onSkip: () => void;
   onContinue: (difficulty?: "hard" | "medium" | "easy") => void;
+  autoAdvance?: boolean;
+  autoAdvanceDelayMs?: number;
 };
 
 const TONE: Record<Phase, string> = {
@@ -35,9 +37,21 @@ export function FeedbackBar({
   onCheck,
   onSkip,
   onContinue,
+  autoAdvance = false,
+  autoAdvanceDelayMs = 800,
 }: Props) {
   const continueRef = useRef<HTMLButtonElement>(null);
   const checkRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-advance on correct when enabled by user settings
+  useEffect(() => {
+    if (phase !== "correct" || !autoAdvance) return;
+    const delay = Math.max(300, autoAdvanceDelayMs);
+    const timer = setTimeout(() => {
+      onContinue("medium");
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [phase, autoAdvance, autoAdvanceDelayMs, onContinue]);
 
   // Focus Continue/Easy button whenever feedback appears
   useEffect(() => {

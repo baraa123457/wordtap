@@ -1766,13 +1766,13 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                         ? "bg-subtitle/15 text-ink border-subtitle/40 font-semibold"
                         : "text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 border-line"
                     }`}
-                    title="تعديل المعنى أو إضافة ملاحظة / تعليق بالعربي"
+                    title="Edit meaning or add a personal note"
                   >
                     <svg className="w-3.5 h-3.5 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                     </svg>
                     <span>
-                      {customTranslation || customNote ? "تعديل المعنى" : "تعديل أو تعليق"}
+                      {customTranslation || customNote ? "Edit meaning" : "Edit / Note"}
                     </span>
                   </button>
                 </div>
@@ -1782,7 +1782,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                   <div className="flex flex-wrap items-center gap-2 pt-0.5">
                     {customTranslation && customTranslation !== result.translation ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-subtitle/15 border border-subtitle/30 text-xs text-ink font-medium">
-                        <span className="text-subtitle font-bold text-[11px]">معنى مخصص:</span>
+                        <span className="text-subtitle font-bold text-[11px]">Custom:</span>
                         <span className="font-semibold">{customTranslation}</span>
                         <button
                           type="button"
@@ -1791,9 +1791,9 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                             setEditMeaning(result.translation);
                           }}
                           className="ms-1 text-[11px] text-muted hover:text-bad underline cursor-pointer"
-                          title="استعادة الترجمة الافتراضية"
+                          title="Restore default translation"
                         >
-                          (الأصلية: {result.translation})
+                          (Original: {result.translation})
                         </button>
                       </span>
                     ) : null}
@@ -1803,13 +1803,13 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                         <svg className="w-3 h-3 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                         </svg>
-                        <span className="text-blue-500 font-semibold text-[11px]">ملاحظة:</span>
+                        <span className="text-blue-500 font-semibold text-[11px]">Note:</span>
                         <span dir="auto">{customNote}</span>
                         <button
                           type="button"
                           onClick={() => setCustomNote("")}
                           className="ms-1 text-xs text-muted hover:text-bad cursor-pointer"
-                          title="حذف الملاحظة"
+                          title="Delete note"
                         >
                           ✕
                         </button>
@@ -1826,13 +1826,13 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                         <svg className="w-3.5 h-3.5 text-subtitle" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                         </svg>
-                        <span>تخصيص المعنى أو إضافة تعليق بالعربي</span>
+                        <span>Customize meaning or add note</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsEditing(false)}
                         className="text-xs text-muted hover:text-ink cursor-pointer p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
-                        aria-label="إغلاق"
+                        aria-label="Close"
                       >
                         ✕
                       </button>
@@ -1841,14 +1841,14 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                     {/* 1. Meaning input */}
                     <div>
                       <label className="block text-[11px] font-medium text-muted mb-1">
-                        الترجمة / المعنى المفضل (Preferred Meaning):
+                        Preferred Meaning:
                       </label>
                       <input
                         type="text"
                         dir="auto"
                         value={editMeaning}
                         onChange={(e) => setEditMeaning(e.target.value)}
-                        placeholder="اكتب المعنى الذي تفضله (مثال: ترانزيت / على حسابي)..."
+                        placeholder="Enter preferred meaning..."
                         className="w-full px-3 py-2 text-sm rounded-xl border border-line bg-surface-elevated text-ink placeholder:text-muted/50 focus:outline-none focus:border-subtitle"
                       />
                     </div>
@@ -1856,14 +1856,14 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                     {/* 2. Optional Comment/Note input */}
                     <div>
                       <label className="block text-[11px] font-medium text-muted mb-1">
-                        تعليق أو ملاحظة بالعربي (Comment / Context - Optional):
+                        Note / Context (Optional):
                       </label>
                       <input
                         type="text"
                         dir="auto"
                         value={editNote}
                         onChange={(e) => setEditNote(e.target.value)}
-                        placeholder="أضف تعليقاً أو سياقاً بالعربي (مثال: تستخدم في المطارات، أو عامية)..."
+                        placeholder="Add a context note (e.g. used in airports, informal)..."
                         className="w-full px-3 py-2 text-sm rounded-xl border border-line bg-surface-elevated text-ink placeholder:text-muted/50 focus:outline-none focus:border-subtitle"
                       />
                     </div>
@@ -1881,7 +1881,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                         }}
                         className="text-xs text-muted hover:text-bad underline cursor-pointer"
                       >
-                        ↺ استعادة الترجمة الافتراضية
+                        ↺ Restore original
                       </button>
                       <div className="flex items-center gap-2">
                         <button
@@ -1889,7 +1889,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                           onClick={() => setIsEditing(false)}
                           className="px-3 py-1.5 text-xs font-medium rounded-xl text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
                         >
-                          إلغاء
+                          Cancel
                         </button>
                         <button
                           type="button"
@@ -1900,7 +1900,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                           }}
                           className="btn btn-primary min-h-8 px-4 py-1.5 text-xs rounded-xl cursor-pointer"
                         >
-                          ✓ تطبيق التعديل
+                          ✓ Apply changes
                         </button>
                       </div>
                     </div>
@@ -1913,13 +1913,13 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                     <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted flex-wrap gap-1.5">
                       <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold flex-wrap min-w-0">
                         <span className="text-sm shrink-0">⏱️</span>
-                        <span className="truncate">تصريفات الفعل ({activeVerbConjugation.base}):</span>
+                        <span className="truncate">Verb forms ({activeVerbConjugation.base}):</span>
                         <span className="text-[10px] sm:text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 whitespace-nowrap shrink-0">
                           {activeVerbConjugation.tenseLabelAr}
                         </span>
                       </div>
                       <span className="text-[11px] font-normal text-muted/70 lowercase shrink-0">
-                        اضغط على أي تصريف لترجمته
+                        Click any form to translate
                       </span>
                     </div>
 
