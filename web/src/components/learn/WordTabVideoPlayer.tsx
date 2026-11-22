@@ -620,8 +620,10 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                   aria-label="Play video clip"
                   className="absolute inset-0 z-20 flex items-center justify-center bg-black/25 transition hover:bg-black/35 cursor-pointer"
                 >
-                  <span className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-subtitle text-subtitle-ink shadow-lg text-lg sm:text-xl font-black pl-1 hover:scale-105 transition-transform">
-                    ▶
+                  <span className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-subtitle text-subtitle-ink shadow-lg hover:scale-105 transition-transform">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                      <polygon points="7.5 4 20.5 12 7.5 20" strokeLinejoin="round" />
+                    </svg>
                   </span>
                 </button>
               ) : null}

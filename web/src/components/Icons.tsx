@@ -215,7 +215,7 @@ export function GearIcon({ size = 16, className = "" }: { size?: number; classNa
 export function PlayIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
     <svg {...base} width={size} height={size} className={className} fill="currentColor">
-      <polygon points="5 3 19 12 5 21 5 3" />
+      <polygon points="7.5 4 20.5 12 7.5 20" strokeLinejoin="round" />
     </svg>
   );
 }
