@@ -2600,6 +2600,18 @@
     bindMenuItem('menu-sub-size-minus-item', () => adjustSubCustomSize(-2));
     bindMenuItem('menu-sub-size-custom-item', openSubtitleStyleModal);
 
+    // Bottom Bar Font & Subtitle Options Button
+    const btnFontOptions = document.getElementById('btn-font-options');
+    if (btnFontOptions) {
+      btnFontOptions.addEventListener('click', () => {
+        if (subtitleStyleModal && subtitleStyleModal.classList.contains('open')) {
+          closeSubtitleStyleModal();
+        } else {
+          openSubtitleStyleModal();
+        }
+      });
+    }
+
     // Subtitle Style & Customization Modal Controls
     if (btnOpenSubStyleFromOptions) {
       btnOpenSubStyleFromOptions.addEventListener('click', () => {
@@ -3202,19 +3214,13 @@
         return;
       }
 
-      if (e.altKey && e.code === 'KeyS') {
+      if (e.altKey && (e.code === 'KeyS' || e.code === 'KeyF')) {
         e.preventDefault();
         if (subtitleStyleModal && subtitleStyleModal.classList.contains('open')) {
           closeSubtitleStyleModal();
         } else {
           openSubtitleStyleModal();
         }
-        return;
-      }
-
-      if (e.altKey && e.code === 'KeyF') {
-        e.preventDefault();
-        cycleSubFont();
         return;
       }
 

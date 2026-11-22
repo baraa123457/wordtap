@@ -377,8 +377,10 @@ body.light-theme .style-input {
 
 /* Light Theme Subtitle Style Modal & Controls */
 body.light-theme .sub-style-card {
-  background: #ffffff;
-  color: #12152e;
+  background: #ffffff !important;
+  color: #12152e !important;
+  border: 1px solid rgba(30, 37, 80, 0.12) !important;
+  box-shadow: 0 24px 64px rgba(30, 37, 80, 0.18), 0 0 0 1px rgba(30, 37, 80, 0.08) !important;
 }
 
 body.light-theme #sub-style-modal-title {
@@ -386,93 +388,102 @@ body.light-theme #sub-style-modal-title {
 }
 
 body.light-theme .sub-style-label {
-  color: #5e658a;
+  color: #5e658a !important;
+  font-weight: 700 !important;
 }
 
 body.light-theme .sub-style-select,
 body.light-theme .sub-num-input {
-  background: #f4f6fa;
-  border: 1px solid rgba(30, 37, 80, 0.14);
-  color: #12152e;
+  background: #f4f6fa !important;
+  border: 1px solid rgba(30, 37, 80, 0.14) !important;
+  color: #12152e !important;
 }
 
 body.light-theme .sub-style-select:hover {
-  background: #edf0f7;
-  border-color: rgba(30, 37, 80, 0.25);
+  background: #edf0f7 !important;
+  border-color: rgba(30, 37, 80, 0.25) !important;
 }
 
 body.light-theme .sub-style-select option {
-  background: #ffffff;
-  color: #12152e;
+  background: #ffffff !important;
+  color: #12152e !important;
 }
 
 body.light-theme .sub-preset-btn,
 body.light-theme .sub-offset-preset-btn {
-  background: #f0f2f8;
-  border: 1px solid rgba(30, 37, 80, 0.1);
-  color: #4b5278;
+  background: #f0f2f8 !important;
+  border: 1px solid rgba(30, 37, 80, 0.12) !important;
+  color: #1e2550 !important;
+  font-weight: 600 !important;
 }
 
 body.light-theme .sub-preset-btn:hover,
 body.light-theme .sub-offset-preset-btn:hover {
-  background: #e4e7f2;
-  color: #12152e;
+  background: #e4e7f2 !important;
+  color: #12152e !important;
 }
 
 body.light-theme .sub-preset-btn.active,
 body.light-theme .sub-offset-preset-btn.active {
-  background: rgba(250, 204, 59, 0.22);
-  border-color: #d9a714;
-  color: #784e00;
-  box-shadow: 0 0 0 1px #d9a714;
+  background: rgba(250, 204, 59, 0.25) !important;
+  border: 1.5px solid #d9a714 !important;
+  color: #784e00 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 4px rgba(217, 167, 20, 0.2) !important;
 }
 
 body.light-theme .segmented-control {
-  background: #eef1f7;
-  border: 1px solid rgba(30, 37, 80, 0.1);
+  background: #eef1f7 !important;
+  border: 1px solid rgba(30, 37, 80, 0.1) !important;
 }
 
 body.light-theme .segment-btn {
-  color: #5e658a;
+  color: #5e658a !important;
 }
 
 body.light-theme .segment-btn:hover {
-  color: #12152e;
+  color: #12152e !important;
 }
 
 body.light-theme .segment-btn.active {
-  background: #ffffff;
-  color: #12152e;
-  font-weight: 700;
-  box-shadow: 0 1px 3px rgba(30, 37, 80, 0.12), 0 0 0 1px rgba(30, 37, 80, 0.08);
+  background: #ffffff !important;
+  color: #12152e !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(30, 37, 80, 0.12), 0 0 0 1px rgba(30, 37, 80, 0.08) !important;
 }
 
 body.light-theme .custom-color-picker-wrap {
-  background: #f0f2f8;
-  border: 1px solid rgba(30, 37, 80, 0.12);
+  background: #f0f2f8 !important;
+  border: 1px solid rgba(30, 37, 80, 0.12) !important;
 }
 
 body.light-theme .custom-color-label {
-  color: #5e658a;
+  color: #5e658a !important;
 }
 
 body.light-theme .sub-range-slider {
-  background: #e2e6f0;
+  background: #e2e6f0 !important;
 }
 
 body.light-theme .btn-sub-reset {
-  border-color: rgba(30, 37, 80, 0.14);
-  color: #5e658a;
+  background: #ffffff !important;
+  border: 1px solid rgba(30, 37, 80, 0.16) !important;
+  color: #4b5278 !important;
+  font-weight: 600 !important;
+  padding: 8px 16px !important;
+  border-radius: 9px !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
 }
 
 body.light-theme .btn-sub-reset:hover {
-  background: rgba(30, 37, 80, 0.06);
-  color: #12152e;
-  border-color: rgba(30, 37, 80, 0.25);
+  background: #f0f2f8 !important;
+  color: #12152e !important;
+  border-color: rgba(30, 37, 80, 0.28) !important;
 }
 
 body.light-theme .sub-style-footer {
-  border-top-color: rgba(30, 37, 80, 0.1);
+  border-top: 1px solid rgba(30, 37, 80, 0.1) !important;
 }
 
 /* VLsub Light Theme Window & Controls */
