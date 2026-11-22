@@ -165,10 +165,11 @@
   let subFontWeight = '700';
   let subBottomOffset = 46;
 
-  // Subtitle Sizes (Legacy Presets)
+  // Subtitle Sizes (Presets)
   const subSizes = [
     { label: '22px', cls: 'sub-size-compact', size: 22 },
     { label: '28px', cls: 'sub-size-standard', size: 28 },
+    { label: '31px', cls: 'sub-size-medium', size: 31 },
     { label: '36px', cls: 'sub-size-large', size: 36 },
     { label: '44px', cls: 'sub-size-cinema', size: 44 }
   ];
@@ -960,7 +961,10 @@
     fontItems.forEach(item => {
       const f = item.getAttribute('data-font');
       const key = item.getAttribute('data-font-key');
-      const isActive = f === subFontFamily || (key && subFontFamily && subFontFamily.toLowerCase().includes(key.toLowerCase()));
+      const isActive = f === subFontFamily || (key && subFontFamily && (
+        subFontFamily.toLowerCase().startsWith(key.toLowerCase() + ',') ||
+        subFontFamily.toLowerCase().startsWith('"' + key.toLowerCase())
+      ));
       item.classList.toggle('active', !!isActive);
     });
 
