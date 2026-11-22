@@ -5,7 +5,52 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "package-win": "electron-packager . \"WordTap-VLC-Player\" --platform=win32 --arch=x64 --icon=icon.ico --out=dist --overwrite"
+    "package-win": "electron-packager . \"WordTap-VLC-Player\" --platform=win32 --arch=x64 --icon=icon.ico --out=dist --overwrite",
+    "build-dist": "electron-builder --win nsis msi zip",
+    "build-exe": "electron-builder --win nsis",
+    "build-msi": "electron-builder --win msi"
+  },
+  "build": {
+    "appId": "com.wordtap.player",
+    "productName": "WordTap",
+    "artifactName": "WordTap-Setup-${arch}.${ext}",
+    "directories": {
+      "output": "dist-installers"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "msi",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "WordTap Player"
+    },
+    "msi": {
+      "oneClick": false,
+      "shortcutName": "WordTap Player"
+    }
   },
   "keywords": [
     "wordtap",
