@@ -292,7 +292,6 @@
   // Web Audio Amplification Graph (VLC-Style Volume Boost up to 200%)
   let audioCtx = null;
   let masterGainNode = null;
-  let limiterNode = null;
 
   function ensureWebAudioGraph() {
     if (audioCtx) return;
@@ -303,20 +302,20 @@
 
       // Master Gain: scales audio cleanly from 0.0 to 2.0 (0% - 200%)
       masterGainNode = audioCtx.createGain();
-      masterGainNode.gain.setValueAtTime(userMuted ? 0 : userVolume, audioCtx.currentTime);
+      const initialGain = userMuted ? 0 : userVolume;
+      masterGainNode.gain.setValueAtTime(initialGain, audioCtx.currentTime);
+      masterGainNode.gain.value = initialGain;
 
-      // Dynamics Compressor acts as a soft limiter when boosting > 100% to prevent harsh digital clipping
-      limiterNode = audioCtx.createDynamicsCompressor();
-      limiterNode.threshold.setValueAtTime(-1.5, audioCtx.currentTime);
-      limiterNode.knee.setValueAtTime(6, audioCtx.currentTime);
-      limiterNode.ratio.setValueAtTime(10, audioCtx.currentTime);
-      limiterNode.attack.setValueAtTime(0.002, audioCtx.currentTime);
-      limiterNode.release.setValueAtTime(0.15, audioCtx.currentTime);
-
-      masterGainNode.connect(limiterNode);
-      limiterNode.connect(audioCtx.destination);
+      // Connect directly to destination for full, real VLC-style 200% volume amplification
+      masterGainNode.connect(audioCtx.destination);
     } catch (e) {
       console.warn('Web Audio Graph initialization notice:', e);
+    }
+  }
+
+  function resumeAudioContext() {
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
     }
   }
 
@@ -339,10 +338,7 @@
     ensureWebAudioGraph();
     hookAudioElement(video);
     hookAudioElement(compatibleAudio);
-
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(() => {});
-    }
+    resumeAudioContext();
 
     const pct = Math.round(userVolume * 100);
     if (volumeSlider) volumeSlider.value = userVolume;
@@ -387,6 +383,7 @@
       try {
         masterGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
         masterGainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime);
+        masterGainNode.gain.value = targetGain;
       } catch {}
 
       if (video) {
@@ -471,6 +468,7 @@
   }
 
   function togglePlay() {
+    resumeAudioContext();
     if (wordPopover && wordPopover.classList.contains('visible')) {
       closePopover(true);
       return;
@@ -1810,7 +1808,7 @@
         // Ensure audio element has user's volume and unmuted state
         hookAudioElement(compatibleAudio);
         compatibleAudio.muted = userMuted;
-        compatibleAudio.volume = Math.max(0, Math.min(1.0, userVolume));
+        compatibleAudio.volume = 1.0;
         updateVolumeDisplay();
 
         // Hardware-lock event: Align video frame to the audio stream's exact presentation time the instant sound begins!
@@ -2575,6 +2573,7 @@
     });
 
     video.addEventListener('play', () => {
+      resumeAudioContext();
       iconPlay.style.display = 'none';
       iconPause.style.display = 'block';
       audioUnmuteBanner.style.display = 'none';
