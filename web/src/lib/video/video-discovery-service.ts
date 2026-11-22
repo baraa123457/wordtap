@@ -275,6 +275,11 @@ export class FilmotDiscoveryProvider implements IVideoDiscoveryProvider {
         const startSec = Math.max(0, Math.floor(Number(hit.start) || 0) - 2);
         const ytUrl = `https://www.youtube.com/watch?v=${vid}&t=${startSec}s`;
         const title = oembed.title || item.title || "YouTube Video";
+        const channelName = oembed.authorName || item.channelname || "YouTube";
+
+        // Strictly reject foreign video titles/channels even if English translated subtitles exist
+        if (isNonEnglishVideoTitle(title, channelName)) continue;
+
         const qualityScore = scoreContextCandidate({
           sentence,
           targetWord: query.word,

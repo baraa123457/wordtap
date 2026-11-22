@@ -2,7 +2,7 @@
  * Language & Audio Verification Constants for Video Discovery
  *
  * Centralized patterns and rules to filter out:
- * 1. Foreign-language speech (German, Chinese, French, Spanish, Russian, Japanese, etc.)
+ * 1. Foreign-language speech (German, Chinese, French, Spanish, Portuguese, Russian, Japanese, etc.)
  * 2. Non-speech media (silent showcase reels, B-rolls, timelapses, music videos)
  * 3. Oversized files and insecure video URLs
  */
@@ -27,6 +27,12 @@ export const ALLOWED_MEDIA_HOSTS = new Set([
 ]);
 
 /**
+ * Non-English Romance/foreign letters that do not exist in standard English vocabulary.
+ * E.g., ç (Governança, Lição), ã (Não, Educação), õ (Ações), ñ (Español, Año), ¿, ¡.
+ */
+export const NON_ENGLISH_ROMANCE_LETTERS_RE = /[çãõñ¿¡]/i;
+
+/**
  * Closed caption or subtitle categories designating a non-English language.
  * E.g., "Files with closed captioning in German", "Videos with Chinese subtitles".
  */
@@ -37,7 +43,7 @@ export const NON_ENGLISH_CAPTION_OR_SUB_CAT_RE =
  * Categories designating foreign video collections, origins, or foreign instructional media.
  */
 export const NON_ENGLISH_CATEGORY_RE =
-  /\b(Videos?\s+in\s+(?!English\b)[A-Za-z]+|(?!English\b)[A-Za-z]+-language\s+videos?|instructional\s+videos?\s+.*in\s+(?!English\b)[A-Za-z]+|vidéos?\s+en\s+français|vídeos?\s+en\s+español|video\s+in\s+deutsch|deutschsprachig|erklärvideo|kurzfilm|hörspiel|spielfilm|chinese television|chinese media|automobiles in china|leapmotor|autolab|media of china|videos (of|from|in) (china|germany|france|russia|japan|korea|spain|italy|brazil|ukraine|poland|iran|turkey|taiwan))\b/i;
+  /\b(Videos?\s+in\s+(?!English\b)[A-Za-z]+|(?!English\b)[A-Za-z]+-language\s+(videos?|podcasts?|media)|instructional\s+videos?\s+.*in\s+(?!English\b)[A-Za-z]+|vidéos?\s+en\s+français|vídeos?\s+(en\s+español|em\s+português)|podcasts?\s+(en\s+español|em\s+português)|video\s+in\s+deutsch|deutschsprachig|erklärvideo|kurzfilm|hörspiel|spielfilm|chinese television|chinese media|automobiles in china|leapmotor|autolab|media of china|videos (of|from|in) (china|germany|france|russia|japan|korea|spain|italy|brazil|portugal|mexico|colombia|argentina|chile|peru|ukraine|poland|iran|turkey|taiwan)|podcasts?\s+(in|en|em|de)\s+(?!english\b)[a-z]+)\b/i;
 
 /**
  * Unicode ranges for non-Latin writing systems:
@@ -61,6 +67,12 @@ export const FOREIGN_TITLE_MARKERS_RE =
   /\b(mach\s+mit|erklärvideo|kurzfilm|hörspiel|spielfilm|autolab|leapmotor|the chinese car|chinese car|bilibili|weibo|youku|cgtn|cctv|xinhua|dw deutsch|zdf|ard|rt news|sputnik)\b/i;
 
 /**
+ * High-confidence single-word media identifiers indicating non-English speech.
+ */
+export const NON_ENGLISH_SINGLE_WORD_MARKERS_RE =
+  /\b(episódio|episodio|governança|gobernanza|temporada|capítulo|capitulo|lição|lições|lección|educação|educación|entrevista|notícias|noticias|português|portugues|español|castellano)\b/i;
+
+/**
  * High-frequency German stop words in video titles.
  */
 export const GERMAN_TITLE_MARKERS_RE =
@@ -73,10 +85,16 @@ export const FRENCH_TITLE_MARKERS_RE =
   /\b(dans|pour|avec|sur|les|des|une|cette|sont|nous|vous|leur|leurs|français|france|comment|pourquoi|vidéo)\b/gi;
 
 /**
- * High-frequency Spanish stop words in video titles.
+ * High-frequency Spanish stop words and vocabulary in video titles.
  */
 export const SPANISH_TITLE_MARKERS_RE =
-  /\b(para|con|por|sobre|los|las|una|este|esta|estos|estas|español|méxico|españa|cómo|vídeo)\b/gi;
+  /\b(para|con|por|sobre|los|las|una|uno|unos|unas|este|esta|estos|estas|español|méxico|españa|cómo|como|vídeo|habla|hablar|hablando|todos|todas|amigos|gente|mundo|del|dela)\b/gi;
+
+/**
+ * High-frequency Portuguese stop words and vocabulary in video titles.
+ */
+export const PORTUGUESE_TITLE_MARKERS_RE =
+  /\b(para|com|por|sobre|não|mais|pelo|pela|pelos|pelas|nos|nas|dos|das|você|vocês|português|brasil|portugal|como|vídeo|inclusiva|participativa|falando|falar|todos|todas|amigos|gente|mundo)\b/gi;
 
 /**
  * Asian/Chinese automotive and media brands that often have English translated subtitles.

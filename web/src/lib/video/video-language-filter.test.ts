@@ -91,6 +91,32 @@ describe("Spoken Language & Speech Media Filter", () => {
     ).toBe(true);
   });
 
+  it("rejects Portuguese video 'Sopa Wiki Podcast - Episódio 5 - Governança inclusiva e participativa na Wiki'", () => {
+    expect(
+      isNonEnglishVideoTitle(
+        "File:Sopa_Wiki_Podcast_-_Episódio_5_-_Governança_inclusiva_e_participativa_na_Wiki.webm",
+      ),
+    ).toBe(true);
+
+    expect(
+      isNonEnglishVideoMetadata({
+        title: "File:Sopa_Wiki_Podcast_-_Episódio_5_-_Governança_inclusiva_e_participativa_na_Wiki.webm",
+        categories:
+          "Sopa Wiki Podcast|WebM videos|Files with closed captioning in English|Podcasts in Portuguese|Wikimedistas de Portugal",
+        description: "Episódio 5 do podcast Sopa Wiki sobre Governança inclusiva.",
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects Spanish video with English subtitles", () => {
+    expect(
+      isNonEnglishVideoTitle("Episodio 3 - Cómo hablar de tecnología en español", "Canal de Educación"),
+    ).toBe(true);
+    expect(
+      isNonEnglishVideoTitle("Temporada 2 Capítulo 1 - Entrevista exclusiva"),
+    ).toBe(true);
+  });
+
   it("validates media URLs against trusted secure host whitelist", () => {
     expect(
       isAllowedMediaUrl(

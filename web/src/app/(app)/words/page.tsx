@@ -122,9 +122,15 @@ const LANG_LABELS: Record<string, string> = {
   tr: "Turkish",
   ru: "Russian",
   ar: "Arabic",
+  fa: "Persian",
   ja: "Japanese",
   ko: "Korean",
   zh: "Chinese",
+  nl: "Dutch",
+  pl: "Polish",
+  sv: "Swedish",
+  hi: "Hindi",
+  id: "Indonesian",
   auto: "Other",
 };
 

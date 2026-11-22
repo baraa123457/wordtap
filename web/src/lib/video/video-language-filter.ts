@@ -16,8 +16,11 @@ import {
   GERMAN_TITLE_MARKERS_RE,
   NON_ENGLISH_CAPTION_OR_SUB_CAT_RE,
   NON_ENGLISH_CATEGORY_RE,
+  NON_ENGLISH_ROMANCE_LETTERS_RE,
+  NON_ENGLISH_SINGLE_WORD_MARKERS_RE,
   NON_LATIN_SCRIPT_RE,
   NON_SPEECH_MEDIA_RE,
+  PORTUGUESE_TITLE_MARKERS_RE,
   SPANISH_TITLE_MARKERS_RE,
   VERIFIED_ENGLISH_COLLECTIONS_RE,
 } from "./video-language-constants";
@@ -27,12 +30,15 @@ export {
   MAX_VIDEO_FILE_SIZE_BYTES,
   NON_ENGLISH_CAPTION_OR_SUB_CAT_RE,
   NON_ENGLISH_CATEGORY_RE,
+  NON_ENGLISH_ROMANCE_LETTERS_RE,
+  NON_ENGLISH_SINGLE_WORD_MARKERS_RE,
   NON_LATIN_SCRIPT_RE,
   NON_SPEECH_MEDIA_RE,
   FOREIGN_TITLE_MARKERS_RE,
   GERMAN_TITLE_MARKERS_RE,
   FRENCH_TITLE_MARKERS_RE,
   SPANISH_TITLE_MARKERS_RE,
+  PORTUGUESE_TITLE_MARKERS_RE,
   CHINESE_OR_ASIAN_MEDIA_RE,
   VERIFIED_ENGLISH_COLLECTIONS_RE,
 } from "./video-language-constants";
@@ -62,17 +68,30 @@ export function isNonEnglishVideoTitle(title: string, channelName?: string): boo
     return true;
   }
 
-  // Reject foreign production brands / keywords
-  if (FOREIGN_TITLE_MARKERS_RE.test(combined) || CHINESE_OR_ASIAN_MEDIA_RE.test(combined)) {
-    return true;
-  }
-
   // Reject non-Latin characters (Chinese Hanzi, Cyrillic, Arabic, etc.)
   if (NON_LATIN_SCRIPT_RE.test(combined)) {
     return true;
   }
 
+  // Reject foreign characters not part of native English vocabulary (ç, ã, õ, ñ, ¿, ¡)
+  // E.g. "Governança", "Episódio", "Lição", "Español", "Não"
+  if (NON_ENGLISH_ROMANCE_LETTERS_RE.test(combined)) {
+    return true;
+  }
+
+  // Reject foreign production brands / keywords
+  if (FOREIGN_TITLE_MARKERS_RE.test(combined) || CHINESE_OR_ASIAN_MEDIA_RE.test(combined)) {
+    return true;
+  }
+
+  // High-confidence single-word markers for Portuguese / Spanish / foreign media
+  if (NON_ENGLISH_SINGLE_WORD_MARKERS_RE.test(combined)) {
+    return true;
+  }
+
   const cleanTitle = title.replace(/^File:/i, "").replace(/\.(webm|mp4|ogv)$/i, "");
+
+  // German checks
   const germanMatches = cleanTitle.match(GERMAN_TITLE_MARKERS_RE) || [];
   if (
     germanMatches.length >= 2 ||
@@ -81,10 +100,19 @@ export function isNonEnglishVideoTitle(title: string, channelName?: string): boo
   ) {
     return true;
   }
+
+  // French checks
   const frenchMatches = cleanTitle.match(FRENCH_TITLE_MARKERS_RE) || [];
   if (frenchMatches.length >= 2) return true;
+
+  // Spanish checks
   const spanishMatches = cleanTitle.match(SPANISH_TITLE_MARKERS_RE) || [];
   if (spanishMatches.length >= 2) return true;
+
+  // Portuguese checks
+  const portugueseMatches = cleanTitle.match(PORTUGUESE_TITLE_MARKERS_RE) || [];
+  if (portugueseMatches.length >= 2) return true;
+
   return false;
 }
 
