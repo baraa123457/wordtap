@@ -353,56 +353,61 @@
   let vlsubSearchResults = [];
   let selectedVlsubIndex = -1;
 
-  // Web Audio Amplification Graph (VLC-Style Volume Boost up to 200%)
-  let audioCtx = null;
-  let masterGainNode = null;
+  // Video Aspect Ratio Control (VLC Style with DAR & Aspect Presets)
+  const aspectRatios = [
+    { label: 'Default (Auto)', value: 'auto' },
+    { label: '16:9 (Widescreen)', value: '16/9' },
+    { label: '4:3 (Standard TV)', value: '4/3' },
+    { label: '16:10', value: '16/10' },
+    { label: '2.35:1 (Cinema)', value: '2.35/1' },
+    { label: '1:1 (Square)', value: '1/1' },
+    { label: 'Fill Window', value: 'fill' }
+  ];
+  let currentAspectIndex = 0;
 
-  function ensureWebAudioGraph() {
-    if (audioCtx) return;
-    try {
-      const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtxClass) return;
-      audioCtx = new AudioCtxClass();
-
-      // Master Gain: scales audio cleanly from 0.0 to 2.0 (0% - 200%)
-      masterGainNode = audioCtx.createGain();
-      const initialGain = userMuted ? 0 : userVolume;
-      masterGainNode.gain.setValueAtTime(initialGain, audioCtx.currentTime);
-      masterGainNode.gain.value = initialGain;
-
-      // Connect directly to destination for full, real VLC-style 200% volume amplification
-      masterGainNode.connect(audioCtx.destination);
-    } catch (e) {
-      console.warn('Web Audio Graph initialization notice:', e);
+  function setAspectRatio(aspectVal, label, showMessage = true) {
+    if (!video) return;
+    if (aspectVal === 'auto') {
+      video.style.aspectRatio = 'auto';
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.maxWidth = '100%';
+      video.style.maxHeight = '100%';
+      video.style.objectFit = 'contain';
+    } else if (aspectVal === 'fill') {
+      video.style.aspectRatio = 'auto';
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.maxWidth = '100%';
+      video.style.maxHeight = '100%';
+      video.style.objectFit = 'cover';
+    } else {
+      video.style.aspectRatio = aspectVal;
+      video.style.width = 'auto';
+      video.style.height = 'auto';
+      video.style.maxWidth = '100%';
+      video.style.maxHeight = '100%';
+      video.style.objectFit = 'fill';
+    }
+    const idx = aspectRatios.findIndex(a => a.value === aspectVal);
+    if (idx !== -1) currentAspectIndex = idx;
+    if (showMessage) {
+      showToast(`Aspect Ratio: ${label}`);
     }
   }
 
-  function resumeAudioContext() {
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(() => {});
-    }
+  function cycleAspectRatio() {
+    currentAspectIndex = (currentAspectIndex + 1) % aspectRatios.length;
+    const item = aspectRatios[currentAspectIndex];
+    setAspectRatio(item.value, item.label, true);
   }
 
-  function hookAudioElement(element) {
-    if (!element || element._webAudioHooked) return;
-    try {
-      ensureWebAudioGraph();
-      if (audioCtx && masterGainNode) {
-        const srcNode = audioCtx.createMediaElementSource(element);
-        srcNode.connect(masterGainNode);
-        element._webAudioHooked = true;
-      }
-    } catch (err) {
-      console.warn('Could not hook media element to Web Audio:', err);
-    }
-  }
-
-  // Volume & Sound Handling (VLC Style with Percentage and Boost >100% up to 200%)
+  // Volume & Sound Handling (Direct Native Hardware-Locked Audio - 100% Reliable)
   function updateVolumeDisplay() {
-    ensureWebAudioGraph();
-    hookAudioElement(video);
-    hookAudioElement(compatibleAudio);
-    resumeAudioContext();
+    if (typeof userVolume !== 'number' || isNaN(userVolume) || userVolume < 0) {
+      userVolume = 1.0;
+    }
+    userVolume = Math.min(2.0, Math.max(0, userVolume));
 
     const pct = Math.round(userVolume * 100);
     if (volumeSlider) volumeSlider.value = userVolume;
@@ -443,39 +448,23 @@
       }
     }
 
-    // Route volume through Web Audio Gain Node
-    if (masterGainNode && audioCtx) {
-      const targetGain = userMuted ? 0 : userVolume;
-      try {
-        masterGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-        masterGainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime);
-        masterGainNode.gain.value = targetGain;
-      } catch {}
-
-      if (video) {
-        video.muted = isAudioTranscoded ? true : userMuted;
-        video.volume = 1.0;
-      }
-      if (compatibleAudio) {
-        compatibleAudio.muted = !isAudioTranscoded ? true : userMuted;
-        compatibleAudio.volume = 1.0;
-      }
-    } else {
-      // Fallback for non-WebAudio environments (clamped to 1.0)
-      const clampedVol = Math.max(0, Math.min(1.0, userVolume));
-      if (video) {
-        video.muted = isAudioTranscoded ? true : userMuted;
-        video.volume = clampedVol;
-      }
-      if (compatibleAudio) {
-        compatibleAudio.muted = !isAudioTranscoded ? true : userMuted;
-        compatibleAudio.volume = clampedVol;
-      }
+    // Direct Native Audio Routing - 100% Guaranteed Sound Output
+    const effectiveVol = userMuted ? 0 : Math.max(0, Math.min(1.0, userVolume));
+    if (video) {
+      video.muted = isAudioTranscoded ? true : (userMuted || userVolume === 0);
+      video.volume = isAudioTranscoded ? 0 : effectiveVol;
+    }
+    if (compatibleAudio) {
+      compatibleAudio.muted = !isAudioTranscoded ? true : (userMuted || userVolume === 0);
+      compatibleAudio.volume = !isAudioTranscoded ? 0 : effectiveVol;
     }
   }
 
   function toggleMute() {
     userMuted = !userMuted;
+    if (!userMuted && userVolume <= 0.05) {
+      userVolume = 1.0;
+    }
     updateVolumeDisplay();
     showToast(userMuted ? 'Muted' : `Volume: ${Math.round(userVolume * 100)}%`);
   }
@@ -534,7 +523,6 @@
   }
 
   function togglePlay() {
-    resumeAudioContext();
     if (wordPopover && wordPopover.classList.contains('visible')) {
       closePopover(true);
       return;
@@ -600,9 +588,6 @@
   // Explicit Audio Initialization
   function initAudio() {
     try {
-      ensureWebAudioGraph();
-      hookAudioElement(video);
-      hookAudioElement(compatibleAudio);
       updateVolumeDisplay();
     } catch (err) {
       console.warn('initAudio notice:', err);
@@ -797,9 +782,12 @@
       if (config && config.targetLang) {
         targetLang = config.targetLang;
       }
-      if (config && typeof config.volume === 'number' && config.volume >= 0 && config.volume <= 2.0) {
+      if (config && typeof config.volume === 'number' && config.volume > 0.05 && config.volume <= 2.0) {
         userVolume = config.volume;
+      } else {
+        userVolume = 1.0;
       }
+      userMuted = false;
       if (config && config.theme) {
         currentTheme = config.theme;
       } else {
@@ -1799,9 +1787,11 @@
     video.src = fileUrl;
     dropZone.classList.add('hidden');
 
-    // Make sure audio element is hooked and display updated with current volume
-    hookAudioElement(video);
+    // Make sure volume is active and unmuted
     userMuted = false;
+    if (typeof userVolume !== 'number' || isNaN(userVolume) || userVolume <= 0.05) {
+      userVolume = 1.0;
+    }
     updateVolumeDisplay();
 
     if (subContent) {
@@ -1822,6 +1812,13 @@
     if (filePath && window.WordTapAPI && window.WordTapAPI.probeAudio) {
       try {
         const info = await window.WordTapAPI.probeAudio(filePath);
+        if (info && info.dar) {
+          const darLabel = info.dar.replace('/', ':');
+          setAspectRatio(info.dar, darLabel, false);
+          console.log(`Auto-applied video aspect ratio from container DAR: ${info.dar}`);
+        } else {
+          setAspectRatio('auto', 'Default', false);
+        }
         if (info && info.needsTranscode) {
           const codecName = (info.codecs && info.codecs.length > 0) ? info.codecs.join('/') : 'DDP 5.1';
           showToast(`Audio: Dolby ${codecName}`);
@@ -1887,9 +1884,7 @@
         compatibleAudio.playbackRate = video.playbackRate;
 
         // Ensure audio element has user's volume and unmuted state
-        hookAudioElement(compatibleAudio);
         compatibleAudio.muted = userMuted;
-        compatibleAudio.volume = 1.0;
         updateVolumeDisplay();
 
         // Hardware-lock event: Align video frame to the audio stream's exact presentation time the instant sound begins!
@@ -2389,6 +2384,17 @@
     bindMenuItem('menu-item-vol-up', () => adjustVolume(0.05));
     bindMenuItem('menu-item-vol-down', () => adjustVolume(-0.05));
 
+    // Video Menu Actions (Aspect Ratio & Fullscreen)
+    bindMenuItem('menu-item-fullscreen', toggleFullscreen);
+    bindMenuItem('menu-item-aspect-cycle', cycleAspectRatio);
+    bindMenuItem('menu-item-aspect-auto', () => setAspectRatio('auto', 'Default (Auto)'));
+    bindMenuItem('menu-item-aspect-16-9', () => setAspectRatio('16/9', '16:9 (Widescreen)'));
+    bindMenuItem('menu-item-aspect-4-3', () => setAspectRatio('4/3', '4:3 (Standard TV)'));
+    bindMenuItem('menu-item-aspect-16-10', () => setAspectRatio('16/10', '16:10'));
+    bindMenuItem('menu-item-aspect-235', () => setAspectRatio('2.35/1', '2.35:1 (Cinema)'));
+    bindMenuItem('menu-item-aspect-1-1', () => setAspectRatio('1/1', '1:1 (Square)'));
+    bindMenuItem('menu-item-aspect-fill', () => setAspectRatio('fill', 'Fill Window'));
+
     // Subtitle Menu Actions
     bindMenuItem('menu-item-add-sub', async () => {
       const res = await window.WordTapAPI.openSubtitleFile();
@@ -2669,7 +2675,6 @@
     });
 
     video.addEventListener('play', () => {
-      resumeAudioContext();
       iconPlay.style.display = 'none';
       iconPause.style.display = 'block';
       audioUnmuteBanner.style.display = 'none';
@@ -2908,6 +2913,11 @@
 
     // Volume & Sound Handling Listeners (uses outer scoped functions)
     btnMute.addEventListener('click', toggleMute);
+    if (volumePercentLabel) {
+      volumePercentLabel.style.cursor = 'pointer';
+      volumePercentLabel.title = 'Click to mute/unmute';
+      volumePercentLabel.addEventListener('click', toggleMute);
+    }
 
     volumeSlider.addEventListener('input', (e) => {
       setVolume(parseFloat(e.target.value));
@@ -3103,7 +3113,7 @@
         btnToggleSub.classList.toggle('active', subtitlesVisible);
         renderSubtitle(currentCue);
       } else if (e.code === 'KeyA') {
-        cycleSubSize();
+        cycleAspectRatio();
       } else if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) {
         helpModal.classList.toggle('open');
       } else if (e.code === 'ArrowLeft') {

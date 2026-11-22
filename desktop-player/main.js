@@ -609,7 +609,19 @@ function probeAudio(filePath) {
       let needsTranscode = false;
 
       const lines = output.split('\n');
+      let dar = null;
+      let sar = null;
       for (const line of lines) {
+        if (line.includes('Video:')) {
+          const darMatch = line.match(/DAR\s+([0-9]+:[0-9]+)/i);
+          if (darMatch) {
+            dar = darMatch[1].replace(':', '/');
+          }
+          const sarMatch = line.match(/SAR\s+([0-9]+:[0-9]+)/i);
+          if (sarMatch) {
+            sar = sarMatch[1].replace(':', '/');
+          }
+        }
         if (line.includes('Audio:')) {
           audioStreams.push(line.trim());
           const match = line.match(/Audio:\s*([^,]+)/);
@@ -632,7 +644,9 @@ function probeAudio(filePath) {
         hasAudio,
         codecs,
         needsTranscode,
-        audioStreams
+        audioStreams,
+        dar,
+        sar
       });
     });
   });

@@ -105,6 +105,43 @@
             </div>
           </div>
 
+          <!-- Video Menu (VLC Style with Aspect Ratio & Fullscreen) -->
+          <div class="vlc-menu-dropdown" data-menu="video">
+            <button class="vlc-menu-btn menu-header-btn">Video</button>
+            <div class="vlc-dropdown-list">
+              <button class="vlc-dropdown-item" id="menu-item-fullscreen">
+                <span>Fullscreen</span>
+                <kbd>F</kbd>
+              </button>
+              <button class="vlc-dropdown-item highlight-action" id="menu-item-aspect-cycle">
+                <span>Cycle Aspect Ratio</span>
+                <kbd>A</kbd>
+              </button>
+              <div class="vlc-dropdown-sep"></div>
+              <button class="vlc-dropdown-item" id="menu-item-aspect-auto">
+                <span>Aspect Ratio: Default (Auto)</span>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-aspect-16-9">
+                <span>Aspect Ratio: 16:9 (Widescreen)</span>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-aspect-4-3">
+                <span>Aspect Ratio: 4:3 (Standard TV)</span>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-aspect-16-10">
+                <span>Aspect Ratio: 16:10</span>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-aspect-235">
+                <span>Aspect Ratio: 2.35:1 (Cinema)</span>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-aspect-1-1">
+                <span>Aspect Ratio: 1:1 (Square)</span>
+              </button>
+              <button class="vlc-dropdown-item" id="menu-item-aspect-fill">
+                <span>Aspect Ratio: Fill Window</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Subtitle Menu -->
           <div class="vlc-menu-dropdown" data-menu="subtitle">
             <button class="vlc-menu-btn menu-header-btn">Subtitle</button>
@@ -125,8 +162,7 @@
                 <kbd>C</kbd>
               </button>
               <button class="vlc-dropdown-item" id="btn-sub-size">
-                <span>Font Size (A)</span>
-                <kbd>A</kbd>
+                <span>Font Size Presets</span>
               </button>
               <button class="vlc-dropdown-item" id="menu-item-sub-size-plus">
                 <span>Font Size +2px</span>
