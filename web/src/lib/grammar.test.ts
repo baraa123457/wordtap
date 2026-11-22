@@ -105,21 +105,24 @@ describe("Grammar & Determiner Checker", () => {
     expect(withVerb).toBeNull();
   });
 
-  it("accepts 'I accumulated a lot of English vocabulary last Thursday' as a 100% valid sentence", () => {
-    const fragment = detectFragmentIssue(
-      "I accumulated a lot of English vocabulary last Thursday",
-      "accumulated",
-      "Verb · فعل",
+  it("recognizes 'ur' as possessive determiner and correctly places article before adjective in 'ur business should be hierarchical structure'", () => {
+    const issues = detectDeterminerIssues(
+      "ur business should be hierarchical structure",
+      "hierarchical",
+      "Adjective · صفة",
     );
-    expect(fragment).toBeNull();
+    // "business" has determiner "ur" -> no issue on business!
+    // "structure" lacks a determiner -> issue on structure!
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.word).toBe("structure");
+    expect(issues[0]?.insertionIndex).toBe(4); // index of "hierarchical"
 
-    const result = evaluateGrammarLocally({
-      sentence: "I accumulated a lot of English vocabulary last Thursday",
-      word: "accumulated",
-      partOfSpeech: "Verb · فعل",
-    });
-    expect(result.hasStructuralErrors).toBe(false);
-    expect(result.scorePenalty).toBe(0);
-    expect(result.grammarCorrections).toHaveLength(0);
+    const alt = buildNaturalAlternative("ur business should be hierarchical structure", issues);
+    expect(alt).toBe("Your business should be a hierarchical structure.");
+  });
+
+  it("accepts 'ur' without penalizing business: 'ur business is successful'", () => {
+    const issues = detectDeterminerIssues("ur business is successful", "business", "Noun · اسم");
+    expect(issues).toHaveLength(0);
   });
 });

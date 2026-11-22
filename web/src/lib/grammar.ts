@@ -14,6 +14,7 @@ export interface DeterminerIssue {
   word: string;
   rawToken: string;
   index: number;
+  insertionIndex?: number;
   isTarget: boolean;
   precedingPreposition?: string;
 }
@@ -37,9 +38,11 @@ export const DETERMINERS = new Set([
   "that",
   "these",
   "those",
-  // Possessives
+  // Possessives (including informal text slang ur/yr)
   "my",
   "your",
+  "ur",
+  "yr",
   "his",
   "her",
   "its",
@@ -248,6 +251,15 @@ export const COMMON_COUNTABLE_NOUNS = new Set([
   "thought",
   "plan",
   "goal",
+  "structure",
+  "system",
+  "hierarchy",
+  "framework",
+  "model",
+  "method",
+  "process",
+  "strategy",
+  "network",
   "dream",
   "reason",
   "cause",
@@ -356,7 +368,7 @@ export const IDIOMATIC_BARE_PATTERNS = [
 ];
 
 const SCAN_STOPPER_RE =
-  /^(will|shall|can|could|would|should|may|might|must|study|eat|read|write|have|has|had|take|took|make|made|is|are|was|were|see|saw|of|in|on|at|from|to|with|for|about|into|onto|through|without|by|because|and|or|but|if|that|when|while|since|although)$/i;
+  /^(will|shall|can|could|would|should|may|might|must|study|eat|read|write|have|has|had|take|took|make|made|be|been|being|is|are|was|were|see|saw|of|in|on|at|from|to|with|for|about|into|onto|through|without|by|because|and|or|but|if|that|when|while|since|although)$/i;
 
 const AUX_AND_MODALS_RE =
   /\b(is|are|was|were|am|be|been|being|have|has|had|having|do|does|did|done|will|would|shall|should|can|could|may|might|must|wanna|gonna|gotta)\b/i;
@@ -445,6 +457,7 @@ export function detectDeterminerIssues(
       // Look back for a determiner or possessive ('s)
       let hasDeterminer = false;
       let precedingPrep: string | undefined;
+      let insertionIdx = idx;
 
       for (let prev = idx - 1; prev >= Math.max(0, idx - 4); prev--) {
         const prevClean = rawTokens[prev]!.toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
@@ -467,6 +480,10 @@ export function detectDeterminerIssues(
         if (SCAN_STOPPER_RE.test(prevClean)) {
           break;
         }
+
+        // If this previous token is an adjective/adverb modifying the noun (e.g. "hierarchical", "clear"),
+        // the article should precede the entire noun phrase!
+        insertionIdx = prev;
       }
 
       if (!hasDeterminer) {
@@ -474,6 +491,7 @@ export function detectDeterminerIssues(
           word: clean,
           rawToken,
           index: idx,
+          insertionIndex: insertionIdx,
           isTarget,
           precedingPreposition: precedingPrep,
         });
@@ -486,15 +504,19 @@ export function detectDeterminerIssues(
 
 export function buildNaturalAlternative(sentence: string, issues: DeterminerIssue[]): string {
   const tokens = sentence.trim().split(/\s+/);
-  const issueMap = new Map(issues.map((i) => [i.index, i]));
+  const insertMap = new Map<number, DeterminerIssue>();
+  for (const issue of issues) {
+    const insertAt = typeof issue.insertionIndex === "number" ? issue.insertionIndex : issue.index;
+    insertMap.set(insertAt, issue);
+  }
 
   const reconstructed: string[] = [];
   tokens.forEach((token, idx) => {
-    const issue = issueMap.get(idx);
+    const issue = insertMap.get(idx);
     if (issue) {
       const prev = idx > 0 ? tokens[idx - 1]!.toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "") : "";
-      const word = issue.word;
-      const isVowelStart = /^[aeiou]/i.test(word);
+      const firstWord = tokens[idx]!.toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+      const isVowelStart = /^[aeiou]/i.test(firstWord);
       // After prepositions like "of" or "in", standard English uses "the", else "a" / "an"
       const article =
         prev === "of" || prev === "in" || prev === "on" || prev === "to"
@@ -508,6 +530,16 @@ export function buildNaturalAlternative(sentence: string, issues: DeterminerIssu
   });
 
   let result = reconstructed.join(" ");
+
+  // Expand common informal shorthand in the polished natural alternative
+  result = result
+    .replace(/\bur\b/gi, (match) => (match[0] === match[0]?.toUpperCase() ? "Your" : "your"))
+    .replace(/\bu\b/gi, (match) => (match[0] === match[0]?.toUpperCase() ? "You" : "you"))
+    .replace(/\bim\b/gi, (match) => (match[0] === match[0]?.toUpperCase() ? "I'm" : "I'm"))
+    .replace(/\bdont\b/gi, (match) => (match[0] === match[0]?.toUpperCase() ? "Don't" : "don't"))
+    .replace(/\bcant\b/gi, (match) => (match[0] === match[0]?.toUpperCase() ? "Can't" : "can't"))
+    .replace(/\bwont\b/gi, (match) => (match[0] === match[0]?.toUpperCase() ? "Won't" : "won't"));
+
   // Capitalize first character
   if (result.length > 0) {
     result = result[0]!.toUpperCase() + result.slice(1);
