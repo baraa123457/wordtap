@@ -23,7 +23,7 @@ import { POS_BADGES } from "@/components/TranslatorCard";
 import { parseImportFile } from "@/lib/import";
 
 type Filter = "all" | WordStatus;
-type SourceFilter = "all" | "subtitles" | "ocr" | "translator" | "web";
+type SourceFilter = "all" | "subtitles" | "web" | "ocr" | "translator" | "app";
 
 const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -31,11 +31,28 @@ const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
   { id: "web", label: "Web" },
   { id: "ocr", label: "OCR" },
   { id: "translator", label: "Translator" },
+  { id: "app", label: "App" },
 ];
 
 function inferWordSource(w: Word): Exclude<SourceFilter, "all"> {
   const title = (w.source_title || "").toLowerCase();
   const url = (w.source_url || "").toLowerCase();
+
+  // Desktop App / VLC Companion Player
+  if (
+    url === "wordtap-vlc-player" ||
+    url.includes("wordtap-player") ||
+    url.includes("desktop") ||
+    url.startsWith("file://") ||
+    title.includes("vlc") ||
+    title.includes("wordtap app") ||
+    title.includes("desktop player") ||
+    /\.(mkv|mp4|avi|mov|m4v|ts|flv|webm)\b/i.test(title) ||
+    /\.(mkv|mp4|avi|mov|m4v|ts|flv|webm)\b/i.test(url)
+  ) {
+    return "app";
+  }
+
   if (title.includes("ocr") || title.includes("screen capture")) return "ocr";
   if (title === "translator") return "translator";
   if (
@@ -861,7 +878,7 @@ export default function WordsPage() {
               <span className="text-xs font-semibold text-muted shrink-0">Source:</span>
               <div className="py-0.5 max-w-full min-w-0">
                 <div className="apple-segmented-container apple-segmented-fit">
-                  {SOURCE_FILTERS.filter((sf) => sf.id === "all" || (sourceCounts.get(sf.id) || 0) > 0).map((sf) => (
+                  {SOURCE_FILTERS.filter((sf) => sf.id === "all" || sf.id === "app" || (sourceCounts.get(sf.id) || 0) > 0).map((sf) => (
                     <button
                       key={sf.id}
                       type="button"
