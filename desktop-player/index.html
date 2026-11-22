@@ -337,8 +337,13 @@
         </div>
 
         <div class="controls-right">
-          <!-- Playback Speed -->
-          <button class="vlc-ctrl-btn" id="btn-speed" title="Speed" style="font-size:11px; font-weight:700; width:44px;">1.0x</button>
+          <!-- Playback Speed Bar Group (VLC Style) -->
+          <div class="speed-group" id="speed-group" title="Speed: [ / ] ±0.1x, - / + ±0.5x, = reset 1.0x">
+            <button class="vlc-ctrl-btn speed-step-btn" id="btn-speed-minus" title="Slower 0.1x ([)">−</button>
+            <input type="range" class="speed-slider" id="speed-slider" min="0.25" max="3.0" step="0.05" value="1.0" title="Drag to adjust speed">
+            <button class="vlc-ctrl-btn speed-badge-btn" id="btn-speed" title="Click to cycle speed or reset to 1.0x (=)">1.0x</button>
+            <button class="vlc-ctrl-btn speed-step-btn" id="btn-speed-plus" title="Faster 0.1x (])">+</button>
+          </div>
 
           <!-- Subtitle Toggle (CC) -->
           <button class="vlc-ctrl-btn active" id="btn-toggle-sub" title="Toggle Subtitles (C)">
@@ -422,12 +427,15 @@
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:12px; color:var(--text-secondary); margin-top:4px;">
           <div><strong style="color:#fff;">Space</strong>: Play / Pause</div>
           <div><strong style="color:#fff;">S</strong>: Replay Line</div>
-          <div><strong style="color:#fff;">[ / ]</strong>: Sub Sync ±100ms</div>
+          <div><strong style="color:#fff;">[ / ]</strong>: Speed ±0.1x</div>
+          <div><strong style="color:#fff;">- / +</strong>: Speed ±0.5x</div>
+          <div><strong style="color:#fff;">=</strong>: Normal Speed (1.0x)</div>
+          <div><strong style="color:#fff;">M</strong>: Mute / Unmute</div>
+          <div><strong style="color:#fff;">G / H</strong>: Sub Sync ±50ms</div>
           <div><strong style="color:#fff;">J / K</strong>: Audio Sync ±50ms</div>
           <div><strong style="color:#fff;">A</strong>: Cycle Subtitle Size</div>
           <div><strong style="color:#fff;">Left / Right</strong>: Seek ±5s</div>
           <div><strong style="color:#fff;">Up / Down</strong>: Volume ±5%</div>
-          <div><strong style="color:#fff;">M</strong>: Mute / Unmute</div>
           <div><strong style="color:#fff;">C</strong>: Subtitles On / Off</div>
           <div><strong style="color:#fff;">F</strong>: Fullscreen</div>
           <div><strong style="color:#fff;">Ctrl + O</strong>: Open Media</div>

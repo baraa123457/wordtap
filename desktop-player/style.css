@@ -840,6 +840,96 @@ body {
   letter-spacing: 0.3px;
 }
 
+/* Playback Speed Bar Group (VLC / Apple Feel) */
+.speed-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-right: 4px;
+}
+
+.speed-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 68px;
+  height: 4px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.18);
+  outline: none;
+  cursor: pointer;
+  transition: width 0.15s ease;
+}
+
+.speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--subtitle, #facc15);
+  border: 1px solid #FFFFFF;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  transition: transform 0.1s ease;
+}
+
+.speed-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+}
+
+.speed-step-btn {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  padding: 0 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  color: var(--muted, #94a3b8);
+  border: none !important;
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+}
+
+.speed-step-btn:hover {
+  color: #FFFFFF !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px;
+}
+
+.speed-badge-btn {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 24px !important;
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+  padding: 0 4px !important;
+  user-select: none;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.speed-badge-btn:hover {
+  background: rgba(250, 204, 59, 0.15) !important;
+  border-color: rgba(250, 204, 59, 0.4) !important;
+  color: var(--subtitle, #facc15) !important;
+}
+
 /* Volume Slider with Apple Feel */
 .volume-group {
   display: flex;

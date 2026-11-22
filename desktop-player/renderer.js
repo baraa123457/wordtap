@@ -50,6 +50,10 @@
   const scrubberPlayed = document.getElementById('scrubber-played');
   const scrubberThumb = document.getElementById('scrubber-thumb');
   const timeTooltip = document.getElementById('time-tooltip');
+  const speedGroup = document.getElementById('speed-group');
+  const speedSlider = document.getElementById('speed-slider');
+  const btnSpeedMinus = document.getElementById('btn-speed-minus');
+  const btnSpeedPlus = document.getElementById('btn-speed-plus');
   const btnSpeed = document.getElementById('btn-speed');
   const btnToggleSub = document.getElementById('btn-toggle-sub');
   const btnMute = document.getElementById('btn-mute');
@@ -203,6 +207,38 @@
   }
   const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
   let currentSpeedIndex = 1;
+
+  function setPlaybackSpeed(speed, showMessage = true) {
+    if (isNaN(speed)) return;
+    const clamped = Math.min(3.0, Math.max(0.25, Math.round(speed * 100) / 100));
+    video.playbackRate = clamped;
+    if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+      compatibleAudio.playbackRate = clamped;
+    }
+    if (speedSlider) {
+      speedSlider.value = clamped;
+    }
+    if (btnSpeed) {
+      const formatted = clamped.toFixed(clamped % 1 === 0 ? 1 : (Math.round(clamped * 10) === clamped * 10 ? 1 : 2));
+      btnSpeed.textContent = `${formatted}x`;
+      if (clamped !== 1.0) {
+        btnSpeed.style.color = 'var(--subtitle, #facc15)';
+        btnSpeed.style.borderColor = 'rgba(250, 204, 59, 0.4)';
+      } else {
+        btnSpeed.style.color = '#FFFFFF';
+        btnSpeed.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+      }
+    }
+    if (showMessage) {
+      const formatted = clamped.toFixed(clamped % 1 === 0 ? 1 : (Math.round(clamped * 10) === clamped * 10 ? 1 : 2));
+      showToast(`Speed: ${formatted}x`);
+    }
+  }
+
+  function adjustPlaybackSpeed(delta) {
+    const cur = video.playbackRate || 1.0;
+    setPlaybackSpeed(cur + delta, true);
+  }
   let currentMediaTitle = 'No media loaded';
   let currentFilePath = null;
   let currentSubPath = null;
@@ -2256,11 +2292,7 @@
     });
     bindMenuItem('menu-item-speed', () => {
       currentSpeedIndex = (currentSpeedIndex + 1) % speeds.length;
-      const speed = speeds[currentSpeedIndex];
-      video.playbackRate = speed;
-      if (isAudioTranscoded && compatibleAudio) compatibleAudio.playbackRate = speed;
-      btnSpeed.textContent = `${speed.toFixed(speed === 1.0 ? 1 : 2).replace('.00', '.0')}x`;
-      showToast(`Speed: ${speed}x`);
+      setPlaybackSpeed(speeds[currentSpeedIndex], true);
     });
 
     // Audio Menu Actions (CRITICAL FIX FOR USER: AC3 / DTS Transcode & Lip-Sync)
@@ -2729,15 +2761,47 @@
       showToast('+00:05');
     });
 
-    // Speed Selector
-    btnSpeed.addEventListener('click', () => {
-      currentSpeedIndex = (currentSpeedIndex + 1) % speeds.length;
-      const speed = speeds[currentSpeedIndex];
-      video.playbackRate = speed;
-      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) compatibleAudio.playbackRate = speed;
-      btnSpeed.textContent = `${speed.toFixed(speed === 1.0 ? 1 : 2).replace('.00', '.0')}x`;
-      showToast(`Speed: ${speed}x`);
-    });
+    // Speed Bar Controls (Slider, Steps, Wheel, Click-to-Reset)
+    if (speedSlider) {
+      speedSlider.addEventListener('input', (e) => {
+        setPlaybackSpeed(parseFloat(e.target.value), true);
+      });
+    }
+
+    if (btnSpeedMinus) {
+      btnSpeedMinus.addEventListener('click', (e) => {
+        e.stopPropagation();
+        adjustPlaybackSpeed(-0.1);
+      });
+    }
+
+    if (btnSpeedPlus) {
+      btnSpeedPlus.addEventListener('click', (e) => {
+        e.stopPropagation();
+        adjustPlaybackSpeed(0.1);
+      });
+    }
+
+    if (speedGroup) {
+      speedGroup.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        adjustPlaybackSpeed(e.deltaY < 0 ? 0.1 : -0.1);
+      }, { passive: false });
+    }
+
+    if (btnSpeed) {
+      btnSpeed.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // If not at normal 1.0x, clicking the badge resets to 1.0x (=)
+        if (Math.abs((video.playbackRate || 1.0) - 1.0) > 0.04) {
+          setPlaybackSpeed(1.0, true);
+        } else {
+          // If already 1.0x, cycle through presets
+          currentSpeedIndex = (currentSpeedIndex + 1) % speeds.length;
+          setPlaybackSpeed(speeds[currentSpeedIndex], true);
+        }
+      });
+    }
 
     // Subtitle Toggle (CC)
     btnToggleSub.addEventListener('click', () => {
@@ -2963,10 +3027,25 @@
         adjustAudioDelay(-50);
       } else if (e.code === 'KeyK') {
         adjustAudioDelay(50);
+      } else if (e.code === 'KeyG') {
+        adjustSubtitleDelay(-50);
+      } else if (e.code === 'KeyH') {
+        adjustSubtitleDelay(50);
       } else if (e.code === 'BracketLeft') {
-        adjustSubtitleDelay(-100);
+        e.preventDefault();
+        adjustPlaybackSpeed(-0.1);
       } else if (e.code === 'BracketRight') {
-        adjustSubtitleDelay(100);
+        e.preventDefault();
+        adjustPlaybackSpeed(0.1);
+      } else if (!e.ctrlKey && !e.metaKey && (e.key === '=' || (e.code === 'Equal' && !e.shiftKey))) {
+        e.preventDefault();
+        setPlaybackSpeed(1.0, true);
+      } else if (!e.ctrlKey && !e.metaKey && (e.key === '+' || e.code === 'NumpadAdd' || (e.code === 'Equal' && e.shiftKey))) {
+        e.preventDefault();
+        adjustPlaybackSpeed(0.5);
+      } else if (!e.ctrlKey && !e.metaKey && (e.key === '-' || e.code === 'Minus' || e.code === 'NumpadSubtract')) {
+        e.preventDefault();
+        adjustPlaybackSpeed(-0.5);
       }
     });
   }
