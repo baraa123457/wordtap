@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "./ThemeToggle";
 import { Logo } from "./Logo";
-import { DownloadIcon, StarIcon } from "./Icons";
+import { StarIcon } from "./Icons";
 
 const AUTH_LINKS = [
   { href: "/dashboard", label: "Dashboard", shortLabel: "Dashboard" },
@@ -48,14 +48,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             <ThemeToggle />
             {isSignedIn && email ? (
               <>
-                <Link
-                  href="/download"
-                  className="btn btn-quiet min-h-9 px-2 sm:px-2.5 py-1 text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
-                  title="Download Desktop App & Browser Extension"
-                >
-                  <DownloadIcon size={13} className="text-muted" />
-                  <span className="hidden xl:inline">Downloads</span>
-                </Link>
                 <span
                   className="hidden xl:inline max-w-32 2xl:max-w-44 truncate text-xs font-medium text-muted"
                   title={email}
@@ -89,7 +81,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <div className="apple-segmented-container apple-segmented-fit mx-auto items-center justify-center px-1 sm:px-1.5">
               {navLinks.map((link) => {
-                const active = pathname === link.href;
+                const active =
+                  pathname === link.href ||
+                  (link.href === "/download" &&
+                    (pathname === "/download" || pathname === "/downloads"));
                 return (
                   <Link
                     key={link.href}
