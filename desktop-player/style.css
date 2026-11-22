@@ -308,6 +308,106 @@ body.light-theme .style-input {
   color: #12152e;
 }
 
+/* Light Theme Subtitle Style Modal & Controls */
+body.light-theme .sub-style-card {
+  background: #ffffff;
+  color: #12152e;
+}
+
+body.light-theme #sub-style-modal-title {
+  color: #12152e !important;
+}
+
+body.light-theme .sub-style-label {
+  color: #5e658a;
+}
+
+body.light-theme .sub-style-select,
+body.light-theme .sub-num-input {
+  background: #f4f6fa;
+  border: 1px solid rgba(30, 37, 80, 0.14);
+  color: #12152e;
+}
+
+body.light-theme .sub-style-select:hover {
+  background: #edf0f7;
+  border-color: rgba(30, 37, 80, 0.25);
+}
+
+body.light-theme .sub-style-select option {
+  background: #ffffff;
+  color: #12152e;
+}
+
+body.light-theme .sub-preset-btn,
+body.light-theme .sub-offset-preset-btn {
+  background: #f0f2f8;
+  border: 1px solid rgba(30, 37, 80, 0.1);
+  color: #4b5278;
+}
+
+body.light-theme .sub-preset-btn:hover,
+body.light-theme .sub-offset-preset-btn:hover {
+  background: #e4e7f2;
+  color: #12152e;
+}
+
+body.light-theme .sub-preset-btn.active,
+body.light-theme .sub-offset-preset-btn.active {
+  background: rgba(250, 204, 59, 0.22);
+  border-color: #d9a714;
+  color: #784e00;
+  box-shadow: 0 0 0 1px #d9a714;
+}
+
+body.light-theme .segmented-control {
+  background: #eef1f7;
+  border: 1px solid rgba(30, 37, 80, 0.1);
+}
+
+body.light-theme .segment-btn {
+  color: #5e658a;
+}
+
+body.light-theme .segment-btn:hover {
+  color: #12152e;
+}
+
+body.light-theme .segment-btn.active {
+  background: #ffffff;
+  color: #12152e;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(30, 37, 80, 0.12), 0 0 0 1px rgba(30, 37, 80, 0.08);
+}
+
+body.light-theme .custom-color-picker-wrap {
+  background: #f0f2f8;
+  border: 1px solid rgba(30, 37, 80, 0.12);
+}
+
+body.light-theme .custom-color-label {
+  color: #5e658a;
+}
+
+body.light-theme .sub-range-slider {
+  background: #e2e6f0;
+}
+
+body.light-theme .btn-sub-reset {
+  border-color: rgba(30, 37, 80, 0.14);
+  color: #5e658a;
+}
+
+body.light-theme .btn-sub-reset:hover {
+  background: rgba(30, 37, 80, 0.06);
+  color: #12152e;
+  border-color: rgba(30, 37, 80, 0.25);
+}
+
+body.light-theme .sub-style-footer {
+  border-top-color: rgba(30, 37, 80, 0.1);
+}
+
 body.light-theme .vlsub-table th {
   background: #f0f2f8;
   color: #5e658a;
@@ -1847,6 +1947,35 @@ body {
   font-size: 11px;
   color: var(--muted);
   font-weight: 600;
+}
+
+.sub-style-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.btn-sub-reset {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 140ms ease;
+}
+
+.btn-sub-reset:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 /* ==========================================================================

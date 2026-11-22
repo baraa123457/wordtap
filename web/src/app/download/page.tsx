@@ -11,6 +11,8 @@ import {
   CheckIcon,
   SparklesIcon,
   StarIcon,
+  PlayIcon,
+  PauseIcon,
 } from "@/components/Icons";
 
 const DESKTOP_FEATURES = [
@@ -442,10 +444,10 @@ export default function DownloadPage() {
                       <button
                         type="button"
                         onClick={() => setMockPlaying(!mockPlaying)}
-                        className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm transition-all cursor-pointer"
+                        className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer"
                         title={mockPlaying ? "Pause (Space)" : "Play (Space)"}
                       >
-                        {mockPlaying ? "⏸" : "▶"}
+                        {mockPlaying ? <PauseIcon size={14} /> : <PlayIcon size={14} />}
                       </button>
                       <button
                         type="button"

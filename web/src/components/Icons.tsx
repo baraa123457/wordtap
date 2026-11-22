@@ -220,6 +220,15 @@ export function PlayIcon({ size = 16, className = "" }: { size?: number; classNa
   );
 }
 
+export function PauseIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg {...base} width={size} height={size} className={className} fill="currentColor">
+      <rect x="6" y="4" width="4" height="16" rx="1" />
+      <rect x="14" y="4" width="4" height="16" rx="1" />
+    </svg>
+  );
+}
+
 export function DownloadIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
     <svg {...base} width={size} height={size} className={className}>
