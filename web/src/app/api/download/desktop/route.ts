@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     format === "msi"
       ? "WordTap-Setup-x64.msi"
       : format === "zip"
-      ? "WordTap-Player-win-x64.zip"
+      ? "WordTap-Setup-x64.zip"
       : "WordTap-Setup-x64.exe";
 
   // Check if a packaged local binary or installer is present in desktop-player/dist
