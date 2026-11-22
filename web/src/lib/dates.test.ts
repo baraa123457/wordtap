@@ -93,7 +93,7 @@ describe("dates and streak calculations", () => {
     expect(eff.coldDaysLeft).toBe(1);
   });
 
-  it("resets streak to 0 if more than 2 cold days were missed (last practice 4+ days ago)", () => {
+  it("preserves cold streak intact even when more than 2 cold days were missed (last practice 4+ days ago)", () => {
     const today = "2026-11-16";
     const words = [
       { last_practiced: "2026-11-12T10:00:00Z" },
@@ -101,11 +101,31 @@ describe("dates and streak calculations", () => {
     const stats = { ...EMPTY_STATS, streak: 5, last_practice_date: "2026-11-12", today_xp: 0 };
 
     const streak = calculateStreakFromWords(words, stats, today);
-    expect(streak).toBe(0);
+    expect(streak).toBe(5);
 
     const eff = effectiveStats(stats, today, words);
-    expect(eff.streak).toBe(0);
+    expect(eff.streak).toBe(5);
     expect(eff.practicedToday).toBe(false);
+    expect(eff.isCold).toBe(true);
+    expect(eff.coldDaysLeft).toBe(1);
+  });
+
+  it("continues streak instead of resetting to 1 when practicing again after a cold streak", () => {
+    const today = "2026-11-16";
+    // User had a 5-day streak, stopped for 4 days, then practiced today!
+    const words = [
+      { last_practiced: "2026-11-12T10:00:00Z" },
+      { last_practiced: "2026-11-16T14:00:00Z" },
+    ];
+    const stats = { ...EMPTY_STATS, streak: 5, last_practice_date: "2026-11-12", today_xp: 0 };
+
+    const streak = calculateStreakFromWords(words, stats, today);
+    // Streak continues from 5 -> 6! Never drops to 1!
+    expect(streak).toBe(6);
+
+    const eff = effectiveStats(stats, today, words);
+    expect(eff.streak).toBe(6);
+    expect(eff.practicedToday).toBe(true);
     expect(eff.isCold).toBe(false);
     expect(eff.coldDaysLeft).toBe(0);
   });

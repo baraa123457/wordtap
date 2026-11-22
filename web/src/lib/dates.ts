@@ -46,7 +46,8 @@ export type EffectiveStats = {
 /**
  * Calculates the consecutive daily practice streak from word review history and stats.
  * Inspects all unique calendar dates on which words were practiced.
- * If practice was stopped, retains streak for a 2-day cold period before breaking.
+ * If the streak was cold (no practice yet today or missed days), practicing today
+ * continues and increments the existing streak rather than restarting it at 1.
  */
 export function calculateStreakFromWords(
   words: { last_practiced?: string | null }[],
@@ -67,41 +68,34 @@ export function calculateStreakFromWords(
     }
   }
 
+  const baseStreak = Math.max(stats.streak || 0, stats.best_streak || 0, 0);
+
   if (practiceDates.size === 0) {
-    return stats.streak || 0;
+    return baseStreak;
   }
 
-  // Walk backwards from today, yesterday, or within 2 cold days
-  let streak = 0;
-  let checkDate = today;
+  const practicedToday = practiceDates.has(today);
 
-  if (practiceDates.has(checkDate)) {
-    // Practiced today: count today and walk backward
-    streak = 1;
-    checkDate = previousDay(checkDate);
-  } else if (practiceDates.has(previousDay(today))) {
-    // Not practiced today yet, but practiced yesterday: streak intact
-    streak = 1;
-    checkDate = previousDay(previousDay(today));
-  } else if (practiceDates.has(previousDay(previousDay(today)))) {
-    // Missed 1 day: within 2 cold days grace period! Streak intact
-    streak = 1;
-    checkDate = previousDay(previousDay(previousDay(today)));
-  } else if (practiceDates.has(previousDay(previousDay(previousDay(today))))) {
-    // Missed 2 days: within 2 cold days grace period! Streak intact
-    streak = 1;
-    checkDate = previousDay(previousDay(previousDay(previousDay(today))));
-  } else {
-    // More than 2 cold days missed: streak is broken
-    return 0;
+  // If the user practiced today:
+  if (practicedToday) {
+    // 1. Calculate consecutive days ending today
+    let consecutive = 1;
+    let checkDate = previousDay(today);
+    while (practiceDates.has(checkDate)) {
+      consecutive++;
+      checkDate = previousDay(checkDate);
+    }
+
+    // 2. If the user had an existing streak and reignited a cold streak today,
+    // continue and advance the existing streak (+1) rather than dropping it to 1!
+    const wasAlreadyRecordedToday = stats.last_practice_date === today;
+    const continuedStreak = wasAlreadyRecordedToday ? baseStreak : baseStreak + 1;
+
+    return Math.max(continuedStreak, consecutive, 1);
   }
 
-  while (practiceDates.has(checkDate)) {
-    streak++;
-    checkDate = previousDay(checkDate);
-  }
-
-  return Math.max(stats.streak, streak);
+  // Not practiced today yet: preserve existing streak intact while cold
+  return baseStreak;
 }
 
 /** Streak and today's XP as the learner should see them right now. */
@@ -110,7 +104,7 @@ export function effectiveStats(
   today: string = localDateString(),
   words?: { last_practiced?: string | null }[],
 ): EffectiveStats {
-  const computedStreak = words ? calculateStreakFromWords(words, stats, today) : stats.streak;
+  const baseStreak = Math.max(stats.streak || 0, stats.best_streak || 0, 0);
   const last = stats.last_practice_date;
   const practicedToday =
     last === today ||
@@ -119,8 +113,9 @@ export function effectiveStats(
     ) ?? false);
 
   if (practicedToday) {
+    const computedStreak = words ? calculateStreakFromWords(words, stats, today) : Math.max(baseStreak, 1);
     return {
-      streak: Math.max(1, computedStreak),
+      streak: Math.max(computedStreak, 1),
       todayXp: stats.today_xp,
       practicedToday: true,
       isCold: false,
@@ -141,38 +136,18 @@ export function effectiveStats(
     }
   }
 
-  const daysSince = lastDate ? daysDifference(lastDate, today) : 999;
-
-  // If streak was established (> 0) and learner has not yet completed practice today:
-  if (computedStreak > 0) {
-    if (daysSince === 1) {
-      // Practiced yesterday, not practiced today yet: cold state for 2 days until practiced today
-      return {
-        streak: computedStreak,
-        todayXp: 0,
-        practicedToday: false,
-        isCold: true,
-        coldDaysLeft: 2,
-      };
-    } else if (daysSince === 2) {
-      // Stopped practice for 1 day: in cold period (1 day left)
-      return {
-        streak: computedStreak,
-        todayXp: 0,
-        practicedToday: false,
-        isCold: true,
-        coldDaysLeft: 1,
-      };
-    } else if (daysSince === 3) {
-      // Stopped practice for 2 days: in cold period (last day)
-      return {
-        streak: computedStreak,
-        todayXp: 0,
-        practicedToday: false,
-        isCold: true,
-        coldDaysLeft: 1,
-      };
-    }
+  // Not practiced today yet:
+  if (baseStreak > 0) {
+    // Streak is cold: user has not practiced today yet.
+    // Preserves streak count so practicing today continues it!
+    const daysSince = lastDate ? daysDifference(lastDate, today) : 1;
+    return {
+      streak: baseStreak,
+      todayXp: 0,
+      practicedToday: false,
+      isCold: true,
+      coldDaysLeft: Math.max(1, 3 - Math.min(daysSince, 2)),
+    };
   }
 
   return { streak: 0, todayXp: 0, practicedToday: false, isCold: false, coldDaysLeft: 0 };
