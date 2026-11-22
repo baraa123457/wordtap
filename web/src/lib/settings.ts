@@ -22,6 +22,7 @@ export type UserSettings = {
   translateSaveMode: TranslateSaveMode;
   selectionMode?: SelectionMode;
   translationProvider?: TranslationProvider;
+  customApiKey?: string;
   dailyNewWordsGoal?: number;
   dailyReviewsGoal?: number;
   dataSaverMode: boolean;
@@ -45,6 +46,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   translateSaveMode: "manual",
   selectionMode: "immediate",
   translationProvider: "google",
+  customApiKey: "",
   dailyNewWordsGoal: 5,
   dailyReviewsGoal: 20,
   dataSaverMode: false,

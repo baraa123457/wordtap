@@ -173,6 +173,34 @@
   let pauseOnClick = false; // "dont stop the film when i click on word"
   let targetLang = 'ar';
   let popoverHideTimer = null;
+
+  // Persistent client-side translation cache
+  const translationCache = new Map();
+  try {
+    const rawCache = localStorage.getItem('wt_translation_cache');
+    if (rawCache) {
+      const parsed = JSON.parse(rawCache);
+      for (const [k, v] of Object.entries(parsed)) {
+        if (k && v && typeof v === 'object') translationCache.set(k, v);
+      }
+    }
+  } catch (_) {}
+
+  let persistDesktopCacheTimer = null;
+  function persistDesktopTranslation(key, val) {
+    if (translationCache.size > 2000) translationCache.delete(translationCache.keys().next().value);
+    translationCache.set(key, val);
+
+    if (!persistDesktopCacheTimer) {
+      persistDesktopCacheTimer = setTimeout(() => {
+        persistDesktopCacheTimer = null;
+        try {
+          const obj = Object.fromEntries(Array.from(translationCache.entries()).slice(-1000));
+          localStorage.setItem('wt_translation_cache', JSON.stringify(obj));
+        } catch (_) {}
+      }, 2000);
+    }
+  }
   const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
   let currentSpeedIndex = 1;
   let currentMediaTitle = 'No media loaded';
@@ -1064,39 +1092,92 @@
     schedulePopoverClose(2600);
 
     const langToUse = targetLang || 'ar';
-    try {
-      const res = await fetch(
-        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(langToUse)}&dt=t&dt=bd&dt=qca&dt=at&q=${encodeURIComponent(cleanWord)}`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        let translation = '';
-        if (data && data[0] && data[0][0] && data[0][0][0]) {
-          translation = data[0][0][0];
-        }
+    const cacheKey = `${langToUse}|${cleanWord.toLowerCase()}`;
 
-        let pos = 'word';
-        if (data && data[1] && data[1][0] && data[1][0][0]) {
-          pos = data[1][0][0];
-        }
+    // Tier 1: Check in-memory & persistent translation cache (0ms lookup, 0 API calls)
+    if (translationCache.has(cacheKey)) {
+      const cached = translationCache.get(cacheKey);
+      activeWordData.translation = cached.translation || '';
+      activeWordData.pos = cached.pos || 'word';
+      popoverTranslationAr.textContent = cached.translation || '—';
+      popoverWordPos.textContent = cached.pos || 'word';
 
-        activeWordData.translation = translation;
-        activeWordData.pos = pos;
-
-        popoverTranslationAr.textContent = translation || '—';
-        popoverWordPos.textContent = pos;
-
-        // Auto-save logic: if 'subtitles_only' or 'auto' mode is active, auto-save to WordTap!
-        const willAutoSave = (translateSaveMode === 'auto' || translateSaveMode === 'subtitles_only');
-        if (willAutoSave && !isAlreadySaved) {
-          saveActiveWord(true);
-        }
-      } else {
-        popoverTranslationAr.textContent = 'تعذر الاتصال بالترجمة';
+      const willAutoSave = (translateSaveMode === 'auto' || translateSaveMode === 'subtitles_only');
+      if (willAutoSave && !isAlreadySaved) {
+        saveActiveWord(true);
       }
-    } catch (err) {
-      console.warn('Translation error:', err);
-      popoverTranslationAr.textContent = 'خطأ في الترجمة';
+      schedulePopoverClose(2600);
+      return;
+    }
+
+    // Tier 2: Multi-client rotation with automatic failover
+    const clients = ['dict-chrome-ex', 'gtx', 'webapp'];
+    let translation = '';
+    let pos = 'word';
+    let fetchSuccess = false;
+
+    for (const client of clients) {
+      try {
+        const res = await fetch(
+          `https://translate.googleapis.com/translate_a/single?client=${client}&sl=auto&tl=${encodeURIComponent(langToUse)}&dt=t&dt=bd&dt=qca&dt=at&q=${encodeURIComponent(cleanWord)}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data[0] && data[0][0] && data[0][0][0]) {
+            translation = data[0][0][0];
+          }
+          if (data && data[1] && data[1][0] && data[1][0][0]) {
+            pos = data[1][0][0];
+          }
+          fetchSuccess = true;
+          break;
+        }
+        if (res.status === 429) {
+          console.warn(`Desktop translate client ${client} returned 429, trying next client.`);
+        }
+      } catch (err) {
+        console.warn(`Desktop translate client ${client} error:`, err);
+      }
+    }
+
+    // Tier 3: If direct endpoints failed, fall back to WordTap Web API gateway
+    if (!fetchSuccess) {
+      try {
+        const fbRes = await fetch('https://wordtap.app/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: cleanWord,
+            target: langToUse,
+            src: 'auto',
+            context: activeWordData.contextSentence || '',
+          }),
+        });
+        if (fbRes.ok) {
+          const fbData = await fbRes.json();
+          if (fbData && fbData.translation) {
+            translation = fbData.translation;
+            pos = fbData.primaryPartOfSpeech || 'word';
+            fetchSuccess = true;
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (fetchSuccess && translation) {
+      activeWordData.translation = translation;
+      activeWordData.pos = pos;
+      popoverTranslationAr.textContent = translation || '—';
+      popoverWordPos.textContent = pos;
+      persistDesktopTranslation(cacheKey, { translation, pos });
+
+      // Auto-save logic: if 'subtitles_only' or 'auto' mode is active, auto-save to WordTap!
+      const willAutoSave = (translateSaveMode === 'auto' || translateSaveMode === 'subtitles_only');
+      if (willAutoSave && !isAlreadySaved) {
+        saveActiveWord(true);
+      }
+    } else {
+      popoverTranslationAr.textContent = 'تعذر الاتصال بالترجمة';
     }
 
     schedulePopoverClose(2600);

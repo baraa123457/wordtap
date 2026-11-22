@@ -31,7 +31,9 @@ export async function GET(req: Request) {
   const target = url.searchParams.get("target") || "ar";
   const forceExact = url.searchParams.get("forceExact") === "true";
   const provider = (url.searchParams.get("provider") || "google").toLowerCase();
-  return handleTranslate(text, src, target, forceExact, provider, corsHeaders);
+  const context = (url.searchParams.get("context") || "").trim();
+  const apiKey = (url.searchParams.get("apiKey") || req.headers.get("x-api-key") || "").trim();
+  return handleTranslate(text, src, target, forceExact, provider, corsHeaders, context, apiKey);
 }
 
 export async function POST(req: Request) {
@@ -46,13 +48,17 @@ export async function POST(req: Request) {
       target?: string;
       forceExact?: boolean;
       provider?: string;
+      context?: string;
+      apiKey?: string;
     };
     const text = (body.text || "").trim().slice(0, MAX_TRANSLATE_CHARS);
     const src = body.src || "auto";
     const target = body.target || "ar";
     const forceExact = Boolean(body.forceExact);
     const provider = (body.provider || "google").toLowerCase();
-    return handleTranslate(text, src, target, forceExact, provider, corsHeaders);
+    const context = (body.context || "").trim();
+    const apiKey = (body.apiKey || req.headers.get("x-api-key") || "").trim();
+    return handleTranslate(text, src, target, forceExact, provider, corsHeaders, context, apiKey);
   } catch (err: unknown) {
     return NextResponse.json(
       { error: getErrorMessage(err, "Invalid JSON") },
@@ -189,6 +195,65 @@ function normalizePartOfSpeech(raw: string): string {
   return "";
 }
 
+async function translateWithGemini(
+  text: string,
+  src: string,
+  target: string,
+  context = "",
+  customKey = "",
+) {
+  const apiKey = customKey || process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const prompt =
+      context && context.length > text.length
+        ? `Translate the word or short phrase "${text}" into language code "${target}". Context from media dialogue: "${context}". Return a JSON object with keys "translation" (string) and "detectedSrc" (string code). Return only raw JSON without formatting.`
+        : `Translate "${text}" into language code "${target}". Return a JSON object with keys "translation" (string) and "detectedSrc" (string code). Return only raw JSON without formatting.`;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: "application/json",
+        },
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (!res.ok) {
+      console.warn("Gemini translate error status:", res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw.replace(/```json/g, "").replace(/```/g, "").trim());
+    if (!parsed || !parsed.translation) return null;
+
+    return {
+      text,
+      translation: String(parsed.translation).trim(),
+      detectedSrcLang: parsed.detectedSrc || (src === "auto" ? "en" : src),
+      sourcePronunciation: "",
+      targetPronunciation: "",
+      definitions: [],
+      sourceDefinitions: [],
+      correction: null,
+      provider: "gemini",
+    };
+  } catch (err) {
+    console.warn("Gemini fallback exception:", err);
+    return null;
+  }
+}
+
 async function handleTranslate(
   text: string,
   src: string,
@@ -196,6 +261,8 @@ async function handleTranslate(
   forceExact = false,
   provider = "google",
   corsHeaders: Record<string, string> = {},
+  context = "",
+  apiKey = "",
 ) {
   try {
     if (!text) {
@@ -213,6 +280,14 @@ async function handleTranslate(
         },
         { headers: corsHeaders },
       );
+    }
+
+    // Direct custom key bypass if user provided a personal AI key
+    if (apiKey) {
+      const aiDirect = await translateWithGemini(text, src, target, context, apiKey);
+      if (aiDirect) {
+        return NextResponse.json(aiDirect, { headers: corsHeaders });
+      }
     }
 
     // -------------------------------------------------------------------------
@@ -882,6 +957,12 @@ async function handleTranslate(
         },
         { headers: corsHeaders },
       );
+    }
+
+    // Tertiary fallback: Context-aware Gemini AI Translation
+    const geminiFallback = await translateWithGemini(text, src, target, context, apiKey);
+    if (geminiFallback) {
+      return NextResponse.json(geminiFallback, { headers: corsHeaders });
     }
 
     throw new Error("All translation providers failed");

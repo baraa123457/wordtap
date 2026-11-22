@@ -7,6 +7,46 @@ import { CONFIG, getWebsiteUrl } from "./config.js";
 const cache = new Map();
 const ttsCache = new Map();
 
+// Initialize persistent translation cache from chrome.storage.local
+chrome.storage.local.get({ tr_cache: {} }).then(({ tr_cache }) => {
+  if (tr_cache && typeof tr_cache === "object") {
+    for (const [k, v] of Object.entries(tr_cache)) {
+      if (k && v && typeof v === "object") cache.set(k, v);
+    }
+  }
+}).catch(() => {});
+
+let persistCacheTimer = null;
+const pendingCacheBatch = new Map();
+
+function persistCacheEntry(key, value) {
+  if (cache.size > 1500) cache.delete(cache.keys().next().value);
+  cache.set(key, value);
+  pendingCacheBatch.set(key, value);
+
+  if (!persistCacheTimer) {
+    persistCacheTimer = setTimeout(async () => {
+      persistCacheTimer = null;
+      try {
+        const { tr_cache = {} } = await chrome.storage.local.get({ tr_cache: {} });
+        for (const [k, v] of pendingCacheBatch.entries()) {
+          tr_cache[k] = v;
+        }
+        pendingCacheBatch.clear();
+
+        // Keep local cache bounded to 1,000 items
+        const keys = Object.keys(tr_cache);
+        if (keys.length > 1000) {
+          for (let i = 0; i < keys.length - 1000; i++) {
+            delete tr_cache[keys[i]];
+          }
+        }
+        await chrome.storage.local.set({ tr_cache });
+      } catch (_) {}
+    }, 1500);
+  }
+}
+
 function stripHtmlTags(str) {
   return String(str || "").replace(/<[^>]+>/g, "").trim();
 }
@@ -207,8 +247,7 @@ async function translate(text, target, srcLang = "auto", context = "", requested
           provider: "udictionary",
         };
 
-        if (cache.size > 500) cache.delete(cache.keys().next().value);
-        cache.set(key, result);
+        persistCacheEntry(key, result);
         return result;
       }
     } catch (e) {
@@ -217,20 +256,67 @@ async function translate(text, target, srcLang = "auto", context = "", requested
   }
 
   // -------------------------------------------------------------------------
-  // Provider: Google Translate (Default primary)
+  // Provider: Google Translate with Multi-Client Rotation & Backend Failover
   // -------------------------------------------------------------------------
 
-  const url =
-    "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" +
-    encodeURIComponent(sl) +
-    "&tl=" +
-    encodeURIComponent(target) +
-    "&dt=t&dt=bd&dt=qca&dt=at&q=" +
-    encodeURIComponent(text);
+  let data = null;
+  const clients = ["dict-chrome-ex", "gtx", "webapp"];
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("HTTP " + res.status);
-  const data = await res.json();
+  for (const client of clients) {
+    const url =
+      `https://translate.googleapis.com/translate_a/single?client=${client}&sl=` +
+      encodeURIComponent(sl) +
+      "&tl=" +
+      encodeURIComponent(target) +
+      "&dt=t&dt=bd&dt=qca&dt=at&q=" +
+      encodeURIComponent(text);
+
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        data = await res.json();
+        break;
+      }
+      if (res.status === 429) {
+        console.warn(`Translation client ${client} returned 429 (rate limited), trying fallback.`);
+      }
+    } catch (netErr) {
+      console.warn(`Translation client ${client} network error:`, netErr);
+    }
+  }
+
+  // If all free client parameters failed or got blocked, fall back to WordTap Backend Gateway
+  if (!data) {
+    try {
+      const webUrl = getWebsiteUrl();
+      const s = await chrome.storage.sync.get({ customApiKey: "" }).catch(() => ({}));
+      const fallbackRes = await fetch(`${webUrl}/api/translate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          src: sl,
+          target,
+          context,
+          apiKey: s.customApiKey || undefined,
+        }),
+      });
+      if (fallbackRes.ok) {
+        const fbData = await fallbackRes.json();
+        if (fbData && fbData.translation) {
+          data = [
+            [[fbData.translation]],
+            [],
+            fbData.detectedSrcLang || (sl !== "auto" ? sl : "en"),
+          ];
+        }
+      }
+    } catch (fbErr) {
+      console.warn("WordTap backend translation fallback error:", fbErr);
+    }
+  }
+
+  if (!data) throw new Error("All translation providers failed");
 
   let detected = sl !== "auto" ? sl : data[2] ? data[2].toLowerCase() : "auto";
   if ((detected === "hi" || detected === "mr") && /^[a-zA-Z\s'-]+$/.test(text.trim())) {
@@ -363,8 +449,7 @@ async function translate(text, target, srcLang = "auto", context = "", requested
     correction,
   };
 
-  if (cache.size > 500) cache.delete(cache.keys().next().value);
-  cache.set(key, result);
+  persistCacheEntry(key, result);
   return result;
 }
 

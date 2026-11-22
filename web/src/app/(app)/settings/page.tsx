@@ -710,6 +710,37 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Optional Custom AI API Key (BYOK) */}
+        <div className="grid gap-3 border-t border-line/50 pt-4">
+          <div>
+            <div className="font-semibold text-ink flex items-center gap-2">
+              <span>Personal AI Translation Key</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-line text-muted uppercase">Optional</span>
+            </div>
+            <div className="text-xs sm:text-sm text-muted">
+              WordTap includes free built-in translation. For context-aware AI definitions or zero rate-limits, you can provide your own free Google Gemini API key (from <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-subtitle hover:underline">aistudio.google.com</a>).
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 max-w-lg">
+            <input
+              type="password"
+              placeholder="Paste your Gemini API key (AIzaSy...)"
+              value={settings.customApiKey || ""}
+              onChange={(e) => update({ customApiKey: e.target.value.trim() })}
+              className="flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-xs sm:text-sm text-ink placeholder:text-muted/60 focus:border-subtitle focus:outline-none"
+            />
+            {settings.customApiKey ? (
+              <button
+                type="button"
+                onClick={() => update({ customApiKey: "" })}
+                className="btn btn-quiet text-xs text-danger hover:underline px-3 py-2"
+              >
+                Clear key
+              </button>
+            ) : null}
+          </div>
+        </div>
+
         {/* Chrome & Edge Extension Download Card */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-subtitle/10 border border-subtitle/30">
           <div className="space-y-1">
