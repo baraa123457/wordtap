@@ -1643,6 +1643,10 @@
       accountLoggedOutView.style.display = 'none';
       accountLoggedInView.style.display = 'block';
       accountUserEmail.textContent = userSession.email;
+      const avatarEl = document.getElementById('account-user-avatar');
+      if (avatarEl) {
+        avatarEl.textContent = (userSession.email[0] || 'U').toUpperCase();
+      }
     } else {
       accountStatusDot.classList.remove('online');
       accountLabel.textContent = 'WordTap Sync';

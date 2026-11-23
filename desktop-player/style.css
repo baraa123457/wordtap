@@ -390,10 +390,22 @@ body.light-theme .saved-words-list::-webkit-scrollbar-thumb:hover {
 }
 
 /* Light Theme Options & Account Modal Card */
+body.light-theme .modal-card-account {
+  background: #ffffff;
+}
+
+body.light-theme .modal-subtitle {
+  color: #5e658a !important;
+}
+
 body.light-theme .ext-options-card {
   background: #f8f9fe !important;
   border: 1px solid rgba(30, 37, 80, 0.1) !important;
   box-shadow: inset 0 1px 2px rgba(30, 37, 80, 0.02);
+}
+
+body.light-theme .options-divider {
+  background: rgba(30, 37, 80, 0.07);
 }
 
 body.light-theme .ext-options-header {
@@ -405,13 +417,14 @@ body.light-theme .helper-text {
   color: #5e658a !important;
 }
 
-body.light-theme .select-row {
-  border-top-color: rgba(30, 37, 80, 0.08) !important;
-}
-
+body.light-theme .setting-label,
 body.light-theme .select-label {
   color: #12152e !important;
   font-weight: 600;
+}
+
+body.light-theme .setting-sublabel {
+  color: #5e658a !important;
 }
 
 body.light-theme .ext-lang-select {
@@ -430,39 +443,78 @@ body.light-theme .ext-lang-select option {
   color: #12152e !important;
 }
 
-body.light-theme .ext-checkbox-label {
+body.light-theme .apple-switch-slider {
+  background: rgba(30, 37, 80, 0.14);
+}
+
+body.light-theme .apple-switch input:checked + .apple-switch-slider {
+  background: #d9a714;
+  box-shadow: 0 0 10px rgba(217, 167, 20, 0.3);
+}
+
+body.light-theme .btn-sub-style-secondary {
+  background: #ffffff !important;
+  border: 1px solid rgba(30, 37, 80, 0.12) !important;
+  box-shadow: 0 1px 3px rgba(30, 37, 80, 0.03);
+}
+
+body.light-theme .btn-sub-style-secondary:hover {
+  background: #f4f6fa !important;
+  border-color: rgba(30, 37, 80, 0.22) !important;
+}
+
+body.light-theme .sub-style-sec-icon-wrap {
+  background: rgba(250, 204, 59, 0.2) !important;
+  border-color: #d9a714 !important;
+  color: #784e00 !important;
+}
+
+body.light-theme .sub-style-sec-title {
   color: #12152e !important;
-  font-weight: 500;
 }
 
-body.light-theme .ext-options-footer {
-  border-top-color: rgba(30, 37, 80, 0.08) !important;
+body.light-theme .sub-style-sec-desc {
+  color: #5e658a !important;
 }
 
-/* Account Logged-In & Connected View */
-body.light-theme .account-connected-box {
-  background: #ecfdf5 !important;
-  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+body.light-theme .sub-style-sec-chevron {
+  color: #878ea8 !important;
 }
 
-body.light-theme .account-connected-status {
-  color: #047857 !important;
+body.light-theme .account-identity-card {
+  background: #f8f9fe !important;
+  border: 1px solid rgba(30, 37, 80, 0.1) !important;
+  box-shadow: 0 1px 4px rgba(30, 37, 80, 0.04);
+}
+
+body.light-theme .account-avatar {
+  background: linear-gradient(135deg, #facc3b 0%, #e6b823 100%);
+  color: #1a1400;
+  box-shadow: 0 2px 6px rgba(217, 167, 20, 0.25);
+}
+
+body.light-theme .account-avatar-dot {
+  border-color: #f8f9fe;
 }
 
 body.light-theme .account-user-email {
-  color: #064e3b !important;
+  color: #12152e !important;
 }
 
-body.light-theme .btn-account-signout {
-  color: #b91c1c !important;
-  border-color: rgba(185, 28, 28, 0.25) !important;
+body.light-theme .account-sync-subtitle {
+  color: #047857 !important;
+}
+
+body.light-theme .btn-account-signout-subtle {
   background: #ffffff !important;
+  border: 1px solid rgba(30, 37, 80, 0.14) !important;
+  color: #5e658a !important;
 }
 
-body.light-theme .btn-account-signout:hover {
+body.light-theme .btn-account-signout-subtle:hover {
   background: #fef2f2 !important;
-  color: #991b1b !important;
-  border-color: rgba(185, 28, 28, 0.45) !important;
+  border-color: rgba(220, 38, 38, 0.3) !important;
+  color: #b91c1c !important;
 }
 
 /* Account Logged-Out View */
@@ -2061,14 +2113,41 @@ body.light-theme .vlsub-window::-webkit-scrollbar-thumb:hover {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--line);
 }
 
+/* ==========================================================================
+   Options & Account Modal — Apple Inset Grouped Design
+   ========================================================================== */
+.modal-card-account {
+  width: 480px;
+  max-width: 94vw;
+  gap: 14px;
+}
+
+.modal-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modal-subtitle {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .ext-options-card {
-  background: rgba(10, 12, 27, 0.5);
+  background: rgba(14, 18, 38, 0.65);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+}
+
+.options-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .ext-options-header {
@@ -2082,93 +2161,287 @@ body.light-theme .vlsub-window::-webkit-scrollbar-thumb:hover {
 .helper-text {
   font-size: 11.5px;
   color: var(--muted);
-  line-height: 1.45;
+  line-height: 1.4;
+  margin-top: 2px;
 }
 
-.select-row {
+.options-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 2px 0;
+}
+
+.setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
+  gap: 14px;
+  padding: 4px 0;
 }
 
+.setting-label-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.setting-label,
 .select-label {
-  font-size: 12px;
+  font-size: 12.5px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.setting-sublabel {
+  font-size: 11px;
   color: var(--muted);
-  font-weight: 500;
+  line-height: 1.35;
 }
 
 .ext-lang-select {
-  background: rgba(20, 23, 49, 0.8);
+  background: rgba(20, 23, 49, 0.85);
   border: 1px solid var(--line);
   color: #FFFFFF;
   font-size: 12px;
   font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 8px;
+  padding: 6px 12px;
+  border-radius: 9px;
   outline: none;
+  cursor: pointer;
+  transition: border-color 140ms ease;
+}
+
+.ext-lang-select:hover {
+  border-color: rgba(250, 204, 59, 0.4);
+}
+
+.ext-lang-select option {
+  background: #141731;
+  color: #FFFFFF;
+}
+
+/* Apple Switch Toggle */
+.apple-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
   cursor: pointer;
 }
 
-.checkbox-row {
+.apple-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.apple-switch-slider {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+  transition: background 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease;
+}
+
+.apple-switch-slider::before {
+  content: "";
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  top: 2px;
+  background: #FFFFFF;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-switch input:checked + .apple-switch-slider {
+  background: var(--subtitle);
+  box-shadow: 0 0 12px rgba(250, 204, 59, 0.35);
+}
+
+.apple-switch input:checked + .apple-switch-slider::before {
+  transform: translateX(20px);
+}
+
+/* Subtitle Style Inset Action Button */
+.btn-sub-style-secondary {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+}
+
+.btn-sub-style-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.sub-style-sec-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sub-style-sec-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(250, 204, 59, 0.14);
+  border: 1px solid rgba(250, 204, 59, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--subtitle);
+  font-weight: 700;
+  font-size: 13.5px;
+  flex-shrink: 0;
+}
+
+.sub-style-sec-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sub-style-sec-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.sub-style-sec-desc {
+  font-size: 11px;
   color: var(--muted);
 }
 
-.ext-checkbox-label {
+.sub-style-sec-chevron {
+  color: var(--text-dim);
+  transition: transform 140ms ease, color 140ms ease;
+  flex-shrink: 0;
+}
+
+.btn-sub-style-secondary:hover .sub-style-sec-chevron {
+  color: var(--ink);
+  transform: translateX(2px);
+}
+
+/* Apple Identity Card */
+.account-identity-card {
   display: flex;
   align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.ext-checkbox-label input {
-  cursor: pointer;
-  accent-color: var(--subtitle);
-  width: 15px;
-  height: 15px;
-}
-
-/* Connected Account Box */
-.account-connected-box {
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  border-radius: 10px;
-  padding: 10px 14px;
-  margin-top: 4px;
+  justify-content: space-between;
+  background: rgba(20, 23, 49, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  padding: 12px 14px;
   margin-bottom: 12px;
+  gap: 12px;
 }
 
-.account-connected-status {
-  font-size: 10.5px;
-  text-transform: uppercase;
-  color: #10b981;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+.account-identity-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.account-avatar-wrap {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.account-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #facc3b 0%, #e6b823 100%);
+  color: #1a1400;
+  font-weight: 800;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(250, 204, 59, 0.25);
+}
+
+.account-avatar-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.account-identity-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .account-user-email {
   font-size: 13.5px;
   font-weight: 700;
   color: #FFFFFF;
-  margin-top: 3px;
-  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.btn-account-signout {
+.account-sync-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #34d399;
+}
+
+.btn-account-signout-subtle {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 140ms ease;
+  flex-shrink: 0;
+}
+
+.btn-account-signout-subtle:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
   color: #f87171;
-  border-color: rgba(239, 68, 68, 0.3);
 }
 
-.btn-account-signout:hover {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.5);
+.btn-open-web-prominent {
+  width: 100%;
+  justify-content: center;
+  font-size: 13.5px;
+  padding: 11px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(250, 204, 59, 0.28);
 }
 
 .account-logged-out-sub {
