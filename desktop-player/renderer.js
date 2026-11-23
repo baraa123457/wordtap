@@ -1294,7 +1294,7 @@
     popoverTranslationAr.textContent = 'جاري الترجمة...';
     popoverContextBox.innerHTML = contextSentence.replace(
       new RegExp(`\\b(${rawWord})\\b`, 'i'),
-      '<strong style="color:var(--wt-gold);">$1</strong>'
+      '<strong class="popover-context-keyword">$1</strong>'
     );
 
     const isAlreadySaved = savedWords.some(w => (w.text || '').toLowerCase() === cleanWord.toLowerCase());
