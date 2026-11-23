@@ -354,16 +354,137 @@ body.light-theme .modal-close-btn:hover {
 }
 
 body.light-theme .saved-word-row {
-  background: rgba(30, 37, 80, 0.03);
-  border-color: rgba(30, 37, 80, 0.07);
+  background: #f8f9fe;
+  border: 1px solid rgba(30, 37, 80, 0.09);
+  box-shadow: 0 1px 3px rgba(30, 37, 80, 0.03);
 }
 
 body.light-theme .saved-word-row:hover {
-  background: rgba(30, 37, 80, 0.06);
+  background: #edf1fa;
+  border-color: rgba(30, 37, 80, 0.16);
 }
 
-body.light-theme .saved-word-orig {
-  color: #12152e;
+body.light-theme .saved-word-title {
+  color: #12152e !important;
+}
+
+body.light-theme .saved-word-ar {
+  color: #b45309 !important;
+}
+
+body.light-theme .btn-delete-saved-word {
+  color: #878ea8;
+}
+
+body.light-theme .btn-delete-saved-word:hover {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.1);
+}
+
+body.light-theme .saved-words-list::-webkit-scrollbar-thumb {
+  background: rgba(30, 37, 80, 0.2);
+}
+
+body.light-theme .saved-words-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 37, 80, 0.35);
+}
+
+/* Light Theme Options & Account Modal Card */
+body.light-theme .ext-options-card {
+  background: #f8f9fe !important;
+  border: 1px solid rgba(30, 37, 80, 0.1) !important;
+  box-shadow: inset 0 1px 2px rgba(30, 37, 80, 0.02);
+}
+
+body.light-theme .ext-options-header {
+  color: #5e658a !important;
+  font-weight: 700;
+}
+
+body.light-theme .helper-text {
+  color: #5e658a !important;
+}
+
+body.light-theme .select-row {
+  border-top-color: rgba(30, 37, 80, 0.08) !important;
+}
+
+body.light-theme .select-label {
+  color: #12152e !important;
+  font-weight: 600;
+}
+
+body.light-theme .ext-lang-select {
+  background: #ffffff !important;
+  border: 1px solid rgba(30, 37, 80, 0.16) !important;
+  color: #12152e !important;
+  box-shadow: 0 1px 2px rgba(30, 37, 80, 0.04);
+}
+
+body.light-theme .ext-lang-select:hover {
+  border-color: rgba(30, 37, 80, 0.3) !important;
+}
+
+body.light-theme .ext-lang-select option {
+  background: #ffffff !important;
+  color: #12152e !important;
+}
+
+body.light-theme .ext-checkbox-label {
+  color: #12152e !important;
+  font-weight: 500;
+}
+
+body.light-theme .ext-options-footer {
+  border-top-color: rgba(30, 37, 80, 0.08) !important;
+}
+
+/* Account Logged-In & Connected View */
+body.light-theme .account-connected-box {
+  background: #ecfdf5 !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+
+body.light-theme .account-connected-status {
+  color: #047857 !important;
+}
+
+body.light-theme .account-user-email {
+  color: #064e3b !important;
+}
+
+body.light-theme .btn-account-signout {
+  color: #b91c1c !important;
+  border-color: rgba(185, 28, 28, 0.25) !important;
+  background: #ffffff !important;
+}
+
+body.light-theme .btn-account-signout:hover {
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+  border-color: rgba(185, 28, 28, 0.45) !important;
+}
+
+/* Account Logged-Out View */
+body.light-theme .form-label {
+  color: #5e658a !important;
+  font-weight: 600;
+}
+
+body.light-theme .form-input {
+  background: #f8f9fe !important;
+  border: 1px solid rgba(30, 37, 80, 0.15) !important;
+  color: #12152e !important;
+}
+
+body.light-theme .form-input:focus {
+  border-color: #d9a714 !important;
+  box-shadow: 0 0 0 3px rgba(217, 167, 20, 0.2) !important;
+  background: #ffffff !important;
+}
+
+body.light-theme .account-logged-out-sub {
+  color: #5e658a !important;
 }
 
 body.light-theme .vlsub-input-box,
@@ -2011,6 +2132,47 @@ body.light-theme .vlsub-window::-webkit-scrollbar-thumb:hover {
   accent-color: var(--subtitle);
   width: 15px;
   height: 15px;
+}
+
+/* Connected Account Box */
+.account-connected-box {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+
+.account-connected-status {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  color: #10b981;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.account-user-email {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-top: 3px;
+  word-break: break-all;
+}
+
+.btn-account-signout {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.btn-account-signout:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.account-logged-out-sub {
+  color: var(--muted);
 }
 
 /* ==========================================================================

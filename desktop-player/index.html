@@ -676,7 +676,7 @@
             </button>
           </div>
 
-          <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+          <div class="ext-options-footer" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
             <button type="button" class="btn-vlc-primary" id="btn-open-sub-style-from-options" style="width: 100%; justify-content: center; font-size: 12.5px; padding: 7px 12px;">
               <span>Customize Subtitle Fonts &amp; Size...</span>
             </button>
@@ -684,7 +684,7 @@
         </div>
 
         <div id="account-logged-out-view">
-          <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; margin-top: 4px;">Sign in to sync your saved words to WordTap Cloud.</p>
+          <p class="account-logged-out-sub" style="font-size: 12px; margin-bottom: 8px; margin-top: 4px;">Sign in to sync your saved words to WordTap Cloud.</p>
           <div class="form-group" style="margin-bottom: 10px;">
             <label class="form-label">Email</label>
             <input type="email" class="form-input" id="auth-email" placeholder="you@example.com">
@@ -698,15 +698,15 @@
           </button>
         </div>
         <div id="account-logged-in-view" style="display: none;">
-          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; padding: 10px; margin-top: 4px; margin-bottom: 10px;">
-            <div style="font-size: 10px; text-transform: uppercase; color: var(--success); font-weight: 700;">Connected</div>
-            <div id="account-user-email" style="font-size: 13px; font-weight: 700; color: #fff; margin-top: 2px;">user@example.com</div>
+          <div class="account-connected-box">
+            <div class="account-connected-status">Connected</div>
+            <div id="account-user-email" class="account-user-email">user@example.com</div>
           </div>
           <div style="display: flex; gap: 8px;">
             <button class="btn-vlc-primary" id="btn-open-web" style="flex: 1; justify-content: center;">
               Open Web App
             </button>
-            <button class="vlc-ctrl-btn" id="btn-auth-signout" style="flex: 1; justify-content: center; color: var(--danger); border-color: var(--border-subtle);">
+            <button class="vlc-ctrl-btn btn-account-signout" id="btn-auth-signout" style="flex: 1; justify-content: center;">
               Sign Out
             </button>
           </div>
