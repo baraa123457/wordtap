@@ -1255,14 +1255,33 @@
     }
   }
 
-  // Schedule popover dismiss timer (default 2600ms, paused while hovered)
-  function schedulePopoverClose(delayMs = 2600) {
-    clearTimeout(popoverHideTimer);
-    if (!wordPopover.dataset.hovered) {
-      popoverHideTimer = setTimeout(() => {
-        closePopover(false);
-      }, delayMs);
+  // Schedule popover dismiss timer (default 850ms = 0.85s, paused while hovered or when video is paused)
+  const AUTO_CLOSE_DELAY_MS = 850;
+
+  function updatePopoverFooter() {
+    if (!popoverFooterText) return;
+    if (video && video.paused) {
+      popoverFooterText.innerHTML = 'Paused • Press <strong>Space</strong> or <strong>Esc</strong> to resume video';
+    } else {
+      popoverFooterText.innerHTML = 'Hover to keep open • Auto-closes in 0.85s';
     }
+  }
+
+  function schedulePopoverClose(delayMs = AUTO_CLOSE_DELAY_MS) {
+    clearTimeout(popoverHideTimer);
+    if (!wordPopover) return;
+    updatePopoverFooter();
+    // When video is paused, do NOT auto-close! Keep open for studying/reading.
+    if (video && video.paused) {
+      return;
+    }
+    // When hovered, do not close
+    if (wordPopover.dataset.hovered) {
+      return;
+    }
+    popoverHideTimer = setTimeout(() => {
+      closePopover(false);
+    }, delayMs);
   }
 
   // Word Click Handler - Options Respecting & Extension Match
@@ -1309,13 +1328,8 @@
       popoverBtnSave.innerHTML = `${ICON_STAR_SVG}<span>Save to WordTap</span>`;
     }
 
-    if (popoverFooterText) {
-      if (pauseOnClick) {
-        popoverFooterText.innerHTML = 'Press <strong>Space</strong> or <strong>Esc</strong> to resume video';
-      } else {
-        popoverFooterText.innerHTML = 'Hover to keep open • Auto-closes in 1s';
-      }
-    }
+    clearTimeout(popoverHideTimer);
+    updatePopoverFooter();
 
     // Precise placement above subtitle line: never cover the subtitle text!
     const rect = element.getBoundingClientRect();
@@ -1348,9 +1362,6 @@
     // DO NOT auto-speak the English word - user requested silence on click.
     // Pronunciation is available on demand by clicking the speaker icon button.
 
-    // Initial dismiss timer: stays for 2.6s unless mouse hovers over it
-    schedulePopoverClose(2600);
-
     const langToUse = targetLang || 'ar';
     const cacheKey = `${langToUse}|${cleanWord.toLowerCase()}`;
 
@@ -1366,7 +1377,7 @@
       if (willAutoSave && !isAlreadySaved) {
         saveActiveWord(true);
       }
-      schedulePopoverClose(2600);
+      schedulePopoverClose(AUTO_CLOSE_DELAY_MS);
       return;
     }
 
@@ -1441,7 +1452,7 @@
       popoverTranslationAr.textContent = 'تعذر الاتصال بالترجمة';
     }
 
-    schedulePopoverClose(2600);
+    schedulePopoverClose(AUTO_CLOSE_DELAY_MS);
   }
 
   // Audio Pronunciation
@@ -2840,10 +2851,12 @@
       wordPopover.addEventListener('mouseleave', () => {
         delete wordPopover.dataset.hovered;
         clearTimeout(popoverHideTimer);
-        // Wait 1 second (1000ms) before closing popover
-        popoverHideTimer = setTimeout(() => {
-          closePopover(false);
-        }, 1000);
+        // If video is paused, do NOT auto-close! Keep open for studying/reading.
+        if (video && video.paused) {
+          updatePopoverFooter();
+          return;
+        }
+        schedulePopoverClose(AUTO_CLOSE_DELAY_MS);
       });
     }
 
@@ -2918,6 +2931,10 @@
         }
         syncAudioWithVideo();
       }
+      if (wordPopover && wordPopover.classList.contains('visible') && !wordPopover.dataset.hovered) {
+        updatePopoverFooter();
+        schedulePopoverClose(AUTO_CLOSE_DELAY_MS);
+      }
       resetControlsTimeout();
     });
 
@@ -2926,6 +2943,10 @@
       iconPause.style.display = 'none';
       if (isAudioTranscoded && compatibleAudio && !compatibleAudio.paused) {
         compatibleAudio.pause();
+      }
+      clearTimeout(popoverHideTimer);
+      if (wordPopover && wordPopover.classList.contains('visible')) {
+        updatePopoverFooter();
       }
       showControls();
     });

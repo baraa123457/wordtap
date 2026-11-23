@@ -325,6 +325,25 @@
 
   let hideTimer = null;
   let tipToken = 0; // lets late replies know the tooltip has moved on
+  const AUTO_CLOSE_DELAY_MS = 850; // 0.85s as requested by user
+
+  function findActiveVideo() {
+    const videos = Array.from(document.querySelectorAll("video"));
+    if (videos.length === 0) return null;
+    if (videos.length === 1) return videos[0];
+    return (
+      videos.find((v) => !v.paused && v.readyState > 1) ||
+      videos.find((v) => v.clientHeight > 100 && v.clientWidth > 100) ||
+      videos[0]
+    );
+  }
+
+  function isVideoPaused() {
+    const v = findActiveVideo();
+    if (v) return v.paused;
+    if (typeof wasPlaying !== "undefined" && !wasPlaying) return true;
+    return false;
+  }
 
   function hideTip() {
     if (tip.dataset.editing) return;
@@ -341,6 +360,30 @@
     delete tip.dataset.hovered;
     delete tip.dataset.editing;
   }
+
+  // Freeze auto-close when video pauses; schedule close when video resumes
+  document.addEventListener(
+    "pause",
+    (e) => {
+      if (e.target && e.target.tagName === "VIDEO") {
+        clearTimeout(hideTimer);
+      }
+    },
+    true
+  );
+
+  document.addEventListener(
+    "play",
+    (e) => {
+      if (e.target && e.target.tagName === "VIDEO") {
+        if (tip && tip.style.display === "block" && !tip.dataset.hovered && !tip.dataset.editing) {
+          clearTimeout(hideTimer);
+          hideTimer = setTimeout(hideTip, AUTO_CLOSE_DELAY_MS);
+        }
+      }
+    },
+    true
+  );
 
   let currentPendingEntry = null;
 
@@ -679,15 +722,20 @@
       tip.addEventListener("mouseleave", () => {
         delete tip.dataset.hovered;
         clearTimeout(hideTimer);
-        hideTimer = setTimeout(hideTip, 1000);
+        // If video is paused, do NOT auto-close! Keep open for studying/reading.
+        if (isVideoPaused()) return;
+        hideTimer = setTimeout(hideTip, AUTO_CLOSE_DELAY_MS);
       });
     }
 
-    // Close the tooltip by itself (give 2.8s when alternatives are available so user can click, 1.2s otherwise)
+    // Close the tooltip by itself:
+    // 1. Never close while translation is still loading (translated === "…")
+    // 2. Never close while video is paused (user is studying/reading)
+    // 3. Never close while hovered
+    // 4. When video is playing, wait 0.85s (850ms) AFTER translation is shown!
     clearTimeout(hideTimer);
-    if (translated !== "…" && !tip.dataset.hovered) {
-      const delay = alts.length > 0 ? 2800 : 1200;
-      hideTimer = setTimeout(hideTip, delay);
+    if (translated !== "…" && !tip.dataset.hovered && !isVideoPaused()) {
+      hideTimer = setTimeout(hideTip, AUTO_CLOSE_DELAY_MS);
     }
   }
 
@@ -726,7 +774,7 @@
     (e) => {
       if (!settings.enabled) return;
       if (e.target.closest && e.target.closest(SUBTITLE_SELECTOR)) {
-        const v = document.querySelector("video");
+        const v = findActiveVideo();
         wasPlaying = !!(v && !v.paused);
       }
     },
@@ -735,7 +783,7 @@
 
   function resumeIfNeeded() {
     if (!wasPlaying) return;
-    const v = document.querySelector("video");
+    const v = findActiveVideo();
     const resume = () => v && v.paused && v.play().catch(() => {});
     setTimeout(resume, 0);
     setTimeout(resume, 120);
