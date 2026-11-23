@@ -78,8 +78,8 @@ jobs:
             - **Dark & Light Cinema Themes**: Seamlessly toggle between Dark Theater and Daylight mode with the `T` key.
             - **Offline Storage**: Save words offline during flights and travel; words sync to your web library automatically when online.
           files: |
-            desktop-player/dist-installers/WordTap-Setup-x64.exe
-            desktop-player/dist-installers/WordTap-Setup-x64.msi
-            desktop-player/dist-installers/WordTap-Setup-x64.zip
+            desktop-player/dist-release/WordTap-Setup-x64.exe
+            desktop-player/dist-release/WordTap-Setup-x64.msi
+            desktop-player/dist-release/WordTap-Setup-x64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
