@@ -39,6 +39,11 @@
   --bad: #ef4444;
   --bad-soft: #fef2f2;
   --bad-ink: #991b1b;
+
+  /* Typography Control Tokens */
+  --text-label: 0.75rem;                                   /* captions, 12px */
+  --text-control: clamp(0.8125rem, 0.78rem + 0.2vw, 0.875rem); /* pills, tabs, buttons: 13-14px */
+  --text-body: 1rem;
 }
 
 /* WordTap Dark Mode: Dark Cinema Theater (Deep Midnight Navy, NOT dead black) */
@@ -114,6 +119,10 @@ html.dark,
   --color-bad: var(--bad);
   --color-bad-soft: var(--bad-soft);
   --color-bad-ink: var(--bad-ink);
+
+  --text-label: 0.75rem;
+  --text-control: clamp(0.8125rem, 0.78rem + 0.2vw, 0.875rem);
+  --text-body: 1rem;
 }
 
 html {
@@ -247,16 +256,17 @@ bdi {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: clamp(0.28rem, 0.9vw, 0.38rem) clamp(0.38rem, 1.8vw, 0.75rem);
+    min-height: 2.75rem;
+    padding: clamp(0.24rem, 0.7vw, 0.32rem) clamp(0.5rem, 1.4vw, 0.875rem);
     border-radius: 9999px;
-    font-size: clamp(0.6875rem, 2.8vw, 0.8125rem);
+    font-size: var(--text-control);
     font-weight: 500;
     color: var(--muted);
     transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
     flex-shrink: 0;
   }
 
-  /* Dynamic mobile-fit segmented control: smoothly scales to fit 100% inside narrow screens with zero clipping */
+  /* Dynamic mobile-fit segmented control: scales smoothly for 2-4 short options */
   .apple-segmented-fit {
     display: inline-flex;
     max-width: 100%;
@@ -265,16 +275,69 @@ bdi {
     .apple-segmented-fit {
       display: flex;
       width: 100%;
-      justify-content: space-between;
-      padding: 0.2rem;
-      gap: 0.08rem;
+      padding: 0.1875rem;
+      gap: 0.25rem;
     }
     .apple-segmented-fit > .apple-segmented-item {
-      flex: 1 1 auto;
+      flex: 1 1 0%;
       min-width: 0;
-      padding: 0.32rem clamp(0.2rem, 1.25vw, 0.55rem);
-      font-size: clamp(0.64rem, 2.75vw, 0.78rem);
+      min-height: 2.75rem;
+      padding: 0.28rem clamp(0.25rem, 1.2vw, 0.5rem);
+      font-size: var(--text-control);
     }
+  }
+
+  /* Segmented groups with 4+ options: horizontal scroll, no squeeze, even 0.25rem gaps */
+  .apple-segmented-scroll {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 0.1875rem 0.25rem;
+  }
+  .apple-segmented-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .apple-segmented-scroll > .apple-segmented-item {
+    flex: 0 0 auto;
+    min-height: 2.75rem;
+    padding: 0.28rem 0.75rem;
+    font-size: var(--text-control);
+    white-space: nowrap;
+  }
+
+  /* Scroll fade mask attributes for SegmentedControl and AppShell */
+  [data-fade-start="true"][data-fade-end="true"] {
+    mask-image: linear-gradient(to right, transparent 0, #000 1.5rem, #000 calc(100% - 1.5rem), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 1.5rem, #000 calc(100% - 1.5rem), transparent 100%);
+  }
+  [data-fade-start="true"]:not([data-fade-end="true"]) {
+    mask-image: linear-gradient(to right, transparent 0, #000 1.5rem, #000 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 1.5rem, #000 100%);
+  }
+  :not([data-fade-start="true"])[data-fade-end="true"] {
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 1.5rem), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 1.5rem), transparent 100%);
+  }
+
+  /* Mirror for RTL */
+  [dir="rtl"] [data-fade-start="true"][data-fade-end="true"],
+  [dir="rtl"][data-fade-start="true"][data-fade-end="true"] {
+    mask-image: linear-gradient(to left, transparent 0, #000 1.5rem, #000 calc(100% - 1.5rem), transparent 100%);
+    -webkit-mask-image: linear-gradient(to left, transparent 0, #000 1.5rem, #000 calc(100% - 1.5rem), transparent 100%);
+  }
+  [dir="rtl"] [data-fade-start="true"]:not([data-fade-end="true"]),
+  [dir="rtl"][data-fade-start="true"]:not([data-fade-end="true"]) {
+    mask-image: linear-gradient(to left, transparent 0, #000 1.5rem, #000 100%);
+    -webkit-mask-image: linear-gradient(to left, transparent 0, #000 1.5rem, #000 100%);
+  }
+  [dir="rtl"] :not([data-fade-start="true"])[data-fade-end="true"],
+  [dir="rtl"]:not([data-fade-start="true"])[data-fade-end="true"] {
+    mask-image: linear-gradient(to left, #000 0, #000 calc(100% - 1.5rem), transparent 100%);
+    -webkit-mask-image: linear-gradient(to left, #000 0, #000 calc(100% - 1.5rem), transparent 100%);
   }
 
   .apple-segmented-item:hover {
@@ -620,4 +683,89 @@ bdi {
   .countdown-bar {
     animation: countdownBar 800ms linear forwards;
   }
+}
+
+/* =====================================================================
+   MOBILE / iPHONE FIX  (intentionally OUTSIDE any @layer)
+   Unlayered CSS beats Tailwind utilities (text-xs, px-4, ...) and the
+   @layer components rules above, so these rules always win and one place
+   controls every tab bar / pill group in the app.
+   ===================================================================== */
+:root {
+  --text-control: clamp(0.8125rem, 0.78rem + 0.2vw, 0.875rem); /* 13-14px: tabs, pills */
+  --fade-size: 1.5rem;
+}
+
+html {
+  -webkit-text-size-adjust: 100%; /* stop iOS inflating text on rotate */
+  text-size-adjust: 100%;
+}
+
+/* iOS Safari zooms the whole page when you focus an input under 16px. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Every segmented group: never clip, never squeeze, scroll instead. */
+html .apple-segmented-container {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  flex-shrink: 1;
+  justify-content: flex-start;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+}
+html .apple-segmented-container::-webkit-scrollbar {
+  display: none;
+}
+/* Centre when it fits, scroll from the start when it does not. */
+html .apple-segmented-container > :first-child {
+  margin-inline-start: auto;
+}
+html .apple-segmented-container > :last-child {
+  margin-inline-end: auto;
+}
+/* Nav bar spans the full row on phones. */
+@media (max-width: 639px) {
+  html .apple-segmented-fit {
+    width: 100%;
+  }
+}
+
+html .apple-segmented-container > * {
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding-block: 0.4rem;
+  padding-inline: 0.875rem;
+  font-size: var(--text-control);
+  line-height: 1.2;
+  white-space: nowrap;
+  scroll-snap-align: center;
+}
+
+/* Edge fade, switched on by <SegmentedEnhancer/> only on a side that has hidden content. */
+html .apple-segmented-container[data-fade-left="true"],
+html .apple-segmented-container[data-fade-right="true"] {
+  --fl: 0px;
+  --fr: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%);
+}
+html .apple-segmented-container[data-fade-left="true"] {
+  --fl: var(--fade-size);
+}
+html .apple-segmented-container[data-fade-right="true"] {
+  --fr: var(--fade-size);
 }

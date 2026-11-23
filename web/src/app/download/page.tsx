@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { trackEvent } from "@/lib/analytics";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import {
   WindowsIcon,
   ChromeIcon,
@@ -177,44 +178,45 @@ export default function DownloadPage() {
 
           {/* Authentic Apple Segmented Control Tab Switcher */}
           <div className="pt-2 flex justify-center">
-            <div
-              role="tablist"
-              aria-label="Download Category"
-              className="apple-segmented-container p-1 max-w-md w-full"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === "all"}
-                onClick={() => setActiveTab("all")}
-                data-active={activeTab === "all" ? "true" : undefined}
-                className="apple-segmented-item flex-1 py-1.5 text-xs sm:text-sm font-semibold transition-all"
-              >
-                All Downloads
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === "desktop"}
-                onClick={() => setActiveTab("desktop")}
-                data-active={activeTab === "desktop" ? "true" : undefined}
-                className="apple-segmented-item flex-1 py-1.5 text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5"
-              >
-                <WindowsIcon size={13} />
-                <span>Desktop Player</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === "extension"}
-                onClick={() => setActiveTab("extension")}
-                data-active={activeTab === "extension" ? "true" : undefined}
-                className="apple-segmented-item flex-1 py-1.5 text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5"
-              >
-                <ChromeIcon size={13} />
-                <span>Browser Extension</span>
-              </button>
-            </div>
+            <SegmentedControl
+              ariaLabel="Download Category"
+              fill
+              className="max-w-md w-full"
+              value={activeTab}
+              onChange={(val) => setActiveTab(val as "all" | "desktop" | "extension")}
+              options={[
+                {
+                  value: "all",
+                  label: (
+                    <span className="inline-flex items-center justify-center gap-1.5 min-w-0 truncate">
+                      <DownloadIcon size={13} className="shrink-0" />
+                      <span className="hidden sm:inline truncate">All Downloads</span>
+                      <span className="sm:hidden truncate">All</span>
+                    </span>
+                  ),
+                },
+                {
+                  value: "desktop",
+                  label: (
+                    <span className="inline-flex items-center justify-center gap-1.5 min-w-0 truncate">
+                      <WindowsIcon size={13} className="shrink-0" />
+                      <span className="hidden sm:inline truncate">Desktop Player</span>
+                      <span className="sm:hidden truncate">Desktop</span>
+                    </span>
+                  ),
+                },
+                {
+                  value: "extension",
+                  label: (
+                    <span className="inline-flex items-center justify-center gap-1.5 min-w-0 truncate">
+                      <ChromeIcon size={13} className="shrink-0" />
+                      <span className="hidden sm:inline truncate">Browser Extension</span>
+                      <span className="sm:hidden truncate">Extension</span>
+                    </span>
+                  ),
+                },
+              ]}
+            />
           </div>
         </div>
 
@@ -228,17 +230,17 @@ export default function DownloadPage() {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
               <div className="space-y-3.5 max-w-2xl">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-subtitle/20 border border-subtitle/40 text-[11px] font-bold text-amber-900 dark:text-subtitle">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-subtitle/20 border border-subtitle/40 text-[length:var(--text-label)] font-bold text-amber-900 dark:text-subtitle">
                     <WindowsIcon size={12} />
                     <span>Windows 10 / 11 · 64-bit</span>
                   </span>
-                  <span className="text-[11px] font-semibold text-muted bg-black/5 dark:bg-white/10 px-2.5 py-0.5 rounded-full border border-line">
+                  <span className="text-[length:var(--text-label)] font-semibold text-muted bg-black/5 dark:bg-white/10 px-2.5 py-0.5 rounded-full border border-line">
                     v1.0.0 Stable
                   </span>
-                  <span className="text-[11px] font-semibold text-ok bg-ok/10 px-2.5 py-0.5 rounded-full border border-ok/20">
+                  <span className="text-[length:var(--text-label)] font-semibold text-ok bg-ok/10 px-2.5 py-0.5 rounded-full border border-ok/20">
                     VLC Core Engine
                   </span>
-                  <span className="text-[11px] font-semibold text-muted bg-black/5 dark:bg-white/10 px-2.5 py-0.5 rounded-full border border-line">
+                  <span className="text-[length:var(--text-label)] font-semibold text-muted bg-black/5 dark:bg-white/10 px-2.5 py-0.5 rounded-full border border-line">
                     ~85 MB
                   </span>
                 </div>
@@ -293,7 +295,7 @@ export default function DownloadPage() {
                   href="/api/download/desktop?format=msi"
                   download="WordTap-Setup-x64.msi"
                   onClick={() => void trackEvent("desktop_player_download", { format: "msi" })}
-                  className="btn btn-quiet min-h-11 px-4 text-xs font-bold border border-line hover:border-subtitle/50 transition-all flex items-center justify-center gap-2 w-full"
+                  className="btn btn-quiet min-h-11 px-4 text-[length:var(--text-control)] font-bold border border-line hover:border-subtitle/50 transition-all flex items-center justify-center gap-2 w-full"
                 >
                   <DownloadIcon size={14} />
                   <span>Download Windows Installer (.msi)</span>
@@ -304,7 +306,7 @@ export default function DownloadPage() {
                   href="/api/download/desktop?format=zip"
                   download="WordTap-Player-win-x64.zip"
                   onClick={() => void trackEvent("desktop_player_download", { format: "zip" })}
-                  className="text-xs text-muted text-center hover:text-ink underline underline-offset-4 py-1"
+                  className="text-[length:var(--text-control)] text-muted text-center hover:text-ink underline underline-offset-4 py-1 inline-flex items-center justify-center min-h-11"
                 >
                   Or download Portable ZIP (No install needed)
                 </a>
@@ -318,7 +320,7 @@ export default function DownloadPage() {
                   <span className="text-xs font-bold uppercase tracking-wider text-muted">
                     Interactive Player Preview
                   </span>
-                  <span className="text-[10px] font-semibold bg-subtitle/20 text-amber-900 dark:text-subtitle px-2 py-0.5 rounded-full border border-subtitle/30">
+                  <span className="text-[length:var(--text-label)] font-semibold bg-subtitle/20 text-amber-900 dark:text-subtitle px-2 py-0.5 rounded-full border border-subtitle/30">
                     Try Speed &amp; Volume controls below
                   </span>
                 </div>
@@ -622,17 +624,17 @@ export default function DownloadPage() {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
               <div className="space-y-3.5 max-w-2xl">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-subtitle/20 border border-subtitle/40 text-[11px] font-bold text-amber-900 dark:text-subtitle">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-subtitle/20 border border-subtitle/40 text-[length:var(--text-label)] font-bold text-amber-900 dark:text-subtitle">
                     <ChromeIcon size={12} />
                     <span>Chrome · Edge · Brave · Arc</span>
                   </span>
-                  <span className="text-[11px] font-semibold text-muted bg-black/5 dark:bg-white/10 px-2.5 py-0.5 rounded-full border border-line">
+                  <span className="text-[length:var(--text-label)] font-semibold text-muted bg-black/5 dark:bg-white/10 px-2.5 py-0.5 rounded-full border border-line">
                     v1.0.0
                   </span>
-                  <span className="text-[11px] font-semibold text-ok bg-ok/10 px-2.5 py-0.5 rounded-full border border-ok/20">
+                  <span className="text-[length:var(--text-label)] font-semibold text-ok bg-ok/10 px-2.5 py-0.5 rounded-full border border-ok/20">
                     YouTube &amp; Netflix Subtitles
                   </span>
-                  <span className="text-[11px] font-semibold text-muted bg-black/5 dark:bg-white/10 px-2.5 py-0.5 rounded-full border border-line">
+                  <span className="text-[length:var(--text-label)] font-semibold text-muted bg-black/5 dark:bg-white/10 px-2.5 py-0.5 rounded-full border border-line">
                     ~5 MB
                   </span>
                 </div>

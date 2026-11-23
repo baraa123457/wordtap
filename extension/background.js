@@ -148,22 +148,18 @@ async function translate(text, target, srcLang = "auto", context = "", requested
 
   let sl = srcLang && srcLang !== "auto" ? srcLang.toLowerCase() : "auto";
 
-  // If language is still auto and we have a full subtitle sentence, detect from the sentence!
-  if (sl === "auto" && context && context.trim().length > text.trim().length) {
-    try {
-      const detectUrl =
-        "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=" +
-        encodeURIComponent(target) +
-        "&dt=t&q=" +
-        encodeURIComponent(context.trim());
-      const detectRes = await fetch(detectUrl);
-      if (detectRes.ok) {
-        const detectData = await detectRes.json();
-        if (detectData[2] && detectData[2] !== "auto") {
-          sl = detectData[2].toLowerCase();
-        }
-      }
-    } catch (_) {}
+  // Fast offline context inference if language is auto (0ms, zero network delay)
+  if (sl === "auto" && context) {
+    const c = context.toLowerCase();
+    if (/[äöüß]/.test(c)) sl = "de";
+    else if (/[éèêëàâùûîïôçœæ]/.test(c)) sl = "fr";
+    else if (/[áéíóúüñ¿¡]/.test(c)) sl = "es";
+    else if (/[àèéìíîòóùú]/.test(c)) sl = "it";
+    else if (/[ğüşöçıİ]/.test(c)) sl = "tr";
+    else if (/[\u0400-\u04FF]/.test(c)) sl = "ru";
+    else if (/[\u0600-\u06FF]/.test(c)) sl = "ar";
+    else if (/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(c)) sl = "ja";
+    else if (/[\uac00-\ud7af]/.test(c)) sl = "ko";
   }
 
   const key = provider + "|" + sl + "|" + target + "|" + text.toLowerCase();
@@ -272,9 +268,12 @@ async function translate(text, target, srcLang = "auto", context = "", requested
       encodeURIComponent(text);
 
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: AbortSignal.timeout(1800) });
       if (res.ok) {
         data = await res.json();
+        if (data && data[2] && sl === "auto") {
+          sl = data[2].toLowerCase();
+        }
         break;
       }
       if (res.status === 429) {

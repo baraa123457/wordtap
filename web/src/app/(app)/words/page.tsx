@@ -21,6 +21,7 @@ import { MasteryDots } from "@/components/MasteryDots";
 import { SpeakerIcon } from "@/components/Icons";
 import { POS_BADGES } from "@/components/TranslatorCard";
 import { parseImportFile } from "@/lib/import";
+import { SegmentedControl } from "@/components/SegmentedControl";
 
 type Filter = "all" | WordStatus;
 type SourceFilter = "all" | "subtitles" | "web" | "ocr" | "translator" | "app";
@@ -564,7 +565,7 @@ export default function WordsPage() {
                   setShowExportMenu((v) => !v);
                   setShowImportMenu(false);
                 }}
-                className="btn min-h-9 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
+                className="btn min-h-11 px-3.5 py-2 text-[length:var(--text-control)] font-semibold flex items-center gap-1.5"
                 title="Export your vocabulary"
                 aria-haspopup="menu"
                 aria-expanded={showExportMenu}
@@ -592,10 +593,10 @@ export default function WordsPage() {
                       exportWordsCsv(exportSource);
                       setShowExportMenu(false);
                     }}
-                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left"
+                    className="w-full flex items-center justify-between px-3 py-2 text-[length:var(--text-control)] font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left min-h-11"
                   >
                     <span className="font-semibold">.csv</span>
-                    <span className="text-[11px] text-muted">Spreadsheet</span>
+                    <span className="text-[length:var(--text-label)] text-muted">Spreadsheet</span>
                   </button>
                   <button
                     type="button"
@@ -604,10 +605,10 @@ export default function WordsPage() {
                       exportWordsAnkiTsv(exportSource);
                       setShowExportMenu(false);
                     }}
-                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left"
+                    className="w-full flex items-center justify-between px-3 py-2 text-[length:var(--text-control)] font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left min-h-11"
                   >
                     <span className="font-semibold">.tsv</span>
-                    <span className="text-[11px] text-muted">Anki Deck</span>
+                    <span className="text-[length:var(--text-label)] text-muted">Anki Deck</span>
                   </button>
                 </div>
               )}
@@ -630,7 +631,7 @@ export default function WordsPage() {
                 setShowImportMenu((v) => !v);
                 setShowExportMenu(false);
               }}
-              className="btn min-h-9 px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5"
+              className="btn min-h-11 px-3.5 py-2 text-[length:var(--text-control)] font-semibold flex items-center gap-1.5"
               title="Import vocabulary from file"
               aria-haspopup="menu"
               aria-expanded={showImportMenu}
@@ -661,10 +662,10 @@ export default function WordsPage() {
                     }
                     setShowImportMenu(false);
                   }}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left"
+                  className="w-full flex items-center justify-between px-3 py-2 text-[length:var(--text-control)] font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left min-h-11"
                 >
                   <span className="font-semibold">.csv</span>
-                  <span className="text-[11px] text-muted">Spreadsheet</span>
+                  <span className="text-[length:var(--text-label)] text-muted">Spreadsheet</span>
                 </button>
                 <button
                   type="button"
@@ -676,10 +677,10 @@ export default function WordsPage() {
                     }
                     setShowImportMenu(false);
                   }}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left"
+                  className="w-full flex items-center justify-between px-3 py-2 text-[length:var(--text-control)] font-medium text-ink hover:bg-subtitle/15 rounded-lg transition-colors text-left min-h-11"
                 >
                   <span className="font-semibold">.tsv</span>
-                  <span className="text-[11px] text-muted">Anki (.tsv)</span>
+                  <span className="text-[length:var(--text-label)] text-muted">Anki (.tsv)</span>
                 </button>
               </div>
             )}
@@ -691,7 +692,7 @@ export default function WordsPage() {
                 setSelectMode((v) => !v);
                 setSelectedIds(new Set());
               }}
-              className={`btn min-h-9 px-3 py-1.5 text-xs font-semibold ${selectMode ? "bg-subtitle/15 border-subtitle text-ink" : ""}`}
+              className={`btn min-h-11 px-3.5 py-2 text-[length:var(--text-control)] font-semibold ${selectMode ? "bg-subtitle/15 border-subtitle text-ink" : ""}`}
             >
               {selectMode ? "Done selecting" : "Select"}
             </button>
@@ -702,14 +703,14 @@ export default function WordsPage() {
               setShowAddForm((prev) => !prev);
               manualTranslationRef.current = false;
             }}
-            className="btn"
+            className="btn min-h-11 px-3.5 py-2 text-[length:var(--text-control)] font-semibold"
           >
             {showAddForm ? "Cancel" : "+ Add word"}
           </button>
           {all.length > 0 ? (
             <Link
               href={langFilter !== "all" ? `/practice?lang=${langFilter}` : "/practice"}
-              className="btn btn-primary"
+              className="btn btn-primary min-h-11 px-4 py-2 text-[length:var(--text-control)] font-bold shadow-xs"
             >
               {langFilter !== "all" ? `Practice ${LANG_LABELS[langFilter] || langFilter}` : "Start practice"}
             </Link>
@@ -723,7 +724,7 @@ export default function WordsPage() {
           <button
             type="button"
             onClick={() => setImportStatus(null)}
-            className="text-muted hover:text-ink text-xs underline"
+            className="text-muted hover:text-ink text-[length:var(--text-control)] min-h-11 inline-flex items-center underline"
           >
             Dismiss
           </button>
@@ -736,7 +737,7 @@ export default function WordsPage() {
             <span>{selectedIds.size} selected</span>
             <button
               type="button"
-              className="text-xs underline underline-offset-2 text-muted hover:text-ink cursor-pointer"
+              className="text-[length:var(--text-control)] underline underline-offset-2 text-muted hover:text-ink cursor-pointer min-h-11 inline-flex items-center"
               onClick={() =>
                 setSelectedIds(
                   selectedIds.size === visible.length
@@ -753,7 +754,7 @@ export default function WordsPage() {
               <>
                 <Link
                   href={`/practice?ids=${encodeURIComponent(Array.from(selectedIds).join(","))}`}
-                  className="btn btn-primary min-h-8 px-3 py-1 text-xs font-semibold"
+                  className="btn btn-primary min-h-11 px-4 py-2 text-[length:var(--text-control)] font-semibold"
                 >
                   Practice selected ({selectedIds.size})
                 </Link>
@@ -761,7 +762,7 @@ export default function WordsPage() {
                   type="button"
                   disabled={bulkBusy}
                   onClick={() => void handleBulkDelete()}
-                  className="btn btn-bad min-h-8 px-3 py-1 text-xs font-semibold"
+                  className="btn btn-bad min-h-11 px-4 py-2 text-[length:var(--text-control)] font-semibold"
                 >
                   {bulkBusy ? "Deleting…" : `Delete selected (${selectedIds.size})`}
                 </button>
@@ -831,7 +832,7 @@ export default function WordsPage() {
                 }`}
               >
                 <span>{POS_BADGES[detectedPos.toLowerCase()]?.en || detectedPos}</span>
-                <span className="opacity-75 font-normal text-[10px]">
+                <span className="opacity-75 font-normal text-[length:var(--text-label)]">
                   · {POS_BADGES[detectedPos.toLowerCase()]?.ar || detectedPos}
                 </span>
               </span>
@@ -844,54 +845,34 @@ export default function WordsPage() {
         <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 max-w-full min-w-0">
           {languageTabs.length > 1 ? (
             <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 max-w-full min-w-0">
-              <span className="text-xs font-semibold text-muted shrink-0">Language:</span>
-              <div className="overflow-x-auto no-scrollbar py-0.5 px-0.5 scroll-smooth max-w-full min-w-0">
-                <div className="apple-segmented-container">
-                  <button
-                    type="button"
-                    aria-pressed={langFilter === "all"}
-                    onClick={() => setLangFilter("all")}
-                    data-active={langFilter === "all" ? "true" : undefined}
-                    className="apple-segmented-item whitespace-nowrap"
-                  >
-                    All ({words?.length || 0})
-                  </button>
-                  {languageTabs.map((l) => (
-                    <button
-                      key={l.id}
-                      type="button"
-                      aria-pressed={langFilter === l.id}
-                      onClick={() => setLangFilter(l.id)}
-                      data-active={langFilter === l.id ? "true" : undefined}
-                      className="apple-segmented-item whitespace-nowrap"
-                    >
-                      {l.label} ({l.count})
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <span className="text-[length:var(--text-label)] font-semibold text-muted shrink-0">Language:</span>
+              <SegmentedControl
+                ariaLabel="Filter words by language"
+                value={langFilter}
+                onChange={setLangFilter}
+                options={[
+                  { value: "all", label: `All (${words?.length || 0})` },
+                  ...languageTabs.map((l) => ({
+                    value: l.id,
+                    label: `${l.label} (${l.count})`,
+                  })),
+                ]}
+              />
             </div>
           ) : null}
 
           {all.length > 0 ? (
             <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 max-w-full min-w-0">
-              <span className="text-xs font-semibold text-muted shrink-0">Source:</span>
-              <div className="py-0.5 max-w-full min-w-0 overflow-x-auto no-scrollbar">
-                <div className="apple-segmented-container apple-segmented-fit">
-                  {SOURCE_FILTERS.map((sf) => (
-                    <button
-                      key={sf.id}
-                      type="button"
-                      aria-pressed={sourceFilter === sf.id}
-                      onClick={() => setSourceFilter(sf.id)}
-                      data-active={sourceFilter === sf.id ? "true" : undefined}
-                      className="apple-segmented-item whitespace-nowrap"
-                    >
-                      {sf.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <span className="text-[length:var(--text-label)] font-semibold text-muted shrink-0">Source:</span>
+              <SegmentedControl
+                ariaLabel="Filter words by source"
+                value={sourceFilter}
+                onChange={(val) => setSourceFilter(val as SourceFilter)}
+                options={SOURCE_FILTERS.map((sf) => ({
+                  value: sf.id,
+                  label: sf.label,
+                }))}
+              />
             </div>
           ) : null}
         </div>
@@ -922,22 +903,21 @@ export default function WordsPage() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <div role="group" aria-label="Filter" className="py-1 max-w-full min-w-0">
-            <div className="apple-segmented-container apple-segmented-fit">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  aria-pressed={filter === f.id}
-                  onClick={() => setFilter(f.id)}
-                  data-active={filter === f.id ? "true" : undefined}
-                  className="apple-segmented-item whitespace-nowrap"
-                >
-                  <span className="hidden md:inline">{f.label}</span>
-                  <span className="md:hidden">{f.shortLabel}</span>
-                </button>
-              ))}
-            </div>
+          <div className="py-1 max-w-full min-w-0">
+            <SegmentedControl
+              ariaLabel="Filter words by learning status"
+              value={filter}
+              onChange={(v) => setFilter(v as typeof filter)}
+              options={FILTERS.map((f) => ({
+                value: f.id,
+                label: (
+                  <>
+                    <span className="hidden md:inline">{f.label}</span>
+                    <span className="md:hidden">{f.shortLabel}</span>
+                  </>
+                ),
+              }))}
+            />
           </div>
         </div>
       ) : null}
@@ -1000,7 +980,7 @@ export default function WordsPage() {
                       aria-label={`Language for ${w.text}`}
                       onChange={(e) => void handleLanguageChange(w, e.target.value)}
                       disabled={busyId === w.id}
-                      className="cursor-pointer appearance-none rounded-md border border-line bg-surface px-2 py-0.5 pr-4 text-xs font-bold uppercase tracking-wider text-muted transition-colors hover:border-muted hover:text-ink focus:outline-none focus:ring-1 focus:ring-focus disabled:opacity-50"
+                      className="cursor-pointer appearance-none rounded-md border border-line bg-surface px-2.5 py-1 pr-5 text-[length:var(--text-control)] min-h-11 font-bold uppercase tracking-wider text-muted transition-colors hover:border-muted hover:text-ink focus:outline-none focus:ring-1 focus:ring-focus disabled:opacity-50"
                       style={{
                         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%235a6082' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
                         backgroundRepeat: "no-repeat",
@@ -1076,14 +1056,14 @@ export default function WordsPage() {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <Link
                         href={`/practice?wordId=${encodeURIComponent(w.id)}`}
-                        className="btn btn-primary min-h-9 px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer"
+                        className="btn btn-primary min-h-11 px-3.5 py-1 text-[length:var(--text-control)] font-bold rounded-lg transition-all cursor-pointer"
                         title={`Learn "${w.text}" (4-Stage Interactive Flow)`}
                       >
                         Learn
                       </Link>
                       <button
                         type="button"
-                        className={`btn min-h-9 px-2.5 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
+                        className={`btn min-h-11 px-3.5 py-1 text-[length:var(--text-control)] font-medium rounded-lg transition-all cursor-pointer ${
                           editingId === w.id
                             ? "bg-subtitle text-subtitle-ink font-semibold shadow-xs"
                             : "btn-quiet text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10"
@@ -1107,7 +1087,7 @@ export default function WordsPage() {
                       </button>
                       <button
                         type="button"
-                        className="btn btn-quiet min-h-9 px-2.5 py-1 text-xs font-medium text-muted hover:text-bad hover:bg-bad/10 rounded-lg cursor-pointer"
+                        className="btn btn-quiet min-h-11 px-3.5 py-1 text-[length:var(--text-control)] font-medium text-muted hover:text-bad hover:bg-bad/10 rounded-lg cursor-pointer"
                         aria-label={`Delete “${w.text}”`}
                         onClick={() => setConfirmId(w.id)}
                       >
@@ -1138,7 +1118,7 @@ export default function WordsPage() {
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
-                        <label htmlFor={`edit-word-${w.id}`} className="block text-[11px] font-semibold text-muted mb-1">
+                        <label htmlFor={`edit-word-${w.id}`} className="block text-[length:var(--text-label)] font-semibold text-muted mb-1">
                           Word (الكلمة الأصلية):
                         </label>
                         <input
@@ -1156,7 +1136,7 @@ export default function WordsPage() {
                         />
                       </div>
                       <div>
-                        <label htmlFor={`edit-trans-${w.id}`} className="block text-[11px] font-semibold text-muted mb-1">
+                        <label htmlFor={`edit-trans-${w.id}`} className="block text-[length:var(--text-label)] font-semibold text-muted mb-1">
                           Translation &amp; Notes (الترجمة والملاحظات):
                         </label>
                         <input
@@ -1178,14 +1158,14 @@ export default function WordsPage() {
                     <div className="flex items-center justify-end gap-2 pt-1">
                       <button
                         type="button"
-                        className="btn btn-quiet min-h-8 px-3 py-1 text-xs cursor-pointer"
+                        className="btn btn-quiet min-h-11 px-3.5 py-1 text-[length:var(--text-control)] cursor-pointer"
                         onClick={() => setEditingId(null)}
                       >
                         Cancel
                       </button>
                       <button
                         type="button"
-                        className="btn btn-primary min-h-8 px-4 py-1 text-xs font-bold cursor-pointer"
+                        className="btn btn-primary min-h-11 px-4 py-1 text-[length:var(--text-control)] font-bold cursor-pointer"
                         disabled={busyId === w.id || !editText.trim() || !editTranslation.trim()}
                         onClick={() => void handleSaveWordDetails(w)}
                       >

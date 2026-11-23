@@ -16,6 +16,7 @@ import {
   SparklesIcon,
   StarIcon,
 } from "@/components/Icons";
+import { SegmentedControl } from "@/components/SegmentedControl";
 
 export default function PricingPage() {
   const [interval, setInterval] = useState<BillingInterval>("yearly");
@@ -80,7 +81,7 @@ export default function PricingPage() {
               key={curr}
               type="button"
               onClick={() => setCurrency(curr)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-bold cursor-pointer transition-colors ${
+              className={`rounded-lg px-2.5 py-1 min-h-11 text-[length:var(--text-control)] font-bold cursor-pointer transition-colors ${
                 currency === curr
                   ? "bg-subtitle text-white shadow-xs"
                   : "bg-surface border border-line text-muted hover:text-ink"
@@ -92,26 +93,26 @@ export default function PricingPage() {
         </div>
 
         {/* Billing Interval Switcher */}
-        <div className="apple-segmented-container mx-auto mt-2 inline-flex items-center p-1">
-          <button
-            type="button"
-            onClick={() => setInterval("monthly")}
-            data-active={interval === "monthly" ? "true" : undefined}
-            className="apple-segmented-item px-4 py-1.5 text-xs sm:text-sm font-bold cursor-pointer"
-          >
-            Monthly
-          </button>
-          <button
-            type="button"
-            onClick={() => setInterval("yearly")}
-            data-active={interval === "yearly" ? "true" : undefined}
-            className="apple-segmented-item px-4 py-1.5 text-xs sm:text-sm font-bold cursor-pointer inline-flex items-center gap-1.5"
-          >
-            <span>Annual</span>
-            <span className="rounded-full bg-subtitle/20 px-1.5 py-0.2 text-[10px] font-extrabold text-amber-900 dark:text-subtitle">
-              Save {plan.savingsPercent}%
-            </span>
-          </button>
+        <div className="pt-2 flex justify-center">
+          <SegmentedControl
+            ariaLabel="Billing Interval"
+            value={interval}
+            onChange={(val) => setInterval(val as "monthly" | "yearly")}
+            options={[
+              { value: "monthly", label: "Monthly" },
+              {
+                value: "yearly",
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span>Annual</span>
+                    <span className="rounded-full bg-subtitle/20 px-1.5 py-0.2 text-[length:var(--text-label)] font-extrabold text-amber-900 dark:text-subtitle">
+                      Save {plan.savingsPercent}%
+                    </span>
+                  </span>
+                ),
+              },
+            ]}
+          />
         </div>
       </div>
 
@@ -164,7 +165,7 @@ export default function PricingPage() {
           <div className="pt-6 mt-6 border-t border-line">
             <Link
               href="/practice"
-              className="btn btn-quiet w-full min-h-11 text-xs font-bold justify-center"
+              className="btn btn-quiet w-full min-h-11 text-[length:var(--text-control)] font-bold justify-center"
             >
               Continue with Free
             </Link>
@@ -173,7 +174,7 @@ export default function PricingPage() {
 
         {/* Pro Plan */}
         <div className="apple-card relative flex flex-col justify-between p-6 sm:p-8 border-2 border-subtitle shadow-md bg-gradient-to-b from-subtitle/10 via-transparent to-transparent">
-          <div className="absolute -top-3 right-6 rounded-full bg-subtitle px-3 py-0.5 text-[11px] font-extrabold text-white uppercase tracking-wider shadow-xs">
+          <div className="absolute -top-3 right-6 rounded-full bg-subtitle px-3 py-0.5 text-[length:var(--text-label)] font-extrabold text-white uppercase tracking-wider shadow-xs">
             Most Popular
           </div>
 
@@ -261,7 +262,7 @@ export default function PricingPage() {
             )}
 
             {/* Localized payment methods */}
-            <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] text-muted">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 text-[length:var(--text-label)] text-muted">
               <span>Accepted:</span>
               {plan.paymentBadges.map((badge) => (
                 <span

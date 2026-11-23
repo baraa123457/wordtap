@@ -17,6 +17,7 @@ import type { Word } from "@/lib/schemas";
 import { canSpeak, speak } from "@/lib/speech";
 import { InteractiveLearningSession } from "@/components/learn/InteractiveLearningSession";
 import { useAuth } from "@/context/AuthContext";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import {
   CheckIcon,
   DownloadIcon,
@@ -173,97 +174,72 @@ export default function DecksPage() {
       </div>
 
       {/* Main Deck Mode Switcher Tabs */}
-      <div className="flex items-center justify-center sm:justify-start">
-        <div className="apple-segmented-container p-1 gap-1">
-          <button
-            type="button"
-            onClick={() => {
-              setDeckView("media");
-              setSearchQuery("");
-            }}
-            className={`apple-segmented-item cursor-pointer px-4 py-1.5 text-xs sm:text-sm font-semibold transition-all ${
-              deckView === "media"
-                ? "bg-surface text-ink shadow-xs border border-line"
-                : "text-muted hover:text-ink"
-            }`}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <span>🎬 My Show &amp; Media Decks</span>
-              {userMediaDecks.length > 0 ? (
-                <span className="rounded-full bg-subtitle/20 px-1.5 py-0.2 text-[11px] font-bold text-amber-900 dark:text-subtitle">
-                  {userMediaDecks.length}
+      <div className="w-full max-w-md mx-0">
+        <SegmentedControl
+          ariaLabel="Main deck mode"
+          fill
+          value={deckView}
+          onChange={(val) => {
+            setDeckView(val as "media" | "curated");
+            setSearchQuery("");
+          }}
+          options={[
+            {
+              value: "media",
+              label: (
+                <span className="inline-flex items-center justify-center gap-1.5 min-w-0 truncate">
+                  <span className="sm:hidden truncate">My Decks</span>
+                  <span className="hidden sm:inline truncate">🎬 My Show &amp; Media Decks</span>
+                  {userMediaDecks.length > 0 ? (
+                    <span className="rounded-full bg-subtitle/20 px-1.5 py-0.2 text-[length:var(--text-label)] font-bold text-amber-900 dark:text-subtitle shrink-0">
+                      {userMediaDecks.length}
+                    </span>
+                  ) : null}
                 </span>
-              ) : null}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setDeckView("curated");
-              setSearchQuery("");
-            }}
-            className={`apple-segmented-item cursor-pointer px-4 py-1.5 text-xs sm:text-sm font-semibold transition-all ${
-              deckView === "curated"
-                ? "bg-surface text-ink shadow-xs border border-line"
-                : "text-muted hover:text-ink"
-            }`}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <span>🌟 Curated Show Decks</span>
-            </span>
-          </button>
-        </div>
+              ),
+            },
+            {
+              value: "curated",
+              label: (
+                <span className="inline-flex items-center justify-center gap-1.5 min-w-0 truncate">
+                  <span className="sm:hidden truncate">Curated</span>
+                  <span className="hidden sm:inline truncate">🌟 Curated Show Decks</span>
+                </span>
+              ),
+            },
+          ]}
+        />
       </div>
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {deckView === "media" ? (
           /* Media Category Pills */
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-            {[
-              { id: "all", label: `All Shows (${userMediaDecks.length})` },
-              { id: "netflix", label: "🎬 Netflix" },
-              { id: "youtube", label: "▶️ YouTube" },
-              { id: "vlc", label: "🍿 VLC Player" },
-              { id: "web", label: "🌐 Web" },
-            ].map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setMediaCategory(cat.id)}
-                className={`rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-colors cursor-pointer shrink-0 ${
-                  mediaCategory === cat.id
-                    ? "bg-subtitle text-white shadow-xs"
-                    : "bg-surface border border-line text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/5"
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            ariaLabel="Filter media decks"
+            value={mediaCategory}
+            onChange={setMediaCategory}
+            options={[
+              { value: "all", label: `All Shows (${userMediaDecks.length})` },
+              { value: "netflix", label: "🎬 Netflix" },
+              { value: "youtube", label: "▶️ YouTube" },
+              { value: "vlc", label: "🍿 VLC Player" },
+              { value: "web", label: "🌐 Web" },
+            ]}
+          />
         ) : (
           /* Curated Category Pills */
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-            {[
-              { id: "all", label: "All Decks" },
-              { id: "tv_shows", label: "TV Shows" },
-              { id: "career_tech", label: "Career & Tech" },
-              { id: "ielts_academic", label: "IELTS & Academic" },
-            ].map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategory(cat.id as CuratedDeckCategory)}
-                className={`rounded-full px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-colors cursor-pointer shrink-0 ${
-                  selectedCategory === cat.id
-                    ? "bg-subtitle text-white shadow-xs"
-                    : "bg-surface border border-line text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/5"
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            ariaLabel="Filter curated decks"
+            value={selectedCategory}
+            onChange={(val) => setSelectedCategory(val as CuratedDeckCategory)}
+            options={[
+              { value: "all", label: "All Decks" },
+              { value: "tv_shows", label: "TV Shows" },
+              { value: "career_tech", label: "Career & Tech" },
+              { value: "ielts_academic", label: "IELTS & Academic" },
+            ]}
+          />
         )}
 
         {/* Search Input */}
@@ -302,7 +278,7 @@ export default function DecksPage() {
                       <span className="text-lg">{deck.emoji}</span>
                       <span>{deck.categoryLabel}</span>
                     </span>
-                    <span className="rounded-full bg-subtitle/15 border border-subtitle/30 px-2.5 py-0.5 text-[11px] font-bold text-amber-900 dark:text-subtitle">
+                    <span className="rounded-full bg-subtitle/15 border border-subtitle/30 px-2.5 py-0.5 text-[length:var(--text-label)] font-bold text-amber-900 dark:text-subtitle">
                       {deck.badge}
                     </span>
                   </div>
@@ -325,7 +301,7 @@ export default function DecksPage() {
                       >
                         <span>{w.text}</span>
                         {w.translation ? (
-                          <span className="text-[10px] text-muted font-normal" dir="rtl">
+                          <span className="text-[length:var(--text-label)] text-muted font-normal" dir="rtl">
                             ({w.translation})
                           </span>
                         ) : null}
@@ -335,7 +311,7 @@ export default function DecksPage() {
                       <button
                         type="button"
                         onClick={() => setInspectingDeck(deck)}
-                        className="text-[11px] font-bold text-subtitle hover:underline cursor-pointer ps-1"
+                        className="text-[length:var(--text-control)] font-bold text-subtitle hover:underline cursor-pointer ps-1 py-1 min-h-11 inline-flex items-center"
                       >
                         +{deck.words.length - 4} more
                       </button>
@@ -348,7 +324,7 @@ export default function DecksPage() {
                   <button
                     type="button"
                     onClick={() => setInspectingDeck(deck)}
-                    className="btn btn-quiet min-h-9 px-3 text-xs font-semibold cursor-pointer"
+                    className="btn btn-quiet min-h-11 px-3.5 text-[length:var(--text-control)] font-semibold cursor-pointer"
                   >
                     Preview Words
                   </button>
@@ -356,7 +332,7 @@ export default function DecksPage() {
                   <button
                     type="button"
                     onClick={() => setPracticingDeck(deck)}
-                    className="btn btn-primary min-h-9 px-4 text-xs font-bold cursor-pointer inline-flex items-center gap-1.5 ms-auto"
+                    className="btn btn-primary min-h-11 px-4 text-[length:var(--text-control)] font-bold cursor-pointer inline-flex items-center gap-1.5 ms-auto"
                   >
                     <PlayIcon size={11} />
                     <span>Practice</span>
@@ -379,7 +355,7 @@ export default function DecksPage() {
               <button
                 type="button"
                 onClick={() => setDeckView("curated")}
-                className="btn btn-primary min-h-9 px-4 text-xs font-bold cursor-pointer"
+                className="btn btn-primary min-h-11 px-4 text-[length:var(--text-control)] font-bold cursor-pointer"
               >
                 Browse Curated Decks →
               </button>
@@ -406,7 +382,7 @@ export default function DecksPage() {
                     <span className="text-lg">{deck.emoji}</span>
                     <span>{deck.categoryLabel}</span>
                   </span>
-                  <span className="rounded-full bg-subtitle/15 border border-subtitle/30 px-2.5 py-0.5 text-[11px] font-bold text-amber-900 dark:text-subtitle">
+                  <span className="rounded-full bg-subtitle/15 border border-subtitle/30 px-2.5 py-0.5 text-[length:var(--text-label)] font-bold text-amber-900 dark:text-subtitle">
                     {deck.badge}
                   </span>
                 </div>
@@ -428,14 +404,14 @@ export default function DecksPage() {
                       className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface/80 px-2 py-0.5 text-xs font-semibold text-ink"
                     >
                       <span>{w.text}</span>
-                      <span className="text-[10px] text-muted font-normal">({w.translation})</span>
+                      <span className="text-[length:var(--text-label)] text-muted font-normal">({w.translation})</span>
                     </span>
                   ))}
                   {deck.words.length > 4 ? (
                     <button
                       type="button"
                       onClick={() => setInspectingDeck(deck)}
-                      className="text-[11px] font-bold text-subtitle hover:underline cursor-pointer ps-1"
+                      className="text-[length:var(--text-control)] font-bold text-subtitle hover:underline cursor-pointer ps-1 py-1 min-h-11 inline-flex items-center"
                     >
                       +{deck.words.length - 4} more
                     </button>
@@ -462,7 +438,7 @@ export default function DecksPage() {
                 <button
                   type="button"
                   onClick={() => setInspectingDeck(deck)}
-                  className="btn btn-quiet min-h-9 px-3 text-xs font-semibold cursor-pointer"
+                  className="btn btn-quiet min-h-11 px-3.5 text-[length:var(--text-control)] font-semibold cursor-pointer"
                 >
                   Preview Words
                 </button>
@@ -472,7 +448,7 @@ export default function DecksPage() {
                     type="button"
                     disabled={importingId === deck.id}
                     onClick={() => void handleImport(deck)}
-                    className="btn btn-quiet border border-line min-h-9 px-3 text-xs font-semibold cursor-pointer hover:border-subtitle/40 inline-flex items-center gap-1.5"
+                    className="btn btn-quiet border border-line min-h-11 px-3.5 text-[length:var(--text-control)] font-semibold cursor-pointer hover:border-subtitle/40 inline-flex items-center gap-1.5"
                     title="Save all words into your personal library"
                   >
                     <DownloadIcon size={13} />
@@ -481,7 +457,7 @@ export default function DecksPage() {
                   <button
                     type="button"
                     onClick={() => setPracticingDeck(deck)}
-                    className="btn btn-primary min-h-9 px-4 text-xs font-bold cursor-pointer inline-flex items-center gap-1.5"
+                    className="btn btn-primary min-h-11 px-4 text-[length:var(--text-control)] font-bold cursor-pointer inline-flex items-center gap-1.5"
                   >
                     <PlayIcon size={11} />
                     <span>Practice</span>
@@ -542,7 +518,7 @@ export default function DecksPage() {
                         </button>
                       ) : null}
                       {w.part_of_speech ? (
-                        <span className="text-xs font-bold text-subtitle bg-subtitle/15 px-2 py-0.5 rounded-full">
+                        <span className="text-[length:var(--text-label)] font-bold text-subtitle bg-subtitle/15 px-2 py-0.5 rounded-full">
                           {w.part_of_speech}
                         </span>
                       ) : null}
@@ -558,7 +534,7 @@ export default function DecksPage() {
                     <p className="text-xs italic text-ink/80 bg-black/[0.02] dark:bg-white/[0.03] p-2 rounded-lg border border-line/40">
                       &ldquo;{w.sentence}&rdquo;{" "}
                       {w.source_title ? (
-                        <span className="text-[10px] text-muted not-italic">({w.source_title})</span>
+                        <span className="text-[length:var(--text-label)] text-muted not-italic">({w.source_title})</span>
                       ) : null}
                     </p>
                   ) : null}
@@ -571,7 +547,7 @@ export default function DecksPage() {
               <button
                 type="button"
                 onClick={() => setInspectingDeck(null)}
-                className="btn btn-quiet min-h-10 px-4 text-xs font-semibold cursor-pointer"
+                className="btn btn-quiet min-h-11 px-4 text-[length:var(--text-control)] font-semibold cursor-pointer"
               >
                 Close
               </button>
@@ -582,7 +558,7 @@ export default function DecksPage() {
                   setInspectingDeck(null);
                   setPracticingDeck(target);
                 }}
-                className="btn btn-primary min-h-10 px-5 text-xs font-bold cursor-pointer"
+                className="btn btn-primary min-h-11 px-5 text-[length:var(--text-control)] font-bold cursor-pointer"
               >
                 ▶ Start Practice ({inspectingDeck.words.length} Words)
               </button>

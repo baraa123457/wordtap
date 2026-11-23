@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
+import { getCorsHeaders, guardApiRequestShared, handleCorsPreflight } from "@/lib/api-guard";
 
 export async function OPTIONS(req: Request) {
   return handleCorsPreflight(req);
@@ -35,7 +35,7 @@ function sanitizeUrl(raw: unknown): string | undefined {
 }
 
 export async function POST(req: Request) {
-  const blocked = guardApiRequest(req, "telemetry-subtitle-health", 60);
+  const blocked = await guardApiRequestShared(req, "telemetry-subtitle-health", 60);
   if (blocked) return blocked;
 
   const corsHeaders = getCorsHeaders(req);

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
+import { getCorsHeaders, guardApiRequestShared, handleCorsPreflight } from "@/lib/api-guard";
 import {
   fetchAuthenticFallbackContexts,
   VideoDiscoveryService,
@@ -32,7 +32,7 @@ export async function OPTIONS(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const blocked = guardApiRequest(req, "learn-videos", 45);
+  const blocked = await guardApiRequestShared(req, "learn-videos", 45);
   if (blocked) return blocked;
   const corsHeaders = getCorsHeaders(req);
 
@@ -150,7 +150,7 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const blocked = guardApiRequest(req, "learn-videos-flag", 30);
+  const blocked = await guardApiRequestShared(req, "learn-videos-flag", 30);
   if (blocked) return blocked;
   const corsHeaders = getCorsHeaders(req);
 

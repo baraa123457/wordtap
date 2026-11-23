@@ -13,6 +13,7 @@ import {
 import { addCustomWord, fetchWords } from "@/lib/api";
 import { canSpeak, speak } from "@/lib/speech";
 import { SpeakerIcon } from "@/components/Icons";
+import { SegmentedControl } from "@/components/SegmentedControl";
 
 const SOURCE_LABELS: Record<HistorySource, { label: string }> = {
   translator: { label: "Translator" },
@@ -166,14 +167,14 @@ export default function HistoryPage() {
                 <button
                   type="button"
                   onClick={handleClearAll}
-                  className="btn btn-bad min-h-8 px-3 py-1 text-xs font-semibold rounded-lg"
+                  className="btn btn-bad min-h-11 px-3.5 py-1 text-[length:var(--text-control)] font-semibold rounded-lg"
                 >
                   Yes, clear
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmClear(false)}
-                  className="btn btn-quiet min-h-8 px-3 py-1 text-xs font-medium rounded-lg"
+                  className="btn btn-quiet min-h-11 px-3.5 py-1 text-[length:var(--text-control)] font-medium rounded-lg"
                 >
                   Cancel
                 </button>
@@ -182,7 +183,7 @@ export default function HistoryPage() {
               <button
                 type="button"
                 onClick={() => setConfirmClear(true)}
-                className="btn btn-quiet min-h-8 px-3 py-1 text-xs font-medium text-muted hover:text-bad rounded-lg"
+                className="btn btn-quiet min-h-11 px-3.5 py-1 text-[length:var(--text-control)] font-medium text-muted hover:text-bad rounded-lg"
               >
                 Clear history
               </button>
@@ -228,9 +229,11 @@ export default function HistoryPage() {
         </div>
 
         <div className="py-1 max-w-full min-w-0">
-          <div role="group" aria-label="Filter by source" className="apple-segmented-container apple-segmented-fit">
-            {(["all", "translator", "subtitle", "selection"] as const).map((src) => {
-              const active = sourceFilter === src;
+          <SegmentedControl
+            ariaLabel="Filter by source"
+            value={sourceFilter}
+            onChange={(val) => setSourceFilter(val as typeof sourceFilter)}
+            options={(["all", "translator", "subtitle", "selection"] as const).map((src) => {
               const count =
                 src === "all"
                   ? history.length
@@ -239,23 +242,13 @@ export default function HistoryPage() {
                 src === "all"
                   ? "All"
                   : SOURCE_LABELS[src]?.label || src;
-              return (
-                <button
-                  key={src}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setSourceFilter(src)}
-                  data-active={active ? "true" : undefined}
-                  className="apple-segmented-item whitespace-nowrap"
-                >
-                  <span className="truncate">{label}</span>
-                  <span className="ms-0.5 text-[0.88em] opacity-70 tabular-nums shrink-0">
-                    ({count})
-                  </span>
-                </button>
-              );
+              return {
+                value: src,
+                label,
+                count,
+              };
             })}
-          </div>
+          />
         </div>
       </div>
 
@@ -274,7 +267,7 @@ export default function HistoryPage() {
             <div className="pt-2">
               <Link
                 href="/dashboard"
-                className="btn btn-primary min-h-9 px-4 py-1.5 text-xs font-semibold"
+                className="btn btn-primary min-h-11 px-4 py-1.5 text-[length:var(--text-control)] font-semibold"
               >
                 Go to Translator
               </Link>
@@ -322,14 +315,14 @@ export default function HistoryPage() {
                     ) : null}
 
                     {/* Language Badge */}
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-black/5 dark:bg-white/10 text-muted uppercase">
+                    <span className="px-2 py-0.5 rounded-md text-[length:var(--text-label)] font-mono font-semibold bg-black/5 dark:bg-white/10 text-muted uppercase">
                       {item.src_lang} → {item.target_lang}
                     </span>
 
                     {/* Source Badge */}
                     <span
                       title={`Captured via ${sourceInfo.label}`}
-                      className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-black/5 dark:bg-white/10 text-muted"
+                      className="px-2 py-0.5 rounded-md text-[length:var(--text-label)] font-medium bg-black/5 dark:bg-white/10 text-muted"
                     >
                       {sourceInfo.label}
                     </span>
@@ -394,7 +387,7 @@ export default function HistoryPage() {
                       onClick={() => handleSave(item)}
                       disabled={isSaving}
                       title="Save this word to your vocabulary practice list"
-                      className="btn btn-primary min-h-10 px-3 py-1 text-xs rounded-xl"
+                      className="btn btn-primary min-h-11 px-3.5 py-1 text-[length:var(--text-control)] rounded-xl"
                     >
                       {isSaving ? (
                         <>

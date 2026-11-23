@@ -369,6 +369,7 @@
 
   function setAspectRatio(aspectVal, label, showMessage = true) {
     if (!video) return;
+    video.style.backgroundColor = '#000000';
     if (aspectVal === 'auto') {
       video.style.aspectRatio = 'auto';
       video.style.width = '100%';
@@ -1205,6 +1206,50 @@
         onWordClick(el, cue);
       });
     });
+
+    prefetchCueWords(cue);
+  }
+
+  // Lookahead Pre-fetching for Active Cue Words (0ms Instant Translation Experience)
+  const prefetchedSet = new Set();
+  function prefetchCueWords(cue) {
+    if (!cue || !cue.text) return;
+    const words = (cue.text.match(/[a-zA-Z0-9]+(?:'[a-zA-Z0-9]+)?/g) || [])
+      .map(w => w.toLowerCase())
+      .filter(w => w.length > 2);
+
+    const langToUse = currentTargetLang || 'ar';
+    const uniqueUncached = Array.from(new Set(words)).filter(
+      w => !translationCache.has(`${langToUse}:${w}`) && !prefetchedSet.has(`${langToUse}:${w}`)
+    ).slice(0, 4);
+
+    if (uniqueUncached.length === 0) return;
+
+    for (const word of uniqueUncached) {
+      prefetchedSet.add(`${langToUse}:${word}`);
+      setTimeout(async () => {
+        try {
+          const res = await fetch(
+            `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(langToUse)}&dt=t&dt=bd&q=${encodeURIComponent(word)}`,
+            { signal: AbortSignal.timeout(2000) }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data[0] && data[0][0] && data[0][0][0]) {
+              const tr = data[0][0][0];
+              const p = (data[1] && data[1][0] && data[1][0][0]) || 'word';
+              const alts = (data[1] && data[1][0] && Array.isArray(data[1][0][1])) ? data[1][0][1].slice(0, 4) : [];
+              saveToCache(`${langToUse}:${word}`, {
+                translation: tr,
+                pos: p,
+                alternatives: alts,
+                timestamp: Date.now()
+              });
+            }
+          }
+        } catch (_) {}
+      }, 60);
+    }
   }
 
   // Schedule popover dismiss timer (default 2600ms, paused while hovered)
@@ -1331,7 +1376,8 @@
     for (const client of clients) {
       try {
         const res = await fetch(
-          `https://translate.googleapis.com/translate_a/single?client=${client}&sl=auto&tl=${encodeURIComponent(langToUse)}&dt=t&dt=bd&dt=qca&dt=at&q=${encodeURIComponent(cleanWord)}`
+          `https://translate.googleapis.com/translate_a/single?client=${client}&sl=auto&tl=${encodeURIComponent(langToUse)}&dt=t&dt=bd&dt=qca&dt=at&q=${encodeURIComponent(cleanWord)}`,
+          { signal: AbortSignal.timeout(1800) }
         );
         if (res.ok) {
           const data = await res.json();
@@ -1880,6 +1926,7 @@
     currentFilePath = filePath;
     currentSubPath = subPath || null;
     isAudioTranscoded = false;
+    updateAudioMenuState();
     audioStreamStartTime = 0;
     liveAudioResyncing = false;
     audioDelayMs = 0;
@@ -1929,8 +1976,11 @@
           setAspectRatio('auto', 'Default', false);
         }
         if (info && info.needsTranscode) {
-          const codecName = (info.codecs && info.codecs.length > 0) ? info.codecs.join('/') : 'DDP 5.1';
-          showToast(`Audio: Dolby ${codecName}`);
+          const primary = info.primaryCodec || (info.codecs && info.codecs[0]) || 'AC3/DTS';
+          const isDts = /dca|dts/i.test(primary);
+          const isDolby = /ac3|ac-3|a52|eac3|eac-3|ec-3|truehd|mlp/i.test(primary);
+          const badge = isDts ? 'DTS 5.1' : (isDolby ? 'Dolby Audio' : primary.toUpperCase());
+          showToast(`Audio: Auto-fixing ${badge} (Live Transcode)`);
           try { video.currentTime = targetSeek; } catch (e) {}
           await startLiveAudioStream(targetSeek);
           const p = video.play();
@@ -1988,6 +2038,7 @@
         // Video element must stay muted so its unsupported audio track doesn't clash
         video.muted = true;
         isAudioTranscoded = true;
+        updateAudioMenuState();
 
         compatibleAudio.src = streamUrl;
         compatibleAudio.playbackRate = video.playbackRate;
@@ -2011,7 +2062,7 @@
 
         const p = compatibleAudio.play();
         if (p !== undefined) p.catch(() => {});
-        showToast('Audio: Dolby Digital Plus 5.1 (Direct)');
+        showToast('Audio: Transcode Engine Active (Stereo Downmix)');
 
         // Start active precision lip-sync loop (100ms interval)
         if (!audioSyncLoop) {
@@ -2027,6 +2078,18 @@
   // Fallback Audio Transcoding
   async function transcodeAndAttachAudio(filePath) {
     startLiveAudioStream(video.currentTime || 0);
+  }
+
+  function updateAudioMenuState() {
+    const item = document.getElementById('menu-item-audio-fix');
+    if (item) {
+      const span = item.querySelector('span');
+      if (span) {
+        span.textContent = isAudioTranscoded
+          ? '✓ Transcode Audio Stream (Active)'
+          : 'Transcode Audio Stream (AC3 / DTS)';
+      }
+    }
   }
 
   // Helper: Extract clean movie/show name and season/episode from filename

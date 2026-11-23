@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
+import { getCorsHeaders, guardApiRequestShared, handleCorsPreflight } from "@/lib/api-guard";
 import { callAiJson } from "@/lib/ai-server";
 import { buildTargetWordPattern } from "@/lib/placeholder";
 import {
@@ -197,7 +197,7 @@ async function checkWithLanguageTool(sentence: string): Promise<LanguageToolMatc
 }
 
 export async function POST(req: Request) {
-  const blocked = guardApiRequest(req, "learn-evaluate-sentence", 40);
+  const blocked = await guardApiRequestShared(req, "learn-evaluate-sentence", 40);
   if (blocked) return blocked;
   const corsHeaders = getCorsHeaders(req);
 

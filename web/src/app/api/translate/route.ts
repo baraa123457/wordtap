@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
+import { getCorsHeaders, guardApiRequestShared, handleCorsPreflight } from "@/lib/api-guard";
 import { getVerbConjugation } from "@/lib/verbs";
 
 export async function OPTIONS(req: Request) {
@@ -21,7 +21,7 @@ function getErrorMessage(err: unknown, fallback: string): string {
 }
 
 export async function GET(req: Request) {
-  const blocked = guardApiRequest(req, "translate", 60);
+  const blocked = await guardApiRequestShared(req, "translate", 60);
   if (blocked) return blocked;
 
   const corsHeaders = getCorsHeaders(req);
@@ -37,7 +37,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const blocked = guardApiRequest(req, "translate", 60);
+  const blocked = await guardApiRequestShared(req, "translate", 60);
   if (blocked) return blocked;
 
   const corsHeaders = getCorsHeaders(req);

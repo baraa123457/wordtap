@@ -15,8 +15,20 @@
     "productName": "WordTap",
     "artifactName": "WordTap-Setup-${arch}.${ext}",
     "directories": {
-      "output": "dist-installers"
+      "output": "dist-release"
     },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "style.css",
+      "icon.ico",
+      "icon.png",
+      "!dist/**",
+      "!dist-installers/**",
+      "!dist-latest/**"
+    ],
     "win": {
       "target": [
         {

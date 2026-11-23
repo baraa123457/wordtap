@@ -1119,11 +1119,11 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
               type="button"
               onClick={() => selectSrcLang("auto")}
               data-active={srcLang === "auto" ? "true" : undefined}
-              className="apple-segmented-item whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 hidden sm:inline-flex"
+              className="apple-segmented-item whitespace-nowrap text-[length:var(--text-control)] min-h-11 px-2.5 sm:px-3 hidden sm:inline-flex"
             >
               <span>Detect language</span>
               {detectedLabel ? (
-                <span className="opacity-75 font-normal ms-1 text-[11px] sm:text-xs">
+                <span className="opacity-75 font-normal ms-1 text-[length:var(--text-label)]">
                   {detectedLabel}
                 </span>
               ) : null}
@@ -1137,7 +1137,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                   type="button"
                   onClick={() => selectSrcLang(code)}
                   data-active={isActive ? "true" : undefined}
-                  className={`apple-segmented-item whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 ${
+                  className={`apple-segmented-item whitespace-nowrap text-[length:var(--text-control)] min-h-11 px-2.5 sm:px-3 ${
                     isActive ? "hidden sm:inline-flex" : "hidden xl:inline-flex"
                   }`}
                 >
@@ -1196,7 +1196,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                   type="button"
                   onClick={() => selectTargetLang(code)}
                   data-active={isActive ? "true" : undefined}
-                  className={`apple-segmented-item whitespace-nowrap text-xs sm:text-sm px-2 sm:px-3 ${
+                  className={`apple-segmented-item whitespace-nowrap text-[length:var(--text-control)] min-h-11 px-2.5 sm:px-3 ${
                     isActive ? "hidden sm:inline-flex" : "hidden xl:inline-flex"
                   }`}
                 >

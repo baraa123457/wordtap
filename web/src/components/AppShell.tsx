@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "./ThemeToggle";
 import { Logo } from "./Logo";
 import { StarIcon, DownloadIcon } from "./Icons";
+import { useScrollFade } from "@/hooks/useScrollFade";
 
 const AUTH_LINKS = [
   { href: "/dashboard", label: "Dashboard", shortLabel: "Dashboard" },
@@ -33,6 +34,18 @@ export function AppShell({ children }: { children: ReactNode }) {
   const logoHref = isSignedIn ? "/dashboard" : "/";
   const navLinks = isSignedIn ? AUTH_LINKS : GUEST_LINKS;
 
+  const isFirstTab =
+    navLinks.length > 0 &&
+    (pathname === navLinks[0].href ||
+      ((navLinks[0].href as string) === "/download" &&
+        (pathname === "/download" || pathname === "/downloads")));
+
+  const { containerRef: navRef } = useScrollFade<HTMLElement>({
+    activeDependency: pathname,
+    activeSelector: 'a[data-active="true"]',
+    isFirstItem: isFirstTab,
+  });
+
   return (
     <div className="flex min-h-dvh w-full flex-col">
       {/* Apple Floating Liquid Glass Header with Safe Area support */}
@@ -49,14 +62,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             {isSignedIn && email ? (
               <>
                 <span
-                  className="hidden xl:inline max-w-32 2xl:max-w-44 truncate text-xs font-medium text-muted"
+                  className="hidden xl:inline max-w-32 2xl:max-w-44 truncate text-[length:var(--text-label)] font-medium text-muted"
                   title={email}
                 >
                   {email}
                 </span>
                 <button
                   type="button"
-                  className="btn btn-quiet min-h-9 px-2.5 sm:px-3 py-1 text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer text-ink hover:text-red-500 transition-colors"
+                  className="btn btn-quiet min-h-11 px-3 text-[length:var(--text-control)] font-medium whitespace-nowrap shrink-0 cursor-pointer text-ink hover:text-red-500 transition-colors"
                   onClick={() => void signOut()}
                 >
                   Sign out
@@ -64,10 +77,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               </>
             ) : (
               <div className="flex items-center gap-1.5 shrink-0">
-                <Link href="/login" className="btn btn-quiet min-h-9 px-2.5 sm:px-3 py-1 text-xs font-medium whitespace-nowrap shrink-0">
+                <Link href="/login" className="btn btn-quiet min-h-11 px-3 text-[length:var(--text-control)] font-medium whitespace-nowrap shrink-0">
                   Sign in
                 </Link>
-                <Link href="/signup" className="btn btn-primary min-h-9 px-2.5 sm:px-3 py-1 text-xs font-semibold whitespace-nowrap shrink-0">
+                <Link href="/signup" className="btn btn-primary min-h-11 px-3.5 text-[length:var(--text-control)] font-semibold whitespace-nowrap shrink-0">
                   Sign up
                 </Link>
               </div>
@@ -76,11 +89,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           {/* Segmented Navigation Capsule (Row 2 on mobile/tablet, Center on wide desktop) */}
           <nav
+            ref={navRef}
             aria-label="Main Navigation"
             className="order-3 flex w-full shrink min-w-0 items-center justify-start sm:justify-center overflow-x-auto no-scrollbar py-0.5 lg:order-2 lg:w-auto lg:py-0"
+            style={{
+              scrollPaddingInline: "2rem",
+              paddingInline: "0.5rem",
+            }}
           >
-            <div className="apple-segmented-container apple-segmented-fit mx-auto items-center justify-center px-1 sm:px-1.5 shrink-0">
-              {navLinks.map((link) => {
+            <div className="apple-segmented-container flex items-center gap-1 shrink-0 p-1">
+              {navLinks.map((link, index) => {
                 const active =
                   pathname === link.href ||
                   (link.href === "/download" &&
@@ -91,20 +109,26 @@ export function AppShell({ children }: { children: ReactNode }) {
                     href={link.href}
                     aria-current={active ? "page" : undefined}
                     data-active={active ? "true" : undefined}
-                    className="apple-segmented-item whitespace-nowrap min-h-[38px] px-2 sm:px-3 lg:px-2.5 xl:px-3.5 py-1 text-xs sm:text-sm flex items-center justify-center shrink-0"
+                    data-is-first={index === 0 ? "true" : undefined}
+                    className={`apple-segmented-item whitespace-nowrap min-w-0 min-h-11 px-3.5 py-2 text-[length:var(--text-control)] font-semibold flex items-center justify-center shrink-0 ${
+                      active
+                        ? "bg-surface text-ink shadow-sm border border-line"
+                        : "text-muted hover:text-ink"
+                    }`}
+                    style={{ flex: "0 0 auto" }}
                   >
                     {("isPro" in link && link.isPro) ? (
-                      <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 min-w-0">
                         <StarIcon
                           size={12}
                           filled
-                          className="text-amber-500 dark:text-subtitle"
+                          className="text-amber-500 dark:text-subtitle shrink-0"
                         />
                         <span className="hidden sm:inline">{link.label}</span>
                         <span className="sm:hidden">{link.shortLabel}</span>
                       </span>
                     ) : ("isDownload" in link && link.isDownload) ? (
-                      <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 min-w-0">
                         <DownloadIcon
                           size={12}
                           className="shrink-0 opacity-80"
@@ -113,12 +137,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <span className="sm:hidden">{link.shortLabel}</span>
                       </span>
                     ) : link.label === link.shortLabel ? (
-                      link.label
+                      <span className="min-w-0">{link.label}</span>
                     ) : (
-                      <>
+                      <span className="min-w-0">
                         <span className="hidden sm:inline">{link.label}</span>
                         <span className="sm:hidden">{link.shortLabel}</span>
-                      </>
+                      </span>
                     )}
                   </Link>
                 );

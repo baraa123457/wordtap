@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
+import { getCorsHeaders, guardApiRequestShared, handleCorsPreflight } from "@/lib/api-guard";
 import { callAiJson } from "@/lib/ai-server";
 import { getCachedWordExercise, saveWordExerciseToCache } from "@/lib/word-exercise-cache";
 
@@ -96,7 +96,7 @@ function buildTemplateExamples(word: string, pos: string): string[] {
 }
 
 export async function POST(req: Request) {
-  const blocked = guardApiRequest(req, "learn-examples", 60);
+  const blocked = await guardApiRequestShared(req, "learn-examples", 60);
   if (blocked) return blocked;
   const corsHeaders = getCorsHeaders(req);
 

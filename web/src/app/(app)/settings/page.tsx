@@ -10,6 +10,7 @@ import { exportWordsToAnki, downloadAnkiFile } from "@/lib/anki";
 import { getStoredSettings, saveStoredSettings, type UserSettings, type PracticeMode } from "@/lib/settings";
 import { canSpeak, speak } from "@/lib/speech";
 import { DownloadIcon, SpeakerIcon } from "@/components/Icons";
+import { SegmentedControl } from "@/components/SegmentedControl";
 
 const GOALS = [10, 20, 50, 100] as const;
 
@@ -302,7 +303,7 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between w-full">
                   <span className={isSelected ? "text-subtitle" : "text-muted"}>{t.icon}</span>
                   <span
-                    className={`w-4 h-4 rounded-full border flex items-center justify-center text-[10px] font-bold ${
+                    className={`w-4 h-4 rounded-full border flex items-center justify-center text-[length:var(--text-label)] font-bold ${
                       isSelected ? "bg-subtitle text-subtitle-ink border-subtitle" : "border-line"
                     }`}
                   >
@@ -491,20 +492,15 @@ export default function SettingsPage() {
             {goalMessage ? <div className="text-xs font-semibold text-ok mt-1">{goalMessage}</div> : null}
           </div>
           <div className="py-0.5 max-w-full min-w-0">
-            <div className="apple-segmented-container apple-segmented-fit">
-              {GOALS.map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  disabled={goalSaving}
-                  onClick={() => void handleGoalChange(g)}
-                  data-active={dailyGoalVal === g ? "true" : undefined}
-                  className="apple-segmented-item whitespace-nowrap"
-                >
-                  {g} XP
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              ariaLabel="Daily XP goal"
+              value={String(dailyGoalVal)}
+              onChange={(val) => void handleGoalChange(Number(val))}
+              options={GOALS.map((g) => ({
+                value: String(g),
+                label: `${g} XP`,
+              }))}
+            />
           </div>
         </div>
       </section>
@@ -733,7 +729,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => update({ customApiKey: "" })}
-                className="btn btn-quiet text-xs text-danger hover:underline px-3 py-2"
+                className="btn btn-quiet min-h-11 text-[length:var(--text-control)] text-danger hover:underline px-3 py-2"
               >
                 Clear key
               </button>
@@ -756,14 +752,14 @@ export default function SettingsPage() {
             <a
               href="/wordtap-extension.zip"
               download
-              className="btn btn-primary min-h-9 px-3.5 py-1 text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="btn btn-primary min-h-11 px-3.5 py-1 text-[length:var(--text-control)] font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
               <DownloadIcon size={13} />
               <span>Download ZIP</span>
             </a>
             <Link
               href="/extension"
-              className="btn btn-quiet min-h-9 px-3 py-1 text-xs font-semibold text-subtitle hover:underline"
+              className="btn btn-quiet min-h-11 px-3 py-1 text-[length:var(--text-control)] font-semibold text-subtitle hover:underline"
             >
               Setup guide →
             </Link>
@@ -921,7 +917,7 @@ export default function SettingsPage() {
                   "en-US"
                 )
               }
-              className="btn btn-primary min-h-9 px-4 py-1.5 text-xs font-semibold"
+              className="btn btn-primary min-h-11 px-4 py-1.5 text-[length:var(--text-control)] font-semibold"
               title="Test current voice"
             >
               <SpeakerIcon size={16} /> Test Voice
@@ -1103,7 +1099,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="flex justify-end pt-1">
-            <button type="submit" disabled={pwBusy || !newPassword} className="btn btn-primary min-w-36 text-xs font-semibold">
+            <button type="submit" disabled={pwBusy || !newPassword} className="btn btn-primary min-h-11 min-w-36 text-[length:var(--text-control)] font-semibold">
               {pwBusy ? "Updating…" : "Update Password"}
             </button>
           </div>
@@ -1114,7 +1110,7 @@ export default function SettingsPage() {
             <div className="font-semibold text-ink">Sign out</div>
             <div className="text-xs sm:text-sm text-muted">Sign out of your WordTap session on this device.</div>
           </div>
-          <button type="button" onClick={() => void signOut()} className="btn btn-quiet min-w-28 text-xs font-medium shrink-0">
+          <button type="button" onClick={() => void signOut()} className="btn btn-quiet min-h-11 min-w-28 text-[length:var(--text-control)] font-medium shrink-0">
             Sign out
           </button>
         </div>
@@ -1125,7 +1121,7 @@ export default function SettingsPage() {
             <div className="min-w-0">
               <div className="font-semibold text-ink flex items-center gap-2">
                 <span>Data Saver Mode (Audio-First)</span>
-                <span className="rounded-full bg-subtitle/20 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:text-subtitle">
+                <span className="rounded-full bg-subtitle/20 px-2 py-0.5 text-[length:var(--text-label)] font-bold text-amber-900 dark:text-subtitle">
                   Save 95% Data
                 </span>
               </div>
@@ -1200,7 +1196,7 @@ export default function SettingsPage() {
                 type="button"
                 disabled={exportBusy}
                 onClick={() => void handleExportCsv()}
-                className="btn text-xs font-semibold flex items-center justify-center gap-2"
+                className="btn min-h-11 px-3 text-[length:var(--text-control)] font-semibold flex items-center justify-center gap-2"
               >
                 <span>Export CSV</span>
               </button>
@@ -1208,7 +1204,7 @@ export default function SettingsPage() {
                 type="button"
                 disabled={exportBusy}
                 onClick={() => void handleExportAnki()}
-                className="btn text-xs font-semibold flex items-center justify-center gap-2"
+                className="btn min-h-11 px-3 text-[length:var(--text-control)] font-semibold flex items-center justify-center gap-2"
               >
                 <span>Export Anki Deck</span>
               </button>
@@ -1228,7 +1224,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => setShowDeleteModal(true)}
-              className="btn btn-bad min-w-36 shrink-0 text-xs font-semibold"
+              className="btn btn-bad min-h-11 min-w-36 shrink-0 text-[length:var(--text-control)] font-semibold"
             >
               Delete account
             </button>

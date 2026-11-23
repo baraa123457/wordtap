@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/readex-pro";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { SegmentedEnhancer } from "@/components/SegmentedEnhancer";
 
 export const metadata: Metadata = {
   title: "WordTap: practice the words you tap while watching",
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <AuthProvider>{children}</AuthProvider>
+        <SegmentedEnhancer />
       </body>
     </html>
   );

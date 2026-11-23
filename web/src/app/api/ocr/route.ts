@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createWorker, type Worker } from "tesseract.js";
-import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
+import { getCorsHeaders, guardApiRequestShared, handleCorsPreflight } from "@/lib/api-guard";
 
 export async function OPTIONS(req: Request) {
   return handleCorsPreflight(req);
@@ -193,7 +193,7 @@ async function runTesseractOcr(buffer: Buffer, lang: string): Promise<{ text: st
 }
 
 export async function POST(req: Request) {
-  const blocked = guardApiRequest(req, "ocr", 20);
+  const blocked = await guardApiRequestShared(req, "ocr", 20);
   if (blocked) return blocked;
 
   const corsHeaders = getCorsHeaders(req);

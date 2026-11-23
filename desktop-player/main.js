@@ -9,29 +9,53 @@ const { pathToFileURL } = require('url');
 const xmlrpc = require('xmlrpc');
 const zlib = require('zlib');
 
-let ffmpegPath = null;
-try {
-  ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
-} catch (e) {
-  console.warn('ffmpeg installer error:', e);
-}
+function resolveFfmpegPath() {
+  let resolved = null;
+  try {
+    resolved = require('@ffmpeg-installer/ffmpeg').path;
+  } catch (e) {
+    console.warn('ffmpeg installer error:', e);
+  }
 
-// Fallback search paths for packaged or unpacked app
-if (!ffmpegPath || !fs.existsSync(ffmpegPath)) {
+  // When packaged in Electron (.asar), binary executables are unpacked to app.asar.unpacked
+  if (resolved && typeof resolved === 'string') {
+    if (resolved.includes('app.asar')) {
+      const unpacked = resolved.replace('app.asar', 'app.asar.unpacked');
+      if (fs.existsSync(unpacked)) {
+        return unpacked;
+      }
+    }
+    if (fs.existsSync(resolved)) {
+      return resolved;
+    }
+  }
+
+  const resPath = process.resourcesPath || path.join(__dirname, '..');
   const candidates = [
+    path.join(resPath, 'app.asar.unpacked', 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
+    path.join(resPath, 'app.asar.unpacked', 'ffmpeg.exe'),
+    path.join(resPath, 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
+    path.join(resPath, 'ffmpeg.exe'),
+    path.join(resPath, 'app', 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
     path.join(__dirname, 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
-    path.join(process.resourcesPath || '', 'app', 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
-    path.join(process.resourcesPath || '', 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
+    path.join(__dirname, '..', 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
     'C:\\ffmpeg\\bin\\ffmpeg.exe',
     'ffmpeg.exe'
   ];
+
   for (const c of candidates) {
-    if (c && fs.existsSync(c)) {
-      ffmpegPath = c;
-      break;
-    }
+    try {
+      if (c && fs.existsSync(c)) {
+        return c;
+      }
+    } catch (_) {}
   }
+
+  return null;
 }
+
+let ffmpegPath = resolveFfmpegPath();
+console.log('[WordTap Audio Engine] Resolved FFmpeg path:', ffmpegPath);
 
 // CRITICAL AUDIO & VIDEO FIX: Allow automatic audio playback and hardware decoding
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -289,7 +313,7 @@ function createWindow() {
     height: 820,
     minWidth: 860,
     minHeight: 580,
-    backgroundColor: '#1b1b1e',
+    backgroundColor: '#000000',
     title: 'WordTap VLC Media Player',
     autoHideMenuBar: true,
     icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
@@ -596,21 +620,51 @@ function probeAudio(filePath) {
       return resolve({ hasAudio: false, needsTranscode: false, codecs: [], audioStreams: [] });
     }
 
-    const child = spawn(ffmpegPath, ['-i', filePath]);
+    let resolved = false;
+    const safeResolve = (data) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(data);
+      }
+    };
+
+    // Fast probing with buffer limits and safe 4-second timeout to avoid UI stalls
+    const child = spawn(ffmpegPath, ['-analyzeduration', '2M', '-probesize', '2M', '-i', filePath]);
     let output = '';
+
+    const timer = setTimeout(() => {
+      try { child.kill(); } catch {}
+      safeResolve({ hasAudio: false, needsTranscode: false, codecs: [], audioStreams: [] });
+    }, 4000);
+
     child.stderr.on('data', d => output += d.toString());
     child.on('error', (err) => {
+      clearTimeout(timer);
       console.warn('probeAudio spawn error:', err);
-      resolve({ hasAudio: false, needsTranscode: false, codecs: [], audioStreams: [] });
+      safeResolve({ hasAudio: false, needsTranscode: false, codecs: [], audioStreams: [] });
     });
+
     child.on('close', () => {
+      clearTimeout(timer);
       const audioStreams = [];
       const codecs = [];
       let needsTranscode = false;
+      let primaryCodec = null;
 
       const lines = output.split('\n');
       let dar = null;
       let sar = null;
+
+      // Comprehensive unsupported codecs in Chromium native HTML5 video engine:
+      // - Dolby Digital / AC-3 (ac3, ac-3, a52)
+      // - Dolby Digital Plus / Atmos (eac3, eac-3, ec-3)
+      // - DTS, DTS-HD, DTS:X (dca, dts, dts-hd, dtsx)
+      // - Dolby TrueHD, MLP (truehd, mlp)
+      // - Windows Media Audio (wma, wmav1, wmav2, wmapro)
+      // - High-bitrate / Blu-ray PCM (pcm_s24le, pcm_s32le, pcm_bluray, pcm_dvd)
+      // - MPEG Audio Layer 2 (mp2)
+      const unsupportedRegex = /\b(?:ac3|ac-3|a52|eac3|eac-3|ec-3|dca|dts|dts-hd|dtsx|truehd|mlp|wma|wmav\d|pcm_s24|pcm_s32|pcm_bluray|mp2)\b/i;
+
       for (const line of lines) {
         if (line.includes('Video:')) {
           const darMatch = line.match(/DAR\s+([0-9]+:[0-9]+)/i);
@@ -625,28 +679,45 @@ function probeAudio(filePath) {
         if (line.includes('Audio:')) {
           audioStreams.push(line.trim());
           const match = line.match(/Audio:\s*([^,]+)/);
-          const codec = match ? match[1].trim().toLowerCase() : 'unknown';
+          const rawCodec = match ? match[1].trim() : 'unknown';
+          const codec = rawCodec.toLowerCase();
           codecs.push(codec);
-          // Chromium cannot natively decode AC3 (Dolby Digital), E-AC3, DTS, TrueHD, MLP
-          if (/ac3|eac3|dts|truehd|mlp/i.test(codec)) {
+
+          const isDefault = line.includes('(default)');
+          const isUnsupported = unsupportedRegex.test(line) || unsupportedRegex.test(codec);
+
+          if (isDefault || primaryCodec === null) {
+            primaryCodec = codec;
+            if (isUnsupported) {
+              needsTranscode = true;
+            }
+          }
+
+          if (isUnsupported) {
             needsTranscode = true;
           }
         }
       }
 
+      // If the primary or default stream cannot be natively decoded by Chromium, auto-transcode is mandatory
+      if (primaryCodec && unsupportedRegex.test(primaryCodec)) {
+        needsTranscode = true;
+      }
+
       const hasAudio = audioStreams.length > 0;
-      const hasSafeCodec = codecs.some(c => /aac|mp3|opus|vorbis/i.test(c));
+      const hasSafeCodec = codecs.some(c => /^(?:aac|mp3|opus|vorbis|flac)/i.test(c));
       if (hasAudio && !hasSafeCodec) {
         needsTranscode = true;
       }
 
-      resolve({
+      safeResolve({
         hasAudio,
         codecs,
         needsTranscode,
         audioStreams,
         dar,
-        sar
+        sar,
+        primaryCodec
       });
     });
   });
@@ -686,6 +757,10 @@ function transcodeAudio(filePath) {
       const child = spawn(ffmpegPath, args);
       let stderr = '';
       child.stderr.on('data', d => stderr += d.toString());
+      child.on('error', (err) => {
+        console.warn('transcodeAudio spawn error:', err);
+        resolve({ success: false, error: err.message });
+      });
 
       child.on('close', (code) => {
         if (code === 0 && fs.existsSync(tempAudioPath) && fs.statSync(tempAudioPath).size > 512) {
@@ -773,6 +848,16 @@ function startAudioServer() {
 
       const child = spawn(ffmpegPath, args, { windowsHide: true });
       currentAudioProc = child;
+
+      child.on('error', (err) => {
+        console.warn('audioServer stream spawn error:', err);
+        if (!res.headersSent) {
+          try { res.writeHead(500); } catch {}
+        }
+        if (!res.writableEnded) {
+          try { res.end('Audio stream failed'); } catch {}
+        }
+      });
 
       child.stdout.pipe(res);
       child.stderr.on('data', () => {});

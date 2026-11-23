@@ -5,6 +5,18 @@ extension/node_modules/
 desktop-player/node_modules/
 desktop-player/dist/
 desktop-player/dist-installers/
+desktop-player/dist-release/
+desktop-player/dist-latest/
+
+# Test results
+test-results/
+web/test-results/
+playwright-report/
+web/playwright-report/
+
+# Python cache
+__pycache__/
+*.pyc
 
 # Next.js build
 web/.next/

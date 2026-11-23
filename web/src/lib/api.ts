@@ -75,40 +75,53 @@ export function normalizeWordPair(w: {
   return { text, translation, src_lang: srcLang, target_lang: targetLang, isInverted: false };
 }
 
+const WORDS_PAGE_SIZE = 1000; // Supabase/PostgREST default max rows per request
+
+/** Reads the whole `words` table (newest first) page by page instead of one capped request. */
+async function selectAllWords(
+  supabase: ReturnType<typeof getSupabase>,
+  columns: string,
+): Promise<{ data: unknown[] | null; error: { message: string } | null }> {
+  const all: unknown[] = [];
+  for (let from = 0; ; from += WORDS_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("words")
+      .select(columns)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true }) // stable tie-break so pages never skip or repeat rows
+      .range(from, from + WORDS_PAGE_SIZE - 1);
+    if (error) return { data: null, error };
+    const page = (data ?? []) as unknown[];
+    all.push(...page);
+    if (page.length < WORDS_PAGE_SIZE) break;
+  }
+  return { data: all, error: null };
+}
+
 export async function fetchWords(): Promise<Word[]> {
   const supabase = getSupabase();
-  const v3 = await supabase
-    .from("words")
-    .select(WORD_COLUMNS_V3)
-    .order("created_at", { ascending: false });
+  // Supabase returns at most 1000 rows per request, so read the table in pages.
+  // (Without this, users with more than 1000 words silently lose the oldest ones.)
+  const v3 = await selectAllWords(supabase, WORD_COLUMNS_V3);
 
   let rows: unknown = v3.data;
   let error = v3.error;
 
   // Fallback gracefully if migration 011 hasn't been applied yet
   if (error && /column|does not exist|schema cache/i.test(error.message)) {
-    const v2 = await supabase
-      .from("words")
-      .select(WORD_COLUMNS_V2)
-      .order("created_at", { ascending: false });
+    const v2 = await selectAllWords(supabase, WORD_COLUMNS_V2);
     rows = v2.data;
     error = v2.error;
   }
 
   // Fallback gracefully if migration 010 hasn't been applied yet
   if (error && /column|does not exist|schema cache/i.test(error.message)) {
-    const primary = await supabase
-      .from("words")
-      .select(WORD_COLUMNS)
-      .order("created_at", { ascending: false });
+    const primary = await selectAllWords(supabase, WORD_COLUMNS);
     rows = primary.data;
     error = primary.error;
 
     if (error && error.message.toLowerCase().includes("sentence")) {
-      const legacy = await supabase
-        .from("words")
-        .select(WORD_COLUMNS_LEGACY)
-        .order("created_at", { ascending: false });
+      const legacy = await selectAllWords(supabase, WORD_COLUMNS_LEGACY);
       rows = legacy.data;
       error = legacy.error;
     }

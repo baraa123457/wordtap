@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { getCorsHeaders, guardApiRequest, handleCorsPreflight } from "@/lib/api-guard";
+import { getCorsHeaders, guardApiRequestShared, handleCorsPreflight } from "@/lib/api-guard";
 
 export async function OPTIONS(req: Request) {
   return handleCorsPreflight(req);
 }
 
 export async function GET(req: Request) {
-  const blocked = guardApiRequest(req, "tts", 60);
+  const blocked = await guardApiRequestShared(req, "tts", 60);
   if (blocked) return blocked;
 
   const corsHeaders = getCorsHeaders(req);

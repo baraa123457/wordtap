@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { isAllowedOrigin, guardApiRequest } from "./api-guard";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { isAllowedOrigin, guardApiRequest, guardApiRequestShared } from "./api-guard";
 
 describe("api-guard security", () => {
   it("allows same-origin or server requests without Origin header", () => {
@@ -75,5 +75,48 @@ describe("api-guard security", () => {
     const blocked = guardApiRequest(req, testRoute, 3);
     expect(blocked).not.toBeNull();
     expect(blocked?.status).toBe(429);
+  });
+});
+
+describe("shared rate limiter (Redis)", () => {
+  const OLD = { ...process.env };
+  afterEach(() => {
+    process.env = { ...OLD };
+    vi.unstubAllGlobals();
+  });
+  const mkReq = (ip: string) => new Request("http://localhost:3000/api/translate", { headers: { "x-forwarded-for": ip } });
+
+  it("behaves like the local limiter when Redis is not configured", async () => {
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.KV_REST_API_URL;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await guardApiRequestShared(mkReq("9.9.9.1"), "shared-none", 5)).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("blocks with 429 once the SHARED counter exceeds the limit (even if this instance saw few requests)", async () => {
+    process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.io";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "tok";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([{ result: 61 }, { result: 1 }]), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await guardApiRequestShared(mkReq("9.9.9.2"), "shared-block", 60);
+    expect(res?.status).toBe(429);
+    expect(res?.headers.get("Retry-After")).toBeTruthy();
+    expect(fetchMock.mock.calls[0][0]).toBe("https://redis.example.io/pipeline");
+  });
+
+  it("allows requests under the shared limit", async () => {
+    process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.io";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "tok";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify([{ result: 3 }, { result: 1 }]), { status: 200 })));
+    expect(await guardApiRequestShared(mkReq("9.9.9.3"), "shared-ok", 60)).toBeNull();
+  });
+
+  it("fails OPEN when Redis is down", async () => {
+    process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.io";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "tok";
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+    expect(await guardApiRequestShared(mkReq("9.9.9.4"), "shared-open", 60)).toBeNull();
   });
 });
