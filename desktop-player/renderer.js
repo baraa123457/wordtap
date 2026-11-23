@@ -4,6 +4,9 @@
   const SUPABASE_ANON_KEY = "sb_publishable_YzMg6sNWjpwwfP2T-apa-Q_c3EHVBNa";
   const WEBSITE_URL = "https://wordtap.vercel.app";
 
+  const ICON_STAR_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+  const ICON_CHECK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+
   // Elements
   const appContainer = document.getElementById('app-container');
   const topVlcMenu = document.getElementById('top-vlc-menu');
@@ -335,7 +338,7 @@
     } catch {}
 
     if (showToastFeedback) {
-      showToast(effective === 'light' ? '☀️ Light Mode Enabled' : '🌙 Dark Mode Enabled');
+      showToast(effective === 'light' ? 'Light Mode Enabled' : 'Dark Mode Enabled');
     }
   }
 
@@ -1300,10 +1303,10 @@
     const isAlreadySaved = savedWords.some(w => (w.text || '').toLowerCase() === cleanWord.toLowerCase());
     if (isAlreadySaved) {
       popoverBtnSave.classList.add('saved');
-      popoverBtnSave.innerHTML = '<span>✓ Saved to WordTap</span>';
+      popoverBtnSave.innerHTML = `${ICON_CHECK_SVG}<span>Saved to WordTap</span>`;
     } else {
       popoverBtnSave.classList.remove('saved');
-      popoverBtnSave.innerHTML = '<span>★ Save to WordTap</span>';
+      popoverBtnSave.innerHTML = `${ICON_STAR_SVG}<span>Save to WordTap</span>`;
     }
 
     if (popoverFooterText) {
@@ -1536,7 +1539,7 @@
       // Toggle off / delete word
       await deleteWordEntry(targetWord);
       popoverBtnSave.classList.remove('saved');
-      popoverBtnSave.innerHTML = '<span>★ Save to WordTap</span>';
+      popoverBtnSave.innerHTML = `${ICON_STAR_SVG}<span>Save to WordTap</span>`;
       return;
     }
 
@@ -1571,7 +1574,7 @@
     }
 
     popoverBtnSave.classList.add('saved');
-    popoverBtnSave.innerHTML = '<span>✓ Saved to WordTap</span>';
+    popoverBtnSave.innerHTML = `${ICON_CHECK_SVG}<span>Saved to WordTap</span>`;
     if (!isAuto) {
       showToast(`Saved: "${entry.text}"`);
     }
@@ -1819,7 +1822,7 @@
       if (activeWordData && (activeWordData.cleanWord || '').toLowerCase() === clean.toLowerCase()) {
         if (popoverBtnSave) {
           popoverBtnSave.classList.remove('saved');
-          popoverBtnSave.innerHTML = '<span>★ Save to WordTap</span>';
+          popoverBtnSave.innerHTML = `${ICON_STAR_SVG}<span>Save to WordTap</span>`;
         }
       }
 

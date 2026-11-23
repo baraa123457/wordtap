@@ -2141,11 +2141,20 @@ body.light-theme .vlsub-window::-webkit-scrollbar-thumb:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
+}
+
+.segment-btn svg {
+  flex-shrink: 0;
+  transition: transform 140ms var(--apple-ease);
 }
 
 .segment-btn:hover {
   color: #FFFFFF;
+}
+
+.segment-btn:hover svg {
+  transform: scale(1.08);
 }
 
 .segment-btn.active {
