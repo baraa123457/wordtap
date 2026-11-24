@@ -19,13 +19,43 @@ import { InteractiveLearningSession } from "@/components/learn/InteractiveLearni
 import { useAuth } from "@/context/AuthContext";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import {
+  AcademicIcon,
+  BriefcaseIcon,
   CheckIcon,
+  CloseIcon,
   DownloadIcon,
   FilmIcon,
+  GlobeIcon,
+  LayersIcon,
   PlayIcon,
   SearchIcon,
   SpeakerIcon,
+  SparklesIcon,
+  TvIcon,
+  YoutubeIcon,
 } from "@/components/Icons";
+
+function getDeckCategoryIcon(category: string, sourceType?: string) {
+  if (sourceType === "netflix" || category === "tv_shows") {
+    return <TvIcon size={14} className="shrink-0 text-amber-700 dark:text-subtitle" />;
+  }
+  if (sourceType === "youtube") {
+    return <YoutubeIcon size={14} className="shrink-0 text-red-500" />;
+  }
+  if (sourceType === "vlc") {
+    return <FilmIcon size={14} className="shrink-0 text-amber-600 dark:text-amber-400" />;
+  }
+  if (sourceType === "web") {
+    return <GlobeIcon size={14} className="shrink-0 text-sky-500" />;
+  }
+  if (category === "career_tech") {
+    return <BriefcaseIcon size={14} className="shrink-0 text-blue-500" />;
+  }
+  if (category === "ielts_academic") {
+    return <AcademicIcon size={14} className="shrink-0 text-emerald-500" />;
+  }
+  return <LayersIcon size={14} className="shrink-0 text-amber-700 dark:text-subtitle" />;
+}
 
 export default function DecksPage() {
   const { state: authState } = useAuth();
@@ -45,6 +75,29 @@ export default function DecksPage() {
   const [practicingDeck, setPracticingDeck] = useState<CuratedDeck | MediaDeck | null>(null);
   const [importingId, setImportingId] = useState<string | null>(null);
   const [importMessage, setImportMessage] = useState<{ id: string; text: string; isError?: boolean } | null>(null);
+  const [speakingWord, setSpeakingWord] = useState<string | null>(null);
+
+  // Lock background scroll when inspecting or practicing modal is open (Apple HIG Modality)
+  useEffect(() => {
+    if (inspectingDeck || practicingDeck) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [inspectingDeck, practicingDeck]);
+
+  // Handle Escape key to close modal (Apple HIG Keyboard Navigation)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && inspectingDeck) {
+        setInspectingDeck(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [inspectingDeck]);
 
   // Fetch user words on mount
   useEffect(() => {
@@ -70,6 +123,15 @@ export default function DecksPage() {
       active = false;
     };
   }, []);
+
+  const handleSpeak = (text: string, lang = "en") => {
+    if (!canSpeak()) return;
+    setSpeakingWord(text);
+    speak(text, lang);
+    setTimeout(() => {
+      setSpeakingWord((curr) => (curr === text ? null : curr));
+    }, 1200);
+  };
 
   // Group user words into show/media decks
   const userMediaDecks = useMemo(() => {
@@ -109,7 +171,7 @@ export default function DecksPage() {
           d.title.toLowerCase().includes(q) ||
           d.subtitle.toLowerCase().includes(q) ||
           d.description.toLowerCase().includes(q) ||
-          d.words.some((w) => w.text.toLowerCase().includes(q) || w.translation.includes(q)),
+          d.words.some((w) => w.text.toLowerCase().includes(q) || (w.translation || "").includes(q)),
       );
     }
     return list;
@@ -161,14 +223,14 @@ export default function DecksPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
       {/* Hero Header */}
       <div className="flex flex-col gap-3 text-center sm:text-left">
-        <div className="inline-flex items-center gap-2 self-center sm:self-start rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-1 text-xs font-bold text-ink">
-          <FilmIcon size={14} className="text-amber-800 dark:text-subtitle" />
+        <div className="inline-flex items-center gap-2 self-center sm:self-start rounded-full bg-subtitle/15 border border-subtitle/30 px-3 py-1 text-xs font-bold text-amber-800 dark:text-subtitle">
+          <FilmIcon size={14} className="shrink-0" />
           <span>Authentic Entertainment Vocabulary</span>
         </div>
         <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-ink">
           Vocabulary Decks by Show &amp; Media
         </h1>
-        <p className="max-w-2xl text-sm sm:text-base text-muted">
+        <p className="max-w-2xl text-sm sm:text-base text-muted leading-relaxed">
           Organize and practice the words you tapped while watching your favorite shows, movies, and YouTube videos.
         </p>
       </div>
@@ -187,11 +249,12 @@ export default function DecksPage() {
             {
               value: "media",
               label: (
-                <span className="inline-flex items-center justify-center gap-1.5 min-w-0 truncate">
+                <span className="inline-flex items-center justify-center gap-2 min-w-0 truncate">
+                  <FilmIcon size={14} className="shrink-0 text-amber-700 dark:text-subtitle" />
                   <span className="sm:hidden truncate">My Decks</span>
-                  <span className="hidden sm:inline truncate">🎬 My Show &amp; Media Decks</span>
+                  <span className="hidden sm:inline truncate">My Show Decks</span>
                   {userMediaDecks.length > 0 ? (
-                    <span className="rounded-full bg-subtitle/20 px-1.5 py-0.2 text-[length:var(--text-label)] font-bold text-amber-900 dark:text-subtitle shrink-0">
+                    <span className="rounded-full bg-subtitle/20 px-1.5 py-0.5 text-[length:var(--text-label)] font-bold text-amber-900 dark:text-subtitle shrink-0">
                       {userMediaDecks.length}
                     </span>
                   ) : null}
@@ -201,9 +264,10 @@ export default function DecksPage() {
             {
               value: "curated",
               label: (
-                <span className="inline-flex items-center justify-center gap-1.5 min-w-0 truncate">
+                <span className="inline-flex items-center justify-center gap-2 min-w-0 truncate">
+                  <SparklesIcon size={14} className="shrink-0 text-amber-700 dark:text-subtitle" />
                   <span className="sm:hidden truncate">Curated</span>
-                  <span className="hidden sm:inline truncate">🌟 Curated Show Decks</span>
+                  <span className="hidden sm:inline truncate">Curated Decks</span>
                 </span>
               ),
             },
@@ -221,10 +285,42 @@ export default function DecksPage() {
             onChange={setMediaCategory}
             options={[
               { value: "all", label: `All Shows (${userMediaDecks.length})` },
-              { value: "netflix", label: "🎬 Netflix" },
-              { value: "youtube", label: "▶️ YouTube" },
-              { value: "vlc", label: "🍿 VLC Player" },
-              { value: "web", label: "🌐 Web" },
+              {
+                value: "netflix",
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <TvIcon size={13} className="shrink-0" />
+                    <span>Netflix</span>
+                  </span>
+                ),
+              },
+              {
+                value: "youtube",
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <YoutubeIcon size={13} className="shrink-0" />
+                    <span>YouTube</span>
+                  </span>
+                ),
+              },
+              {
+                value: "vlc",
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <FilmIcon size={13} className="shrink-0" />
+                    <span>VLC Player</span>
+                  </span>
+                ),
+              },
+              {
+                value: "web",
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <GlobeIcon size={13} className="shrink-0" />
+                    <span>Web</span>
+                  </span>
+                ),
+              },
             ]}
           />
         ) : (
@@ -234,31 +330,95 @@ export default function DecksPage() {
             value={selectedCategory}
             onChange={(val) => setSelectedCategory(val as CuratedDeckCategory)}
             options={[
-              { value: "all", label: "All Decks" },
-              { value: "tv_shows", label: "TV Shows" },
-              { value: "career_tech", label: "Career & Tech" },
-              { value: "ielts_academic", label: "IELTS & Academic" },
+              { value: "all", label: "All Categories" },
+              {
+                value: "tv_shows",
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <TvIcon size={13} className="shrink-0" />
+                    <span>TV Shows</span>
+                  </span>
+                ),
+              },
+              {
+                value: "career_tech",
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <BriefcaseIcon size={13} className="shrink-0" />
+                    <span>Career & Tech</span>
+                  </span>
+                ),
+              },
+              {
+                value: "ielts_academic",
+                label: (
+                  <span className="inline-flex items-center gap-1.5">
+                    <AcademicIcon size={13} className="shrink-0" />
+                    <span>IELTS & Academic</span>
+                  </span>
+                ),
+              },
             ]}
           />
         )}
 
-        {/* Search Input */}
-        <div className="relative w-full sm:w-64">
+        {/* Search Input with Clear Button */}
+        <div className="relative w-full sm:w-72">
           <input
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={deckView === "media" ? "Search shows or words…" : "Search words or shows…"}
-            className="field w-full py-1.5 ps-9 text-xs sm:text-sm"
+            className="field w-full py-2 ps-9 pe-8 text-xs sm:text-sm rounded-xl border border-line bg-surface/70 focus:bg-surface transition-all"
+            aria-label="Search decks"
           />
           <span className="absolute start-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none">
             <SearchIcon size={14} />
           </span>
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink p-1 rounded-full cursor-pointer transition-colors"
+              aria-label="Clear search"
+            >
+              <CloseIcon />
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {/* CONTENT: MY MEDIA DECKS */}
-      {deckView === "media" ? (
+      {/* SKELETON LOADING STATE (Eliminates Cumulative Layout Shift) */}
+      {loadingWords && deckView === "media" ? (
+        <div className="grid gap-5 md:grid-cols-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="apple-card p-5 sm:p-6 flex flex-col justify-between gap-4 animate-pulse border border-line/60"
+            >
+              <div className="flex items-center justify-between">
+                <div className="h-4 w-28 bg-line/60 rounded-full" />
+                <div className="h-5 w-20 bg-line/50 rounded-full" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-6 w-3/4 bg-line/70 rounded-lg" />
+                <div className="h-4 w-1/2 bg-line/50 rounded-lg" />
+                <div className="h-4 w-full bg-line/40 rounded-lg" />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <div className="h-6 w-20 bg-line/50 rounded-md" />
+                <div className="h-6 w-24 bg-line/50 rounded-md" />
+                <div className="h-6 w-16 bg-line/50 rounded-md" />
+              </div>
+              <div className="flex justify-between items-center pt-4 border-t border-line/40">
+                <div className="h-9 w-28 bg-line/50 rounded-lg" />
+                <div className="h-9 w-24 bg-line/60 rounded-lg" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : deckView === "media" ? (
+        /* CONTENT: MY MEDIA DECKS */
         filteredMediaDecks.length > 0 ? (
           <div className="grid gap-5 md:grid-cols-2">
             {filteredMediaDecks.map((deck) => (
@@ -268,14 +428,14 @@ export default function DecksPage() {
               >
                 {/* Top decorative gradient glow */}
                 <div
-                  className={`absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${deck.gradient} pointer-events-none opacity-50`}
+                  className={`absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${deck.gradient} pointer-events-none opacity-40`}
                 />
 
                 <div className="relative z-10 flex flex-col gap-3">
                   {/* Header tags */}
                   <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold text-muted">
-                      <span className="text-lg">{deck.emoji}</span>
+                      {getDeckCategoryIcon("", deck.sourceType)}
                       <span>{deck.categoryLabel}</span>
                     </span>
                     <span className="rounded-full bg-subtitle/15 border border-subtitle/30 px-2.5 py-0.5 text-[length:var(--text-label)] font-bold text-amber-900 dark:text-subtitle">
@@ -286,18 +446,26 @@ export default function DecksPage() {
                   {/* Title & Description */}
                   <div>
                     <h2 className="text-lg sm:text-xl font-bold text-ink">{deck.title}</h2>
-                    <p className="text-xs font-medium text-subtitle">{deck.subtitle}</p>
+                    <p className="text-xs font-semibold text-amber-700 dark:text-subtitle">{deck.subtitle}</p>
                     <p className="mt-1.5 text-xs sm:text-sm text-muted line-clamp-2 leading-relaxed">
                       {deck.description}
                     </p>
                   </div>
 
-                  {/* Sample word preview chips with Arabic translations */}
+                  {/* Sample word preview chips with interactive pronunciation */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
                     {deck.words.slice(0, 4).map((w, i) => (
-                      <span
+                      <button
                         key={i}
-                        className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface/80 px-2 py-0.5 text-xs font-semibold text-ink"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSpeak(w.text, ("src_lang" in w ? (w.src_lang as string) : "en") || "en");
+                        }}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border border-line/80 bg-surface/90 hover:bg-surface-elevated hover:border-subtitle/50 px-2.5 py-1 text-xs font-semibold text-ink cursor-pointer transition-all active:scale-95 ${
+                          speakingWord === w.text ? "ring-2 ring-subtitle/60 border-subtitle bg-subtitle/10" : ""
+                        }`}
+                        title={`Click to listen: "${w.text}"`}
                       >
                         <span>{w.text}</span>
                         {w.translation ? (
@@ -305,13 +473,13 @@ export default function DecksPage() {
                             ({w.translation})
                           </span>
                         ) : null}
-                      </span>
+                      </button>
                     ))}
                     {deck.words.length > 4 ? (
                       <button
                         type="button"
                         onClick={() => setInspectingDeck(deck)}
-                        className="text-[length:var(--text-control)] font-bold text-subtitle hover:underline cursor-pointer ps-1 py-1 min-h-11 inline-flex items-center"
+                        className="text-xs font-bold text-amber-700 dark:text-subtitle hover:underline cursor-pointer ps-1.5 py-1 inline-flex items-center"
                       >
                         +{deck.words.length - 4} more
                       </button>
@@ -341,184 +509,237 @@ export default function DecksPage() {
               </div>
             ))}
           </div>
+        ) : searchQuery.trim() ? (
+          /* Empty Search Results */
+          <div className="apple-card flex flex-col items-center justify-center p-10 text-center">
+            <SearchIcon size={28} className="text-muted mb-2 opacity-60" />
+            <h3 className="font-bold text-ink text-base">No show decks matching &ldquo;{searchQuery}&rdquo;</h3>
+            <p className="text-xs text-muted mt-1 mb-4">Try searching for another word or clear your search query.</p>
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="btn btn-quiet border border-line text-xs font-semibold px-4 py-2 cursor-pointer"
+            >
+              Clear search
+            </button>
+          </div>
         ) : (
           /* Empty State for Media Decks */
-          <div className="apple-card flex flex-col items-center justify-center p-8 sm:p-12 text-center">
-            <span className="text-4xl mb-3">🍿</span>
+          <div className="apple-card flex flex-col items-center justify-center p-8 sm:p-14 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-subtitle/15 border border-subtitle/30 flex items-center justify-center text-amber-700 dark:text-subtitle mb-4 shadow-sm">
+              <FilmIcon size={28} />
+            </div>
             <h3 className="text-lg sm:text-xl font-bold text-ink">
-              {loadingWords ? "Loading your show decks…" : "No words saved from shows yet"}
+              No words saved from shows yet
             </h3>
-            <p className="max-w-md text-xs sm:text-sm text-muted mt-1.5 mb-5 leading-relaxed">
-              When you watch videos in <strong>WordTap VLC Player</strong>, Netflix, or YouTube and click on words in subtitles, custom show decks will automatically appear right here!
+            <p className="max-w-md text-xs sm:text-sm text-muted mt-2 mb-6 leading-relaxed">
+              When you watch videos in <strong>WordTap VLC Player</strong>, Netflix, or YouTube and click on subtitle words, custom show decks will automatically appear right here!
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={() => setDeckView("curated")}
-                className="btn btn-primary min-h-11 px-4 text-[length:var(--text-control)] font-bold cursor-pointer"
+                className="btn btn-primary min-h-11 px-5 text-[length:var(--text-control)] font-bold cursor-pointer inline-flex items-center gap-2"
               >
-                Browse Curated Decks →
+                <SparklesIcon size={14} />
+                <span>Browse Curated Decks</span>
               </button>
             </div>
           </div>
         )
       ) : (
         /* CONTENT: CURATED SHOW DECKS */
-        <div className="grid gap-5 md:grid-cols-2">
-          {filteredCuratedDecks.map((deck) => (
-            <div
-              key={deck.id}
-              className="apple-card relative flex flex-col justify-between overflow-hidden p-5 sm:p-6 transition-all hover:border-subtitle/50 shadow-xs"
-            >
-              {/* Top decorative gradient glow */}
+        filteredCuratedDecks.length > 0 ? (
+          <div className="grid gap-5 md:grid-cols-2">
+            {filteredCuratedDecks.map((deck) => (
               <div
-                className={`absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${deck.gradient} pointer-events-none opacity-50`}
-              />
+                key={deck.id}
+                className="apple-card relative flex flex-col justify-between overflow-hidden p-5 sm:p-6 transition-all hover:border-subtitle/50 shadow-xs"
+              >
+                {/* Top decorative gradient glow */}
+                <div
+                  className={`absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${deck.gradient} pointer-events-none opacity-40`}
+                />
 
-              <div className="relative z-10 flex flex-col gap-3">
-                {/* Header tags */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-muted">
-                    <span className="text-lg">{deck.emoji}</span>
-                    <span>{deck.categoryLabel}</span>
-                  </span>
-                  <span className="rounded-full bg-subtitle/15 border border-subtitle/30 px-2.5 py-0.5 text-[length:var(--text-label)] font-bold text-amber-900 dark:text-subtitle">
-                    {deck.badge}
-                  </span>
-                </div>
-
-                {/* Title & Description */}
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-ink">{deck.title}</h2>
-                  <p className="text-xs font-medium text-subtitle">{deck.subtitle}</p>
-                  <p className="mt-1.5 text-xs sm:text-sm text-muted line-clamp-2 leading-relaxed">
-                    {deck.description}
-                  </p>
-                </div>
-
-                {/* Sample word preview chips */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  {deck.words.slice(0, 4).map((w, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface/80 px-2 py-0.5 text-xs font-semibold text-ink"
-                    >
-                      <span>{w.text}</span>
-                      <span className="text-[length:var(--text-label)] text-muted font-normal">({w.translation})</span>
+                <div className="relative z-10 flex flex-col gap-3">
+                  {/* Header tags */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-muted">
+                      {getDeckCategoryIcon(deck.category)}
+                      <span>{deck.categoryLabel.replace(/^[^\w\s]+\s*/, "")}</span>
                     </span>
-                  ))}
-                  {deck.words.length > 4 ? (
-                    <button
-                      type="button"
-                      onClick={() => setInspectingDeck(deck)}
-                      className="text-[length:var(--text-control)] font-bold text-subtitle hover:underline cursor-pointer ps-1 py-1 min-h-11 inline-flex items-center"
+                    <span className="rounded-full bg-subtitle/15 border border-subtitle/30 px-2.5 py-0.5 text-[length:var(--text-label)] font-bold text-amber-900 dark:text-subtitle">
+                      {deck.badge}
+                    </span>
+                  </div>
+
+                  {/* Title & Description */}
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold text-ink">{deck.title}</h2>
+                    <p className="text-xs font-semibold text-amber-700 dark:text-subtitle">{deck.subtitle}</p>
+                    <p className="mt-1.5 text-xs sm:text-sm text-muted line-clamp-2 leading-relaxed">
+                      {deck.description}
+                    </p>
+                  </div>
+
+                  {/* Sample word preview chips with interactive pronunciation */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    {deck.words.slice(0, 4).map((w, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSpeak(w.text, "en");
+                        }}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border border-line/80 bg-surface/90 hover:bg-surface-elevated hover:border-subtitle/50 px-2.5 py-1 text-xs font-semibold text-ink cursor-pointer transition-all active:scale-95 ${
+                          speakingWord === w.text ? "ring-2 ring-subtitle/60 border-subtitle bg-subtitle/10" : ""
+                        }`}
+                        title={`Click to listen: "${w.text}"`}
+                      >
+                        <span>{w.text}</span>
+                        <span className="text-[length:var(--text-label)] text-muted font-normal" dir="rtl">
+                          ({w.translation})
+                        </span>
+                      </button>
+                    ))}
+                    {deck.words.length > 4 ? (
+                      <button
+                        type="button"
+                        onClick={() => setInspectingDeck(deck)}
+                        className="text-xs font-bold text-amber-700 dark:text-subtitle hover:underline cursor-pointer ps-1.5 py-1 inline-flex items-center"
+                      >
+                        +{deck.words.length - 4} more
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {/* Import status message */}
+                  {importMessage?.id === deck.id ? (
+                    <p
+                      className={`text-xs font-medium rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 ${
+                        importMessage.isError
+                          ? "bg-bad-soft text-bad-ink"
+                          : "bg-ok/15 text-ok-ink"
+                      }`}
                     >
-                      +{deck.words.length - 4} more
-                    </button>
+                      {!importMessage.isError ? <CheckIcon size={13} className="shrink-0 text-ok" /> : null}
+                      <span>{importMessage.text}</span>
+                    </p>
                   ) : null}
                 </div>
 
-                {/* Import status message */}
-                {importMessage?.id === deck.id ? (
-                  <p
-                    className={`text-xs font-medium rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 ${
-                      importMessage.isError
-                        ? "bg-bad-soft text-bad-ink"
-                        : "bg-ok/15 text-ok-ink"
-                    }`}
-                  >
-                    {!importMessage.isError ? <CheckIcon size={13} className="shrink-0 text-ok" /> : null}
-                    <span>{importMessage.text}</span>
-                  </p>
-                ) : null}
-              </div>
-
-              {/* Actions Footer */}
-              <div className="relative z-10 flex flex-wrap items-center justify-between gap-2.5 border-t border-line/60 pt-4 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setInspectingDeck(deck)}
-                  className="btn btn-quiet min-h-11 px-3.5 text-[length:var(--text-control)] font-semibold cursor-pointer"
-                >
-                  Preview Words
-                </button>
-
-                <div className="flex items-center gap-2 ms-auto">
+                {/* Actions Footer */}
+                <div className="relative z-10 flex flex-wrap items-center justify-between gap-2.5 border-t border-line/60 pt-4 mt-4">
                   <button
                     type="button"
-                    disabled={importingId === deck.id}
-                    onClick={() => void handleImport(deck)}
-                    className="btn btn-quiet border border-line min-h-11 px-3.5 text-[length:var(--text-control)] font-semibold cursor-pointer hover:border-subtitle/40 inline-flex items-center gap-1.5"
-                    title="Save all words into your personal library"
+                    onClick={() => setInspectingDeck(deck)}
+                    className="btn btn-quiet min-h-11 px-3.5 text-[length:var(--text-control)] font-semibold cursor-pointer"
                   >
-                    <DownloadIcon size={13} />
-                    <span>{importingId === deck.id ? "Adding…" : "Add to Words"}</span>
+                    Preview Words
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setPracticingDeck(deck)}
-                    className="btn btn-primary min-h-11 px-4 text-[length:var(--text-control)] font-bold cursor-pointer inline-flex items-center gap-1.5"
-                  >
-                    <PlayIcon size={11} />
-                    <span>Practice</span>
-                  </button>
+
+                  <div className="flex items-center gap-2 ms-auto">
+                    <button
+                      type="button"
+                      disabled={importingId === deck.id}
+                      onClick={() => void handleImport(deck)}
+                      className="btn btn-quiet border border-line min-h-11 px-3.5 text-[length:var(--text-control)] font-semibold cursor-pointer hover:border-subtitle/40 inline-flex items-center gap-1.5"
+                      title="Save all words into your personal library"
+                    >
+                      <DownloadIcon size={13} />
+                      <span>{importingId === deck.id ? "Adding…" : "Add to Words"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPracticingDeck(deck)}
+                      className="btn btn-primary min-h-11 px-4 text-[length:var(--text-control)] font-bold cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      <PlayIcon size={11} />
+                      <span>Practice</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          /* Empty Search Results for Curated */
+          <div className="apple-card flex flex-col items-center justify-center p-10 text-center">
+            <SearchIcon size={28} className="text-muted mb-2 opacity-60" />
+            <h3 className="font-bold text-ink text-base">No curated decks matching &ldquo;{searchQuery}&rdquo;</h3>
+            <p className="text-xs text-muted mt-1 mb-4">Try searching for another word or topic.</p>
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="btn btn-quiet border border-line text-xs font-semibold px-4 py-2 cursor-pointer"
+            >
+              Clear search
+            </button>
+          </div>
+        )
       )}
 
-      {/* Inspect Deck Modal (Supports both MediaDeck and CuratedDeck) */}
+      {/* Inspect Deck Modal (Apple Design Liquid Glass & Accessible Modality) */}
       {inspectingDeck ? (
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in"
+          aria-labelledby="modal-deck-title"
+          aria-describedby="modal-deck-subtitle"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setInspectingDeck(null)}
         >
           <div
-            className="apple-card relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden p-5 sm:p-7 shadow-2xl"
+            className="apple-card relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden p-5 sm:p-7 shadow-2xl border border-line/80 dark:border-white/10"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3 border-b border-line pb-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">{inspectingDeck.emoji}</span>
-                  <h2 className="text-xl font-extrabold text-ink">{inspectingDeck.title}</h2>
+                  <span className="p-1.5 rounded-lg bg-subtitle/15 text-amber-700 dark:text-subtitle">
+                    {getDeckCategoryIcon("category" in inspectingDeck ? inspectingDeck.category : "", "sourceType" in inspectingDeck ? inspectingDeck.sourceType : undefined)}
+                  </span>
+                  <h2 id="modal-deck-title" className="text-xl font-extrabold text-ink tracking-tight">
+                    {inspectingDeck.title}
+                  </h2>
                 </div>
-                <p className="text-xs sm:text-sm text-muted">{inspectingDeck.subtitle}</p>
+                <p id="modal-deck-subtitle" className="text-xs sm:text-sm font-semibold text-amber-700 dark:text-subtitle">
+                  {inspectingDeck.subtitle}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setInspectingDeck(null)}
-                className="rounded-full p-1.5 text-muted hover:bg-black/5 dark:hover:bg-white/10 hover:text-ink cursor-pointer text-lg leading-none"
+                className="rounded-full p-2 text-muted hover:bg-black/5 dark:hover:bg-white/10 hover:text-ink cursor-pointer transition-colors"
                 aria-label="Close modal"
               >
-                ✕
+                <CloseIcon />
               </button>
             </div>
 
             {/* Word List Scrollable */}
-            <div className="overflow-y-auto py-4 space-y-3 divide-y divide-line/40">
+            <div className="overflow-y-auto py-4 space-y-3 divide-y divide-line/40 focus:outline-none">
               {inspectingDeck.words.map((w, idx) => (
-                <div key={idx} className="pt-3 first:pt-0 flex flex-col gap-1">
+                <div key={idx} className="pt-3.5 first:pt-0 flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-ink text-base">{w.text}</span>
+                      <span className="font-extrabold text-ink text-base tracking-tight">{w.text}</span>
                       {canSpeak() ? (
                         <button
                           type="button"
-                          onClick={() => speak(w.text, ("src_lang" in w ? (w.src_lang as string) : "en") || "en")}
-                          className="text-muted hover:text-ink p-1 cursor-pointer transition-colors"
-                          title="Pronounce"
+                          onClick={() => handleSpeak(w.text, ("src_lang" in w ? (w.src_lang as string) : "en") || "en")}
+                          className={`p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-muted hover:text-ink cursor-pointer transition-colors ${
+                            speakingWord === w.text ? "text-amber-700 dark:text-subtitle bg-subtitle/15" : ""
+                          }`}
+                          title="Listen pronunciation"
                         >
                           <SpeakerIcon size={14} />
                         </button>
                       ) : null}
                       {w.part_of_speech ? (
-                        <span className="text-[length:var(--text-label)] font-bold text-subtitle bg-subtitle/15 px-2 py-0.5 rounded-full">
+                        <span className="text-[length:var(--text-label)] font-bold text-amber-800 dark:text-subtitle bg-subtitle/15 px-2 py-0.5 rounded-full uppercase tracking-wider">
                           {w.part_of_speech}
                         </span>
                       ) : null}
@@ -531,12 +752,12 @@ export default function DecksPage() {
                     <p className="text-xs text-muted leading-relaxed">{w.definition}</p>
                   ) : null}
                   {w.sentence ? (
-                    <p className="text-xs italic text-ink/80 bg-black/[0.02] dark:bg-white/[0.03] p-2 rounded-lg border border-line/40">
+                    <div className="text-xs italic text-ink/80 bg-black/[0.02] dark:bg-white/[0.03] p-2.5 rounded-xl border border-line/50 leading-relaxed">
                       &ldquo;{w.sentence}&rdquo;{" "}
                       {w.source_title ? (
-                        <span className="text-[length:var(--text-label)] text-muted not-italic">({w.source_title})</span>
+                        <span className="text-[length:var(--text-label)] text-muted not-italic font-medium">({w.source_title})</span>
                       ) : null}
-                    </p>
+                    </div>
                   ) : null}
                 </div>
               ))}
@@ -558,9 +779,10 @@ export default function DecksPage() {
                   setInspectingDeck(null);
                   setPracticingDeck(target);
                 }}
-                className="btn btn-primary min-h-11 px-5 text-[length:var(--text-control)] font-bold cursor-pointer"
+                className="btn btn-primary min-h-11 px-5 text-[length:var(--text-control)] font-bold cursor-pointer inline-flex items-center gap-2"
               >
-                ▶ Start Practice ({inspectingDeck.words.length} Words)
+                <PlayIcon size={12} />
+                <span>Start Practice ({inspectingDeck.words.length} Words)</span>
               </button>
             </div>
           </div>
