@@ -107,7 +107,13 @@ if (docNameEl) {
 
 if (openOriginalBtn && rawFileUrl) {
   openOriginalBtn.addEventListener("click", () => {
-    window.location.href = rawFileUrl;
+    try {
+      chrome.runtime.sendMessage({ type: "wordtap:skip-pdf-redirect-once" }, () => {
+        window.location.href = rawFileUrl;
+      });
+    } catch (_) {
+      window.location.href = rawFileUrl;
+    }
   });
 }
 
@@ -254,12 +260,30 @@ async function loadPdfDocument() {
       try { await currentLoadingTask.destroy(); } catch (_) {}
     }
 
-    currentLoadingTask = pdfjsLib.getDocument({
-      url: rawFileUrl,
-      cMapUrl: chrome.runtime.getURL("pdf_viewer/lib/cmaps/"),
-      cMapPacked: true,
-      standardFontDataUrl: chrome.runtime.getURL("pdf_viewer/lib/standard_fonts/"),
-    });
+    let docParams;
+    if (isFileScheme) {
+      showLoading("Reading local PDF…");
+      const res = await fetch(rawFileUrl);
+      if (!res.ok && res.status !== 0 && res.status !== 200) {
+        throw new Error(`Could not read local file (Status: ${res.status} ${res.statusText})`);
+      }
+      const buffer = await res.arrayBuffer();
+      docParams = {
+        data: new Uint8Array(buffer),
+        cMapUrl: chrome.runtime.getURL("pdf_viewer/lib/cmaps/"),
+        cMapPacked: true,
+        standardFontDataUrl: chrome.runtime.getURL("pdf_viewer/lib/standard_fonts/"),
+      };
+    } else {
+      docParams = {
+        url: rawFileUrl,
+        cMapUrl: chrome.runtime.getURL("pdf_viewer/lib/cmaps/"),
+        cMapPacked: true,
+        standardFontDataUrl: chrome.runtime.getURL("pdf_viewer/lib/standard_fonts/"),
+      };
+    }
+
+    currentLoadingTask = pdfjsLib.getDocument(docParams);
 
     currentLoadingTask.onProgress = (progress) => {
       if (progress.total > 0) {

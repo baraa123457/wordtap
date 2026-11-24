@@ -1620,6 +1620,10 @@
 
   // ── PDF Detection & Embedded Viewer Selection Bridge ─────────────────────
   function isPdfDocument() {
+    // If inside WordTap Reader page, it is real DOM text, not an embedded PDF plugin!
+    if (typeof window !== "undefined" && (window.__WORDTAP_PDF_SOURCE__ || (window.location && window.location.href.includes("pdf_viewer/viewer.html")))) {
+      return false;
+    }
     try {
       if (document.contentType === "application/pdf") return true;
       if (document.querySelector('embed[type="application/pdf"]') || document.querySelector("embed#plugin")) return true;
@@ -1705,6 +1709,15 @@
     debounceTimer = setTimeout(() => {
       handleSelection(e);
     }, 150);
+  });
+
+  document.addEventListener("dblclick", (e) => {
+    updatePointerPos(e);
+    if (e.composedPath().includes(host)) return;
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      handleSelection(e);
+    }, 40);
   });
 
   document.addEventListener("mousedown", (e) => {

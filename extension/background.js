@@ -1056,6 +1056,38 @@ chrome.runtime.onStartup.addListener(() => {
 setupContextMenus();
 flush(true).then(pullCloudWords).catch(() => {});
 
+// ── Automatic PDF Redirection to WordTap Reader ───────────────────────────
+const skipRedirectTabs = new Set();
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === "loading" && tab && tab.url) {
+    const url = tab.url;
+    if (url.includes("pdf_viewer/viewer.html")) return;
+    if (skipRedirectTabs.has(tabId)) {
+      skipRedirectTabs.delete(tabId);
+      return;
+    }
+
+    if (/\.pdf($|[?#])/i.test(url)) {
+      if (url.startsWith("file://")) {
+        if (chrome.extension && chrome.extension.isAllowedFileSchemeAccess) {
+          chrome.extension.isAllowedFileSchemeAccess((isAllowed) => {
+            if (isAllowed) {
+              const viewerUrl =
+                chrome.runtime.getURL("pdf_viewer/viewer.html") + "?file=" + encodeURIComponent(url);
+              chrome.tabs.update(tabId, { url: viewerUrl });
+            }
+          });
+        }
+      } else if (url.startsWith("http://") || url.startsWith("https://")) {
+        const viewerUrl =
+          chrome.runtime.getURL("pdf_viewer/viewer.html") + "?file=" + encodeURIComponent(url);
+        chrome.tabs.update(tabId, { url: viewerUrl });
+      }
+    }
+  }
+});
+
 async function addHistory(entry) {
   try {
     const { history = [] } = await chrome.storage.local.get({ history: [] });
@@ -1534,6 +1566,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return reply(signOut());
     case "sync":
       return reply(syncNow());
+    case "wordtap:skip-pdf-redirect-once": {
+      if (sender.tab?.id) {
+        skipRedirectTabs.add(sender.tab.id);
+      }
+      return reply(Promise.resolve({ ok: true }));
+    }
     default:
       return reply(Promise.resolve({ ok: false, error: "unknown_message_type" }));
   }

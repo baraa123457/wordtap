@@ -75,5 +75,17 @@
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "pdf_viewer/*",
+        "icon16.png",
+        "icon32.png",
+        "icon48.png",
+        "icon128.png"
+      ],
+      "matches": ["<all_urls>", "file:///*"]
+    }
+  ]
 }
