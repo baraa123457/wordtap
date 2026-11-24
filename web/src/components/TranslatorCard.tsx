@@ -7,7 +7,7 @@ import { speak } from "@/lib/speech";
 import { addCustomWord, deleteWord } from "@/lib/api";
 import { getStoredSettings, type UserSettings, type TranslationProvider } from "@/lib/settings";
 import type { Word } from "@/lib/schemas";
-import { SpeakerIcon, CloseIcon, TrashIcon, ImageIcon, MicIcon } from "@/components/Icons";
+import { SpeakerIcon, CloseIcon, TrashIcon, ImageIcon, MicIcon, BookOpenIcon, SparklesIcon, LightbulbIcon, GlobeIcon, CheckIcon } from "@/components/Icons";
 import { addHistoryItem, markHistoryItemSaved } from "@/lib/history";
 import { getVerbConjugation, type VerbConjugation } from "@/lib/verbs";
 
@@ -1363,7 +1363,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
               <div className="mt-3 pt-3 border-t border-line/40 space-y-2 text-left" dir="ltr">
                 <div className="flex items-center justify-between text-xs font-semibold text-muted">
                   <span className="flex items-center gap-1.5 text-ink font-bold">
-                    <span>📖</span>
+                    <BookOpenIcon size={14} className="text-subtitle" />
                     <span>Definitions</span>
                     <span className="text-[11px] font-normal text-muted opacity-80">(معاني الكلمة)</span>
                   </span>
@@ -1418,7 +1418,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                 {result.correction.autoCorrected ? (
                   <>
                     <div className="flex items-center gap-1.5 flex-wrap text-ink font-medium">
-                      <span className="text-subtitle font-bold text-base">✨</span>
+                      <SparklesIcon size={16} className="text-subtitle shrink-0" />
                       <span>Showing translation for</span>
                       <button
                         type="button"
@@ -1459,7 +1459,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                   </>
                 ) : (
                   <div className="flex items-center gap-2 flex-wrap text-ink font-medium">
-                    <span className="text-subtitle font-bold text-base">💡</span>
+                    <LightbulbIcon size={16} className="text-subtitle shrink-0" />
                     <span>Did you mean:</span>
                     <button
                       type="button"
@@ -1506,7 +1506,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
             {ocrError ? (
               <div className="mt-3 p-3 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between gap-2 text-xs sm:text-sm text-red-400 shadow-sm">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="shrink-0 text-base">⚠️</span>
+                  <svg className="w-4 h-4 text-bad shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                   <span className="break-words">{ocrError}</span>
                 </div>
                 <button
@@ -1541,7 +1541,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
             {/* Speech Recognition Error Banner */}
             {speechError ? (
               <div className="mt-3 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2 text-xs text-amber-500 shadow-sm">
-                <span className="break-words">🎙️ {speechError}</span>
+                <span className="break-words flex items-center gap-1.5"><MicIcon size={14} /> {speechError}</span>
                 <button
                   type="button"
                   onClick={() => setSpeechError(null)}
@@ -1659,7 +1659,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                   className="h-7 px-2 sm:px-2.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] text-ink transition-all cursor-pointer border border-line/40 select-none"
                 >
                   <span className="text-xs">
-                    {provider === "udictionary" ? "📖 U-Dict" : "🌐 Google"}
+                    {provider === "udictionary" ? "U-Dict" : "Google"}
                   </span>
                   <svg
                     className={`w-3 h-3 opacity-60 transition-transform duration-150 ${
@@ -1692,7 +1692,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <span>🌐</span>
+                        <GlobeIcon size={14} className="opacity-70" />
                         <span>Google Translate</span>
                       </div>
                       {provider === "google" && <span className="text-subtitle font-bold">✓</span>}
@@ -1707,7 +1707,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <span>📖</span>
+                        <BookOpenIcon size={14} className="opacity-70" />
                         <span>U-Dictionary (Oxford)</span>
                       </div>
                       {provider === "udictionary" && <span className="text-subtitle font-bold">✓</span>}
@@ -2146,7 +2146,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                   <div className="mt-3 pt-3 border-t border-line/50 space-y-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-muted flex items-center justify-between">
                       <span className="flex items-center gap-1.5 text-ink font-semibold">
-                        <span>📖</span>
+                        <BookOpenIcon size={14} className="text-subtitle" />
                         <span>Examples / أمثلة القاموس:</span>
                       </span>
                       <span className="text-[10px] text-muted font-mono">U-Dictionary</span>

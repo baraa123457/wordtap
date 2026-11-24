@@ -59,6 +59,9 @@ console.log('[WordTap Audio Engine] Resolved FFmpeg path:', ffmpegPath);
 
 // CRITICAL AUDIO & VIDEO FIX: Allow automatic audio playback and hardware decoding
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-background-timer-throttling');
 app.commandLine.appendSwitch('disable-features', 'PreloadMediaEngagementData');
 app.commandLine.appendSwitch('enable-features', 'PlatformHEVCDecoderSupport');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
@@ -1057,15 +1060,12 @@ function probeAudio(filePath) {
           codecs.push(codec);
 
           const isDefault = line.includes('(default)');
-          const isUnsupported = unsupportedRegex.test(line) || unsupportedRegex.test(codec);
-
-          // Extract language tag if available: Stream #0:1(eng): Audio
           const langMatch = line.match(/Stream #0:\d+\(([^)]+)\): Audio/i);
           const lang = langMatch ? langMatch[1] : '';
-
-          // Extract channel format: stereo, 5.1, 7.1, mono
           const chanMatch = line.match(/,\s*(stereo|mono|5\.1(?:\(side\))?|7\.1|5 channels|6 channels|8 channels)/i);
           const channels = chanMatch ? chanMatch[1] : '';
+          const isMultiChannel = /5\.1|7\.1|5 channels|6 channels|8 channels/i.test(channels);
+          const isUnsupported = unsupportedRegex.test(line) || unsupportedRegex.test(codec) || isMultiChannel;
 
           // Check if this stream is commentary or descriptive audio
           let isCommentary = /commentary|description|descriptive|visual impaired/i.test(line);
@@ -1110,11 +1110,12 @@ function probeAudio(filePath) {
         }
       }
 
-      // Check if primary track needs transcode
+      // Check if primary track needs transcode (Dolby, DTS, or multi-channel surround requiring voice protection)
       const selectedTrack = audioTracks[primaryAudioTrackIndex] || audioTracks[0];
-      if (selectedTrack && (selectedTrack.isUnsupported || unsupportedRegex.test(selectedTrack.codec))) {
+      const isMulti = selectedTrack && /5\.1|7\.1|5 channels|6 channels|8 channels/i.test(selectedTrack.channels);
+      if (selectedTrack && (selectedTrack.isUnsupported || unsupportedRegex.test(selectedTrack.codec) || isMulti)) {
         needsTranscode = true;
-      } else if (primaryCodec && unsupportedRegex.test(primaryCodec)) {
+      } else if (primaryCodec && (unsupportedRegex.test(primaryCodec) || /5\.1|7\.1|6 channels|8 channels/i.test(output))) {
         needsTranscode = true;
       }
 

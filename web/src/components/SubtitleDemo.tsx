@@ -76,7 +76,7 @@ export function SubtitleDemo() {
       <div className="frame-bar flex-wrap gap-2">
         <span>Demo: tap a word in the subtitle</span>
         <span className="text-xs opacity-75 font-mono">
-          {isManual ? "Mode: Manual save ✍️" : "Mode: Auto-save ⚡"}
+          {isManual ? "Mode: Manual save" : "Mode: Auto-save"}
         </span>
       </div>
       <div className="frame-stage" style={{ minHeight: "11rem" }}>
@@ -111,7 +111,7 @@ export function SubtitleDemo() {
 
             {isManual ? (
               isCurrentSaved ? (
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-green-400 bg-green-500/10 px-2.5 py-1 rounded-lg border border-green-500/20">
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-subtitle bg-subtitle/15 px-2.5 py-1 rounded-lg border border-subtitle/30">
                   <span>✓ In your words</span>
                 </span>
               ) : (
@@ -125,15 +125,12 @@ export function SubtitleDemo() {
                   {savingWord ? (
                     <span>Saving...</span>
                   ) : (
-                    <>
-                      <span>⭐</span>
-                      <span>+ Save to My Words</span>
-                    </>
+                    <span>+ Save to My Words</span>
                   )}
                 </button>
               )
             ) : (
-              <span className="text-xs font-medium text-green-400">⚡ Saved to your word list</span>
+              <span className="text-xs font-medium text-subtitle">✓ Saved to your word list</span>
             )}
           </>
         ) : (

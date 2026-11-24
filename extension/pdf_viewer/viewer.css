@@ -34,38 +34,107 @@
   --spring-easing: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ── Reading Ambience Themes ─────────────────────────────────────────────── */
+/* ── Reading Ambience Themes (Dark & Light) ─────────────────────────────── */
 body[data-reader-theme="dark"] {
   --bg: #0b0d1e;
-  --surface-translucent: rgba(15, 18, 40, 0.82);
+  --surface: #141731;
+  --surface-translucent: rgba(15, 18, 40, 0.85);
+  --surface-elevated: rgba(255, 255, 255, 0.06);
+  --surface-hover: rgba(255, 255, 255, 0.11);
+  --surface-active: rgba(255, 255, 255, 0.16);
+  --ink: #f0f3ff;
+  --ink-secondary: #c8cef0;
+  --muted: #8e96bf;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.16);
   --page-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.35);
   --page-border: rgba(255, 255, 255, 0.08);
-}
-
-body[data-reader-theme="sepia"] {
-  --bg: #ebd8bd;
-  --surface-translucent: rgba(38, 30, 22, 0.86);
-  --ink: #fbf6ec;
-  --ink-secondary: #ded3c1;
-  --muted: #a69883;
-  --line: rgba(255, 255, 255, 0.12);
-  --page-shadow: 0 10px 32px rgba(80, 60, 35, 0.22), 0 2px 6px rgba(80, 60, 35, 0.12);
-  --page-border: rgba(140, 110, 70, 0.15);
+  --input-bg: rgba(0, 0, 0, 0.25);
+  --select-option-bg: #12152b;
+  --select-option-color: #eef1ff;
+  --header-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
 body[data-reader-theme="light"] {
-  --bg: #e6e9ef;
-  --surface-translucent: rgba(246, 248, 252, 0.88);
-  --ink: #161a33;
-  --ink-secondary: #3d4366;
-  --muted: #727a9e;
-  --line: rgba(0, 0, 0, 0.08);
-  --line-strong: rgba(0, 0, 0, 0.14);
+  --bg: #eef2f8;
+  --surface: #ffffff;
+  --surface-translucent: rgba(255, 255, 255, 0.94);
   --surface-elevated: rgba(0, 0, 0, 0.04);
   --surface-hover: rgba(0, 0, 0, 0.07);
-  --surface-active: rgba(0, 0, 0, 0.1);
-  --page-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
-  --page-border: rgba(0, 0, 0, 0.1);
+  --surface-active: rgba(0, 0, 0, 0.11);
+  --ink: #12152e;
+  --ink-secondary: #3b4168;
+  --muted: #5e6687;
+  --line: rgba(0, 0, 0, 0.09);
+  --line-strong: rgba(0, 0, 0, 0.16);
+  --page-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.05);
+  --page-border: rgba(0, 0, 0, 0.12);
+  --input-bg: rgba(0, 0, 0, 0.04);
+  --select-option-bg: #ffffff;
+  --select-option-color: #12152e;
+  --header-shadow: 0 2px 14px rgba(0, 0, 0, 0.06);
+}
+
+body[data-reader-theme="light"] .viewer-header {
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+body[data-reader-theme="light"] .control-segment {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+body[data-reader-theme="light"] .doc-badge {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.09);
+  color: #12152e;
+}
+
+body[data-reader-theme="light"] .find-box-wrap {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+body[data-reader-theme="light"] .find-box-wrap:focus-within {
+  background: #ffffff;
+  border-color: var(--subtitle);
+  box-shadow: 0 0 0 2px var(--subtitle-glow);
+}
+
+body[data-reader-theme="light"] .find-input {
+  color: #12152e;
+}
+
+body[data-reader-theme="light"] .theme-toggle-btn,
+body[data-reader-theme="light"] .page-mode-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #12152e;
+}
+
+body[data-reader-theme="light"] .theme-toggle-btn:hover,
+body[data-reader-theme="light"] .page-mode-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.18);
+  color: #d4a311;
+}
+
+body[data-reader-theme="light"] .nav-btn,
+body[data-reader-theme="light"] .tool-btn,
+body[data-reader-theme="light"] .zoom-btn,
+body[data-reader-theme="light"] .segment-btn {
+  color: #12152e;
+}
+
+body[data-reader-theme="light"] .nav-btn:hover,
+body[data-reader-theme="light"] .tool-btn:hover,
+body[data-reader-theme="light"] .zoom-btn:hover,
+body[data-reader-theme="light"] .segment-btn:hover {
+  background: rgba(0, 0, 0, 0.07);
+  color: #12152e;
 }
 
 /* ── Reset & Baseline ────────────────────────────────────────────────────── */
@@ -106,7 +175,7 @@ html, body {
   backdrop-filter: blur(24px) saturate(190%);
   -webkit-backdrop-filter: blur(24px) saturate(190%);
   border-bottom: 1px solid var(--line);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--header-shadow);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -235,7 +304,7 @@ html, body {
 }
 .segment-btn:hover {
   background: var(--surface-hover);
-  color: #ffffff;
+  color: var(--ink);
 }
 .segment-btn:active {
   transform: scale(0.92);
@@ -259,7 +328,7 @@ html, body {
   width: 38px;
   height: 26px;
   text-align: center;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--input-bg);
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--ink);
@@ -320,8 +389,8 @@ html, body {
   box-shadow: 0 0 0 2px var(--subtitle-glow);
 }
 .scale-select option {
-  background-color: #12152b;
-  color: #eef1ff;
+  background-color: var(--select-option-bg);
+  color: var(--select-option-color);
 }
 
 .select-chevron {
@@ -399,12 +468,14 @@ html, body {
 }
 
 /* ── Utility Buttons (Theme, OCR, Popout) ────────────────────────────────── */
-.theme-toggle-btn {
+.theme-toggle-btn,
+.page-mode-btn {
   height: 32px;
   width: 32px;
   border-radius: 8px;
   background: var(--surface-elevated);
   border: 1px solid var(--line);
+  color: var(--ink);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -412,23 +483,39 @@ html, body {
   transition: all 0.12s var(--spring-easing);
   flex-shrink: 0;
 }
-.theme-toggle-btn:hover {
+.theme-toggle-btn:hover,
+.page-mode-btn:hover {
   background: var(--surface-hover);
   border-color: var(--line-strong);
   transform: scale(1.05);
+  color: var(--subtitle);
 }
-.theme-toggle-btn:active {
+.theme-toggle-btn:active,
+.page-mode-btn:active {
   transform: scale(0.95);
 }
 
-.theme-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid var(--ink);
-  background: var(--subtitle);
-  display: block;
-  transition: transform 0.2s ease, background-color 0.2s ease;
+.theme-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+  transition: transform 0.2s ease;
+}
+
+.page-mode-btn.active {
+  background: rgba(250, 204, 59, 0.16);
+  border-color: rgba(250, 204, 59, 0.4);
+  color: var(--subtitle);
+}
+
+/* ── Dark Reading Page Mode (Invert Paper) ───────────────────────────────── */
+body[data-dark-page="true"] .pdfViewer .page {
+  background-color: #121528 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+body[data-dark-page="true"] .pdfViewer .canvasWrapper {
+  filter: invert(0.92) hue-rotate(180deg) contrast(1.1);
 }
 
 .ocr-tool-btn {

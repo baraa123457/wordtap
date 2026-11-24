@@ -101,9 +101,17 @@
         </button>
       </div>
 
-      <!-- Reading Ambience Theme Toggle (Dark / Sepia / Light) -->
-      <button type="button" class="theme-toggle-btn" id="readerThemeBtn" title="Switch Reading Theme (Dark, Sepia, Light)" aria-label="Toggle reader background theme">
-        <span class="theme-dot" id="themeDot"></span>
+      <!-- Dark / Light Theme Toggle -->
+      <button type="button" class="theme-toggle-btn" id="readerThemeBtn" title="Switch between Dark and Light Theme" aria-label="Toggle dark and light theme">
+        <span class="theme-icon-wrap" id="themeIconWrap"></span>
+      </button>
+
+      <!-- Dark Page Contrast Mode Toggle -->
+      <button type="button" class="page-mode-btn" id="pageModeBtn" title="Toggle Dark/Light Page Reading Mode" aria-label="Toggle dark page reading mode">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"></path>
+        </svg>
       </button>
 
       <!-- OCR Tool -->

@@ -576,36 +576,64 @@ if (scannedOcrBtn) scannedOcrBtn.addEventListener("click", triggerOcrCapture);
 
 if (retryLoadBtn) retryLoadBtn.addEventListener("click", loadPdfDocument);
 
-// Reading Ambience Theme Manager (Dark -> Sepia -> Light)
+// Reading Ambience Theme Manager (Dark & Light Theme)
 const readerThemeBtn = $("readerThemeBtn");
-const themeDot = $("themeDot");
-const THEMES = ["dark", "sepia", "light"];
-const THEME_COLORS = {
-  dark: "#facc3b",
-  sepia: "#c28938",
-  light: "#3b82f6",
-};
+const themeIconWrap  = $("themeIconWrap");
+const pageModeBtn    = $("pageModeBtn");
+
+const SUN_SVG = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+
+const MOON_SVG = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
 
 function applyReaderTheme(themeName) {
-  const chosen = THEMES.includes(themeName) ? themeName : "dark";
+  const chosen = themeName === "light" ? "light" : "dark";
   document.body.setAttribute("data-reader-theme", chosen);
-  if (themeDot) {
-    themeDot.style.background = THEME_COLORS[chosen] || "#facc3b";
+  if (themeIconWrap) {
+    themeIconWrap.innerHTML = chosen === "dark" ? SUN_SVG : MOON_SVG;
+  }
+  if (readerThemeBtn) {
+    readerThemeBtn.title = chosen === "dark" ? "Switch to Light Theme" : "Switch to Dark Theme";
+    readerThemeBtn.setAttribute("aria-label", readerThemeBtn.title);
   }
   storageSet({ wordtap_reader_theme: chosen });
 }
 
-storageGet(["wordtap_reader_theme"], (res) => {
+function setDarkPageMode(enable) {
+  const isDark = Boolean(enable);
+  document.body.setAttribute("data-dark-page", isDark ? "true" : "false");
+  if (pageModeBtn) {
+    pageModeBtn.classList.toggle("active", isDark);
+    pageModeBtn.title = isDark ? "Dark Page Mode (Active) · Click for Light Paper" : "Light Page Mode (Active) · Click for Dark Paper";
+  }
+  storageSet({ wordtap_reader_dark_page: isDark });
+}
+
+storageGet(["wordtap_reader_theme", "wordtap_reader_dark_page"], (res) => {
   if (res && res.wordtap_reader_theme) {
     applyReaderTheme(res.wordtap_reader_theme);
+  } else {
+    applyReaderTheme("dark");
+  }
+  if (res && typeof res.wordtap_reader_dark_page === "boolean") {
+    setDarkPageMode(res.wordtap_reader_dark_page);
   }
 });
+
+window.applyReaderTheme = applyReaderTheme;
+window.setDarkPageMode = setDarkPageMode;
 
 if (readerThemeBtn) {
   readerThemeBtn.addEventListener("click", () => {
     const current = document.body.getAttribute("data-reader-theme") || "dark";
-    const nextIdx = (THEMES.indexOf(current) + 1) % THEMES.length;
-    applyReaderTheme(THEMES[nextIdx]);
+    const nextTheme = current === "dark" ? "light" : "dark";
+    applyReaderTheme(nextTheme);
+  });
+}
+
+if (pageModeBtn) {
+  pageModeBtn.addEventListener("click", () => {
+    const current = document.body.getAttribute("data-dark-page") === "true";
+    setDarkPageMode(!current);
   });
 }
 
@@ -637,6 +665,14 @@ window.addEventListener("keydown", (e) => {
       findInput.focus();
       findInput.select();
     }
+  } else if (!e.ctrlKey && !e.metaKey && (e.key === "t" || e.key === "T")) {
+    e.preventDefault();
+    const current = document.body.getAttribute("data-reader-theme") || "dark";
+    applyReaderTheme(current === "dark" ? "light" : "dark");
+  } else if (!e.ctrlKey && !e.metaKey && (e.key === "i" || e.key === "I")) {
+    e.preventDefault();
+    const current = document.body.getAttribute("data-dark-page") === "true";
+    setDarkPageMode(!current);
   }
 });
 

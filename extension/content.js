@@ -224,7 +224,7 @@
       </div>
       <div class="corr-row"></div>
       <div class="alts-row"></div>
-      <button class="save-btn" title="Save word to My Words">⭐ + Save to My Words</button>
+      <button class="save-btn" title="Save word to My Words">+ Save to My Words</button>
       <div class="saved"></div>
     </div>`;
   const tip = shadow.querySelector(".tip");
@@ -444,7 +444,7 @@
               saveBtn.textContent = "✓ In your words";
             } else {
               saveBtn.classList.remove("saved");
-              saveBtn.textContent = "⭐ + Save to My Words";
+              saveBtn.textContent = "+ Save to My Words";
               const msg = (saved && saved.error) || "Failed to save · Please sign in";
               setNote(msg, true);
             }
@@ -514,7 +514,7 @@
           saveBtn.textContent = "✓ In your words";
         } else {
           saveBtn.classList.remove("saved");
-          saveBtn.textContent = "⭐ + Save to My Words";
+          saveBtn.textContent = "+ Save to My Words";
           const msg = (saved && saved.error) || "Failed to save · Please sign in";
           setNote(msg, true);
         }
@@ -560,7 +560,7 @@
         setNote(note.text, note.warn);
       } else {
         saveBtn.classList.remove("saved");
-        saveBtn.textContent = "⭐ + Save to My Words";
+        saveBtn.textContent = "+ Save to My Words";
         const msg = (saved && saved.error) || "Failed to save · Please sign in";
         setNote(msg, true);
       }
@@ -681,7 +681,7 @@
                   saveBtn.textContent = "✓ In your words";
                 } else {
                   saveBtn.classList.remove("saved");
-                  saveBtn.textContent = "⭐ + Save to My Words";
+                  saveBtn.textContent = "+ Save to My Words";
                   const msg = (saved && saved.error) || "Failed to save · Please sign in";
                   setNote(msg, true);
                 }
@@ -689,7 +689,7 @@
             } else {
               saveBtn.style.display = "inline-flex";
               saveBtn.classList.remove("saved");
-              saveBtn.textContent = "⭐ + Save to My Words";
+              saveBtn.textContent = "+ Save to My Words";
               setNote("", false);
             }
           }
@@ -704,7 +704,7 @@
     setNote(note, warn);
     saveBtn.style.display = "none";
     saveBtn.classList.remove("saved");
-    saveBtn.textContent = "⭐ + Save to My Words";
+    saveBtn.textContent = "+ Save to My Words";
     tip.style.display = "block";
     const r = tip.getBoundingClientRect();
     const left = Math.min(Math.max(8, x - r.width / 2), window.innerWidth - r.width - 8);
@@ -1118,7 +1118,7 @@
             saveBtn.title = "Already saved in your words";
           } else {
             saveBtn.classList.remove("saved");
-            saveBtn.textContent = "⭐ + Save to My Words";
+            saveBtn.textContent = "+ Save to My Words";
             saveBtn.title = "Save to My Words";
           }
           safeSendMessage({ type: "word:is-saved", text: entry.text }, (check) => {

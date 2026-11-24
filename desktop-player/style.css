@@ -35,9 +35,9 @@
   --vlc-orange-glow: rgba(250, 204, 59, 0.35);
 
   /* Status & Feedback */
-  --ok: #34d399;
-  --ok-soft: rgba(16, 185, 129, 0.15);
-  --ok-ink: #34d399;
+  --ok: #facc3b;
+  --ok-soft: rgba(250, 204, 59, 0.16);
+  --ok-ink: #facc3b;
   --bad: #f87171;
   --bad-soft: rgba(239, 68, 68, 0.15);
   --bad-ink: #fca5a5;
@@ -142,9 +142,9 @@ body.light-theme {
   --vlc-orange-glow: rgba(250, 204, 59, 0.35);
 
   /* Status & Feedback */
-  --ok: #10b981;
-  --ok-soft: #ecfdf5;
-  --ok-ink: #065f46;
+  --ok: #d4a311;
+  --ok-soft: rgba(250, 204, 59, 0.18);
+  --ok-ink: #1a1400;
   --bad: #ef4444;
   --bad-soft: #fef2f2;
   --bad-ink: #991b1b;
@@ -358,9 +358,9 @@ body.light-theme .popover-save-btn {
 }
 
 body.light-theme .popover-save-btn.saved {
-  background: #ecfdf5 !important;
-  color: #047857 !important;
-  border-color: rgba(16, 185, 129, 0.35) !important;
+  background: rgba(250, 204, 59, 0.16) !important;
+  color: #d4a311 !important;
+  border-color: rgba(212, 163, 17, 0.4) !important;
 }
 
 body.light-theme .popover-footer {
@@ -538,7 +538,7 @@ body.light-theme .account-user-email {
 }
 
 body.light-theme .account-sync-subtitle {
-  color: #047857 !important;
+  color: #d4a311 !important;
 }
 
 body.light-theme .btn-account-signout-subtle {
@@ -2437,9 +2437,9 @@ body.light-theme .vlsub-window::-webkit-scrollbar-thumb:hover {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #10b981;
+  background: #facc3b;
   border: 2px solid var(--surface);
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 6px rgba(250, 204, 59, 0.5);
 }
 
 .account-identity-info {
@@ -2464,7 +2464,7 @@ body.light-theme .vlsub-window::-webkit-scrollbar-thumb:hover {
   gap: 5px;
   font-size: 11px;
   font-weight: 500;
-  color: #34d399;
+  color: #facc3b;
 }
 
 .btn-account-signout-subtle {

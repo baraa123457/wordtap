@@ -431,6 +431,24 @@
     }
   }
 
+  // Auto-recovery listeners on window focus and DOM interactions (crucial after Google login or window switches)
+  window.addEventListener('focus', () => {
+    resumeAudioContext();
+    if (isAudioTranscoded && compatibleAudio && compatibleAudio.src && video && !video.paused && compatibleAudio.paused) {
+      compatibleAudio.play().catch(() => {});
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      resumeAudioContext();
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src && video && !video.paused && compatibleAudio.paused) {
+        compatibleAudio.play().catch(() => {});
+      }
+    }
+  });
+  window.addEventListener('pointerdown', () => resumeAudioContext(), { passive: true });
+  window.addEventListener('keydown', () => resumeAudioContext(), { passive: true });
+
   function ensureAudioNodes() {
     try {
       if (!audioContext) {
@@ -970,6 +988,13 @@
           if (accountModal) accountModal.classList.remove('open');
           ensureAudioNodes();
           resumeAudioContext();
+          if (video && !video.paused) {
+            video.muted = isAudioTranscoded ? true : userMuted;
+          }
+          if (isAudioTranscoded && compatibleAudio && compatibleAudio.src && video && !video.paused) {
+            compatibleAudio.muted = userMuted;
+            compatibleAudio.play().catch(() => {});
+          }
           updateVolumeDisplay();
           showToast(`Welcome back, ${userSession.email}!`);
           pushPendingOfflineWords();

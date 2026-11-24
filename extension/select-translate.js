@@ -879,7 +879,7 @@
         </button>
       </div>
       <div class="actions-wrap">
-        <button class="save-btn" id="saveBtn">⭐ Save</button>
+        <button class="save-btn" id="saveBtn"><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:-1px;margin-right:3px;"><polygon points="8 1.5 10.2 5.8 15 6.5 11.5 9.9 12.3 14.7 8 12.4 3.7 14.7 4.5 9.9 1 6.5 5.8 5.8 8 1.5"/></svg>Save</button>
       </div>
     </div>
     <div class="tr-row">

@@ -148,7 +148,7 @@ function updateEnabledUI(isEnabled) {
 
 // ---------- Segmented Control for Save Mode ----------
 const SAVE_MODE_HELPERS = {
-  manual: "Click the star on any translation card to save",
+  manual: "Click Save on any translation card to save",
   subtitles_only: "Auto-saves words clicked in video subtitles",
   auto: "Automatically saves every translated word",
 };
