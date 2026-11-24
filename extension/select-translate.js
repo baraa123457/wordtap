@@ -561,8 +561,8 @@
       transform: scale(1.1);
     }
     .speak-btn.speaking {
-      color: #34d399;
-      background: rgba(52, 211, 153, 0.18);
+      color: #facc3b;
+      background: rgba(250, 204, 59, 0.18);
     }
     .speak-btn.speaking .wave-1 {
       animation: soundwave 0.5s infinite alternate ease-in-out;
@@ -617,9 +617,9 @@
     .save-btn:hover { background: #ffe270; transform: scale(1.03); }
     .save-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
     .save-btn.saved {
-      background: rgba(52, 211, 153, 0.16) !important;
-      color: #34d399 !important;
-      border: 1px solid rgba(52, 211, 153, 0.35) !important;
+      background: rgba(250, 204, 59, 0.16) !important;
+      color: #facc3b !important;
+      border: 1px solid rgba(250, 204, 59, 0.38) !important;
       cursor: default !important;
       opacity: 1 !important;
       transform: none !important;
@@ -691,7 +691,7 @@
 
     .status {
       font-size: 10.5px;
-      color: #34d399;
+      color: #facc3b;
       display: none;
       word-break: break-word;
     }
@@ -1140,16 +1140,16 @@
     if (saved) {
       saveBtn.classList.add("saved");
       saveBtn.disabled = true;
-      saveBtn.innerHTML = `✓ Saved`;
-      saveBtn.style.background = "rgba(52, 211, 153, 0.2)";
-      saveBtn.style.color = "#34d399";
-      saveBtn.style.borderColor = "rgba(52, 211, 153, 0.4)";
+      saveBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg>Saved`;
+      saveBtn.style.background = "rgba(250, 204, 59, 0.16)";
+      saveBtn.style.color = "#facc3b";
+      saveBtn.style.borderColor = "rgba(250, 204, 59, 0.38)";
       saveBtn.style.cursor = "default";
       saveBtn.title = "Already saved in your words";
     } else {
       saveBtn.classList.remove("saved");
       saveBtn.disabled = false;
-      saveBtn.innerHTML = `⭐ Save`;
+      saveBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:-1px;margin-right:3px;"><polygon points="8 1.5 10.2 5.8 15 6.5 11.5 9.9 12.3 14.7 8 12.4 3.7 14.7 4.5 9.9 1 6.5 5.8 5.8 8 1.5"/></svg>Save`;
       saveBtn.style.background = "#facc3b";
       saveBtn.style.color = "#12152e";
       saveBtn.style.borderColor = "#d4a311";

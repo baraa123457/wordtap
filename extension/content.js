@@ -168,7 +168,7 @@
       .pos-badge{display:none;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:999px;background:rgba(250,204,59,.15);color:#ffd23f;border:1px solid rgba(250,204,59,.35);white-space:nowrap;text-transform:lowercase}
       .spk-btn{background:none;border:none;color:#facc3b;cursor:pointer;padding:2px 4px;border-radius:5px;display:inline-flex;align-items:center;transition:transform .1s,color .1s}
       .spk-btn:hover{color:#ffe270;transform:scale(1.15)}
-      .spk-btn.speaking{color:#34d399}
+      .spk-btn.speaking{color:#facc3b}
       .tr-line{display:flex;align-items:center;gap:6px}
       .tr{font-size:18px;font-weight:700;color:#ffffff;word-break:break-word;font-family:"Readex Pro",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;line-height:1.4;cursor:pointer;border-bottom:1px dashed transparent;transition:border-color .15s}
       .tr:hover{border-bottom-color:rgba(250,204,59,0.4)}
@@ -182,11 +182,11 @@
       .alt-chip{border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.08);color:#d1d5f0;border-radius:999px;padding:2px 8px;font-size:11.5px;font-family:"Readex Pro",system-ui,sans-serif;cursor:pointer;transition:all .12s ease;outline:none;user-select:none}
       .alt-chip:hover{border-color:#facc3b;color:#ffffff;background:rgba(250,204,59,0.2);transform:scale(1.04)}
       .alt-chip.active{border-color:#facc3b;background:#facc3b;color:#12152e;font-weight:700}
-      .saved{margin-top:6px;font-size:11px;font-weight:600;color:#34d399;display:none}
+      .saved{margin-top:6px;font-size:11px;font-weight:600;color:#facc3b;display:none}
       .saved[data-warn="true"]{color:#fbbf24}
       .save-btn{background:#facc3b;color:#12152e;border:1px solid #d4a311;cursor:pointer;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:700;display:none;align-items:center;gap:4px;margin-top:8px;box-shadow:0 1px 3px rgba(0,0,0,0.2), 0 2px 6px rgba(250,204,59,0.3);transition:background .1s,transform .1s}
       .save-btn:hover{background:#ffe270;transform:scale(1.03)}
-      .save-btn.saved{background:rgba(52,211,153,.15);color:#34d399;border:1px solid rgba(52,211,153,.3);cursor:default;transform:none;box-shadow:none}
+      .save-btn.saved{background:rgba(250,204,59,.16);color:#facc3b;border:1px solid rgba(250,204,59,.38);cursor:default;transform:none;box-shadow:none}
       .x{position:absolute;top:6px;right:6px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#959cc2;border-radius:5px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);font-size:14px;line-height:1;transition:all .12s}
       .x:hover{color:#ffffff;background:rgba(239,68,68,0.3);border-color:rgba(239,68,68,0.5);transform:scale(1.1)}
     </style>

@@ -136,7 +136,7 @@ function DesktopAuthContent() {
             </>
           ) : status === "success" || status === "redirecting" ? (
             <>
-              <div className="w-12 h-12 rounded-2xl bg-ok-soft text-ok flex items-center justify-center font-bold text-xl border border-ok/30">
+              <div className="w-12 h-12 rounded-2xl bg-subtitle/15 text-subtitle flex items-center justify-center font-bold text-xl border border-subtitle/30">
                 <CheckIcon size={24} />
               </div>
               <div className="grid gap-1.5">
@@ -148,7 +148,7 @@ function DesktopAuthContent() {
               </div>
 
               <div className="rounded-xl bg-surface border border-line p-3 text-xs text-muted flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-ok shrink-0 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-subtitle shrink-0 animate-pulse" />
                 <span>Redirecting to your player… Click the button below if player does not focus.</span>
               </div>
 
@@ -169,7 +169,7 @@ function DesktopAuthContent() {
                     onClick={handleCopyKey}
                     className="btn btn-quiet w-full text-center text-xs font-semibold flex items-center justify-center gap-1.5 border border-line"
                   >
-                    <span>{copiedKey ? "✓ Sign-In Key Copied!" : "📋 Copy Sign-In Key (Fallback)"}</span>
+                    <span>{copiedKey ? "Sign-In Key Copied!" : "Copy Sign-In Key (Fallback)"}</span>
                   </button>
                 ) : null}
 

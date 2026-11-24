@@ -19,6 +19,37 @@
  * JavaScript code in this page
  */
 
+if (typeof Uint8Array !== "undefined" && !Uint8Array.prototype.toHex) {
+  Uint8Array.prototype.toHex = function () {
+    return Array.from(this, (b) => b.toString(16).padStart(2, "0")).join("");
+  };
+}
+if (typeof Map !== "undefined" && !Map.prototype.getOrInsertComputed) {
+  Map.prototype.getOrInsertComputed = function (key, callbackFn) {
+    if (this.has(key)) return this.get(key);
+    const value = callbackFn(key);
+    this.set(key, value);
+    return value;
+  };
+}
+if (typeof WeakMap !== "undefined" && !WeakMap.prototype.getOrInsertComputed) {
+  WeakMap.prototype.getOrInsertComputed = function (key, callbackFn) {
+    if (this.has(key)) return this.get(key);
+    const value = callbackFn(key);
+    this.set(key, value);
+    return value;
+  };
+}
+if (typeof Math !== "undefined" && !Math.sumPrecise) {
+  Math.sumPrecise = function (iterable) {
+    let sum = 0;
+    for (const val of iterable) {
+      sum += Number(val) || 0;
+    }
+    return sum;
+  };
+}
+
 /**
  * pdfjsVersion = 6.5.438
  * pdfjsBuild = 0a4153349

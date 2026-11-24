@@ -22,7 +22,7 @@
   --subtitle-hover: #ffe270;
   --subtitle-glow: rgba(250, 204, 59, 0.22);
   
-  --ok: #10b981;
+  --ok: #facc3b;
   --bad: #ef4444;
   
   --radius-xs: 4px;
@@ -85,6 +85,7 @@ html, body {
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   transition: background-color 0.2s ease;
 }
 
@@ -514,6 +515,18 @@ html, body {
 .pdfViewer .page canvas {
   margin: 0;
   display: block;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.pdfViewer .canvasWrapper {
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* ── PDF.js Text Layer (Guaranteed Transparent for Crisp Glyphs) ─────────── */

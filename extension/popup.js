@@ -762,8 +762,8 @@ function updateSubtitleHealthUI() {
       details.innerHTML = `Canvas/DRM subtitles detected on <strong style="color:var(--text);">${degraded.join(", ")}</strong>. Press <strong style="color:var(--text);">Alt+S</strong> or click Screen OCR to translate instantly.`;
     } else {
       badge.textContent = "DOM Active (Healthy)";
-      badge.style.background = "rgba(74, 222, 128, 0.15)";
-      badge.style.color = "#4ade80";
+      badge.style.background = "rgba(250, 204, 59, 0.15)";
+      badge.style.color = "#facc3b";
       details.textContent = "DOM subtitle selectors are operating normally across streaming platforms.";
     }
   });

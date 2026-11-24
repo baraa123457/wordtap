@@ -3,13 +3,89 @@
  * Built with bundled PDF.js EventBus + PDFLinkService + PDFViewer.
  * Enables selectable DOM text layers for WordTap instant translation tooltip card.
  */
+
+// Polyfill TC39 proposal methods for cross-engine PDF.js compatibility
+if (typeof Uint8Array !== "undefined" && !Uint8Array.prototype.toHex) {
+  Uint8Array.prototype.toHex = function () {
+    return Array.from(this, (b) => b.toString(16).padStart(2, "0")).join("");
+  };
+}
+if (typeof Map !== "undefined" && !Map.prototype.getOrInsertComputed) {
+  Map.prototype.getOrInsertComputed = function (key, callbackFn) {
+    if (this.has(key)) return this.get(key);
+    const value = callbackFn(key);
+    this.set(key, value);
+    return value;
+  };
+}
+if (typeof WeakMap !== "undefined" && !WeakMap.prototype.getOrInsertComputed) {
+  WeakMap.prototype.getOrInsertComputed = function (key, callbackFn) {
+    if (this.has(key)) return this.get(key);
+    const value = callbackFn(key);
+    this.set(key, value);
+    return value;
+  };
+}
+if (typeof Math !== "undefined" && !Math.sumPrecise) {
+  Math.sumPrecise = function (iterable) {
+    let sum = 0;
+    for (const val of iterable) {
+      sum += Number(val) || 0;
+    }
+    return sum;
+  };
+}
+
 import * as pdfjsLib from "./lib/pdf.mjs";
 
 // Make pdfjsLib globally accessible before dynamically loading pdf_viewer.mjs
 globalThis.pdfjsLib = pdfjsLib;
 
+// Safe resource URL resolver that handles Chrome extensions, local files, and standalone environments
+const getResourceUrl = (relPath) => {
+  if (typeof chrome !== "undefined" && chrome.runtime && typeof chrome.runtime.getURL === "function") {
+    try {
+      const clean = relPath.startsWith("lib/") ? "pdf_viewer/" + relPath : "pdf_viewer/lib/" + relPath;
+      return chrome.runtime.getURL(clean);
+    } catch (_) {}
+  }
+  return new URL(relPath.startsWith("lib/") ? relPath : "lib/" + relPath, import.meta.url).href;
+};
+
+// Safe storage access fallback
+const storageGet = (keys, callback) => {
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get(keys, callback);
+  } else {
+    try {
+      const res = {};
+      for (const k of keys) {
+        const item = localStorage.getItem(k);
+        if (item) {
+          try { res[k] = JSON.parse(item); } catch (_) { res[k] = item; }
+        }
+      }
+      callback(res);
+    } catch (_) {
+      callback({});
+    }
+  }
+};
+
+const storageSet = (items) => {
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.set(items);
+  } else {
+    try {
+      for (const [k, v] of Object.entries(items)) {
+        localStorage.setItem(k, JSON.stringify(v));
+      }
+    } catch (_) {}
+  }
+};
+
 // Configure worker and font resources locally from extension bundle (MV3 CSP compliant)
-pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL("pdf_viewer/lib/pdf.worker.mjs");
+pdfjsLib.GlobalWorkerOptions.workerSrc = getResourceUrl("pdf.worker.mjs");
 
 const pdfjsViewer = await import("./lib/pdf_viewer.mjs");
 
@@ -135,8 +211,12 @@ const pdfViewer = new pdfjsViewer.PDFViewer({
   findController,
   textLayerMode: 1, // Enable selectable text layers for WordTap
   annotationMode: 0,
+  maxCanvasPixels: -1, // Uncapped: allows full native high-DPI rendering without scaling restrictions
+  capCanvasAreaFactor: -1, // Prevent capping canvas pixels to screen area
+  enableDetailCanvas: false, // Ensure full crisp single-pass canvas rasterization at 100% native resolution
 });
 linkService.setViewer(pdfViewer);
+window.pdfViewer = pdfViewer;
 
 // Storage key for persisting reading position and zoom
 const storageKey = rawFileUrl ? `wordtap_pdf_pos_${hashString(rawFileUrl)}` : null;
@@ -144,16 +224,18 @@ const storageKey = rawFileUrl ? `wordtap_pdf_pos_${hashString(rawFileUrl)}` : nu
 // ── Event Bus Listeners ─────────────────────────────────────────────────────
 eventBus.on("pagesinit", () => {
   if (!storageKey) {
-    pdfViewer.currentScaleValue = "page-width";
+    pdfViewer.currentScaleValue = "page-actual";
+    if (scaleSelect) scaleSelect.value = "page-actual";
     return;
   }
-  chrome.storage.local.get([storageKey], (res) => {
+  storageGet([storageKey], (res) => {
     const saved = res && res[storageKey];
     if (saved && saved.scale) {
       pdfViewer.currentScaleValue = saved.scale;
       if (scaleSelect) scaleSelect.value = saved.scale;
     } else {
-      pdfViewer.currentScaleValue = "page-width";
+      pdfViewer.currentScaleValue = "page-actual";
+      if (scaleSelect) scaleSelect.value = "page-actual";
     }
 
     if (saved && saved.page && saved.page > 1 && saved.page <= (currentDocument?.numPages || 1)) {
@@ -167,7 +249,7 @@ function persistPosition(pageNumber, scale) {
   if (!storageKey) return;
   clearTimeout(savePositionTimer);
   savePositionTimer = setTimeout(() => {
-    chrome.storage.local.set({
+    storageSet({
       [storageKey]: {
         page: pageNumber,
         scale: scale || pdfViewer.currentScaleValue,
@@ -187,10 +269,22 @@ eventBus.on("pagechanging", (evt) => {
 eventBus.on("scalechanging", (evt) => {
   const scale = evt.scale;
   if (scaleSelect) {
-    const val = String(evt.presetValue || scale);
-    const hasOption = Array.from(scaleSelect.options).some((o) => o.value === val);
-    if (hasOption) {
-      scaleSelect.value = val;
+    if (evt.presetValue) {
+      scaleSelect.value = evt.presetValue;
+    } else if (Math.abs(scale - 1.0) < 0.05) {
+      scaleSelect.value = "page-actual";
+    } else {
+      const options = Array.from(scaleSelect.options)
+        .map((o) => parseFloat(o.value))
+        .filter((v) => !isNaN(v));
+      if (options.length > 0) {
+        const closest = options.reduce((prev, curr) =>
+          Math.abs(curr - scale) < Math.abs(prev - scale) ? curr : prev
+        );
+        if (Math.abs(closest - scale) < 0.1) {
+          scaleSelect.value = String(closest);
+        }
+      }
     }
   }
   persistPosition(pdfViewer.currentPageNumber, evt.presetValue || String(scale));
@@ -261,7 +355,7 @@ async function loadPdfDocument() {
     }
 
     let docParams;
-    if (isFileScheme) {
+    if (isFileScheme || !rawFileUrl.startsWith("http")) {
       showLoading("Reading local PDF…");
       const res = await fetch(rawFileUrl);
       if (!res.ok && res.status !== 0 && res.status !== 200) {
@@ -270,16 +364,22 @@ async function loadPdfDocument() {
       const buffer = await res.arrayBuffer();
       docParams = {
         data: new Uint8Array(buffer),
-        cMapUrl: chrome.runtime.getURL("pdf_viewer/lib/cmaps/"),
+        cMapUrl: getResourceUrl("cmaps/"),
         cMapPacked: true,
-        standardFontDataUrl: chrome.runtime.getURL("pdf_viewer/lib/standard_fonts/"),
+        standardFontDataUrl: getResourceUrl("standard_fonts/"),
+        enableHWA: true,
+        useSystemFonts: true,
+        fontExtraProperties: true,
       };
     } else {
       docParams = {
         url: rawFileUrl,
-        cMapUrl: chrome.runtime.getURL("pdf_viewer/lib/cmaps/"),
+        cMapUrl: getResourceUrl("cmaps/"),
         cMapPacked: true,
-        standardFontDataUrl: chrome.runtime.getURL("pdf_viewer/lib/standard_fonts/"),
+        standardFontDataUrl: getResourceUrl("standard_fonts/"),
+        enableHWA: true,
+        useSystemFonts: true,
+        fontExtraProperties: true,
       };
     }
 
@@ -492,10 +592,10 @@ function applyReaderTheme(themeName) {
   if (themeDot) {
     themeDot.style.background = THEME_COLORS[chosen] || "#facc3b";
   }
-  chrome.storage.local.set({ wordtap_reader_theme: chosen });
+  storageSet({ wordtap_reader_theme: chosen });
 }
 
-chrome.storage.local.get(["wordtap_reader_theme"], (res) => {
+storageGet(["wordtap_reader_theme"], (res) => {
   if (res && res.wordtap_reader_theme) {
     applyReaderTheme(res.wordtap_reader_theme);
   }
