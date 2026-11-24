@@ -1017,6 +1017,7 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 // Immediate run when background script initializes:
+setupContextMenus();
 flush(true).then(pullCloudWords).catch(() => {});
 
 async function addHistory(entry) {
