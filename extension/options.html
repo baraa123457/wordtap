@@ -168,12 +168,16 @@
     }
 
     .btn-save {
-      background: #2563eb;
-      color: #ffffff;
-      border: 1px solid #1d4ed8;
+      background: var(--accent);
+      color: var(--accent-ink);
+      border: 1px solid var(--accent-edge);
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(250, 204, 59, 0.25);
     }
     .btn-save:hover {
-      background: #1d4ed8;
+      background: #ffe270;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(250, 204, 59, 0.35);
+      transform: translateY(-1px);
     }
 
     .btn-reset {
@@ -238,8 +242,8 @@
         <div class="label-col"><label for="translationProvider">Translation Provider:</label></div>
         <div class="control-col">
           <select id="translationProvider">
-            <option value="google">🌐 Google Translate (Fast machine translation)</option>
-            <option value="udictionary">📖 U-Dictionary (Oxford / Collins definitions)</option>
+            <option value="google">Google Translate (Fast contextual)</option>
+            <option value="udictionary">U-Dictionary (Oxford / Collins lexicon)</option>
           </select>
           <div class="section-subtitle" style="margin-top:6px;">
             Choose your preferred translation engine and dictionary database.
@@ -256,7 +260,7 @@
           <div class="radio-option">
             <input type="radio" id="save-manual" name="translateSaveMode" value="manual" />
             <label class="radio-label-wrap" for="save-manual">
-              <div class="radio-title">✍️ Manual save (Show ⭐ Save button)</div>
+              <div class="radio-title">Manual save (Click Save button in card)</div>
               <div class="radio-desc">
                 Words are saved only when you click the "Save to My Words" button in the popup card.
               </div>
@@ -266,7 +270,7 @@
           <div class="radio-option">
             <input type="radio" id="save-subs" name="translateSaveMode" value="subtitles_only" />
             <label class="radio-label-wrap" for="save-subs">
-              <div class="radio-title">🎬 Subtitles only (Auto-save video subtitles only)</div>
+              <div class="radio-title">Subtitles only (Auto-save video subtitles only)</div>
               <div class="radio-desc">
                 Clicking a word in YouTube or Netflix subtitles automatically saves it. Webpage selections stay manual.
               </div>
@@ -276,7 +280,7 @@
           <div class="radio-option">
             <input type="radio" id="save-auto" name="translateSaveMode" value="auto" />
             <label class="radio-label-wrap" for="save-auto">
-              <div class="radio-title">⚡ Auto-save all</div>
+              <div class="radio-title">Auto-save all</div>
               <div class="radio-desc">
                 Every translated word across subtitles and webpages is instantly saved to your list.
               </div>
@@ -295,7 +299,7 @@
           <div class="radio-option">
             <input type="radio" id="mode-immediate" name="selectionMode" value="immediate" />
             <label class="radio-label-wrap" for="mode-immediate">
-              <div class="radio-title">💬 Pop-up card (Immediately display card)</div>
+              <div class="radio-title">Instant Tooltip Card (Immediately display card)</div>
               <div class="radio-desc">
                 Automatically shows the translation card as soon as text is selected anywhere on any website.
               </div>
@@ -306,7 +310,7 @@
           <div class="radio-option">
             <input type="radio" id="mode-icon" name="selectionMode" value="icon" />
             <label class="radio-label-wrap" for="mode-icon">
-              <div class="radio-title">🔘 Floating icon (Click icon to open card)</div>
+              <div class="radio-title">Floating Action Icon (Click icon to open card)</div>
               <div class="radio-desc">
                 Shows a small WordTap bubble icon next to your selection. Click it to open the card without interrupting reading flow.
               </div>
@@ -317,7 +321,7 @@
           <div class="radio-option">
             <input type="radio" id="mode-alt" name="selectionMode" value="alt" />
             <label class="radio-label-wrap" for="mode-alt">
-              <div class="radio-title">⌨️ Hold Alt / Option key while selecting</div>
+              <div class="radio-title">Hold Alt / Option key while selecting</div>
               <div class="radio-desc">
                 Only shows translation when holding the Alt / Option key while highlighting text.
               </div>
@@ -328,7 +332,7 @@
           <div class="radio-option">
             <input type="radio" id="mode-off" name="selectionMode" value="off" />
             <label class="radio-label-wrap" for="mode-off">
-              <div class="radio-title">🚫 Don't display pop-up or icon</div>
+              <div class="radio-title">Disabled (Don't display pop-up or icon)</div>
               <div class="radio-desc">
                 Disables selection translation. Video subtitles and Screen OCR (Alt+S) continue working.
               </div>

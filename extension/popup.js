@@ -147,7 +147,7 @@ function updateEnabledUI(isEnabled) {
 
 // ---------- Segmented Control for Save Mode ----------
 const SAVE_MODE_HELPERS = {
-  manual: "Click ⭐ on any translation tooltip to save",
+  manual: "Click the star on any translation card to save",
   subtitles_only: "Auto-saves words clicked in video subtitles",
   auto: "Automatically saves every translated word",
 };
@@ -842,7 +842,7 @@ async function handleQuickTranslate(text) {
     } else {
       if (saveBtn) {
         saveBtn.disabled = false;
-        saveBtn.textContent = "⭐ Save Word";
+        saveBtn.textContent = "Save Word";
         saveBtn.onclick = () => {
           safeSendMessage({
             type: "words:save",

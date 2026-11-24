@@ -578,44 +578,114 @@
 
     .btn-block { width: 100%; }
 
+    /* ── Apple-Style Instant Search Field ── */
+    .instant-search-wrap {
+      position: relative;
+      width: 100%;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+    }
+    .instant-search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      transition: color 150ms ease;
+    }
+    .instant-search-input {
+      width: 100%;
+      height: 38px;
+      padding: 0 36px 0 34px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      color: var(--ink);
+      font: inherit;
+      font-size: 12.5px;
+      outline: none;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+    }
+    .instant-search-input::placeholder {
+      color: var(--muted);
+      opacity: 0.85;
+    }
+    .instant-search-input:focus {
+      border-color: var(--subtitle);
+      box-shadow: 0 0 0 2px rgba(250, 204, 59, 0.25), 0 2px 8px rgba(0, 0, 0, 0.08);
+      background: var(--surface-elevated);
+    }
+    .instant-search-wrap:focus-within .instant-search-icon {
+      color: var(--subtitle);
+    }
+    .instant-search-btn {
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 6px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 120ms ease, background 120ms ease, transform 100ms ease;
+    }
+    .instant-search-btn:hover {
+      color: var(--ink);
+      background: var(--surface-hover);
+    }
+    .instant-search-btn:active {
+      transform: translateY(-50%) scale(0.92);
+    }
+
     /* ── Quick Settings Card ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: var(--radius-lg);
-      padding: 12px 14px;
+      padding: 13px 15px;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
 
     .card-title {
       font-size: 10.5px;
-      font-weight: 700;
+      font-weight: 750;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: var(--muted);
-      margin-bottom: 8px;
+      margin-bottom: 9px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
-    /* Segmented Control for Save Mode */
+    /* Segmented Control (Apple HIG Standards) */
     .segmented-control {
       display: flex;
       background: var(--bg);
       border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      padding: 2.5px;
-      gap: 2px;
-      margin-bottom: 5px;
+      border-radius: 10px;
+      padding: 3px;
+      gap: 3px;
+      margin-bottom: 6px;
+      box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.1);
     }
 
     .segment-btn {
       flex: 1;
-      min-height: 28px;
+      min-height: 30px;
       background: transparent;
       border: none;
-      border-radius: 9px;
+      border-radius: 7px;
       color: var(--muted);
       font: inherit;
       font-size: 11.5px;
@@ -624,16 +694,33 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
-      transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+      gap: 5px;
+      transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease, transform 100ms ease;
       white-space: nowrap;
     }
-    .segment-btn:hover { color: var(--ink); }
+    .segment-btn svg {
+      flex-shrink: 0;
+      transition: transform 120ms ease;
+    }
+    .segment-btn:hover {
+      color: var(--ink);
+      background: var(--surface-hover);
+    }
+    .segment-btn:active {
+      transform: scale(0.96);
+    }
     .segment-btn.active {
       background: var(--surface);
       color: var(--ink);
       font-weight: 700;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 1px 1px rgba(0, 0, 0, 0.08);
+    }
+    .segment-btn.active svg {
+      color: var(--subtitle);
+    }
+    html[data-theme="light"] .segment-btn.active {
+      background: #ffffff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06);
     }
     .segment-btn:focus-visible {
       outline: 2px solid var(--subtitle);
@@ -641,11 +728,11 @@
     }
 
     .helper-text {
-      font-size: 10.5px;
+      font-size: 11px;
       color: var(--muted);
       line-height: 1.35;
-      margin-bottom: 10px;
-      min-height: 15px;
+      margin-bottom: 11px;
+      min-height: 16px;
     }
 
     /* Compact Language Select Row */
@@ -654,23 +741,24 @@
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding-top: 4px;
+      padding-top: 8px;
       border-top: 1px solid var(--line);
     }
     .select-label {
       font-size: 12px;
       font-weight: 600;
       color: var(--ink-secondary);
+      flex-shrink: 0;
     }
     .select-wrap {
       position: relative;
       flex: 1;
-      max-width: 170px;
+      max-width: 180px;
     }
     .select-wrap select {
       width: 100%;
-      height: 28px;
-      padding: 2px 24px 2px 8px;
+      height: 30px;
+      padding: 2px 26px 2px 10px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--line);
       background: var(--bg);
@@ -680,8 +768,9 @@
       font-weight: 600;
       cursor: pointer;
       appearance: none;
+      -webkit-appearance: none;
       outline: none;
-      transition: border-color 140ms ease;
+      transition: border-color 140ms ease, box-shadow 140ms ease;
     }
     .select-wrap select:focus {
       border-color: var(--subtitle);
@@ -689,7 +778,7 @@
     }
     .select-arrow {
       position: absolute;
-      right: 7px;
+      right: 8px;
       top: 50%;
       transform: translateY(-50%);
       pointer-events: none;
@@ -1177,16 +1266,25 @@
             </div>
           </div>
 
-          <!-- Instant Quick Look-up Bar -->
-          <div style="position: relative; margin-top: 10px; width: 100%;">
+          <!-- Instant Quick Look-up Bar (Apple HIG Search Field) -->
+          <div class="instant-search-wrap">
+            <span class="instant-search-icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <circle cx="6.5" cy="6.5" r="4.5"/>
+                <path d="M10 10l3.8 3.8"/>
+              </svg>
+            </span>
             <input
               type="text"
               id="instantLookupInput"
-              placeholder="🔍 Search or paste word to translate…"
-              style="width: 100%; height: 34px; padding: 0 32px 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface-elevated); color: var(--ink); font-size: 12px; outline: none; transition: border-color 0.15s;"
+              class="instant-search-input"
+              placeholder="Search or paste word to translate…"
+              aria-label="Search or paste word to translate"
             />
-            <button type="button" id="instantLookupBtn" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px;" title="Translate word">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <button type="button" class="instant-search-btn" id="instantLookupBtn" title="Translate word (Enter)" aria-label="Translate word">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 3l5 5-5 5"/>
+              </svg>
             </button>
           </div>
 
@@ -1209,7 +1307,7 @@
             <div style="display: flex; gap: 6px; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 8px;">
               <span id="qtSaveStatus" style="font-size: 11px; color: var(--ok); font-weight: 600;"></span>
               <button type="button" class="btn btn-primary btn-sm" id="qtSaveBtn" style="padding: 4px 10px; font-size: 11px;">
-                ⭐ Save Word
+                Save Word
               </button>
             </div>
           </div>
@@ -1220,16 +1318,26 @@
               <span>Word Saving Mode</span>
             </div>
 
-            <!-- Segmented Control for Save Mode -->
+            <!-- Segmented Control for Save Mode (Clean Vector Icons) -->
             <div class="segmented-control" role="radiogroup" aria-label="Word saving mode">
               <button type="button" class="segment-btn active" data-mode="manual" role="radio" aria-checked="true" title="Manual: save with ⭐ button">
-                <span>⭐ Manual</span>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  <polygon points="8 1.5 10.2 5.8 15 6.5 11.5 9.9 12.3 14.7 8 12.4 3.7 14.7 4.5 9.9 1 6.5 5.8 5.8 8 1.5"/>
+                </svg>
+                <span>Manual</span>
               </button>
               <button type="button" class="segment-btn" data-mode="subtitles_only" role="radio" aria-checked="false" title="Subtitles: auto-save video subtitles">
-                <span>🎬 Subtitles</span>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="1.5" y="3" width="13" height="10" rx="2"/>
+                  <path d="M4.5 6.5h7M4.5 9.5h4"/>
+                </svg>
+                <span>Subtitles</span>
               </button>
               <button type="button" class="segment-btn" data-mode="auto" role="radio" aria-checked="false" title="Auto: save every translated word">
-                <span>⚡ Auto</span>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  <polygon points="9 1.5 3.5 8.5 7.5 8.5 7 14.5 12.5 7.5 8.5 7.5 9 1.5"/>
+                </svg>
+                <span>Auto</span>
               </button>
             </div>
             <!-- Dynamic Helper Text -->
@@ -1238,25 +1346,25 @@
             <!-- Compact Translate To Row -->
             <div class="select-row">
               <label class="select-label" for="lang">Translate into</label>
-              <div class="select-wrap">
+              <div class="select-wrap" dir="ltr">
                 <select id="lang" aria-label="Translate to language">
-                  <option value="ar">العربية (Arabic)</option>
+                  <option value="ar">Arabic (العربية)</option>
                   <option value="en">English</option>
-                  <option value="fr">Français</option>
-                  <option value="es">Español</option>
-                  <option value="de">Deutsch</option>
-                  <option value="it">Italiano</option>
-                  <option value="pt">Português</option>
-                  <option value="tr">Türkçe</option>
-                  <option value="ru">Русский</option>
-                  <option value="zh-CN">中文 (简体)</option>
-                  <option value="ja">日本語</option>
-                  <option value="ko">한국어</option>
-                  <option value="hi">हिन्दी</option>
-                  <option value="ur">اردو</option>
-                  <option value="fa">فارسی</option>
+                  <option value="fr">French (Français)</option>
+                  <option value="es">Spanish (Español)</option>
+                  <option value="de">German (Deutsch)</option>
+                  <option value="it">Italian (Italiano)</option>
+                  <option value="pt">Portuguese (Português)</option>
+                  <option value="tr">Turkish (Türkçe)</option>
+                  <option value="ru">Russian (Русский)</option>
+                  <option value="zh-CN">Chinese (中文)</option>
+                  <option value="ja">Japanese (日本語)</option>
+                  <option value="ko">Korean (한국어)</option>
+                  <option value="hi">Hindi (हिन्दी)</option>
+                  <option value="ur">Urdu (اردو)</option>
+                  <option value="fa">Persian (فارسی)</option>
                 </select>
-                <div class="select-arrow">
+                <div class="select-arrow" aria-hidden="true">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
                 </div>
               </div>
@@ -1379,9 +1487,24 @@
           <div class="card-title">Appearance</div>
           <p style="font-size:11.5px;color:var(--muted);margin-bottom:6px;">Choose theme mode:</p>
           <div class="segmented-control" id="themeSegmentedControl" role="radiogroup" aria-label="Theme mode" style="margin-bottom:4px;">
-            <button type="button" class="segment-btn active" data-theme-val="dark" role="radio" aria-checked="true">🌙 Dark</button>
-            <button type="button" class="segment-btn" data-theme-val="light" role="radio" aria-checked="false">☀️ Light</button>
-            <button type="button" class="segment-btn" data-theme-val="system" role="radio" aria-checked="false">💻 Auto</button>
+            <button type="button" class="segment-btn active" data-theme-val="dark" role="radio" aria-checked="true">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M13.5 9A6 6 0 117 2.5a4.5 4.5 0 006.5 6.5z"/>
+              </svg>
+              <span>Dark</span>
+            </button>
+            <button type="button" class="segment-btn" data-theme-val="light" role="radio" aria-checked="false">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="8" cy="8" r="3.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2"/>
+              </svg>
+              <span>Light</span>
+            </button>
+            <button type="button" class="segment-btn" data-theme-val="system" role="radio" aria-checked="false">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="1.5" y="2.5" width="13" height="9" rx="1.5"/><path d="M5 14h6M8 11.5V14"/>
+              </svg>
+              <span>Auto</span>
+            </button>
           </div>
         </div>
 
@@ -1391,8 +1514,8 @@
           <p style="font-size:11.5px;color:var(--muted);margin-bottom:6px;">Choose dictionary and translation engine:</p>
           <div class="select-wrap" style="max-width:100%;margin-bottom:12px;">
             <select id="translationProvider" class="field" style="height:34px;margin-bottom:0;">
-              <option value="google">🌐 Google Translate (Fast machine translation)</option>
-              <option value="udictionary">📖 U-Dictionary (Oxford / Collins definitions)</option>
+              <option value="google">Google Translate (Fast contextual)</option>
+              <option value="udictionary">U-Dictionary (Oxford / Collins lexicon)</option>
             </select>
             <div class="select-arrow" style="right:10px;">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
@@ -1403,9 +1526,9 @@
           <p style="font-size:11.5px;color:var(--muted);margin-bottom:6px;">When you select text on a webpage:</p>
           <div class="select-wrap" style="max-width:100%;margin-bottom:12px;">
             <select id="selectionMode" class="field" style="height:34px;margin-bottom:0;">
-              <option value="immediate">💬 Pop-up card (Show card immediately)</option>
-              <option value="icon">🔘 Floating icon (Click icon to show card)</option>
-              <option value="off">🚫 Disabled (Don't translate selections)</option>
+              <option value="immediate">Instant Tooltip Card (Show card immediately)</option>
+              <option value="icon">Floating Action Icon (Click icon to show card)</option>
+              <option value="off">Disabled (Don't translate selections)</option>
             </select>
             <div class="select-arrow" style="right:10px;">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
