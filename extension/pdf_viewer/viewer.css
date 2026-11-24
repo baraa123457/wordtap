@@ -1,0 +1,435 @@
+/* WordTap Custom PDF Viewer Stylesheet */
+:root {
+  --bg: #0b0d1e;
+  --surface: #141731;
+  --surface-elevated: #1b1f42;
+  --surface-hover: #222752;
+  --ink: #eef1ff;
+  --ink-secondary: #c5caea;
+  --muted: #959cc2;
+  --line: rgba(230, 235, 255, 0.1);
+  --line-strong: rgba(230, 235, 255, 0.18);
+  --subtitle: #facc3b;
+  --subtitle-hover: #ffe270;
+  --ok: #10b981;
+  --bad: #ef4444;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --header-height: 48px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Readex Pro", system-ui, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Top Header Toolbar ──────────────────────────────────────────────────── */
+.viewer-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  z-index: 1000;
+  gap: 12px;
+  user-select: none;
+}
+
+.header-left, .header-center, .header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+
+.brand-logo {
+  width: 24px;
+  height: 17px;
+  display: block;
+}
+
+.brand-title {
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+.brand-word { color: var(--ink); }
+.brand-tap { color: var(--subtitle); }
+
+.doc-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--line-strong);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.doc-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+}
+.doc-name:hover {
+  color: var(--ink);
+}
+
+/* Header Buttons & Inputs */
+.nav-btn, .zoom-btn, .find-btn {
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+}
+.nav-btn:hover, .zoom-btn:hover, .find-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--line-strong);
+  color: #fff;
+}
+.nav-btn:disabled, .zoom-btn:disabled, .find-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: var(--line);
+}
+
+.page-num-input {
+  width: 44px;
+  height: 28px;
+  text-align: center;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  outline: none;
+}
+.page-num-input:focus {
+  border-color: var(--subtitle);
+  box-shadow: 0 0 0 2px rgba(250, 204, 59, 0.2);
+}
+
+.page-count-text {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  min-width: 32px;
+}
+
+.scale-select {
+  height: 28px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-elevated);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+.scale-select:focus {
+  border-color: var(--subtitle);
+}
+
+/* Find Box */
+.find-box-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0 4px;
+  gap: 2px;
+}
+.find-box-wrap:focus-within {
+  border-color: var(--subtitle);
+}
+
+.find-input {
+  height: 26px;
+  width: 140px;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 11.5px;
+  outline: none;
+  padding: 0 4px;
+}
+
+.find-count {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 0 4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.find-btn {
+  height: 22px;
+  width: 22px;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+.find-btn:hover {
+  background: var(--surface-hover);
+}
+
+.ocr-tool-btn {
+  background: rgba(250, 204, 59, 0.12);
+  color: var(--subtitle);
+  border: 1px solid rgba(250, 204, 59, 0.35);
+  font-weight: 700;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.ocr-tool-btn:hover {
+  background: var(--subtitle);
+  color: #12152e;
+}
+
+/* ── PDF Container & Viewer Canvas ───────────────────────────────────────── */
+.viewer-container {
+  position: absolute;
+  top: var(--header-height);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  overflow: auto;
+  outline: none;
+  background-color: var(--bg);
+  display: flex;
+  justify-content: center;
+}
+
+.pdfViewer {
+  padding: 24px 0 60px;
+  background-color: transparent !important;
+}
+
+/* Ensure clean page presentation: crisp white page with subtle elevation */
+.pdfViewer .page {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+  border-radius: 4px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+  margin: 0 auto 20px !important;
+  position: relative;
+}
+
+/* PDF.js Text Layer Quirks Fix: Guaranteed clean DOM selection & styling */
+.textLayer {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: text;
+  opacity: 1 !important;
+}
+
+.textLayer span {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: text;
+}
+
+/* Eliminate selection glitches from PDF.js endOfContent marker */
+.textLayer .endOfContent {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  pointer-events: none !important;
+  display: none !important;
+  height: 0 !important;
+}
+
+/* Text highlight selection color matching signature WordTap yellow */
+::selection {
+  background: rgba(250, 204, 59, 0.38) !important;
+  color: inherit !important;
+}
+
+/* ── Loading Spinner Overlay ─────────────────────────────────────────────── */
+.loading-overlay {
+  position: absolute;
+  inset: var(--header-height) 0 0 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 2000;
+  transition: opacity 0.2s ease;
+}
+
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(250, 204, 59, 0.2);
+  border-top-color: var(--subtitle);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ── Error & Fallback Overlay ────────────────────────────────────────────── */
+.error-overlay {
+  position: absolute;
+  inset: var(--header-height) 0 0 0;
+  background: var(--bg);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 2000;
+}
+
+.error-card {
+  max-width: 440px;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+}
+
+.error-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.error-title {
+  font-size: 16px;
+  font-weight: 750;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.error-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 18px;
+  word-break: break-word;
+}
+
+.error-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.error-btn {
+  background: var(--subtitle);
+  color: #12152e;
+  border: none;
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.error-btn:hover {
+  background: var(--subtitle-hover);
+}
+
+/* Scanned PDF Notification Pill */
+.scanned-banner {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(14, 16, 34, 0.94);
+  border: 1px solid rgba(250, 204, 59, 0.4);
+  color: var(--ink);
+  padding: 8px 16px;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  display: none;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  z-index: 1500;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.scanned-banner-btn {
+  background: var(--subtitle);
+  color: #12152e;
+  border: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 11.5px;
+  cursor: pointer;
+}

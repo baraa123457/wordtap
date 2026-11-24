@@ -1353,8 +1353,13 @@
         }
       } catch (_) {}
 
+      const isViewer = Boolean(window.__WORDTAP_PDF_SOURCE__?.isPdf);
+      const pdfSource = window.__WORDTAP_PDF_SOURCE__;
+
       const titleContext =
-        surrounding && surrounding.length > text.length
+        isViewer
+          ? (pdfSource.title || document.title)
+          : surrounding && surrounding.length > text.length
           ? `"${surrounding}" — ${document.title}`
           : document.title;
 
@@ -1363,10 +1368,10 @@
         translation: res.text,
         lang: target,
         src: res.src,
-        page: location.href,
+        page: isViewer ? (pdfSource.url || "") : location.href,
         title: titleContext,
         sentence: surrounding,
-        source: "selection",
+        source: isViewer ? "pdf" : "selection",
       };
       finaliseCard(rect, res.text, RTL_LANGS.includes(target), entry, {
         alternatives: res.alternatives,
@@ -1556,7 +1561,12 @@
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed) return;
 
-    const text = sel.toString().trim();
+    let rawSelected = sel.toString();
+    // Fix PDF.js and web selection quirks:
+    // 1. Join hyphenated line breaks: "trans-\nlation" -> "translation"
+    rawSelected = rawSelected.replace(/(\p{L}+)-\s*[\r\n]+\s*(\p{L}+)/gu, "$1$2");
+    // 2. Collapse line breaks and multiple whitespace into clean single spaces
+    const text = rawSelected.replace(/\s+/g, " ").trim();
     if (!text || text.length === 0) return;
     if (text === lastText && (card.style.display === "flex" || iconBtn.style.display === "flex")) {
       return;
@@ -1806,15 +1816,18 @@
                   posBadge.style.display = "none";
                 }
 
+                const isViewer = Boolean(window.__WORDTAP_PDF_SOURCE__?.isPdf);
+                const pdfSource = window.__WORDTAP_PDF_SOURCE__;
+
                 const entry = {
                   text: cleanText,
                   translation: ocrRes.translation,
                   lang: settings.targetLang,
                   src: ocrRes.src || "en",
-                  page: location.href,
-                  title: `[OCR] ${document.title}`,
+                  page: isViewer ? (pdfSource.url || "") : location.href,
+                  title: isViewer ? (pdfSource.title || `[OCR] ${document.title}`) : `[OCR] ${document.title}`,
                   sentence: cleanText,
-                  source: "selection",
+                  source: isViewer ? "pdf" : "selection",
                 };
 
                 finaliseCard(

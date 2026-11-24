@@ -885,18 +885,87 @@ const initialQuery = urlParams.get("word") || urlParams.get("q");
 if (initialQuery) {
   handleQuickTranslate(initialQuery);
 } else {
-  chrome.tabs?.query({ active: true, currentWindow: true }, async (tabs) => {
-    const tab = tabs && tabs[0];
-    if (!tab?.id || !chrome.scripting) return;
-    try {
-      const results = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => window.getSelection()?.toString() || "",
-      });
-      const selected = results && results[0] && results[0].result ? results[0].result.trim() : "";
-      if (selected && selected.length > 0 && selected.length < 150) {
-        handleQuickTranslate(selected);
+  // ---------- PDF Tab Detection & "Read with WordTap" Banner ----------
+function checkPdfTab(tab) {
+  const pdfBanner = $("pdfBanner");
+  if (!pdfBanner) return;
+
+  const url = tab && tab.url ? tab.url : "";
+  const isPdf = /\.pdf($|[?#])/i.test(url) || url.includes("pdf_viewer/viewer.html");
+
+  if (!isPdf || !tab?.id) {
+    pdfBanner.style.display = "none";
+    return;
+  }
+
+  pdfBanner.style.display = "flex";
+  const readBtn = $("readWithWordTapBtn");
+  const actionArea = $("pdfActionArea");
+  const fileNotice = $("pdfFileAccessNotice");
+  const enableAccessBtn = $("enableFileAccessBtn");
+
+  // If already in WordTap reader, indicate active reader mode
+  if (url.includes("pdf_viewer/viewer.html")) {
+    if (readBtn) {
+      readBtn.innerHTML = `<span>✓ Currently reading in WordTap</span>`;
+      readBtn.disabled = true;
+      readBtn.style.opacity = "0.75";
+    }
+    return;
+  }
+
+  if (url.startsWith("file://") && chrome.extension && chrome.extension.isAllowedFileSchemeAccess) {
+    chrome.extension.isAllowedFileSchemeAccess((isAllowed) => {
+      if (!isAllowed) {
+        if (actionArea) actionArea.style.display = "none";
+        if (fileNotice) fileNotice.style.display = "block";
+        if (enableAccessBtn) {
+          enableAccessBtn.onclick = () => {
+            chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` });
+          };
+        }
+      } else {
+        setupReadButton();
       }
-    } catch (_) {}
-  });
+    });
+  } else {
+    setupReadButton();
+  }
+
+  function setupReadButton() {
+    if (actionArea) actionArea.style.display = "block";
+    if (fileNotice) fileNotice.style.display = "none";
+    if (readBtn) {
+      readBtn.disabled = false;
+      readBtn.innerHTML = `<span>📖 Read with WordTap</span>`;
+      readBtn.onclick = () => {
+        const viewerUrl =
+          chrome.runtime.getURL("pdf_viewer/viewer.html") + "?file=" + encodeURIComponent(tab.url);
+        chrome.tabs.update(tab.id, { url: viewerUrl });
+        window.close();
+      };
+    }
+  }
+}
+
+chrome.tabs?.query({ active: true, currentWindow: true }, async (tabs) => {
+  const tab = tabs && tabs[0];
+  if (tab) checkPdfTab(tab);
+
+  if (!tab?.id || !chrome.scripting) return;
+  // Don't attempt executeScript on chrome:// or chrome-extension:// tabs
+  const tabUrl = (tab.url || "").toLowerCase();
+  if (tabUrl.startsWith("chrome://") || tabUrl.startsWith("chrome-extension://")) return;
+
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => window.getSelection()?.toString() || "",
+    });
+    const selected = results && results[0] && results[0].result ? results[0].result.trim() : "";
+    if (selected && selected.length > 0 && selected.length < 150) {
+      handleQuickTranslate(selected);
+    }
+  } catch (_) {}
+});
 }

@@ -932,6 +932,18 @@ function setupContextMenus() {
         contexts: ["selection"],
       });
       chrome.contextMenus.create({
+        id: "wordtap-open-pdf-page",
+        title: "Open in WordTap Reader",
+        contexts: ["page"],
+        documentUrlPatterns: ["*://*/*.pdf*", "file://*/*.pdf*"],
+      });
+      chrome.contextMenus.create({
+        id: "wordtap-open-pdf-link",
+        title: "Open in WordTap Reader",
+        contexts: ["link"],
+        targetUrlPatterns: ["*://*/*.pdf*", "file://*/*.pdf*"],
+      });
+      chrome.contextMenus.create({
         id: "wordtap-ocr-snip",
         title: "WordTap: Capture Screen Text (OCR)",
         contexts: ["page", "video", "image"],
@@ -1010,6 +1022,20 @@ if (chrome.contextMenus?.onClicked) {
     if (!tab?.id) return;
     if (info.menuItemId === "wordtap-translate-selection" && info.selectionText) {
       handleSelectionTranslation(tab, info.selectionText);
+    } else if (info.menuItemId === "wordtap-open-pdf-page") {
+      const target = tab.url;
+      if (target) {
+        chrome.tabs.create({
+          url: chrome.runtime.getURL("pdf_viewer/viewer.html?file=" + encodeURIComponent(target)),
+        });
+      }
+    } else if (info.menuItemId === "wordtap-open-pdf-link") {
+      const target = info.linkUrl;
+      if (target) {
+        chrome.tabs.create({
+          url: chrome.runtime.getURL("pdf_viewer/viewer.html?file=" + encodeURIComponent(target)),
+        });
+      }
     } else if (info.menuItemId === "wordtap-ocr-snip") {
       startSnipOnTab(tab.id);
     }

@@ -9,7 +9,7 @@ export interface MediaDeck {
   badge: string;
   emoji: string;
   gradient: string;
-  sourceType: "netflix" | "youtube" | "vlc" | "prime" | "disney" | "web" | "general";
+  sourceType: "netflix" | "youtube" | "vlc" | "prime" | "disney" | "web" | "general" | "pdf";
   sourceUrl?: string;
   words: Word[];
   wordCount: number;
@@ -69,6 +69,11 @@ export function cleanMediaTitle(rawTitle: string, rawUrl: string = ""): {
     sourceType = "vlc";
     categoryLabel = "WordTap VLC Player";
     emoji = "🍿";
+  } else if (url.includes(".pdf") || url === "pdf" || text.toLowerCase().endsWith(".pdf")) {
+    sourceType = "pdf";
+    categoryLabel = "PDF Document";
+    emoji = "📄";
+    text = text.replace(/\.pdf$/i, "").trim();
   } else if (url.startsWith("http://") || url.startsWith("https://")) {
     sourceType = "web";
     categoryLabel = "Web Article";

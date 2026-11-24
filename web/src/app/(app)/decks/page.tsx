@@ -20,6 +20,7 @@ import { useAuth } from "@/context/AuthContext";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import {
   AcademicIcon,
+  BookOpenIcon,
   BriefcaseIcon,
   CheckIcon,
   CloseIcon,
@@ -41,6 +42,9 @@ function getDeckCategoryIcon(category: string, sourceType?: string) {
   }
   if (sourceType === "youtube") {
     return <YoutubeIcon size={14} className="shrink-0 text-red-500" />;
+  }
+  if (sourceType === "pdf") {
+    return <BookOpenIcon size={14} className="shrink-0 text-amber-600 dark:text-amber-400" />;
   }
   if (sourceType === "vlc") {
     return <FilmIcon size={14} className="shrink-0 text-amber-600 dark:text-amber-400" />;
