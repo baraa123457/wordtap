@@ -1458,6 +1458,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case "config:get-web-url":
       return reply(getWebsiteUrl().then((url) => ({ ok: true, url })));
     case "save":
+    case "words:save":
       return reply(saveWord(msg.entry));
     case "word:is-saved":
       return reply(isWordSavedInDb(msg.text).then((saved) => ({ ok: true, saved })));
@@ -1480,6 +1481,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case "sync":
       return reply(syncNow());
     default:
-      return undefined;
+      return reply(Promise.resolve({ ok: false, error: "unknown_message_type" }));
   }
 });

@@ -2,7 +2,25 @@ import { CONFIG, getWebsiteUrl } from "./config.js";
 
 const RTL = ["ar", "fa", "ur", "he"];
 const $ = (id) => document.getElementById(id);
-const send = (msg) => new Promise((resolve) => chrome.runtime.sendMessage(msg, resolve));
+
+function safeSendMessage(msg, callback) {
+  try {
+    chrome.runtime.sendMessage(msg, (res) => {
+      if (chrome.runtime && chrome.runtime.lastError) {
+        if (callback) callback(null);
+        return;
+      }
+      if (callback) callback(res);
+    });
+  } catch (_) {
+    if (callback) callback(null);
+  }
+}
+
+const send = (msg) =>
+  new Promise((resolve) => {
+    safeSendMessage(msg, resolve);
+  });
 
 // ---------- View Navigation (Home <-> Settings) ----------
 const viewHome = $("viewHome");
@@ -721,7 +739,7 @@ function updateSubtitleHealthUI() {
   const details = $("subtitleHealthDetails");
   if (!badge || !details) return;
 
-  chrome.runtime.sendMessage({ type: "telemetry:get-health" }, (res) => {
+  safeSendMessage({ type: "telemetry:get-health" }, (res) => {
     if (!res || !res.ok || !res.health) return;
     const healthMap = res.health;
     const platforms = Object.keys(healthMap);
@@ -772,7 +790,7 @@ async function handleQuickTranslate(text) {
   const s = await chrome.storage.sync.get({ targetLang: "ar", translateSaveMode: "manual", saveWords: false }).catch(() => ({}));
   const target = s.targetLang || "ar";
 
-  chrome.runtime.sendMessage({ type: "translate", text: clean, target, srcLang: "auto" }, (res) => {
+  safeSendMessage({ type: "translate", text: clean, target, srcLang: "auto" }, (res) => {
     if (!res || !res.ok) {
       trEl.textContent = "Translation unavailable";
       return;
@@ -806,7 +824,7 @@ async function handleQuickTranslate(text) {
 
     const shouldAutoSave = s.translateSaveMode === "auto" || s.saveWords === true;
     if (shouldAutoSave) {
-      chrome.runtime.sendMessage({
+      safeSendMessage({
         type: "words:save",
         entry: {
           text: clean,
@@ -826,7 +844,7 @@ async function handleQuickTranslate(text) {
         saveBtn.disabled = false;
         saveBtn.textContent = "⭐ Save Word";
         saveBtn.onclick = () => {
-          chrome.runtime.sendMessage({
+          safeSendMessage({
             type: "words:save",
             entry: {
               text: clean,
@@ -840,6 +858,9 @@ async function handleQuickTranslate(text) {
           saveBtn.disabled = true;
           if (statusEl) statusEl.textContent = "✓ Saved to WordTap";
         };
+      }
+    }
+  });
       }
     }
   });
