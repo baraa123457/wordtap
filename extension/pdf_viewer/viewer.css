@@ -1,23 +1,74 @@
-/* WordTap Custom PDF Viewer Stylesheet */
+/* ==========================================================================
+   WordTap Custom PDF Viewer Stylesheet
+   Designed under Apple HIG & UI/UX Pro Max Intelligence Standards
+   ========================================================================== */
+
 :root {
   --bg: #0b0d1e;
   --surface: #141731;
-  --surface-elevated: #1b1f42;
-  --surface-hover: #222752;
-  --ink: #eef1ff;
-  --ink-secondary: #c5caea;
-  --muted: #959cc2;
-  --line: rgba(230, 235, 255, 0.1);
-  --line-strong: rgba(230, 235, 255, 0.18);
+  --surface-translucent: rgba(18, 22, 48, 0.8);
+  --surface-elevated: rgba(255, 255, 255, 0.06);
+  --surface-hover: rgba(255, 255, 255, 0.11);
+  --surface-active: rgba(255, 255, 255, 0.16);
+  
+  --ink: #f0f3ff;
+  --ink-secondary: #c8cef0;
+  --muted: #8e96bf;
+  
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  
   --subtitle: #facc3b;
   --subtitle-hover: #ffe270;
+  --subtitle-glow: rgba(250, 204, 59, 0.22);
+  
   --ok: #10b981;
   --bad: #ef4444;
-  --radius-sm: 6px;
+  
+  --radius-xs: 4px;
+  --radius-sm: 7px;
   --radius-md: 10px;
-  --header-height: 48px;
+  --radius-pill: 9999px;
+  
+  --header-height: 50px;
+  --spring-easing: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ── Reading Ambience Themes ─────────────────────────────────────────────── */
+body[data-reader-theme="dark"] {
+  --bg: #0b0d1e;
+  --surface-translucent: rgba(15, 18, 40, 0.82);
+  --page-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --page-border: rgba(255, 255, 255, 0.08);
+}
+
+body[data-reader-theme="sepia"] {
+  --bg: #ebd8bd;
+  --surface-translucent: rgba(38, 30, 22, 0.86);
+  --ink: #fbf6ec;
+  --ink-secondary: #ded3c1;
+  --muted: #a69883;
+  --line: rgba(255, 255, 255, 0.12);
+  --page-shadow: 0 10px 32px rgba(80, 60, 35, 0.22), 0 2px 6px rgba(80, 60, 35, 0.12);
+  --page-border: rgba(140, 110, 70, 0.15);
+}
+
+body[data-reader-theme="light"] {
+  --bg: #e6e9ef;
+  --surface-translucent: rgba(246, 248, 252, 0.88);
+  --ink: #161a33;
+  --ink-secondary: #3d4366;
+  --muted: #727a9e;
+  --line: rgba(0, 0, 0, 0.08);
+  --line-strong: rgba(0, 0, 0, 0.14);
+  --surface-elevated: rgba(0, 0, 0, 0.04);
+  --surface-hover: rgba(0, 0, 0, 0.07);
+  --surface-active: rgba(0, 0, 0, 0.1);
+  --page-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.06);
+  --page-border: rgba(0, 0, 0, 0.1);
+}
+
+/* ── Reset & Baseline ────────────────────────────────────────────────────── */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -33,17 +84,28 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Readex Pro", system-ui, sans-serif;
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease;
 }
 
-/* ── Top Header Toolbar ──────────────────────────────────────────────────── */
+/* Focus Indicator (WCAG 2.2 / UI-UX Pro Max) */
+:focus-visible {
+  outline: 2px solid var(--subtitle) !important;
+  outline-offset: 2px !important;
+}
+
+/* ── Liquid Glass Header Toolbar ─────────────────────────────────────────── */
 .viewer-header {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: var(--header-height);
-  background: var(--surface);
+  background: var(--surface-translucent);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
   border-bottom: 1px solid var(--line);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -51,6 +113,7 @@ html, body {
   z-index: 1000;
   gap: 12px;
   user-select: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .header-left, .header-center, .header-right {
@@ -64,6 +127,17 @@ html, body {
   min-width: 0;
 }
 
+.header-center {
+  flex-shrink: 0;
+}
+
+.header-right {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+/* ── Brand Badge ─────────────────────────────────────────────────────────── */
 .brand-badge {
   display: inline-flex;
   align-items: center;
@@ -71,16 +145,21 @@ html, body {
   text-decoration: none;
   color: var(--ink);
   flex-shrink: 0;
+  transition: transform 0.12s var(--spring-easing);
+}
+.brand-badge:hover {
+  transform: translateY(-0.5px);
 }
 
 .brand-logo {
   width: 24px;
   height: 17px;
   display: block;
+  flex-shrink: 0;
 }
 
 .brand-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 750;
   letter-spacing: -0.02em;
 }
@@ -95,117 +174,198 @@ html, body {
   flex-shrink: 0;
 }
 
-.doc-name {
-  font-size: 12.5px;
-  font-weight: 600;
+/* Document Title Pill */
+.doc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
   color: var(--muted);
+  cursor: default;
+  transition: all 0.15s ease;
+}
+.doc-badge:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.doc-icon {
+  flex-shrink: 0;
+  color: var(--subtitle);
+  opacity: 0.85;
+}
+
+.doc-name {
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
-  padding: 3px 8px;
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--line);
-}
-.doc-name:hover {
-  color: var(--ink);
 }
 
-/* Header Buttons & Inputs */
-.nav-btn, .zoom-btn, .find-btn {
+/* ── Segmented Control Clusters (Apple HIG) ──────────────────────────────── */
+.control-segment {
+  display: inline-flex;
+  align-items: center;
   background: var(--surface-elevated);
   border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 2px;
+  gap: 2px;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.15);
+}
+
+.segment-btn {
+  background: transparent;
+  border: none;
   color: var(--ink);
   height: 28px;
-  padding: 0 8px;
-  border-radius: var(--radius-sm);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  width: 28px;
+  border-radius: 7px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.12s ease;
+  transition: all 0.12s var(--spring-easing);
 }
-.nav-btn:hover, .zoom-btn:hover, .find-btn:hover {
+.segment-btn:hover {
   background: var(--surface-hover);
-  border-color: var(--line-strong);
-  color: #fff;
+  color: #ffffff;
 }
-.nav-btn:disabled, .zoom-btn:disabled, .find-btn:disabled {
-  opacity: 0.35;
+.segment-btn:active {
+  transform: scale(0.92);
+  background: var(--surface-active);
+}
+.segment-btn:disabled {
+  opacity: 0.3;
   cursor: not-allowed;
-  border-color: var(--line);
+  transform: none;
+}
+
+/* Page Navigation Cluster */
+.page-field-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
 }
 
 .page-num-input {
-  width: 44px;
-  height: 28px;
+  width: 38px;
+  height: 26px;
   text-align: center;
-  background: var(--bg);
+  background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   color: var(--ink);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   outline: none;
+  -moz-appearance: textfield;
+}
+.page-num-input::-webkit-outer-spin-button,
+.page-num-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 .page-num-input:focus {
   border-color: var(--subtitle);
-  box-shadow: 0 0 0 2px rgba(250, 204, 59, 0.2);
+  box-shadow: 0 0 0 2px var(--subtitle-glow);
 }
 
 .page-count-text {
   font-size: 12px;
   color: var(--muted);
   font-weight: 600;
-  min-width: 32px;
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  user-select: none;
+}
+
+/* Zoom Dropdown Cluster */
+.select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
 }
 
 .scale-select {
   height: 28px;
-  padding: 0 6px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  background: var(--surface-elevated);
+  padding: 0 22px 0 8px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
   color: var(--ink);
   font: inherit;
   font-size: 12px;
   font-weight: 600;
   outline: none;
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: background-color 0.12s ease;
+}
+.scale-select:hover {
+  background: var(--surface-hover);
 }
 .scale-select:focus {
-  border-color: var(--subtitle);
+  background: var(--surface-hover);
+  box-shadow: 0 0 0 2px var(--subtitle-glow);
+}
+.scale-select option {
+  background-color: #12152b;
+  color: #eef1ff;
 }
 
-/* Find Box */
+.select-chevron {
+  position: absolute;
+  right: 6px;
+  pointer-events: none;
+  color: var(--muted);
+}
+
+/* ── Search Bar Component ────────────────────────────────────────────────── */
 .find-box-wrap {
   display: flex;
   align-items: center;
   background: var(--surface-elevated);
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 0 4px;
-  gap: 2px;
+  border-radius: 9px;
+  padding: 2px 4px 2px 8px;
+  gap: 3px;
+  transition: all 0.15s ease;
 }
 .find-box-wrap:focus-within {
   border-color: var(--subtitle);
+  box-shadow: 0 0 0 2px var(--subtitle-glow);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.find-icon {
+  color: var(--muted);
+  flex-shrink: 0;
 }
 
 .find-input {
   height: 26px;
-  width: 140px;
+  width: 125px;
   background: transparent;
   border: none;
   color: var(--ink);
   font: inherit;
-  font-size: 11.5px;
+  font-size: 12px;
   outline: none;
   padding: 0 4px;
+}
+.find-input::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
 }
 
 .find-count {
@@ -217,37 +377,111 @@ html, body {
 }
 
 .find-btn {
-  height: 22px;
-  width: 22px;
+  height: 24px;
+  width: 24px;
   padding: 0;
   background: transparent;
   border: none;
+  color: var(--ink);
+  border-radius: 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.1s ease;
 }
 .find-btn:hover {
   background: var(--surface-hover);
+}
+.find-btn:active {
+  transform: scale(0.92);
+}
+
+/* ── Utility Buttons (Theme, OCR, Popout) ────────────────────────────────── */
+.theme-toggle-btn {
+  height: 32px;
+  width: 32px;
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s var(--spring-easing);
+  flex-shrink: 0;
+}
+.theme-toggle-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--line-strong);
+  transform: scale(1.05);
+}
+.theme-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+.theme-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--subtitle);
+  display: block;
+  transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
 .ocr-tool-btn {
   background: rgba(250, 204, 59, 0.12);
   color: var(--subtitle);
-  border: 1px solid rgba(250, 204, 59, 0.35);
+  border: 1px solid rgba(250, 204, 59, 0.38);
   font-weight: 700;
-  height: 28px;
+  height: 32px;
   padding: 0 10px;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   font-size: 11.5px;
+  letter-spacing: 0.02em;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: all 0.12s var(--spring-easing);
+  flex-shrink: 0;
 }
 .ocr-tool-btn:hover {
   background: var(--subtitle);
   color: #12152e;
+  border-color: var(--subtitle);
+  box-shadow: 0 2px 8px var(--subtitle-glow);
+  transform: translateY(-0.5px);
+}
+.ocr-tool-btn:active {
+  transform: scale(0.95);
 }
 
-/* ── PDF Container & Viewer Canvas ───────────────────────────────────────── */
+.open-original-btn {
+  height: 32px;
+  width: 32px;
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s var(--spring-easing);
+  flex-shrink: 0;
+}
+.open-original-btn:hover {
+  background: var(--surface-hover);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+.open-original-btn:active {
+  transform: scale(0.92);
+}
+
+/* ── PDF Container & Canvas Scroll Area ─────────────────────────────────── */
 .viewer-container {
   position: absolute;
   top: var(--header-height);
@@ -256,7 +490,7 @@ html, body {
   left: 0;
   overflow: auto;
   outline: none;
-  background-color: var(--bg);
+  background-color: transparent;
   display: flex;
   justify-content: center;
 }
@@ -266,17 +500,23 @@ html, body {
   background-color: transparent !important;
 }
 
-/* Ensure clean page presentation: crisp white page with subtle elevation */
+/* Crisp white document page with ambient soft shadow */
 .pdfViewer .page {
   background-color: #ffffff !important;
-  border: 1px solid rgba(0, 0, 0, 0.15) !important;
-  border-radius: 4px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid var(--page-border) !important;
+  border-radius: 3px;
+  box-shadow: var(--page-shadow) !important;
   margin: 0 auto 20px !important;
   position: relative;
+  transition: box-shadow 0.2s ease;
 }
 
-/* PDF.js Text Layer Quirks Fix: Guaranteed clean DOM selection & styling */
+.pdfViewer .page canvas {
+  margin: 0;
+  display: block;
+}
+
+/* ── PDF.js Text Layer (Guaranteed Transparent for Crisp Glyphs) ─────────── */
 .textLayer {
   user-select: text !important;
   -webkit-user-select: text !important;
@@ -291,7 +531,6 @@ html, body {
   color: transparent !important;
 }
 
-/* Eliminate selection glitches from PDF.js endOfContent marker */
 .textLayer .endOfContent {
   user-select: none !important;
   -webkit-user-select: none !important;
@@ -300,15 +539,12 @@ html, body {
   height: 0 !important;
 }
 
-/* Global page selection */
 ::selection {
   background: rgba(250, 204, 59, 0.38);
   color: inherit;
 }
 
-/* CRITICAL: TextLayer spans MUST remain 100% transparent even when selected.
-   This prevents system fallback fonts from drawing over the vector canvas glyphs
-   and causing blurry "ghosting" or double-vision text during word selection. */
+/* TextLayer spans MUST stay transparent during selection to eliminate ghosting */
 .textLayer ::selection,
 .textLayer *::selection,
 .textLayer span::selection {
@@ -316,7 +552,7 @@ html, body {
   color: transparent !important;
 }
 
-/* ── Loading Spinner Overlay ─────────────────────────────────────────────── */
+/* ── Loading Overlay ─────────────────────────────────────────────────────── */
 .loading-overlay {
   position: absolute;
   inset: var(--header-height) 0 0 0;
@@ -325,18 +561,18 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 16px;
   z-index: 2000;
   transition: opacity 0.2s ease;
 }
 
 .loading-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid rgba(250, 204, 59, 0.2);
+  width: 38px;
+  height: 38px;
+  border: 3.5px solid rgba(250, 204, 59, 0.2);
   border-top-color: var(--subtitle);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.75s linear infinite;
 }
 
 @keyframes spin {
@@ -347,9 +583,10 @@ html, body {
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
+  letter-spacing: -0.01em;
 }
 
-/* ── Error & Fallback Overlay ────────────────────────────────────────────── */
+/* ── Error State Overlay ─────────────────────────────────────────────────── */
 .error-overlay {
   position: absolute;
   inset: var(--header-height) 0 0 0;
@@ -368,9 +605,9 @@ html, body {
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
-  padding: 24px;
+  padding: 26px;
   text-align: center;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
 
 .error-icon {
@@ -409,38 +646,112 @@ html, body {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  transition: all 0.12s ease;
 }
 .error-btn:hover {
   background: var(--subtitle-hover);
+  transform: translateY(-0.5px);
 }
 
-/* Scanned PDF Notification Pill */
+/* ── Scanned PDF Pill Banner ─────────────────────────────────────────────── */
 .scanned-banner {
   position: fixed;
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(14, 16, 34, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(250, 204, 59, 0.4);
   color: var(--ink);
   padding: 8px 16px;
-  border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
   display: none;
   align-items: center;
   gap: 10px;
   font-size: 12.5px;
   z-index: 1500;
-  animation: fadeIn 0.15s ease-out;
+  animation: fadeIn 0.18s ease-out;
 }
 
 .scanned-banner-btn {
   background: var(--subtitle);
   color: #12152e;
   border: none;
-  padding: 3px 10px;
-  border-radius: 999px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
   font-weight: 700;
   font-size: 11.5px;
   cursor: pointer;
+  transition: all 0.12s ease;
+}
+.scanned-banner-btn:hover {
+  background: var(--subtitle-hover);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ==========================================================================
+   Responsive Breakpoints & Progressive Disclosure (Apple HIG / UI-UX Pro Max)
+   ========================================================================== */
+
+/* Laptop / Intermediate (1080px and below) */
+@media (max-width: 1080px) {
+  .doc-badge {
+    max-width: 150px;
+  }
+  .find-input {
+    width: 105px;
+  }
+}
+
+/* Split-screen & Tablets (860px and below) */
+@media (max-width: 860px) {
+  .viewer-header {
+    padding: 0 10px;
+    gap: 8px;
+  }
+  .doc-badge, .doc-divider {
+    display: none;
+  }
+  .find-input {
+    width: 85px;
+  }
+  .ocr-text {
+    display: none;
+  }
+  .ocr-tool-btn {
+    padding: 0 8px;
+  }
+}
+
+/* Compact Half-Screen (680px and below) */
+@media (max-width: 680px) {
+  .brand-title {
+    display: none;
+  }
+  .header-left {
+    flex: initial;
+  }
+  .page-num-input {
+    width: 32px;
+  }
+  .scale-select {
+    padding-left: 6px;
+    padding-right: 18px;
+    font-size: 11px;
+  }
+  .find-box-wrap {
+    padding: 2px 4px;
+  }
+  .find-input {
+    width: 60px;
+  }
+  .theme-toggle-btn, .open-original-btn {
+    display: none;
+  }
 }

@@ -442,6 +442,39 @@ if (scannedOcrBtn) scannedOcrBtn.addEventListener("click", triggerOcrCapture);
 
 if (retryLoadBtn) retryLoadBtn.addEventListener("click", loadPdfDocument);
 
+// Reading Ambience Theme Manager (Dark -> Sepia -> Light)
+const readerThemeBtn = $("readerThemeBtn");
+const themeDot = $("themeDot");
+const THEMES = ["dark", "sepia", "light"];
+const THEME_COLORS = {
+  dark: "#facc3b",
+  sepia: "#c28938",
+  light: "#3b82f6",
+};
+
+function applyReaderTheme(themeName) {
+  const chosen = THEMES.includes(themeName) ? themeName : "dark";
+  document.body.setAttribute("data-reader-theme", chosen);
+  if (themeDot) {
+    themeDot.style.background = THEME_COLORS[chosen] || "#facc3b";
+  }
+  chrome.storage.local.set({ wordtap_reader_theme: chosen });
+}
+
+chrome.storage.local.get(["wordtap_reader_theme"], (res) => {
+  if (res && res.wordtap_reader_theme) {
+    applyReaderTheme(res.wordtap_reader_theme);
+  }
+});
+
+if (readerThemeBtn) {
+  readerThemeBtn.addEventListener("click", () => {
+    const current = document.body.getAttribute("data-reader-theme") || "dark";
+    const nextIdx = (THEMES.indexOf(current) + 1) % THEMES.length;
+    applyReaderTheme(THEMES[nextIdx]);
+  });
+}
+
 // Keyboard shortcuts for viewer navigation
 window.addEventListener("keydown", (e) => {
   // If user is typing in search or page input, ignore
