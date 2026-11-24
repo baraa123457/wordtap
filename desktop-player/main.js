@@ -307,7 +307,9 @@ function handleDeepLinkUrl(rawUrl) {
 
       if (mainWindow && !mainWindow.isDestroyed()) {
         if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
         mainWindow.focus();
+        mainWindow.flashFrame(false);
         mainWindow.webContents.send('app:auth-session', session);
       }
       return true;
@@ -792,7 +794,9 @@ ipcMain.handle('auth:sign-in-google', async () => {
 
                 if (mainWindow && !mainWindow.isDestroyed()) {
                   if (mainWindow.isMinimized()) mainWindow.restore();
+                  mainWindow.show();
                   mainWindow.focus();
+                  mainWindow.flashFrame(false);
                   mainWindow.webContents.send('app:auth-session', session);
                 }
 
@@ -981,7 +985,7 @@ ipcMain.handle('window:is-fullscreen', async () => {
 function probeAudio(filePath) {
   return new Promise((resolve) => {
     if (!ffmpegPath || !fs.existsSync(filePath)) {
-      return resolve({ hasAudio: false, needsTranscode: false, codecs: [], audioStreams: [] });
+      return resolve({ hasAudio: false, needsTranscode: false, codecs: [], audioStreams: [], audioTracks: [], primaryAudioTrackIndex: 0 });
     }
 
     let resolved = false;
@@ -998,22 +1002,25 @@ function probeAudio(filePath) {
 
     const timer = setTimeout(() => {
       try { child.kill(); } catch {}
-      safeResolve({ hasAudio: false, needsTranscode: false, codecs: [], audioStreams: [] });
+      safeResolve({ hasAudio: false, needsTranscode: false, codecs: [], audioStreams: [], audioTracks: [], primaryAudioTrackIndex: 0 });
     }, 4000);
 
     child.stderr.on('data', d => output += d.toString());
     child.on('error', (err) => {
       clearTimeout(timer);
       console.warn('probeAudio spawn error:', err);
-      safeResolve({ hasAudio: false, needsTranscode: false, codecs: [], audioStreams: [] });
+      safeResolve({ hasAudio: false, needsTranscode: false, codecs: [], audioStreams: [], audioTracks: [], primaryAudioTrackIndex: 0 });
     });
 
     child.on('close', () => {
       clearTimeout(timer);
       const audioStreams = [];
       const codecs = [];
+      const audioTracks = [];
       let needsTranscode = false;
       let primaryCodec = null;
+      let primaryAudioTrackIndex = 0;
+      let bestScore = -999;
 
       const lines = output.split('\n');
       let dar = null;
@@ -1029,7 +1036,9 @@ function probeAudio(filePath) {
       // - MPEG Audio Layer 2 (mp2)
       const unsupportedRegex = /\b(?:ac3|ac-3|a52|eac3|eac-3|ec-3|dca|dts|dts-hd|dtsx|truehd|mlp|wma|wmav\d|pcm_s24|pcm_s32|pcm_bluray|mp2)\b/i;
 
-      for (const line of lines) {
+      let currentAudioIndex = 0;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
         if (line.includes('Video:')) {
           const darMatch = line.match(/DAR\s+([0-9]+:[0-9]+)/i);
           if (darMatch) {
@@ -1050,21 +1059,62 @@ function probeAudio(filePath) {
           const isDefault = line.includes('(default)');
           const isUnsupported = unsupportedRegex.test(line) || unsupportedRegex.test(codec);
 
-          if (isDefault || primaryCodec === null) {
-            primaryCodec = codec;
-            if (isUnsupported) {
-              needsTranscode = true;
+          // Extract language tag if available: Stream #0:1(eng): Audio
+          const langMatch = line.match(/Stream #0:\d+\(([^)]+)\): Audio/i);
+          const lang = langMatch ? langMatch[1] : '';
+
+          // Extract channel format: stereo, 5.1, 7.1, mono
+          const chanMatch = line.match(/,\s*(stereo|mono|5\.1(?:\(side\))?|7\.1|5 channels|6 channels|8 channels)/i);
+          const channels = chanMatch ? chanMatch[1] : '';
+
+          // Check if this stream is commentary or descriptive audio
+          let isCommentary = /commentary|description|descriptive|visual impaired/i.test(line);
+          let title = '';
+          for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
+            if (lines[j].includes('Stream #')) break;
+            const titleMatch = lines[j].match(/title\s*:\s*(.+)/i);
+            if (titleMatch) {
+              title = titleMatch[1].trim();
+              if (/commentary|description|descriptive|visual impaired/i.test(title)) {
+                isCommentary = true;
+              }
+              break;
             }
           }
 
-          if (isUnsupported) {
-            needsTranscode = true;
+          const trackIdx = currentAudioIndex++;
+          // Scoring algorithm to pick primary dialogue stream:
+          // Favor default tracks, multi-channel (5.1/7.1) main film tracks, penalize commentary
+          let score = 0;
+          if (isDefault) score += 50;
+          if (!isCommentary) score += 100; else score -= 500;
+          if (/5\.1|7\.1|6 channels|8 channels/i.test(channels)) score += 30;
+          else if (/stereo|2 channels/i.test(channels)) score += 20;
+
+          if (score > bestScore) {
+            bestScore = score;
+            primaryAudioTrackIndex = trackIdx;
+            primaryCodec = codec;
           }
+
+          audioTracks.push({
+            index: trackIdx,
+            codec,
+            channels,
+            lang,
+            title,
+            isDefault,
+            isCommentary,
+            isUnsupported
+          });
         }
       }
 
-      // If the primary or default stream cannot be natively decoded by Chromium, auto-transcode is mandatory
-      if (primaryCodec && unsupportedRegex.test(primaryCodec)) {
+      // Check if primary track needs transcode
+      const selectedTrack = audioTracks[primaryAudioTrackIndex] || audioTracks[0];
+      if (selectedTrack && (selectedTrack.isUnsupported || unsupportedRegex.test(selectedTrack.codec))) {
+        needsTranscode = true;
+      } else if (primaryCodec && unsupportedRegex.test(primaryCodec)) {
         needsTranscode = true;
       }
 
@@ -1079,6 +1129,8 @@ function probeAudio(filePath) {
         codecs,
         needsTranscode,
         audioStreams,
+        audioTracks,
+        primaryAudioTrackIndex,
         dar,
         sar,
         primaryCodec
@@ -1108,13 +1160,18 @@ function transcodeAudio(filePath) {
         });
       }
 
+      // Voice-preserving downmix filter that guarantees Center channel (dialogue) is prioritized and never cancelled or dropped
+      const voicePreservingFilter = 'pan=stereo|FL<1.0*FL+0.85*FC+0.5*BL+0.5*SL|FR<1.0*FR+0.85*FC+0.5*BR+0.5*SR';
+
       // Transcode audio stream to standard 192k MP3 (100% playable & instantaneous seeking in Chromium)
       const args = [
         '-y',
         '-i', filePath,
         '-vn',
+        '-af', voicePreservingFilter,
         '-c:a', 'mp3',
         '-b:a', '192k',
+        '-ac', '2',
         tempAudioPath
       ];
 
@@ -1177,6 +1234,9 @@ function startAudioServer() {
 
       const filePath = parsedUrl.searchParams.get('file');
       const startTime = parseFloat(parsedUrl.searchParams.get('t') || '0');
+      const trackParam = parsedUrl.searchParams.get('track');
+      const trackIndex = (trackParam !== null && trackParam !== '') ? parseInt(trackParam, 10) : 0;
+      const safeTrackIndex = (!isNaN(trackIndex) && trackIndex >= 0) ? trackIndex : 0;
 
       if (!filePath || !fs.existsSync(filePath)) {
         res.writeHead(404);
@@ -1195,12 +1255,17 @@ function startAudioServer() {
         'Access-Control-Allow-Origin': '*'
       });
 
+      // Voice-preserving downmix filter that ensures Center channel (dialogue) is prioritized and never cancelled or dropped
+      const voicePreservingFilter = 'pan=stereo|FL<1.0*FL+0.85*FC+0.5*BL+0.5*SL|FR<1.0*FR+0.85*FC+0.5*BR+0.5*SR';
+
       // Sample-accurate seek, clean stereo downmixing, instant packet flushing, zero negative PTS
       const args = [
         '-ss', String(Math.max(0, startTime)),
         '-i', filePath,
         '-vn',
-        '-map', '0:a:0',
+        '-map', `0:a:${safeTrackIndex}?`,
+        '-map', '0:a:0?',
+        '-af', voicePreservingFilter,
         '-c:a', 'mp3',
         '-b:a', '192k',
         '-ac', '2',
@@ -1248,7 +1313,7 @@ function startAudioServer() {
   });
 }
 
-ipcMain.handle('audio:get-stream-url', async (_event, { filePath, startTime }) => {
+ipcMain.handle('audio:get-stream-url', async (_event, { filePath, startTime, trackIndex }) => {
   if (!audioServerPort) {
     startAudioServer();
     for (let i = 0; i < 20 && !audioServerPort; i++) {
@@ -1256,7 +1321,8 @@ ipcMain.handle('audio:get-stream-url', async (_event, { filePath, startTime }) =
     }
   }
   if (!audioServerPort) return null;
-  return `http://127.0.0.1:${audioServerPort}/audio?file=${encodeURIComponent(filePath)}&t=${startTime || 0}&_=${Date.now()}`;
+  const track = (typeof trackIndex === 'number' && trackIndex >= 0) ? `&track=${trackIndex}` : '';
+  return `http://127.0.0.1:${audioServerPort}/audio?file=${encodeURIComponent(filePath)}&t=${startTime || 0}${track}&_=${Date.now()}`;
 });
 
 // ==========================================

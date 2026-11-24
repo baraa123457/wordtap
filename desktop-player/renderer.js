@@ -414,33 +414,77 @@
     setAspectRatio(item.value, item.label, true);
   }
 
-  // Web Audio API Gain Pipeline for true sound amplification up to 150%
+  // Web Audio API Gain Pipeline for true sound amplification up to 150% and 5.1/7.1 Voice Protection
   let audioContext = null;
   let videoSourceNode = null;
   let videoGainNode = null;
   let compatibleAudioSourceNode = null;
   let compatibleAudioGainNode = null;
 
+  function resumeAudioContext() {
+    try {
+      if (audioContext && (audioContext.state === 'suspended' || audioContext.state === 'interrupted')) {
+        audioContext.resume().catch(() => {});
+      }
+    } catch (e) {
+      console.warn('resumeAudioContext notice:', e);
+    }
+  }
+
   function ensureAudioNodes() {
     try {
       if (!audioContext) {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (AudioCtx) {
-          audioContext = new AudioCtx();
+          audioContext = new AudioCtx({ latencyHint: 'playback' });
+
+          // CRITICAL FOR 5.1 / 7.1 DIALOGUE REPRODUCTION:
+          // Ensure the audio destination is explicitly configured for stereo output with speaker downmixing.
+          // This forces 5.1/7.1 center channel (speech/dialogue) to downmix into L and R channels
+          // instead of disappearing into an unplugged physical Center speaker jack!
+          if (audioContext.destination) {
+            try {
+              audioContext.destination.channelCount = 2;
+              audioContext.destination.channelInterpretation = 'speakers';
+              audioContext.destination.channelCountMode = 'explicit';
+            } catch (destErr) {
+              console.warn('Destination channel config notice:', destErr);
+            }
+          }
+
+          // Auto-resume whenever AudioContext state transitions to suspended or interrupted
+          audioContext.onstatechange = () => {
+            if (audioContext.state === 'suspended' || audioContext.state === 'interrupted') {
+              audioContext.resume().catch(() => {});
+            }
+          };
         }
       }
-      if (audioContext && audioContext.state === 'suspended') {
-        audioContext.resume().catch(() => {});
-      }
+
+      resumeAudioContext();
+
       if (audioContext && !videoSourceNode && video) {
         videoSourceNode = audioContext.createMediaElementSource(video);
         videoGainNode = audioContext.createGain();
+
+        // Explicit 2-channel downmixing on GainNode guarantees that multi-channel audio
+        // distributes Center dialogue evenly across stereo left/right channels.
+        videoGainNode.channelCount = 2;
+        videoGainNode.channelCountMode = 'explicit';
+        videoGainNode.channelInterpretation = 'speakers';
+
         videoSourceNode.connect(videoGainNode);
         videoGainNode.connect(audioContext.destination);
       }
+
       if (audioContext && !compatibleAudioSourceNode && compatibleAudio) {
         compatibleAudioSourceNode = audioContext.createMediaElementSource(compatibleAudio);
         compatibleAudioGainNode = audioContext.createGain();
+
+        compatibleAudioGainNode.channelCount = 2;
+        compatibleAudioGainNode.channelCountMode = 'explicit';
+        compatibleAudioGainNode.channelInterpretation = 'speakers';
+
         compatibleAudioSourceNode.connect(compatibleAudioGainNode);
         compatibleAudioGainNode.connect(audioContext.destination);
       }
@@ -451,6 +495,7 @@
 
   // Volume & Sound Handling (Direct Native Hardware-Locked Audio - 100% Reliable with 150% Boost)
   function updateVolumeDisplay() {
+    resumeAudioContext();
     if (typeof userVolume !== 'number' || isNaN(userVolume) || userVolume < 0) {
       userVolume = 1.0;
     }
@@ -521,6 +566,7 @@
 
   function toggleMute() {
     ensureAudioNodes();
+    resumeAudioContext();
     userMuted = !userMuted;
     if (!userMuted && userVolume <= 0.05) {
       userVolume = 1.0;
@@ -531,6 +577,7 @@
 
   function adjustVolume(delta) {
     ensureAudioNodes();
+    resumeAudioContext();
     userVolume = Math.max(0, Math.min(1.5, Math.round((userVolume + delta) * 100) / 100));
     if (userVolume > 0) userMuted = false;
     updateVolumeDisplay();
@@ -542,6 +589,7 @@
 
   function setVolume(val) {
     ensureAudioNodes();
+    resumeAudioContext();
     userVolume = Math.max(0, Math.min(1.5, Math.round(val * 100) / 100));
     if (userVolume > 0) userMuted = false;
     updateVolumeDisplay();
@@ -550,9 +598,20 @@
     }
   }
 
-  // Active Precision Audio-Video Lip-Sync Engine
+  // Active Precision Audio-Video Lip-Sync Engine with Auto-Recovery
   function syncAudioWithVideo() {
-    if (!isAudioTranscoded || !compatibleAudio || !compatibleAudio.src || compatibleAudio.paused || video.paused || isScrubbing) {
+    if (!isAudioTranscoded || !compatibleAudio || !compatibleAudio.src || isScrubbing) {
+      return;
+    }
+
+    // Auto-recovery: If video is playing but compatibleAudio paused or stalled, resume it immediately
+    if (!video.paused && compatibleAudio.paused) {
+      resumeAudioContext();
+      compatibleAudio.play().catch(() => {});
+      return;
+    }
+
+    if (compatibleAudio.paused || video.paused) {
       return;
     }
 
@@ -716,6 +775,9 @@
             }
             updateAccountUI();
             hideLoginGate();
+            ensureAudioNodes();
+            resumeAudioContext();
+            updateVolumeDisplay();
             showToast(`Welcome back, ${userSession.email}!`);
             pushPendingOfflineWords();
           }
@@ -749,6 +811,9 @@
           updateAccountUI();
           hideLoginGate();
           if (accountModal) accountModal.classList.remove('open');
+          ensureAudioNodes();
+          resumeAudioContext();
+          updateVolumeDisplay();
           showToast(`Connected as ${userSession.email}`);
           pushPendingOfflineWords();
         }
@@ -903,6 +968,9 @@
           updateAccountUI();
           hideLoginGate();
           if (accountModal) accountModal.classList.remove('open');
+          ensureAudioNodes();
+          resumeAudioContext();
+          updateVolumeDisplay();
           showToast(`Welcome back, ${userSession.email}!`);
           pushPendingOfflineWords();
         }
@@ -2044,6 +2112,9 @@
     showToast('Audio sync reset to 0ms');
   }
 
+  let activeAudioTrackIndex = 0;
+  let detectedAudioTracks = [];
+
   // Video Load Handler - GUARANTEED AUDIO & DOLBY/DTS TRANSCODING
   async function playVideoFile(fileUrl, fileName, subContent = null, filePath = null, initSubDelay = 0, savedTime = 0, subPath = null) {
     currentMediaTitle = fileName;
@@ -2057,6 +2128,9 @@
     subtitleDelayMs = typeof initSubDelay === 'number' ? initSubDelay : 0;
     activeSavedTime = (typeof savedTime === 'number' && savedTime > 0) ? savedTime : 0;
     updateSyncDelayUI();
+
+    ensureAudioNodes();
+    resumeAudioContext();
 
     if (compatibleAudio) {
       compatibleAudio.pause();
@@ -2099,14 +2173,18 @@
         } else {
           setAspectRatio('auto', 'Default', false);
         }
+
+        detectedAudioTracks = (info && info.audioTracks) || [];
+        activeAudioTrackIndex = (info && typeof info.primaryAudioTrackIndex === 'number') ? info.primaryAudioTrackIndex : 0;
+
         if (info && info.needsTranscode) {
           const primary = info.primaryCodec || (info.codecs && info.codecs[0]) || 'AC3/DTS';
           const isDts = /dca|dts/i.test(primary);
           const isDolby = /ac3|ac-3|a52|eac3|eac-3|ec-3|truehd|mlp/i.test(primary);
           const badge = isDts ? 'DTS 5.1' : (isDolby ? 'Dolby Audio' : primary.toUpperCase());
-          showToast(`Audio: Auto-fixing ${badge} (Live Transcode)`);
+          showToast(`Audio: Auto-fixing ${badge} (Voice Protection Engine)`);
           try { video.currentTime = targetSeek; } catch (e) {}
-          await startLiveAudioStream(targetSeek);
+          await startLiveAudioStream(targetSeek, activeAudioTrackIndex);
           const p = video.play();
           if (p !== undefined) {
             p.catch((err) => {
@@ -2143,19 +2221,27 @@
     }
   }
 
-  // Real-Time On-Demand Audio Streaming Engine (FFmpeg live MP3 stream with Active Lip-Sync)
-  async function startLiveAudioStream(seekTime = 0) {
+  // Real-Time On-Demand Audio Streaming Engine (FFmpeg live MP3 stream with Active Lip-Sync & Voice Protection)
+  async function startLiveAudioStream(seekTime = 0, trackIndex = null) {
     if (!currentFilePath || !window.WordTapAPI || !window.WordTapAPI.getAudioStreamUrl) {
       showToast('Please open a media file first');
       return;
     }
     try {
+      ensureAudioNodes();
+      resumeAudioContext();
+
       const targetTime = Math.max(0, seekTime);
       audioStreamStartTime = targetTime;
 
+      if (trackIndex !== null && typeof trackIndex === 'number') {
+        activeAudioTrackIndex = trackIndex;
+      }
+
       const streamUrl = await window.WordTapAPI.getAudioStreamUrl({
         filePath: currentFilePath,
-        startTime: targetTime
+        startTime: targetTime,
+        trackIndex: activeAudioTrackIndex
       });
 
       if (streamUrl) {
@@ -2184,8 +2270,24 @@
         };
         compatibleAudio.addEventListener('playing', onAudioPlaying);
 
+        compatibleAudio.onerror = (e) => {
+          console.warn('[WordTap Audio] compatibleAudio error event:', e);
+          if (isAudioTranscoded && !video.paused && currentFilePath) {
+            setTimeout(() => {
+              if (isAudioTranscoded && !video.paused) {
+                startLiveAudioStream(video.currentTime, activeAudioTrackIndex);
+              }
+            }, 600);
+          }
+        };
+
         const p = compatibleAudio.play();
-        if (p !== undefined) p.catch(() => {});
+        if (p !== undefined) {
+          p.catch((err) => {
+            console.warn('compatibleAudio play notice:', err);
+            resumeAudioContext();
+          });
+        }
         showToast('Audio: Transcode Engine Active (Stereo Downmix)');
 
         // Start active precision lip-sync loop (100ms interval)
@@ -2514,11 +2616,46 @@
 
     // Audio Unmute Banner
     audioUnmuteBanner.addEventListener('click', () => {
-      video.muted = false;
-      video.volume = 1.0;
-      video.play().catch(() => {});
+      ensureAudioNodes();
+      resumeAudioContext();
+      userMuted = false;
+      if (userVolume <= 0.05) userVolume = 1.0;
+      updateVolumeDisplay();
+      if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+        compatibleAudio.play().catch(() => {});
+      } else {
+        video.muted = false;
+        video.play().catch(() => {});
+      }
       audioUnmuteBanner.style.display = 'none';
     });
+
+    // Auto-resume audio whenever window recovers focus (e.g. returning from Google OAuth or switching tabs)
+    window.addEventListener('focus', () => {
+      resumeAudioContext();
+      updateVolumeDisplay();
+      if (!video.paused) {
+        if (isAudioTranscoded && compatibleAudio && compatibleAudio.paused) {
+          compatibleAudio.play().catch(() => {});
+        }
+      }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        resumeAudioContext();
+        updateVolumeDisplay();
+        if (!video.paused) {
+          if (isAudioTranscoded && compatibleAudio && compatibleAudio.paused) {
+            compatibleAudio.play().catch(() => {});
+          }
+        }
+      }
+    });
+
+    // User gesture activates audio engine
+    window.addEventListener('click', resumeAudioContext, { passive: true });
+    window.addEventListener('keydown', resumeAudioContext, { passive: true });
 
     // Setup Auth Gate Listeners (Immediate & Responsive)
     setupAuthGate();
@@ -3016,6 +3153,9 @@
             }
             updateAccountUI();
             if (accountModal) accountModal.classList.remove('open');
+            ensureAudioNodes();
+            resumeAudioContext();
+            updateVolumeDisplay();
             showToast(`Connected as ${userSession.email}`);
             pushPendingOfflineWords();
           }
@@ -3063,6 +3203,8 @@
       iconPlay.style.display = 'none';
       iconPause.style.display = 'block';
       audioUnmuteBanner.style.display = 'none';
+      resumeAudioContext();
+      updateVolumeDisplay();
       if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
         if (compatibleAudio.paused) {
           compatibleAudio.play().catch(() => {});
