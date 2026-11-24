@@ -746,3 +746,122 @@ function updateSubtitleHealthUI() {
 }
 
 updateSubtitleHealthUI();
+
+// ---------- Quick Word Translation in Popup (URL ?word= or Active Selection) ----------
+async function handleQuickTranslate(text) {
+  if (!text) return;
+  const clean = text.trim();
+  if (!clean || clean.length > 250) return;
+
+  const card = $("quickTranslateCard");
+  const wordEl = $("qtWord");
+  const posEl = $("qtPos");
+  const trEl = $("qtTranslation");
+  const audioBtn = $("qtAudioBtn");
+  const saveBtn = $("qtSaveBtn");
+  const statusEl = $("qtSaveStatus");
+
+  if (!card || !wordEl || !trEl) return;
+  card.style.display = "block";
+  wordEl.textContent = clean;
+  wordEl.title = clean;
+  trEl.textContent = "Translating…";
+  if (posEl) posEl.style.display = "none";
+  if (statusEl) statusEl.textContent = "";
+
+  const s = await chrome.storage.sync.get({ targetLang: "ar", translateSaveMode: "manual", saveWords: false }).catch(() => ({}));
+  const target = s.targetLang || "ar";
+
+  chrome.runtime.sendMessage({ type: "translate", text: clean, target, srcLang: "auto" }, (res) => {
+    if (!res || !res.ok) {
+      trEl.textContent = "Translation unavailable";
+      return;
+    }
+    trEl.textContent = res.translation || clean;
+    if (res.pos && posEl) {
+      posEl.textContent = res.pos;
+      posEl.style.display = "inline-block";
+    }
+
+    const srcLang = res.src || "en";
+
+    if (audioBtn) {
+      audioBtn.onclick = async () => {
+        audioBtn.classList.add("speaking");
+        try {
+          const ttsRes = await send({ type: "tts:speak", text: clean, lang: srcLang });
+          if (ttsRes && ttsRes.ok && ttsRes.dataUrl) {
+            const audio = new Audio(ttsRes.dataUrl);
+            audio.onended = () => audioBtn.classList.remove("speaking");
+            audio.onerror = () => audioBtn.classList.remove("speaking");
+            audio.play().catch(() => audioBtn.classList.remove("speaking"));
+          } else {
+            audioBtn.classList.remove("speaking");
+          }
+        } catch (_) {
+          audioBtn.classList.remove("speaking");
+        }
+      };
+    }
+
+    const shouldAutoSave = s.translateSaveMode === "auto" || s.saveWords === true;
+    if (shouldAutoSave) {
+      chrome.runtime.sendMessage({
+        type: "words:save",
+        entry: {
+          text: clean,
+          translation: res.translation,
+          src: srcLang,
+          lang: target,
+          source: "selection",
+        },
+      });
+      if (statusEl) statusEl.textContent = "✓ Saved to WordTap";
+      if (saveBtn) {
+        saveBtn.textContent = "✓ Saved";
+        saveBtn.disabled = true;
+      }
+    } else {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "⭐ Save Word";
+        saveBtn.onclick = () => {
+          chrome.runtime.sendMessage({
+            type: "words:save",
+            entry: {
+              text: clean,
+              translation: res.translation,
+              src: srcLang,
+              lang: target,
+              source: "selection",
+            },
+          });
+          saveBtn.textContent = "✓ Saved";
+          saveBtn.disabled = true;
+          if (statusEl) statusEl.textContent = "✓ Saved to WordTap";
+        };
+      }
+    }
+  });
+}
+
+const urlParams = new URLSearchParams(window.location.search);
+const initialQuery = urlParams.get("word") || urlParams.get("q");
+if (initialQuery) {
+  handleQuickTranslate(initialQuery);
+} else {
+  chrome.tabs?.query({ active: true, currentWindow: true }, async (tabs) => {
+    const tab = tabs && tabs[0];
+    if (!tab?.id || !chrome.scripting) return;
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => window.getSelection()?.toString() || "",
+      });
+      const selected = results && results[0] && results[0].result ? results[0].result.trim() : "";
+      if (selected && selected.length > 0 && selected.length < 150) {
+        handleQuickTranslate(selected);
+      }
+    } catch (_) {}
+  });
+}

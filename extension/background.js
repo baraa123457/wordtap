@@ -940,16 +940,66 @@ function setupContextMenus() {
   } catch (_) {}
 }
 
+function openQuickTranslationPopup(text) {
+  if (!text) return;
+  try {
+    const url = chrome.runtime.getURL(`popup.html?word=${encodeURIComponent(text.trim())}`);
+    chrome.windows.create({
+      url,
+      type: "popup",
+      width: 380,
+      height: 520,
+      focused: true,
+    });
+  } catch (err) {
+    console.warn("Could not open quick translation popup window:", err);
+  }
+}
+
+async function handleSelectionTranslation(tab, text) {
+  if (!tab?.id || !text) return;
+  const clean = text.trim();
+  if (!clean) return;
+
+  // 1. Try sending directly to content script if already loaded
+  try {
+    const res = await chrome.tabs.sendMessage(tab.id, {
+      type: "wordtap:translate-context",
+      text: clean,
+    });
+    if (res && res.ok) return;
+  } catch (_) {}
+
+  // 2. If content script was not loaded on this tab, attempt programmatic injection
+  try {
+    if (chrome.scripting) {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["select-translate.js"],
+      });
+      setTimeout(async () => {
+        try {
+          await chrome.tabs.sendMessage(tab.id, {
+            type: "wordtap:translate-context",
+            text: clean,
+          });
+        } catch (_) {
+          openQuickTranslationPopup(clean);
+        }
+      }, 120);
+      return;
+    }
+  } catch (_) {}
+
+  // 3. Fallback: open floating quick translate popup window
+  openQuickTranslationPopup(clean);
+}
+
 if (chrome.contextMenus?.onClicked) {
   chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (!tab?.id) return;
     if (info.menuItemId === "wordtap-translate-selection" && info.selectionText) {
-      chrome.tabs
-        .sendMessage(tab.id, {
-          type: "wordtap:translate-context",
-          text: info.selectionText.trim(),
-        })
-        .catch(() => {});
+      handleSelectionTranslation(tab, info.selectionText);
     } else if (info.menuItemId === "wordtap-ocr-snip") {
       startSnipOnTab(tab.id);
     }
@@ -1236,11 +1286,30 @@ async function startSnipOnTab(tabId) {
 // ---------------------------------------------------------------------------
 // Keyboard Shortcut & Commands Listener
 // ---------------------------------------------------------------------------
-chrome.commands.onCommand.addListener((command) => {
+chrome.commands.onCommand.addListener(async (command) => {
   if (command === "take-ocr-screenshot") {
     chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
       if (tabs && tabs[0] && tabs[0].id) {
         startSnipOnTab(tabs[0].id);
+      }
+    });
+  } else if (command === "translate-selection") {
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, async (tabs) => {
+      const tab = tabs && tabs[0];
+      if (!tab?.id) return;
+      try {
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => window.getSelection()?.toString() || "",
+        });
+        const selected = results && results[0] && results[0].result ? results[0].result.trim() : "";
+        if (selected) {
+          handleSelectionTranslation(tab, selected);
+        } else {
+          chrome.tabs.sendMessage(tab.id, { type: "wordtap:check-pdf-selection" }).catch(() => {});
+        }
+      } catch (_) {
+        chrome.tabs.sendMessage(tab.id, { type: "wordtap:check-pdf-selection" }).catch(() => {});
       }
     });
   }

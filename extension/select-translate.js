@@ -1596,7 +1596,100 @@
     }
   }
 
+  // ── Mouse & Pointer Tracking for Precise Positioning ──────────────────────
+  let lastPointerPos = { x: Math.round(window.innerWidth / 2), y: 120 };
+  function updatePointerPos(e) {
+    if (e && typeof e.clientX === "number" && typeof e.clientY === "number") {
+      lastPointerPos.x = e.clientX;
+      lastPointerPos.y = e.clientY;
+    }
+  }
+  window.addEventListener("mousemove", updatePointerPos, { passive: true, capture: true });
+  window.addEventListener("pointerdown", updatePointerPos, { passive: true, capture: true });
+  window.addEventListener("contextmenu", updatePointerPos, { passive: true, capture: true });
+
+  // ── PDF Detection & Embedded Viewer Selection Bridge ─────────────────────
+  function isPdfDocument() {
+    try {
+      if (document.contentType === "application/pdf") return true;
+      if (document.querySelector('embed[type="application/pdf"]') || document.querySelector("embed#plugin")) return true;
+      const path = (window.location.pathname || "").toLowerCase();
+      if (path.endsWith(".pdf") || path.includes(".pdf?")) return true;
+      const href = (window.location.href || "").toLowerCase();
+      return href.includes(".pdf") || href.includes("application/pdf");
+    } catch (_) {
+      return false;
+    }
+  }
+
+  let lastPdfSelection = "";
+  function requestPdfSelection() {
+    if (!isPdfDocument()) return;
+    try {
+      const embed =
+        document.querySelector('embed[type="application/pdf"]') ||
+        document.querySelector("embed#plugin") ||
+        document.querySelector("embed");
+      if (embed && typeof embed.postMessage === "function") {
+        embed.postMessage({ type: "getSelectedText" }, "*");
+      }
+    } catch (_) {}
+  }
+
+  function handlePdfSelectedText(text) {
+    const raw = typeof text === "string" ? text.trim() : "";
+    if (raw && raw.length > 0 && raw !== lastPdfSelection && raw !== lastText) {
+      lastPdfSelection = raw;
+      const rect = {
+        left: Math.max(16, lastPointerPos.x - 70),
+        right: Math.min(window.innerWidth - 16, lastPointerPos.x + 70),
+        top: Math.max(16, lastPointerPos.y - 12),
+        bottom: Math.min(window.innerHeight - 16, lastPointerPos.y + 16),
+        width: 140,
+        height: 28,
+      };
+      const mode = settings.selectionMode || "immediate";
+      if (mode === "off") return;
+      mount();
+      if (mode === "icon") {
+        pendingTranslation = { rect, text: raw, context: "" };
+        card.style.display = "none";
+        positionIcon(rect);
+      } else {
+        pendingTranslation = null;
+        iconBtn.style.display = "none";
+        triggerTranslation(rect, raw, "");
+      }
+    } else if (!raw && lastPdfSelection) {
+      lastPdfSelection = "";
+    }
+  }
+
+  window.addEventListener("message", (e) => {
+    if (e.data && e.data.type === "getSelectedTextReply") {
+      handlePdfSelectedText(e.data.selectedText);
+    }
+  });
+
+  if (isPdfDocument()) {
+    setInterval(requestPdfSelection, 500);
+    window.addEventListener("focus", requestPdfSelection, { passive: true });
+    window.addEventListener(
+      "keyup",
+      (e) => {
+        if (e.key === "Shift" || e.key.startsWith("Arrow") || e.ctrlKey || e.metaKey) {
+          setTimeout(requestPdfSelection, 60);
+        }
+      },
+      { passive: true },
+    );
+  }
+
   document.addEventListener("mouseup", (e) => {
+    updatePointerPos(e);
+    if (isPdfDocument()) {
+      setTimeout(requestPdfSelection, 60);
+    }
     if (e.composedPath().includes(host)) return;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
@@ -1934,10 +2027,12 @@
         }
         if (msg && msg.type === "wordtap:translate-context" && msg.text) {
           let rect = {
-            left: Math.max(16, window.innerWidth / 2 - 110),
-            right: Math.min(window.innerWidth - 16, window.innerWidth / 2 + 110),
-            top: 84,
-            bottom: 112,
+            left: Math.max(16, lastPointerPos.x - 70),
+            right: Math.min(window.innerWidth - 16, lastPointerPos.x + 70),
+            top: Math.max(16, lastPointerPos.y - 12),
+            bottom: Math.min(window.innerHeight - 16, lastPointerPos.y + 16),
+            width: 140,
+            height: 28,
           };
           try {
             const sel = window.getSelection();
@@ -1946,7 +2041,13 @@
               if (r && (r.width > 0 || r.height > 0)) rect = r;
             }
           } catch (_) {}
+          mount();
           triggerTranslation(rect, msg.text, "");
+          if (sendResponse) sendResponse({ ok: true });
+          return true;
+        }
+        if (msg && msg.type === "wordtap:check-pdf-selection") {
+          requestPdfSelection();
           if (sendResponse) sendResponse({ ok: true });
           return true;
         }

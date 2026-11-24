@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WordTap: Subtitle Click Translator",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Click any word in video subtitles, select text on any site, or capture screen OCR to translate and save to WordTap.",
   "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
   "icons": {
@@ -14,6 +14,7 @@
     "https://translate.googleapis.com/*",
     "https://*.supabase.co/*",
     "https://api.ocr.space/*",
+    "file:///*",
     "<all_urls>"
   ],
   "background": {
@@ -39,7 +40,7 @@
       "all_frames": true
     },
     {
-      "matches": ["<all_urls>"],
+      "matches": ["<all_urls>", "file:///*"],
       "js": ["select-translate.js"],
       "run_at": "document_idle",
       "all_frames": false
@@ -52,6 +53,13 @@
         "mac": "Alt+S"
       },
       "description": "WordTap: Capture Screen Area OCR & Translate"
+    },
+    "translate-selection": {
+      "suggested_key": {
+        "default": "Alt+W",
+        "mac": "Alt+W"
+      },
+      "description": "WordTap: Translate Selected Word or Text"
     }
   },
   "action": {
