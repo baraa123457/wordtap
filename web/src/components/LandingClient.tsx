@@ -37,66 +37,68 @@ export function LandingClient() {
   return (
     <div
       dir={isAr ? "rtl" : "ltr"}
-      className={`mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-4 sm:px-6 transition-all ${
+      className={`flex min-h-dvh w-full flex-col transition-all ${
         isAr ? "font-arabic" : ""
       }`}
     >
-      <header className="flex flex-wrap items-center justify-between gap-y-3 py-4 sm:py-5">
-        <Logo />
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          {/* Language Switcher */}
-          <div
-            role="group"
-            aria-label="Language"
-            className="flex rounded-xl border border-line bg-surface p-0.5 text-xs font-bold"
-          >
-            <button
-              type="button"
-              aria-pressed={!isAr}
-              onClick={() => setLang("en")}
-              className={`min-h-9 px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                !isAr ? "bg-subtitle text-subtitle-ink" : "text-muted hover:text-ink"
-              }`}
+      <header className="sticky top-0 z-40 w-full apple-glass transition-colors pt-safe">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-y-2.5 gap-x-3 px-4 py-3 sm:px-6 sm:py-3.5">
+          <Logo />
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+            {/* Language Switcher */}
+            <div
+              role="group"
+              aria-label="Language"
+              className="flex rounded-full border border-line bg-black/[0.04] dark:bg-white/[0.06] p-0.5 text-xs font-bold"
             >
-              EN
-            </button>
-            <button
-              type="button"
-              aria-pressed={isAr}
-              onClick={() => setLang("ar")}
-              className={`min-h-9 px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                isAr ? "bg-subtitle text-subtitle-ink" : "text-muted hover:text-ink"
-              }`}
+              <button
+                type="button"
+                aria-pressed={!isAr}
+                onClick={() => setLang("en")}
+                className={`min-h-8 px-2.5 py-1 rounded-full transition-colors cursor-pointer ${
+                  !isAr ? "bg-surface text-ink shadow-xs border border-line" : "text-muted hover:text-ink"
+                }`}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                aria-pressed={isAr}
+                onClick={() => setLang("ar")}
+                className={`min-h-8 px-2.5 py-1 rounded-full transition-colors cursor-pointer ${
+                  isAr ? "bg-surface text-ink shadow-xs border border-line" : "text-muted hover:text-ink"
+                }`}
+              >
+                عربي
+              </button>
+            </div>
+            <Link
+              href="/decks"
+              className="hidden md:inline-flex btn btn-quiet min-h-10 px-3 text-xs font-semibold items-center gap-1.5"
             >
-              عربي
-            </button>
+              <FilmIcon size={14} className="text-amber-800 dark:text-subtitle" />
+              <span>{isAr ? "مكتبة المسلسلات" : "Show Decks"}</span>
+            </Link>
+            <Link
+              href="/download"
+              className="hidden sm:inline-flex btn btn-quiet min-h-10 px-3 text-xs font-semibold items-center gap-1.5"
+            >
+              <DownloadIcon size={14} className="text-amber-800 dark:text-subtitle" />
+              <span>{isAr ? "التحميلات" : "Downloads"}</span>
+            </Link>
+            <Link
+              href="/pricing"
+              className="hidden md:inline-flex btn btn-quiet min-h-10 px-3 text-xs font-semibold"
+            >
+              {isAr ? "الاشتراكات" : "Pricing"}
+            </Link>
+            <ThemeToggle />
+            <AuthActions size="nav" />
           </div>
-          <Link
-            href="/decks"
-            className="hidden sm:inline-flex btn btn-quiet min-h-9 px-3 text-xs font-semibold items-center gap-1.5"
-          >
-            <FilmIcon size={14} className="text-amber-800 dark:text-subtitle" />
-            <span>{isAr ? "مكتبة المسلسلات" : "Show Decks"}</span>
-          </Link>
-          <Link
-            href="/download"
-            className="hidden sm:inline-flex btn btn-quiet min-h-9 px-3 text-xs font-semibold items-center gap-1.5"
-          >
-            <DownloadIcon size={14} className="text-amber-800 dark:text-subtitle" />
-            <span>{isAr ? "التحميلات" : "Downloads"}</span>
-          </Link>
-          <Link
-            href="/pricing"
-            className="hidden sm:inline-flex btn btn-quiet min-h-9 px-3 text-xs font-semibold"
-          >
-            {isAr ? "الاشتراكات" : "Pricing"}
-          </Link>
-          <ThemeToggle />
-          <AuthActions size="nav" />
         </div>
       </header>
 
-      <main className="flex-1 pb-20">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 sm:px-6 pb-20">
         {/* Hero Section */}
         <section className="grid gap-10 pt-8 sm:pt-14 lg:grid-cols-[1.1fr_1fr] lg:items-center min-w-0">
           <div className="grid gap-6 min-w-0">
@@ -227,7 +229,7 @@ export function LandingClient() {
       </main>
 
       {/* Brand & Trust Footer */}
-      <footer className="border-t border-line/60 py-10 mt-12 text-sm text-muted">
+      <footer className="mx-auto w-full max-w-5xl px-4 sm:px-6 border-t border-line/60 py-10 mt-12 text-sm text-muted">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <Logo href="/" />

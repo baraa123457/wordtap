@@ -72,7 +72,7 @@ export function Summary({
           <p className="text-muted">Mastered words move to longer intervals. Review words return tomorrow.</p>
         </div>
         <div className="shrink-0 flex items-center gap-1.5 text-xs text-subtitle-edge dark:text-subtitle font-bold bg-subtitle/10 px-3 py-1.5 rounded-full w-fit">
-          <span>Streak maintained 🔥</span>
+          <span>Streak maintained</span>
         </div>
       </div>
 
@@ -86,8 +86,12 @@ export function Summary({
           }`}
         >
           <div className="flex items-center gap-3.5 min-w-0">
-            <span className="text-2xl sm:text-3xl shrink-0">
-              {remainingCount > 0 ? "📚" : "🎉"}
+            <span className="w-10 h-10 rounded-xl bg-subtitle/15 text-amber-800 dark:text-subtitle flex items-center justify-center shrink-0">
+              {remainingCount > 0 ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              )}
             </span>
             <div className="space-y-1 min-w-0">
               {remainingCount > 0 ? (
@@ -106,7 +110,7 @@ export function Summary({
                     You&apos;re all caught up for today!
                   </p>
                   <p className="text-muted text-xs sm:text-sm" dir="rtl">
-                    أحسنت! تدربت على جميع كلماتك اليوم 🎉
+                    أحسنت! تدربت على جميع كلماتك اليوم
                   </p>
                 </>
               )}
@@ -171,7 +175,7 @@ export function Summary({
         </section>
       ) : (
         <div className="apple-card p-4 text-center text-sm font-semibold text-ok-ink">
-          🎉 Every word right on the first try! Excellent work.
+          Every word right on the first try! Excellent work.
         </div>
       )}
 

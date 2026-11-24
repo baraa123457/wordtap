@@ -56,7 +56,7 @@ function getDeckCategoryIcon(category: string, sourceType?: string) {
     return <BriefcaseIcon size={14} className="shrink-0 text-blue-500" />;
   }
   if (category === "ielts_academic") {
-    return <AcademicIcon size={14} className="shrink-0 text-emerald-500" />;
+    return <AcademicIcon size={14} className="shrink-0 text-amber-700 dark:text-subtitle" />;
   }
   return <LayersIcon size={14} className="shrink-0 text-amber-700 dark:text-subtitle" />;
 }

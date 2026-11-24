@@ -132,7 +132,7 @@ export function FeedbackBar({
                 title="Mark as Hard — practice again this session [Key: 1 or H]"
                 className="btn min-h-10 px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
               >
-                <span>😓 Hard</span>
+                <span>Hard</span>
               </button>
 
               <button
@@ -142,7 +142,7 @@ export function FeedbackBar({
                 title="Mark as Medium — advance schedule normally [Key: 2, M, or Enter]"
                 className="btn btn-primary min-h-10 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-1 sm:gap-1.5 active:scale-95 cursor-pointer"
               >
-                <span>👌 Medium</span>
+                <span>Medium</span>
                 <span className="text-[10px] sm:text-xs opacity-80">↵</span>
               </button>
 
@@ -152,7 +152,7 @@ export function FeedbackBar({
                 title="Mark as Easy — mastered, advance faster [Key: 3 or E]"
                 className="btn min-h-10 px-2.5 sm:px-3.5 py-1.5 text-xs sm:text-sm font-semibold shadow-2xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
               >
-                <span>⚡ Easy</span>
+                <span>Easy</span>
               </button>
             </div>
           </div>

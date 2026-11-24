@@ -374,7 +374,7 @@ export default function HistoryPage() {
                   {isSaved ? (
                     <div
                       title="Already saved to your practice list"
-                      className="inline-flex items-center gap-1.5 min-h-10 px-3 py-1.5 rounded-xl text-xs font-semibold bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20"
+                      className="inline-flex items-center gap-1.5 min-h-10 px-3 py-1.5 rounded-xl text-xs font-semibold bg-subtitle/15 text-amber-800 dark:text-subtitle border border-subtitle/30"
                     >
                       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12" />

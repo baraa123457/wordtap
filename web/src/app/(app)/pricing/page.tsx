@@ -50,7 +50,7 @@ export default function PricingPage() {
       });
       const updated = await getUserSubscription();
       setSubscription(updated);
-      setSuccessMessage("🎉 Welcome to WordTap Pro! Your unlimited fluency pass is now active.");
+      setSuccessMessage("Welcome to WordTap Pro! Your unlimited fluency pass is now active.");
     } catch {
       // ignore
     } finally {

@@ -1220,7 +1220,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
           >
             {(settings.translateSaveMode || "manual") === "auto" ? (
               <>
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                <span className="h-1.5 w-1.5 rounded-full bg-subtitle animate-pulse" />
                 <span className="text-[11px] font-semibold text-ink">Auto-save</span>
               </>
             ) : (
@@ -1911,10 +1911,9 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                 {activeVerbConjugation ? (
                   <div className="mt-3 pt-3 border-t border-line/50 space-y-2.5">
                     <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted flex-wrap gap-1.5">
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold flex-wrap min-w-0">
-                        <span className="text-sm shrink-0">⏱️</span>
+                      <div className="flex items-center gap-1.5 text-amber-800 dark:text-subtitle font-bold flex-wrap min-w-0">
                         <span className="truncate">Verb forms ({activeVerbConjugation.base}):</span>
-                        <span className="text-[10px] sm:text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 whitespace-nowrap shrink-0">
+                        <span className="text-[10px] sm:text-[11px] font-medium px-2 py-0.5 rounded-full bg-subtitle/15 text-amber-800 dark:text-subtitle border border-subtitle/30 whitespace-nowrap shrink-0">
                           {activeVerbConjugation.tenseLabelAr}
                         </span>
                       </div>
@@ -2232,7 +2231,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                     className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                       savingWord
                         ? "bg-subtitle/15 text-ink border-subtitle/30"
-                        : "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20"
+                        : "bg-subtitle/15 text-amber-800 dark:text-subtitle border-subtitle/30"
                     }`}
                   >
                     {savingWord ? (
@@ -2253,7 +2252,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                     disabled={isAlreadySaved || savingWord}
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                       isAlreadySaved || saveSuccess
-                        ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20 cursor-default"
+                        ? "bg-subtitle/15 text-amber-800 dark:text-subtitle border border-subtitle/30 cursor-default"
                         : "btn btn-primary min-h-9 px-4 py-1.5 text-xs sm:text-sm"
                     }`}
                   >
@@ -2264,7 +2263,7 @@ type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionIns
                       </>
                     ) : isAlreadySaved || saveSuccess ? (
                       <>
-                        <svg className="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg className="w-4 h-4 text-amber-700 dark:text-subtitle" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                         <span>In your words</span>

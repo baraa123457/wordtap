@@ -1102,7 +1102,7 @@ export default function WordsPage() {
                   <div className="col-span-full mt-2 p-3.5 rounded-2xl bg-surface-elevated/90 border border-subtitle/40 shadow-md space-y-3 animate-in fade-in">
                     <div className="flex items-center justify-between gap-2 text-xs font-bold text-amber-700 dark:text-subtitle border-b border-line/30 pb-2">
                       <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                        <span>✏️ Edit Word &amp; Translation</span>
+                        <span>Edit Word &amp; Translation</span>
                         <span className="text-muted font-normal">(تعديل الكلمة والترجمة أو الملاحظات)</span>
                       </div>
                       <button

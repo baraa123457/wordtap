@@ -245,7 +245,7 @@ export function ScrambleView({ q, value, phase, onChange, onSubmit, onDeleteWord
                 onClick={useHint}
                 className="btn btn-quiet min-h-9 px-3 py-1 text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:bg-subtitle/10 cursor-pointer"
               >
-                💡 Hint (first letter)
+                Hint (first letter)
               </button>
             ) : null}
             {placedTileIds.length > 0 && !locked ? (

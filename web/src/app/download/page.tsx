@@ -14,46 +14,48 @@ import {
   StarIcon,
   PlayIcon,
   PauseIcon,
+  FilmIcon,
+  SpeakerIcon,
 } from "@/components/Icons";
 
 const DESKTOP_FEATURES = [
   {
-    icon: "🎬",
+    icon: FilmIcon,
     title: "VLC Core Engine",
     desc: "Plays MKV, MP4, AVI, WebM, and HEVC 4K/HDR with native hardware decoding.",
   },
   {
-    icon: "🔊",
+    icon: SpeakerIcon,
     title: "200% Volume Boost",
     desc: "Linear amplification (+6 dB) so soft whispered cinema dialogue is always loud and clear.",
   },
   {
-    icon: "⚡",
+    icon: SparklesIcon,
     title: "Dolby AC3 / DTS Transcoding",
     desc: "Zero-configuration background audio transcoding for multi-channel cinema audio.",
   },
   {
-    icon: "⏱️",
+    icon: PlayIcon,
     title: "VLC Speed Bar & Hotkeys",
     desc: "Adjust speed smoothly from 0.25x to 3.0x with [ / ] (±0.1x), - / + (±0.5x), or = reset.",
   },
   {
-    icon: "🔍",
+    icon: CheckIcon,
     title: "VLsub OpenSubtitles",
     desc: "Search, download, and auto-sync subtitles for any movie without leaving the player.",
   },
   {
-    icon: "🌓",
+    icon: ChromeIcon,
     title: "Dark & Light Cinema Modes",
     desc: "Seamlessly toggle between Dark Theater and Daylight mode with 'T' shortcut.",
   },
   {
-    icon: "💾",
+    icon: DownloadIcon,
     title: "Offline Storage & Cloud Sync",
     desc: "Tap words offline on flights; words queue locally and sync automatically when online.",
   },
   {
-    icon: "⭐",
+    icon: StarIcon,
     title: "Instant Click-to-Translate",
     desc: "Tap any subtitle word for instant definition, phonetic IPA, and SRS flashcard saving.",
   },
@@ -382,10 +384,10 @@ export default function DownloadPage() {
                             <span className="text-amber-400 text-xs font-mono">/ˈɡlɔː.ri/</span>
                             <button
                               type="button"
-                              className="text-slate-300 hover:text-white p-0.5 text-xs"
+                              className="text-slate-300 hover:text-white p-0.5 text-xs inline-flex items-center"
                               title="Play audio pronunciation"
                             >
-                              🔊
+                              <SpeakerIcon size={13} />
                             </button>
                           </div>
                           <button
@@ -518,7 +520,7 @@ export default function DownloadPage() {
                           className="w-6 h-6 rounded-md hover:bg-white/10 text-slate-300 flex items-center justify-center text-xs transition-colors"
                           title="Mute / Unmute (M)"
                         >
-                          {mockVolume === 0 ? "🔇" : mockVolume > 100 ? "🔊" : "🔉"}
+                          <SpeakerIcon size={14} />
                         </button>
 
                         {/* Interactive Range Slider with gold thumb knob */}
@@ -570,27 +572,33 @@ export default function DownloadPage() {
                 Desktop Player Built-in Capabilities
               </h3>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {DESKTOP_FEATURES.map((feat) => (
-                  <div
-                    key={feat.title}
-                    className="p-4 rounded-xl bg-black/5 dark:bg-white/5 border border-line space-y-2 hover:border-subtitle/40 transition-all"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{feat.icon}</span>
-                      <h4 className="text-xs font-bold text-ink">{feat.title}</h4>
+                {DESKTOP_FEATURES.map((feat) => {
+                  const IconComponent = feat.icon;
+                  return (
+                    <div
+                      key={feat.title}
+                      className="p-4 rounded-xl bg-black/5 dark:bg-white/5 border border-line space-y-2 hover:border-subtitle/40 transition-all"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-lg bg-subtitle/15 text-amber-800 dark:text-subtitle flex items-center justify-center shrink-0">
+                          <IconComponent size={14} />
+                        </span>
+                        <h4 className="text-xs font-bold text-ink">{feat.title}</h4>
+                      </div>
+                      <p className="text-xs text-muted leading-relaxed">
+                        {feat.desc}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted leading-relaxed">
-                      {feat.desc}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* Installation Guide Accordion Steps */}
             <div className="p-5 rounded-2xl bg-black/5 dark:bg-white/5 border border-line space-y-3">
               <h4 className="text-xs font-bold text-ink flex items-center gap-2">
-                <span>🚀 Quick Setup Guide (Windows 10 / 11)</span>
+                <DownloadIcon size={14} className="text-amber-700 dark:text-subtitle" />
+                <span>Quick Setup Guide (Windows 10 / 11)</span>
               </h4>
               <ol className="grid gap-3 text-xs text-muted sm:grid-cols-4">
                 <li className="flex gap-2.5">
@@ -709,7 +717,7 @@ export default function DownloadPage() {
                   </div>
                   <div className="flex-1 max-w-md mx-auto h-6 rounded-lg bg-black/5 dark:bg-white/10 border border-line px-3 flex items-center justify-between text-xs text-muted">
                     <span className="truncate">youtube.com/watch?v=wordtap-interactive-subtitles</span>
-                    <span className="text-ok font-semibold text-[10px]">🔒 WordTap Active</span>
+                    <span className="text-ok font-semibold text-[10px]">WordTap Active</span>
                   </div>
                   <div className="w-12 text-right text-xs font-mono text-muted">1080p</div>
                 </div>
@@ -783,7 +791,9 @@ export default function DownloadPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="p-5 rounded-2xl bg-black/5 dark:bg-white/5 border border-line space-y-3 flex flex-col justify-between hover:border-subtitle/40 transition-all">
               <div className="space-y-2">
-                <div className="text-2xl">💻</div>
+                <div className="w-10 h-10 rounded-xl bg-subtitle/15 text-amber-800 dark:text-subtitle flex items-center justify-center">
+                  <WindowsIcon size={20} />
+                </div>
                 <h4 className="text-sm font-bold text-ink">Desktop Player</h4>
                 <p className="text-xs text-muted leading-relaxed">
                   For offline movies, downloaded series, MKV files with multi-track Dolby audio, flights, and home theater learning.
@@ -802,7 +812,9 @@ export default function DownloadPage() {
 
             <div className="p-5 rounded-2xl bg-black/5 dark:bg-white/5 border border-line space-y-3 flex flex-col justify-between hover:border-subtitle/40 transition-all">
               <div className="space-y-2">
-                <div className="text-2xl">🌐</div>
+                <div className="w-10 h-10 rounded-xl bg-subtitle/15 text-amber-800 dark:text-subtitle flex items-center justify-center">
+                  <ChromeIcon size={20} />
+                </div>
                 <h4 className="text-sm font-bold text-ink">Browser Extension</h4>
                 <p className="text-xs text-muted leading-relaxed">
                   For streaming YouTube, Netflix, Disney+, Prime Video, reading web articles, and Screen OCR (Alt+S).
@@ -821,7 +833,9 @@ export default function DownloadPage() {
 
             <div className="p-5 rounded-2xl bg-black/5 dark:bg-white/5 border border-line space-y-3 flex flex-col justify-between hover:border-subtitle/40 transition-all">
               <div className="space-y-2">
-                <div className="text-2xl">📱</div>
+                <div className="w-10 h-10 rounded-xl bg-subtitle/15 text-amber-800 dark:text-subtitle flex items-center justify-center">
+                  <SparklesIcon size={20} />
+                </div>
                 <h4 className="text-sm font-bold text-ink">Web Dashboard &amp; SRS</h4>
                 <p className="text-xs text-muted leading-relaxed">
                   5-minute daily practice sessions, smart FSRS spaced repetition, streak tracking, AI grammar explanations, and deck collections.

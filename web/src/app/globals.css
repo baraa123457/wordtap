@@ -33,9 +33,9 @@
   --subtitle-edge: #d9a714;
   --subtitle-ink: #1a1400;
 
-  --ok: #10b981;
-  --ok-soft: #ecfdf5;
-  --ok-ink: #065f46;
+  --ok: #d4a311;
+  --ok-soft: rgba(250, 204, 59, 0.16);
+  --ok-ink: #7a5800;
   --bad: #ef4444;
   --bad-soft: #fef2f2;
   --bad-ink: #991b1b;
@@ -65,9 +65,9 @@ html.dark,
   --subtitle-edge: #e6b823;
   --subtitle-ink: #1a1400;
 
-  --ok: #34d399;
-  --ok-soft: #064e3b;
-  --ok-ink: #34d399;
+  --ok: #facc3b;
+  --ok-soft: rgba(250, 204, 59, 0.16);
+  --ok-ink: #facc3b;
   --bad: #f87171;
   --bad-soft: #450a0a;
   --bad-ink: #fca5a5;
@@ -91,9 +91,9 @@ html.dark,
     --subtitle-edge: #e6b823;
     --subtitle-ink: #1a1400;
 
-    --ok: #34d399;
-    --ok-soft: #064e3b;
-    --ok-ink: #34d399;
+    --ok: #facc3b;
+    --ok-soft: rgba(250, 204, 59, 0.16);
+    --ok-ink: #facc3b;
     --bad: #f87171;
     --bad-soft: #450a0a;
     --bad-ink: #fca5a5;

@@ -228,7 +228,7 @@ export function TypeView({ q, value, phase, onChange, onSubmit, onDeleteWord, on
               className="btn btn-quiet min-h-9 px-3 py-1 text-xs text-subtitle-edge dark:text-subtitle font-semibold hover:bg-subtitle/10 transition-colors cursor-pointer shrink-0"
               onClick={revealNextLetter}
             >
-              💡 {hintCount === 0 && value.length === 0 ? "Hint" : "Next letter (+1)"}
+              {hintCount === 0 && value.length === 0 ? "Hint" : "Next letter (+1)"}
             </button>
           ) : null}
         </div>
