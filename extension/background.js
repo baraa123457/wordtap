@@ -55,11 +55,10 @@ function isInflectionOrPlural(input, candidate) {
   const a = input.toLowerCase().trim();
   const b = candidate.toLowerCase().trim();
   if (a === b) return true;
-  if (b === a + "s" || a === b + "s") return true;
-  if (b === a + "es" || a === b + "es") return true;
-  if (b === a + "d" || a === b + "d") return true;
-  if (b === a + "ed" || a === b + "ed") return true;
-  if (b === a + "ing" || a === b + "ing") return true;
+  const suffixes = ["s", "es", "d", "ed", "ing", "ly", "er", "est", "ment", "ness", "tion", "able", "al", "ic", "ity", "y"];
+  for (const s of suffixes) {
+    if (b === a + s || a === b + s) return true;
+  }
   return false;
 }
 
@@ -370,23 +369,35 @@ async function translate(text, target, srcLang = "auto", context = "", requested
   }
 
   let correction = null;
+  let correctionFromGoogleSpell = false;
   if (Array.isArray(data[7])) {
     const rawCorr = typeof data[7][1] === "string" && data[7][1].trim() ? data[7][1] : stripHtmlTags(data[7][0]);
-    if (rawCorr && rawCorr.toLowerCase() !== text.trim().toLowerCase()) {
+    if (rawCorr && rawCorr.toLowerCase() !== text.trim().toLowerCase() && !isInflectionOrPlural(text, rawCorr)) {
       if (!/^[a-zA-Z]/.test(text.trim()) || /[a-zA-Z]/.test(rawCorr)) {
         correction = rawCorr;
+        correctionFromGoogleSpell = true;
       }
     }
   }
 
-  // Fallback to Google Suggest spell-check if data[7] didn't find an English spelling correction
-  if (!correction && !text.includes(" ") && text.trim().length >= 3 && text.trim().length <= 40 && /^[a-zA-Z'-]+$/.test(text.trim())) {
+  // Fallback to Google Suggest spell-check ONLY if:
+  // 1. Google Translate data[7] didn't find a spelling correction
+  // 2. The word is NOT already an established dictionary word with parts of speech (e.g. "fundamental" is an [adj])
+  // 3. The word has no dictionary alternative translations
+  const isEstablishedWord = partsOfSpeech.length > 0;
+  if (!correction && !isEstablishedWord && altSet.size === 0 && !text.includes(" ") && text.trim().length >= 3 && text.trim().length <= 40 && /^[a-zA-Z'-]+$/.test(text.trim())) {
     try {
       const suggestCorr = await findSuggestCorrection(text.trim());
       if (suggestCorr && suggestCorr.toLowerCase() !== text.trim().toLowerCase()) {
         correction = suggestCorr;
       }
     } catch (_) {}
+  }
+
+  // Definite safety check: if not explicitly flagged as a typo by Google Translate data[7],
+  // an established dictionary word with definitions must NEVER show "Did you mean"
+  if (!correctionFromGoogleSpell && partsOfSpeech.length > 0) {
+    correction = null;
   }
 
   // If word was a typo and dictionary had no POS or alternatives, fetch dictionary for the corrected word!

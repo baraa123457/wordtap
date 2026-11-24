@@ -7,7 +7,6 @@ import { SegmentedControl } from "@/components/SegmentedControl";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Logo } from "@/components/Logo";
 import { StarIcon, DownloadIcon, PlayIcon, SpeakerIcon } from "@/components/Icons";
-import { useScrollFade } from "@/hooks/useScrollFade";
 
 const MOCK_NAV_LINKS = [
   { href: "/dev-layout-test?tab=dashboard", label: "Dashboard", shortLabel: "Dashboard", tab: "dashboard" },
@@ -29,24 +28,23 @@ function DevLayoutContent() {
   const [mediaCategory, setMediaCategory] = useState("all");
   const [activeTab, setActiveTab] = useState(currentTab);
 
-  const isFirstTab = activeTab === "dashboard";
-  const { containerRef: navRef } = useScrollFade<HTMLElement>({
-    activeDependency: activeTab,
-    activeSelector: 'a[data-active="true"]',
-    isFirstItem: isFirstTab,
-  });
-
   return (
     <div className="flex min-h-dvh w-full flex-col">
       {/* Real AppShell Nav Header */}
       <header className="sticky top-0 z-40 w-full apple-glass transition-colors pt-safe">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 sm:px-6 lg:flex-nowrap lg:py-2.5">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 sm:px-6 lg:flex-nowrap lg:py-2.5">
           <div className="order-1 flex items-center shrink-0">
             <Logo href="/dev-layout-test" />
           </div>
 
           <div className="order-2 flex items-center gap-1.5 sm:gap-2 xl:gap-2.5 shrink-0 lg:order-3">
             <ThemeToggle />
+            <span
+              className="hidden xl:inline max-w-36 2xl:max-w-44 truncate text-[length:var(--text-label)] font-medium text-muted"
+              title="learner@wordtap.app"
+            >
+              learner@wordtap.app
+            </span>
             <button
               type="button"
               className="btn btn-quiet min-h-11 px-3 text-[length:var(--text-control)] font-medium whitespace-nowrap shrink-0 cursor-pointer text-ink hover:text-red-500 transition-colors"
@@ -56,15 +54,10 @@ function DevLayoutContent() {
           </div>
 
           <nav
-            ref={navRef}
             aria-label="Main Navigation"
-            className="order-3 flex w-full shrink min-w-0 items-center justify-start sm:justify-center overflow-x-auto no-scrollbar py-0.5 lg:order-2 lg:w-auto lg:py-0"
-            style={{
-              scrollPaddingInline: "2rem",
-              paddingInline: "0.5rem",
-            }}
+            className="order-3 flex w-full min-w-0 justify-center py-0.5 lg:order-2 lg:flex-1 lg:py-0"
           >
-            <div className="apple-segmented-container flex items-center gap-1 shrink-0 p-1">
+            <div className="apple-segmented-container app-nav-pill">
               {MOCK_NAV_LINKS.map((link, idx) => {
                 const active = activeTab === link.tab;
                 return (

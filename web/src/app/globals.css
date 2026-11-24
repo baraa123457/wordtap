@@ -755,6 +755,17 @@ html .apple-segmented-container > * {
   scroll-snap-align: center;
 }
 
+/* Main top-bar nav capsule: keep all tabs fully visible on tablet and desktop without clipping */
+@media (min-width: 640px) {
+  html .apple-segmented-container.app-nav-pill {
+    gap: clamp(0.125rem, 0.25vw, 0.25rem);
+    max-width: 100%;
+  }
+  html .apple-segmented-container.app-nav-pill > * {
+    padding-inline: clamp(0.5rem, 0.78vw, 0.875rem);
+  }
+}
+
 /* Edge fade, switched on by <SegmentedEnhancer/> only on a side that has hidden content. */
 html .apple-segmented-container[data-fade-left="true"],
 html .apple-segmented-container[data-fade-right="true"] {

@@ -94,11 +94,10 @@ function isInflectionOrPlural(input: string, candidate: string): boolean {
   const a = input.toLowerCase().trim();
   const b = candidate.toLowerCase().trim();
   if (a === b) return true;
-  if (b === a + "s" || a === b + "s") return true;
-  if (b === a + "es" || a === b + "es") return true;
-  if (b === a + "d" || a === b + "d") return true;
-  if (b === a + "ed" || a === b + "ed") return true;
-  if (b === a + "ing" || a === b + "ing") return true;
+  const suffixes = ["s", "es", "d", "ed", "ing", "ly", "er", "est", "ment", "ness", "tion", "able", "al", "ic", "ity", "y"];
+  for (const s of suffixes) {
+    if (b === a + s || a === b + s) return true;
+  }
   return false;
 }
 

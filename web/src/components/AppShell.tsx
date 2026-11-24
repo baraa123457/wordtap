@@ -7,7 +7,6 @@ import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "./ThemeToggle";
 import { Logo } from "./Logo";
 import { StarIcon, DownloadIcon } from "./Icons";
-import { useScrollFade } from "@/hooks/useScrollFade";
 
 const AUTH_LINKS = [
   { href: "/dashboard", label: "Dashboard", shortLabel: "Dashboard" },
@@ -34,23 +33,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const logoHref = isSignedIn ? "/dashboard" : "/";
   const navLinks = isSignedIn ? AUTH_LINKS : GUEST_LINKS;
 
-  const isFirstTab =
-    navLinks.length > 0 &&
-    (pathname === navLinks[0].href ||
-      ((navLinks[0].href as string) === "/download" &&
-        (pathname === "/download" || pathname === "/downloads")));
-
-  const { containerRef: navRef } = useScrollFade<HTMLElement>({
-    activeDependency: pathname,
-    activeSelector: 'a[data-active="true"]',
-    isFirstItem: isFirstTab,
-  });
-
   return (
     <div className="flex min-h-dvh w-full flex-col">
       {/* Apple Floating Liquid Glass Header with Safe Area support */}
       <header className="sticky top-0 z-40 w-full apple-glass transition-colors pt-safe">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 sm:px-6 lg:flex-nowrap lg:py-2.5">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 sm:px-6 lg:flex-nowrap lg:py-2.5">
           {/* Logo (Left) */}
           <div className="order-1 flex items-center shrink-0">
             <Logo href={logoHref} />
@@ -62,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {isSignedIn && email ? (
               <>
                 <span
-                  className="hidden xl:inline max-w-32 2xl:max-w-44 truncate text-[length:var(--text-label)] font-medium text-muted"
+                  className="hidden xl:inline max-w-36 2xl:max-w-44 truncate text-[length:var(--text-label)] font-medium text-muted"
                   title={email}
                 >
                   {email}
@@ -89,15 +76,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           {/* Segmented Navigation Capsule (Row 2 on mobile/tablet, Center on wide desktop) */}
           <nav
-            ref={navRef}
             aria-label="Main Navigation"
-            className="order-3 flex w-full shrink min-w-0 items-center justify-start sm:justify-center overflow-x-auto no-scrollbar py-0.5 lg:order-2 lg:w-auto lg:py-0"
-            style={{
-              scrollPaddingInline: "2rem",
-              paddingInline: "0.5rem",
-            }}
+            className="order-3 flex w-full min-w-0 justify-center py-0.5 lg:order-2 lg:flex-1 lg:py-0"
           >
-            <div className="apple-segmented-container flex items-center gap-1 shrink-0 p-1">
+            <div className="apple-segmented-container app-nav-pill">
               {navLinks.map((link, index) => {
                 const active =
                   pathname === link.href ||

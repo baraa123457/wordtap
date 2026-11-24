@@ -7,7 +7,7 @@ import { speak } from "@/lib/speech";
 import { addCustomWord, deleteWord } from "@/lib/api";
 import { getStoredSettings, type UserSettings, type TranslationProvider } from "@/lib/settings";
 import type { Word } from "@/lib/schemas";
-import { SpeakerIcon, CloseIcon, TrashIcon, ImageIcon, MicIcon, BookOpenIcon, SparklesIcon, LightbulbIcon, GlobeIcon, CheckIcon } from "@/components/Icons";
+import { SpeakerIcon, CloseIcon, TrashIcon, ImageIcon, MicIcon, BookOpenIcon, SparklesIcon, LightbulbIcon, GlobeIcon } from "@/components/Icons";
 import { addHistoryItem, markHistoryItemSaved } from "@/lib/history";
 import { getVerbConjugation, type VerbConjugation } from "@/lib/verbs";
 

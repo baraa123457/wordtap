@@ -2,7 +2,8 @@ import { test, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 
-const WIDTHS = [320, 360, 375, 393, 412, 768];
+const WIDTHS = [320, 360, 375, 393, 412, 640, 768, 1024, 1280, 1440];
+const DESKTOP_OR_TABLET_WIDTHS = new Set([640, 768, 1024, 1280, 1440]);
 const TABS = ["words", "decks", "dashboard"] as const;
 
 test.beforeAll(() => {
@@ -155,6 +156,33 @@ for (const width of WIDTHS) {
         navVisibility.ok,
         `Active nav link "${navVisibility.text}" is not fully visible in nav: Link [${navVisibility.linkLeft}, ${navVisibility.linkRight}] vs Nav [${navVisibility.navLeft}, ${navVisibility.navRight}]`
       ).toBe(true);
+
+      // 5. On tablet & desktop (>= 640px), assert ALL nav tabs fit in full with zero overflow/clipping
+      if (DESKTOP_OR_TABLET_WIDTHS.has(width)) {
+        const fullNavCheck = await page.evaluate(() => {
+          const pill = document.querySelector<HTMLElement>("nav .apple-segmented-container");
+          if (!pill) return { ok: false, reason: "Nav pill not found" };
+          const links = Array.from(pill.querySelectorAll<HTMLElement>("a"));
+          const pillRect = pill.getBoundingClientRect();
+          const clipped = links
+            .filter((a) => {
+              const r = a.getBoundingClientRect();
+              return r.left < pillRect.left - 1 || r.right > pillRect.right + 1;
+            })
+            .map((a) => a.innerText.trim());
+          return {
+            ok: pill.scrollWidth <= pill.clientWidth + 1 && clipped.length === 0 && pill.dataset.fadeRight !== "true",
+            scrollWidth: pill.scrollWidth,
+            clientWidth: pill.clientWidth,
+            fadeRight: pill.dataset.fadeRight,
+            clipped,
+          };
+        });
+        expect(
+          fullNavCheck.ok,
+          `Nav pill clipped at ${width}px: scrollWidth=${fullNavCheck.scrollWidth}, clientWidth=${fullNavCheck.clientWidth}, fadeRight=${fullNavCheck.fadeRight}, clipped=${JSON.stringify(fullNavCheck.clipped)}`
+        ).toBe(true);
+      }
 
       // Save screenshot
       await page.screenshot({
