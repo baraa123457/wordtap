@@ -1061,6 +1061,19 @@
             </div>
           </div>
 
+          <!-- Instant Quick Look-up Bar -->
+          <div style="position: relative; margin-top: 10px; width: 100%;">
+            <input
+              type="text"
+              id="instantLookupInput"
+              placeholder="🔍 Search or paste word to translate…"
+              style="width: 100%; height: 34px; padding: 0 32px 0 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface-elevated); color: var(--ink); font-size: 12px; outline: none; transition: border-color 0.15s;"
+            />
+            <button type="button" id="instantLookupBtn" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px;" title="Translate word">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </button>
+          </div>
+
           <!-- Instant Translation Card (Shown when opened with a word or active selection) -->
           <div class="card" id="quickTranslateCard" style="display: none; margin-top: 10px; border: 1.5px solid rgba(250, 204, 59, 0.45); background: linear-gradient(145deg, var(--surface), var(--surface-elevated)); box-shadow: 0 4px 18px rgba(0,0,0,0.25);">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">

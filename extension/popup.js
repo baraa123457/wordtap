@@ -861,9 +861,23 @@ async function handleQuickTranslate(text) {
       }
     }
   });
-      }
+}
+
+// Wire up the Instant Lookup search input in popup
+const lookupInput = $("instantLookupInput");
+const lookupBtn = $("instantLookupBtn");
+if (lookupInput) {
+  const triggerLookup = () => {
+    const val = lookupInput.value.trim();
+    if (val) handleQuickTranslate(val);
+  };
+  lookupInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      triggerLookup();
     }
   });
+  if (lookupBtn) lookupBtn.addEventListener("click", triggerLookup);
 }
 
 const urlParams = new URLSearchParams(window.location.search);

@@ -961,6 +961,16 @@ async function handleSelectionTranslation(tab, text) {
   const clean = text.trim();
   if (!clean) return;
 
+  const url = (tab.url || "").toLowerCase();
+  const isPdf = url.includes(".pdf") || url.startsWith("file://");
+
+  // In Chrome's native PDF viewer, <embed> plugin covers page DOM elements.
+  // Directly open the floating quick translate window so it floats reliably above the PDF!
+  if (isPdf) {
+    openQuickTranslationPopup(clean);
+    return;
+  }
+
   // 1. Try sending directly to content script if already loaded
   try {
     const res = await chrome.tabs.sendMessage(tab.id, {
@@ -1307,10 +1317,20 @@ chrome.commands.onCommand.addListener(async (command) => {
         if (selected) {
           handleSelectionTranslation(tab, selected);
         } else {
-          chrome.tabs.sendMessage(tab.id, { type: "wordtap:check-pdf-selection" }).catch(() => {});
+          const url = (tab.url || "").toLowerCase();
+          if (url.includes(".pdf") || url.startsWith("file://")) {
+            openQuickTranslationPopup("");
+          } else {
+            chrome.tabs.sendMessage(tab.id, { type: "wordtap:check-pdf-selection" }).catch(() => {});
+          }
         }
       } catch (_) {
-        chrome.tabs.sendMessage(tab.id, { type: "wordtap:check-pdf-selection" }).catch(() => {});
+        const url = (tab.url || "").toLowerCase();
+        if (url.includes(".pdf") || url.startsWith("file://")) {
+          openQuickTranslationPopup("");
+        } else {
+          chrome.tabs.sendMessage(tab.id, { type: "wordtap:check-pdf-selection" }).catch(() => {});
+        }
       }
     });
   }
