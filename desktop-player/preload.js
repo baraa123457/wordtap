@@ -39,5 +39,6 @@ contextBridge.exposeInMainWorld('WordTapAPI', {
   saveMediaSession: (session) => ipcRenderer.invoke('app:save-media-session', session),
   saveMediaSessionSync: (session) => ipcRenderer.sendSync('app:save-media-session-sync', session),
   getMediaHistory: (filePath) => ipcRenderer.invoke('app:get-media-history', filePath),
-  signInWithGoogle: () => ipcRenderer.invoke('auth:sign-in-google')
+  signInWithGoogle: () => ipcRenderer.invoke('auth:sign-in-google'),
+  onAuthSession: (callback) => ipcRenderer.on('app:auth-session', (_event, session) => callback(session))
 });

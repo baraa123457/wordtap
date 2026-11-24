@@ -101,7 +101,7 @@ function extractFilePathFromArgs(args) {
     const raw = args[i];
     if (!raw) continue;
     const cleaned = cleanPath(raw);
-    if (!cleaned || cleaned.startsWith('--') || cleaned.startsWith('-')) continue;
+    if (!cleaned || cleaned.startsWith('--') || cleaned.startsWith('-') || cleaned.startsWith('wordtap://')) continue;
 
     try {
       const ext = path.extname(cleaned).toLowerCase();
@@ -119,7 +119,7 @@ function extractFilePathFromArgs(args) {
     const raw = args[i];
     if (!raw) continue;
     const cleaned = cleanPath(raw);
-    if (!cleaned || cleaned.startsWith('--') || cleaned.startsWith('-')) continue;
+    if (!cleaned || cleaned.startsWith('--') || cleaned.startsWith('-') || cleaned.startsWith('wordtap://')) continue;
 
     try {
       const resolved = path.resolve(cleaned);
@@ -265,6 +265,46 @@ if (initialArgPath) {
   pendingFilePayload = prepareFilePayload(initialArgPath);
 }
 
+// Deep link protocol handler for wordtap://auth
+let activeOAuthResolver = null;
+
+function handleDeepLinkUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.startsWith('wordtap://')) return false;
+  try {
+    const urlObj = new URL(rawUrl.replace(/^wordtap:\/\//, 'http://dummy/'));
+    const params = urlObj.searchParams;
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    const email = params.get('email');
+    const userId = params.get('user_id');
+
+    if (accessToken && email) {
+      const session = {
+        access_token: accessToken,
+        refresh_token: refreshToken || '',
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        email: email,
+        user_id: userId || ''
+      };
+
+      if (activeOAuthResolver) {
+        activeOAuthResolver(session);
+        activeOAuthResolver = null;
+      }
+
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+        mainWindow.webContents.send('app:auth-session', session);
+      }
+      return true;
+    }
+  } catch (err) {
+    console.warn('Failed to parse deep link url:', err);
+  }
+  return false;
+}
+
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
@@ -273,6 +313,13 @@ if (!gotTheLock) {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
+
+      if (Array.isArray(commandLine)) {
+        const protocolUrl = commandLine.find(arg => arg && typeof arg === 'string' && arg.startsWith('wordtap://'));
+        if (protocolUrl && handleDeepLinkUrl(protocolUrl)) {
+          return;
+        }
+      }
 
       const secondPath = extractFilePathFromArgs(commandLine);
       if (secondPath) {
@@ -284,6 +331,11 @@ if (!gotTheLock) {
     }
   });
 }
+
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handleDeepLinkUrl(url);
+});
 
 function readJsonFile(filePath, defaultValue) {
   try {
@@ -598,7 +650,7 @@ ipcMain.handle('shell:open-external', async (_event, url) => {
   }
 });
 
-// IPC: Google OAuth via Loopback Server
+// IPC: Google OAuth via Loopback Server & Web Bridge
 let activeOAuthServer = null;
 
 ipcMain.handle('auth:sign-in-google', async () => {
@@ -607,6 +659,9 @@ ipcMain.handle('auth:sign-in-google', async () => {
       try { activeOAuthServer.close(); } catch {}
       activeOAuthServer = null;
     }
+
+    activeOAuthResolver = resolve;
+    activeOAuthRejecter = reject;
 
     const SUPABASE_AUTH_URL = 'https://vjjilwbhvoxfigrokqch.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_YzMg6sNWjpwwfP2T-apa-Q_c3EHVBNa';
@@ -621,10 +676,24 @@ ipcMain.handle('auth:sign-in-google', async () => {
         try { activeOAuthServer.close(); } catch {}
         activeOAuthServer = null;
       }
+      activeOAuthResolver = null;
+      activeOAuthRejecter = null;
     };
 
     const handler = async (req, res) => {
       try {
+        // Handle CORS & Private Network Access for Web App Handoff
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        res.setHeader('Access-Control-Allow-Private-Network', 'true');
+
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
+
         const reqUrl = new URL(req.url, 'http://127.0.0.1');
 
         if (reqUrl.pathname === '/auth/callback') {
@@ -684,6 +753,35 @@ ipcMain.handle('auth:sign-in-google', async () => {
           req.on('end', async () => {
             try {
               const body = JSON.parse(bodyStr || '{}');
+
+              // If session was delivered directly from web handoff
+              if (body.access_token && body.email) {
+                const session = {
+                  access_token: body.access_token,
+                  refresh_token: body.refresh_token || '',
+                  expires_at: body.expires_at || (Math.floor(Date.now() / 1000) + (body.expires_in || 3600)),
+                  email: body.email,
+                  user_id: body.user_id || ''
+                };
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ ok: true, email: session.email }));
+
+                cleanup();
+
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                  if (mainWindow.isMinimized()) mainWindow.restore();
+                  mainWindow.focus();
+                  mainWindow.webContents.send('app:auth-session', session);
+                }
+
+                if (!resolved) {
+                  resolved = true;
+                  resolve(session);
+                }
+                return;
+              }
+
               const params = new URLSearchParams(body.hash || body.search || '');
 
               const errorDesc = params.get('error_description') || params.get('error');
@@ -698,10 +796,10 @@ ipcMain.handle('auth:sign-in-google', async () => {
                 return;
               }
 
-              let accessToken = params.get('access_token');
-              let refreshToken = params.get('refresh_token');
-              let expiresIn = parseInt(params.get('expires_in') || '3600', 10);
-              const code = params.get('code');
+              let accessToken = params.get('access_token') || body.access_token;
+              let refreshToken = params.get('refresh_token') || body.refresh_token;
+              let expiresIn = parseInt(params.get('expires_in') || body.expires_in || '3600', 10);
+              const code = params.get('code') || body.code;
 
               if (!accessToken && code) {
                 const tokenRes = await fetch(`${SUPABASE_AUTH_URL}/auth/v1/token?grant_type=authorization_code`, {
@@ -753,6 +851,7 @@ ipcMain.handle('auth:sign-in-google', async () => {
               if (mainWindow && !mainWindow.isDestroyed()) {
                 if (mainWindow.isMinimized()) mainWindow.restore();
                 mainWindow.focus();
+                mainWindow.webContents.send('app:auth-session', session);
               }
 
               if (!resolved) {
@@ -809,7 +908,8 @@ ipcMain.handle('auth:sign-in-google', async () => {
           }
         }, 120000);
 
-        const authUrl = `${SUPABASE_AUTH_URL}/auth/v1/authorize?provider=google&redirect_to=http://localhost:${port}/auth/callback`;
+        // Open official Web App Desktop Auth bridge (100% permitted by Supabase redirect whitelist)
+        const authUrl = `https://wordtap.vercel.app/auth/desktop?port=${port}`;
         shell.openExternal(authUrl);
       });
     }

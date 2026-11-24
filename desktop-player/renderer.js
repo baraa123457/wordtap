@@ -848,6 +848,23 @@
     setupAuthGate();
     setupEvents();
 
+    // Listen for incoming authenticated sessions via deep link (wordtap://auth) or loopback bridge
+    if (window.WordTapAPI && window.WordTapAPI.onAuthSession) {
+      window.WordTapAPI.onAuthSession(async (session) => {
+        if (session && session.email) {
+          userSession = session;
+          if (window.WordTapAPI.saveConfig) {
+            await window.WordTapAPI.saveConfig({ session: userSession });
+          }
+          updateAccountUI();
+          hideLoginGate();
+          if (accountModal) accountModal.classList.remove('open');
+          showToast(`Welcome back, ${userSession.email}!`);
+          pushPendingOfflineWords();
+        }
+      });
+    }
+
     try {
       initAudio();
     } catch (e) {
