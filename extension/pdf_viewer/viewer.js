@@ -235,7 +235,10 @@ async function loadPdfDocument() {
 
   // Check file scheme access permission if this is a local file
   if (isFileScheme && chrome.extension && chrome.extension.isAllowedFileSchemeAccess) {
-    const isAllowed = await new Promise((resolve) => chrome.extension.isAllowedFileSchemeAccess(resolve));
+    const isAllowed = await Promise.race([
+      new Promise((resolve) => chrome.extension.isAllowedFileSchemeAccess(resolve)),
+      new Promise((resolve) => setTimeout(() => resolve(true), 1200)),
+    ]);
     if (!isAllowed) {
       showError(
         "File Access Permission Required",
@@ -265,7 +268,14 @@ async function loadPdfDocument() {
       }
     };
 
-    const doc = await currentLoadingTask.promise;
+    const loadTimeoutPromise = new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Loading timed out. Check that the file exists and file access permissions are enabled.")),
+        25000
+      )
+    );
+
+    const doc = await Promise.race([currentLoadingTask.promise, loadTimeoutPromise]);
     currentDocument = doc;
     pdfViewer.setDocument(doc);
     linkService.setDocument(doc, null);

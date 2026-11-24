@@ -137,7 +137,13 @@
   <!-- Error State Overlay -->
   <div class="error-overlay" id="errorOverlay">
     <div class="error-card">
-      <div class="error-icon" id="errorIcon">⚠️</div>
+      <div class="error-icon" id="errorIcon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#facc3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
       <div class="error-title" id="errorTitle">Could not open PDF</div>
       <div class="error-desc" id="errorDesc">The requested file could not be loaded.</div>
       <div class="error-actions" id="errorActions">
@@ -148,7 +154,14 @@
 
   <!-- Scanned PDF Notice -->
   <div class="scanned-banner" id="scannedBanner">
-    <span>💡 This PDF appears to be scanned with no text layer.</span>
+    <span class="scanned-banner-text">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+      This PDF appears to be scanned with no text layer.
+    </span>
     <button type="button" class="scanned-banner-btn" id="scannedOcrBtn">Use OCR Capture (Alt+S)</button>
   </div>
 

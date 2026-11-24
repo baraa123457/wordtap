@@ -6,7 +6,8 @@ const $ = (id) => document.getElementById(id);
 function safeSendMessage(msg, callback) {
   try {
     chrome.runtime.sendMessage(msg, (res) => {
-      if (chrome.runtime && chrome.runtime.lastError) {
+      const err = chrome.runtime && chrome.runtime.lastError;
+      if (err) {
         if (callback) callback(null);
         return;
       }
@@ -268,10 +269,10 @@ if ($("ocrCaptureBtn")) {
     chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
       const tab = tabs && tabs[0];
       if (tab && tab.id) {
-        chrome.runtime.sendMessage({
+        safeSendMessage({
           type: "ocr:start-tab",
           tabId: tab.id,
-        });
+        }, () => {});
       }
       setTimeout(() => window.close(), 100);
     });
@@ -509,7 +510,12 @@ function render() {
     const emptyCard = document.createElement("div");
     emptyCard.className = "empty-words-card";
     emptyCard.innerHTML = `
-      <div class="empty-icon">📖</div>
+      <div class="empty-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+      </div>
       <div class="empty-title">No words saved yet</div>
       <div class="empty-desc">Click any word in video subtitles or select text on any page to translate and save.</div>
     `;
@@ -626,12 +632,12 @@ function render() {
       const targetLang = w.lang;
       delete words[key];
       chrome.storage.local.set({ words }, render);
-      chrome.runtime.sendMessage({
+      safeSendMessage({
         type: "word:delete",
         text: targetText,
         srcLang: targetSrc,
         targetLang: targetLang,
-      });
+      }, () => {});
     });
 
     actions.append(spk, del);
@@ -907,7 +913,7 @@ function checkPdfTab(tab) {
   // If already in WordTap reader, indicate active reader mode
   if (url.includes("pdf_viewer/viewer.html")) {
     if (readBtn) {
-      readBtn.innerHTML = `<span>✓ Currently reading in WordTap</span>`;
+      readBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span>Currently reading in WordTap</span>`;
       readBtn.disabled = true;
       readBtn.style.opacity = "0.75";
     }
@@ -937,7 +943,7 @@ function checkPdfTab(tab) {
     if (fileNotice) fileNotice.style.display = "none";
     if (readBtn) {
       readBtn.disabled = false;
-      readBtn.innerHTML = `<span>📖 Read with WordTap</span>`;
+      readBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg><span>Read with WordTap</span>`;
       readBtn.onclick = () => {
         const viewerUrl =
           chrome.runtime.getURL("pdf_viewer/viewer.html") + "?file=" + encodeURIComponent(tab.url);

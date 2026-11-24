@@ -718,17 +718,25 @@ ipcMain.handle('auth:sign-in-google', async () => {
   <title>WordTap Authentication</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0c0e1a; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .card { background: #151833; border: 1px solid rgba(255,255,255,0.12); padding: 36px 32px; border-radius: 20px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 24px 64px rgba(0,0,0,0.6); }
-    .icon { font-size: 40px; margin-bottom: 14px; }
-    h1 { font-size: 21px; font-weight: 700; margin: 0 0 10px; color: #ffd23f; }
-    p { font-size: 13.5px; color: #94a3b8; margin: 0 0 20px; line-height: 1.55; }
-    .badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.35); color: #34d399; padding: 7px 16px; border-radius: 99px; font-size: 13px; font-weight: 600; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif; background: #0b0d1e; color: #eef1ff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; -webkit-font-smoothing: antialiased; }
+    .card { background: #151833; border: 1px solid rgba(255,255,255,0.1); padding: 40px 32px; border-radius: 20px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 24px 64px rgba(0,0,0,0.6); }
+    .icon-wrap { display: flex; justify-content: center; align-items: center; margin-bottom: 18px; }
+    .brand-logo { filter: drop-shadow(0 4px 12px rgba(250, 204, 59, 0.25)); }
+    h1 { font-size: 22px; font-weight: 700; margin: 0 0 10px; color: #facc3b; letter-spacing: -0.02em; }
+    p { font-size: 13.5px; color: #9aa2c8; margin: 0 0 22px; line-height: 1.55; }
+    .badge { display: inline-flex; align-items: center; gap: 7px; background: rgba(250,204,59,0.12); border: 1px solid rgba(250,204,59,0.35); color: #facc3b; padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+    .badge svg { width: 14px; height: 14px; stroke: #facc3b; stroke-width: 2.5; }
   </style>
 </head>
 <body>
   <div class="card" id="card">
-    <div class="icon">🎬</div>
+    <div class="icon-wrap">
+      <svg class="brand-logo" width="52" height="38" viewBox="0 0 30 22" fill="none">
+        <rect x="0.5" y="0.5" width="29" height="21" rx="5" fill="#0b0d1e" stroke="#262a52"/>
+        <rect x="6" y="8" width="18" height="3" rx="1.5" fill="#ffffff"/>
+        <rect x="9" y="14" width="12" height="2.5" rx="1.25" fill="#facc3b"/>
+      </svg>
+    </div>
     <h1>Connecting to WordTap…</h1>
     <p id="msg">Verifying your Google session with WordTap VLC Player…</p>
   </div>
@@ -745,7 +753,7 @@ ipcMain.handle('auth:sign-in-google', async () => {
         });
         const data = await res.json();
         if (data.ok) {
-          document.getElementById('card').innerHTML = '<div class="icon">✨</div><h1>Welcome back!</h1><p>Successfully signed in with Google. You can now close this tab and return to WordTap Player.</p><div class="badge">✓ Connected to WordTap</div>';
+          document.getElementById('card').innerHTML = '<div class="icon-wrap"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#facc3b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" stroke="rgba(250,204,59,0.3)"/><polyline points="8 12 11 15 16 9"/></svg></div><h1>Welcome back!</h1><p>Successfully signed in with Google. You can now return to WordTap Player.</p><div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Connected to WordTap</div>';
           setTimeout(() => { window.close(); }, 2500);
         } else {
           document.getElementById('msg').innerText = 'Authentication error: ' + (data.error || 'Failed to authenticate');

@@ -1370,8 +1370,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   const reply = (promise) => {
     promise
-      .then(sendResponse)
-      .catch((e) => sendResponse({ ok: false, error: e && e.message ? e.message : String(e) }));
+      .then((res) => {
+        try {
+          sendResponse(res);
+        } catch (_) {}
+      })
+      .catch((e) => {
+        try {
+          sendResponse({ ok: false, error: e && e.message ? e.message : String(e) });
+        } catch (_) {}
+      });
     return true; // keep the channel open for the async response
   };
 

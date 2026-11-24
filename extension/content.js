@@ -617,7 +617,7 @@
     if (correction && correction.toLowerCase() !== original.trim().toLowerCase()) {
       corrEl.style.display = "flex";
       const icon = document.createElement("span");
-      icon.textContent = "💡";
+      icon.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
       const label = document.createElement("span");
       label.textContent = "Did you mean:";
       const btn = document.createElement("button");
@@ -1216,7 +1216,7 @@
       transition: transform 0.15s ease;
     `;
     pill.innerHTML = `
-      <span style="background:#facc3b;color:#0b0d1e;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;">📸 OCR</span>
+      <span style="background:#facc3b;color:#0b0d1e;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;">OCR</span>
       <span>Subtitles on Canvas? Press <strong>Alt+S</strong> to translate</span>
       <span style="opacity:0.6;margin-left:4px;font-size:12px;cursor:pointer;" title="Dismiss">✕</span>
     `;

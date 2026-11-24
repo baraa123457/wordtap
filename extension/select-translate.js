@@ -1187,7 +1187,7 @@
     if (extras.correction && extras.correction.toLowerCase() !== lastText.trim().toLowerCase()) {
       corrEl.style.display = "flex";
       const icon = document.createElement("span");
-      icon.textContent = "💡";
+      icon.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
       const label = document.createElement("span");
       label.textContent = "Did you mean:";
       const btn = document.createElement("button");
@@ -1392,7 +1392,7 @@
         const msg = (saved && saved.error) || "Failed to save · Please sign in";
         setStatus(msg, true);
         setSaveBtnState(false);
-        saveBtn.innerHTML = `⚠️ Failed to save`;
+        saveBtn.innerHTML = `Failed to save`;
         setTimeout(() => {
           if (!saveBtn.classList.contains("saved")) {
             setSaveBtnState(false);
@@ -1752,7 +1752,7 @@
     const height = rect.height;
 
     // Show loading card at the snippet location
-    showLoadingCard(rect, "📸 Scanning text…");
+    showLoadingCard(rect, "Scanning text…");
     trEl.innerHTML = `<span class="loading"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span> <span style="font-size:12px;color:#959cc2;margin-left:5px;">Scanning text & translating…</span>`;
 
     // Wait a microtick so overlay is gone before captureVisibleTab
@@ -1887,11 +1887,11 @@
     const pill = document.createElement("div");
     pill.className = "ocr-pill";
     pill.innerHTML = `
-      <span class="ocr-pill-badge">📸 OCR</span>
+      <span class="ocr-pill-badge">OCR</span>
       <span>Drag a box over text or subtitles to translate</span>
       ${
         visibleVideo
-          ? '<button type="button" class="ocr-auto-snap-btn" id="ocrSnapSubBtn" title="Auto-detect and capture subtitle area of video">⚡ Snap Subtitles</button>'
+          ? '<button type="button" class="ocr-auto-snap-btn" id="ocrSnapSubBtn" title="Auto-detect and capture subtitle area of video"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>Snap Subtitles</button>'
           : ""
       }
       <span style="opacity:0.65;font-size:11px;margin-left:4px;">(Esc to cancel)</span>
