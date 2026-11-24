@@ -121,6 +121,8 @@
   const gatePassword = document.getElementById('gate-password');
   const gateAuthError = document.getElementById('gate-auth-error');
   const btnGateSignin = document.getElementById('btn-gate-signin');
+  const btnGateGoogle = document.getElementById('btn-gate-google');
+  const gateGoogleText = document.getElementById('gate-google-text');
   const btnGateOffline = document.getElementById('btn-gate-offline');
   const btnGateCreateAcc = document.getElementById('btn-gate-create-acc');
 
@@ -135,6 +137,8 @@
   const authEmailInput = document.getElementById('auth-email');
   const authPasswordInput = document.getElementById('auth-password');
   const btnAuthSignin = document.getElementById('btn-auth-signin');
+  const btnAccountGoogle = document.getElementById('btn-account-google');
+  const accountGoogleText = document.getElementById('account-google-text');
   const btnAuthSignout = document.getElementById('btn-auth-signout');
   const btnOpenWeb = document.getElementById('btn-open-web');
 
@@ -683,6 +687,47 @@
   function setupAuthGate() {
     if (authGateSetupDone) return;
     authGateSetupDone = true;
+
+    // Google Sign-In on Gate
+    if (btnGateGoogle) {
+      btnGateGoogle.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!window.WordTapAPI || !window.WordTapAPI.signInWithGoogle) {
+          if (gateAuthError) {
+            gateAuthError.textContent = 'Google sign-in is not supported in this build.';
+            gateAuthError.style.display = 'block';
+          }
+          return;
+        }
+
+        btnGateGoogle.disabled = true;
+        if (gateGoogleText) gateGoogleText.textContent = 'Connecting to Google…';
+        if (gateAuthError) gateAuthError.style.display = 'none';
+
+        try {
+          const session = await window.WordTapAPI.signInWithGoogle();
+          if (session && session.access_token) {
+            userSession = session;
+            if (window.WordTapAPI.saveConfig) {
+              await window.WordTapAPI.saveConfig({ session: userSession });
+            }
+            updateAccountUI();
+            hideLoginGate();
+            showToast(`Welcome back, ${userSession.email}!`);
+            pushPendingOfflineWords();
+          }
+        } catch (err) {
+          if (gateAuthError) {
+            gateAuthError.textContent = err.message || 'Google sign-in was cancelled or failed.';
+            gateAuthError.style.display = 'block';
+          }
+        } finally {
+          btnGateGoogle.disabled = false;
+          if (gateGoogleText) gateGoogleText.textContent = 'Continue with Google';
+        }
+      });
+    }
 
     // Continue as Guest (Offline Mode)
     if (btnGateOffline) {
@@ -2889,6 +2934,38 @@
     btnAccount.addEventListener('click', () => accountModal.classList.add('open'));
     btnCloseAccountModal.addEventListener('click', () => accountModal.classList.remove('open'));
     btnAuthSignin.addEventListener('click', handleSignIn);
+    if (btnAccountGoogle) {
+      btnAccountGoogle.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!window.WordTapAPI || !window.WordTapAPI.signInWithGoogle) {
+          alert('Google sign-in is not supported in this build.');
+          return;
+        }
+
+        btnAccountGoogle.disabled = true;
+        if (accountGoogleText) accountGoogleText.textContent = 'Connecting to Google…';
+
+        try {
+          const session = await window.WordTapAPI.signInWithGoogle();
+          if (session && session.access_token) {
+            userSession = session;
+            if (window.WordTapAPI.saveConfig) {
+              await window.WordTapAPI.saveConfig({ session: userSession });
+            }
+            updateAccountUI();
+            if (accountModal) accountModal.classList.remove('open');
+            showToast(`Connected as ${userSession.email}`);
+            pushPendingOfflineWords();
+          }
+        } catch (err) {
+          alert(`Google sign-in failed: ${err.message || 'Cancelled'}`);
+        } finally {
+          btnAccountGoogle.disabled = false;
+          if (accountGoogleText) accountGoogleText.textContent = 'Continue with Google';
+        }
+      });
+    }
     btnAuthSignout.addEventListener('click', handleSignOut);
     btnOpenWeb.addEventListener('click', () => window.WordTapAPI.openExternal(WEBSITE_URL));
 

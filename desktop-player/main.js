@@ -598,6 +598,226 @@ ipcMain.handle('shell:open-external', async (_event, url) => {
   }
 });
 
+// IPC: Google OAuth via Loopback Server
+let activeOAuthServer = null;
+
+ipcMain.handle('auth:sign-in-google', async () => {
+  return new Promise((resolve, reject) => {
+    if (activeOAuthServer) {
+      try { activeOAuthServer.close(); } catch {}
+      activeOAuthServer = null;
+    }
+
+    const SUPABASE_AUTH_URL = 'https://vjjilwbhvoxfigrokqch.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_YzMg6sNWjpwwfP2T-apa-Q_c3EHVBNa';
+    const candidatePorts = [54321, 54322, 54323, 54324, 54325];
+
+    let timer = null;
+    let resolved = false;
+
+    const cleanup = () => {
+      if (timer) clearTimeout(timer);
+      if (activeOAuthServer) {
+        try { activeOAuthServer.close(); } catch {}
+        activeOAuthServer = null;
+      }
+    };
+
+    const handler = async (req, res) => {
+      try {
+        const reqUrl = new URL(req.url, 'http://127.0.0.1');
+
+        if (reqUrl.pathname === '/auth/callback') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>WordTap Authentication</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0c0e1a; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .card { background: #151833; border: 1px solid rgba(255,255,255,0.12); padding: 36px 32px; border-radius: 20px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 24px 64px rgba(0,0,0,0.6); }
+    .icon { font-size: 40px; margin-bottom: 14px; }
+    h1 { font-size: 21px; font-weight: 700; margin: 0 0 10px; color: #ffd23f; }
+    p { font-size: 13.5px; color: #94a3b8; margin: 0 0 20px; line-height: 1.55; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.35); color: #34d399; padding: 7px 16px; border-radius: 99px; font-size: 13px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="icon">🎬</div>
+    <h1>Connecting to WordTap…</h1>
+    <p id="msg">Verifying your Google session with WordTap VLC Player…</p>
+  </div>
+  <script>
+    (async function() {
+      try {
+        const hash = window.location.hash.replace(/^#/, '');
+        const search = window.location.search.replace(/^\\?/, '');
+        const payload = { hash, search };
+        const res = await fetch('/auth-exchange', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.ok) {
+          document.getElementById('card').innerHTML = '<div class="icon">✨</div><h1>Welcome back!</h1><p>Successfully signed in with Google. You can now close this tab and return to WordTap Player.</p><div class="badge">✓ Connected to WordTap</div>';
+          setTimeout(() => { window.close(); }, 2500);
+        } else {
+          document.getElementById('msg').innerText = 'Authentication error: ' + (data.error || 'Failed to authenticate');
+        }
+      } catch (err) {
+        document.getElementById('msg').innerText = 'Connection error: ' + err.message;
+      }
+    })();
+  </script>
+</body>
+</html>`);
+          return;
+        }
+
+        if (reqUrl.pathname === '/auth-exchange' && req.method === 'POST') {
+          let bodyStr = '';
+          req.on('data', chunk => { bodyStr += chunk; });
+          req.on('end', async () => {
+            try {
+              const body = JSON.parse(bodyStr || '{}');
+              const params = new URLSearchParams(body.hash || body.search || '');
+
+              const errorDesc = params.get('error_description') || params.get('error');
+              if (errorDesc) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ ok: false, error: errorDesc }));
+                cleanup();
+                if (!resolved) {
+                  resolved = true;
+                  reject(new Error(errorDesc));
+                }
+                return;
+              }
+
+              let accessToken = params.get('access_token');
+              let refreshToken = params.get('refresh_token');
+              let expiresIn = parseInt(params.get('expires_in') || '3600', 10);
+              const code = params.get('code');
+
+              if (!accessToken && code) {
+                const tokenRes = await fetch(`${SUPABASE_AUTH_URL}/auth/v1/token?grant_type=authorization_code`, {
+                  method: 'POST',
+                  headers: {
+                    apikey: SUPABASE_ANON_KEY,
+                    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ auth_code: code })
+                });
+                const tokenData = await tokenRes.json();
+                if (!tokenRes.ok) {
+                  throw new Error(tokenData.error_description || tokenData.msg || 'Token exchange failed');
+                }
+                accessToken = tokenData.access_token;
+                refreshToken = tokenData.refresh_token;
+                expiresIn = tokenData.expires_in || 3600;
+              }
+
+              if (!accessToken) {
+                throw new Error('No access token received from authentication provider');
+              }
+
+              const userRes = await fetch(`${SUPABASE_AUTH_URL}/auth/v1/user`, {
+                headers: {
+                  apikey: SUPABASE_ANON_KEY,
+                  Authorization: `Bearer ${accessToken}`
+                }
+              });
+              const userData = await userRes.json();
+              if (!userRes.ok) {
+                throw new Error(userData.msg || userData.message || 'Could not verify user profile');
+              }
+
+              const session = {
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                expires_at: Math.floor(Date.now() / 1000) + expiresIn,
+                email: userData.email,
+                user_id: userData.id
+              };
+
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ ok: true, email: session.email }));
+
+              cleanup();
+
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                if (mainWindow.isMinimized()) mainWindow.restore();
+                mainWindow.focus();
+              }
+
+              if (!resolved) {
+                resolved = true;
+                resolve(session);
+              }
+            } catch (err) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ ok: false, error: err.message }));
+              cleanup();
+              if (!resolved) {
+                resolved = true;
+                reject(err);
+              }
+            }
+          });
+          return;
+        }
+
+        res.writeHead(404);
+        res.end('Not Found');
+      } catch (err) {
+        res.writeHead(500);
+        res.end('Internal Server Error');
+      }
+    };
+
+    let portIndex = 0;
+    function tryPort() {
+      if (portIndex >= candidatePorts.length) {
+        return reject(new Error('Unable to bind local authentication port.'));
+      }
+      const port = candidatePorts[portIndex++];
+      const server = http.createServer(handler);
+
+      server.once('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          tryPort();
+        } else {
+          cleanup();
+          reject(err);
+        }
+      });
+
+      server.listen(port, '127.0.0.1', () => {
+        activeOAuthServer = server;
+
+        // Auto timeout after 2 minutes
+        timer = setTimeout(() => {
+          cleanup();
+          if (!resolved) {
+            resolved = true;
+            reject(new Error('Google sign-in timed out. Please try again.'));
+          }
+        }, 120000);
+
+        const authUrl = `${SUPABASE_AUTH_URL}/auth/v1/authorize?provider=google&redirect_to=http://localhost:${port}/auth/callback`;
+        shell.openExternal(authUrl);
+      });
+    }
+
+    tryPort();
+  });
+});
+
 // IPC: Native Fullscreen Window Management
 ipcMain.handle('window:toggle-fullscreen', async () => {
   if (!mainWindow) return false;
