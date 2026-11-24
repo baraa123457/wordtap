@@ -284,10 +284,11 @@ html, body {
   opacity: 1 !important;
 }
 
-.textLayer span {
+.textLayer :is(span, br) {
   user-select: text !important;
   -webkit-user-select: text !important;
   cursor: text;
+  color: transparent !important;
 }
 
 /* Eliminate selection glitches from PDF.js endOfContent marker */
@@ -299,10 +300,20 @@ html, body {
   height: 0 !important;
 }
 
-/* Text highlight selection color matching signature WordTap yellow */
+/* Global page selection */
 ::selection {
-  background: rgba(250, 204, 59, 0.38) !important;
-  color: inherit !important;
+  background: rgba(250, 204, 59, 0.38);
+  color: inherit;
+}
+
+/* CRITICAL: TextLayer spans MUST remain 100% transparent even when selected.
+   This prevents system fallback fonts from drawing over the vector canvas glyphs
+   and causing blurry "ghosting" or double-vision text during word selection. */
+.textLayer ::selection,
+.textLayer *::selection,
+.textLayer span::selection {
+  background: rgba(250, 204, 59, 0.4) !important;
+  color: transparent !important;
 }
 
 /* ── Loading Spinner Overlay ─────────────────────────────────────────────── */
