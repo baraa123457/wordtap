@@ -124,6 +124,7 @@
   const btnGateGoogle = document.getElementById('btn-gate-google');
   const gateGoogleText = document.getElementById('gate-google-text');
   const btnGateOffline = document.getElementById('btn-gate-offline');
+  const btnGatePasteKey = document.getElementById('btn-gate-paste-key');
   const btnGateCreateAcc = document.getElementById('btn-gate-create-acc');
 
   // Modals
@@ -139,6 +140,7 @@
   const btnAuthSignin = document.getElementById('btn-auth-signin');
   const btnAccountGoogle = document.getElementById('btn-account-google');
   const accountGoogleText = document.getElementById('account-google-text');
+  const btnAccountPasteKey = document.getElementById('btn-account-paste-key');
   const btnAuthSignout = document.getElementById('btn-auth-signout');
   const btnOpenWeb = document.getElementById('btn-open-web');
 
@@ -726,6 +728,48 @@
           btnGateGoogle.disabled = false;
           if (gateGoogleText) gateGoogleText.textContent = 'Continue with Google';
         }
+      });
+    }
+
+    // Paste Sign-In Key Handlers (Fallback for strict browser sandboxes)
+    async function handlePasteKeyPrompt() {
+      const raw = prompt('Paste your WordTap Sign-In Key from the web browser:');
+      if (!raw || !raw.trim()) return;
+      try {
+        if (!window.WordTapAPI || !window.WordTapAPI.importSessionKey) {
+          alert('Key import is not supported in this version.');
+          return;
+        }
+        const session = await window.WordTapAPI.importSessionKey(raw.trim());
+        if (session && session.email) {
+          userSession = session;
+          if (window.WordTapAPI.saveConfig) {
+            await window.WordTapAPI.saveConfig({ session: userSession });
+          }
+          updateAccountUI();
+          hideLoginGate();
+          if (accountModal) accountModal.classList.remove('open');
+          showToast(`Connected as ${userSession.email}`);
+          pushPendingOfflineWords();
+        }
+      } catch (err) {
+        alert(`Invalid sign-in key: ${err.message}`);
+      }
+    }
+
+    if (btnGatePasteKey) {
+      btnGatePasteKey.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        void handlePasteKeyPrompt();
+      });
+    }
+
+    if (btnAccountPasteKey) {
+      btnAccountPasteKey.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        void handlePasteKeyPrompt();
       });
     }
 

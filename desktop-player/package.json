@@ -14,6 +14,14 @@
     "appId": "com.wordtap.player",
     "productName": "WordTap",
     "artifactName": "WordTap-Setup-${arch}.${ext}",
+    "protocols": [
+      {
+        "name": "WordTap Protocol",
+        "schemes": [
+          "wordtap"
+        ]
+      }
+    ],
     "directories": {
       "output": "dist-release"
     },

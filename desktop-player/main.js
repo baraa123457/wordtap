@@ -67,6 +67,19 @@ app.commandLine.appendSwitch('enable-gpu-rasterization');
 // Remove default OS application menu
 Menu.setApplicationMenu(null);
 
+// Register custom deep link protocol: wordtap://
+try {
+  if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient('wordtap', process.execPath, [path.resolve(process.argv[1])]);
+    }
+  } else {
+    app.setAsDefaultProtocolClient('wordtap');
+  }
+} catch (e) {
+  console.warn('Protocol client registration error:', e);
+}
+
 let mainWindow = null;
 
 // Determine path for saved words and configuration
@@ -916,6 +929,29 @@ ipcMain.handle('auth:sign-in-google', async () => {
 
     tryPort();
   });
+});
+
+ipcMain.handle('auth:import-session-key', async (_event, keyString) => {
+  if (!keyString || typeof keyString !== 'string') {
+    throw new Error('Please enter a valid sign-in key.');
+  }
+  try {
+    const jsonStr = Buffer.from(keyString.trim(), 'base64').toString('utf-8');
+    const data = JSON.parse(jsonStr);
+    if (!data.access_token || !data.email) {
+      throw new Error('Invalid key: missing access credentials.');
+    }
+    const session = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token || '',
+      expires_at: data.expires_at || (Math.floor(Date.now() / 1000) + (data.expires_in || 3600)),
+      email: data.email,
+      user_id: data.user_id || ''
+    };
+    return session;
+  } catch (err) {
+    throw new Error('Could not parse sign-in key: ' + (err.message || 'Invalid format'));
+  }
 });
 
 // IPC: Native Fullscreen Window Management
