@@ -5,7 +5,10 @@ import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   batchUpdateReviewResults,
+  deleteWord,
+  deleteWordByText,
   recordPractice,
+  updateWordDetails,
   type ReviewBatchUpdate,
 } from "@/lib/api";
 import { localDateString } from "@/lib/dates";
@@ -33,9 +36,25 @@ export function ReviewSession({
   onReload: () => void;
 }) {
   const router = useRouter();
-  const sessionWords = useMemo(
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
+  const [wordOverrides, setWordOverrides] = useState<Record<string, Partial<Word>>>({});
+  const [editTarget, setEditTarget] = useState<Word | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editTranslation, setEditTranslation] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Word | null>(null);
+  const [deletingWord, setDeletingWord] = useState(false);
+
+  const initialPicked = useMemo(
     () => pickReviewSessionWords(words, sessionSize),
     [words, sessionSize],
+  );
+  const sessionWords = useMemo(
+    () =>
+      initialPicked
+        .filter((w) => !deletedIds.has(w.id))
+        .map((w) => (wordOverrides[w.id] ? { ...w, ...wordOverrides[w.id] } : w)),
+    [initialPicked, deletedIds, wordOverrides],
   );
 
   const [round, setRound] = useState<RoundStep>("choice");
@@ -194,6 +213,12 @@ export function ReviewSession({
           <MultipleChoiceRound
             words={sessionWords}
             allWords={words}
+            onEditWord={(w) => {
+              setEditTarget(w);
+              setEditText(w.text);
+              setEditTranslation(w.translation || "");
+            }}
+            onDeleteWord={(w) => setDeleteTarget(w)}
             onComplete={(r1) => {
               setRound1(r1);
               setRound(sessionWords.length >= 2 ? "matching" : "typing");
@@ -212,6 +237,12 @@ export function ReviewSession({
             words={sessionWords}
             allowSimpleTypos={allowSimpleTypos}
             onToggleTypos={setAllowSimpleTypos}
+            onEditWord={(w) => {
+              setEditTarget(w);
+              setEditText(w.text);
+              setEditTranslation(w.translation || "");
+            }}
+            onDeleteWord={(w) => setDeleteTarget(w)}
             onComplete={(r3) => {
               setRound3(r3);
               finalizeSession(round1, round2, r3, false);
@@ -228,6 +259,149 @@ export function ReviewSession({
           />
         )}
       </main>
+
+      {editTarget ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !savingEdit) setEditTarget(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !savingEdit) setEditTarget(null);
+          }}
+        >
+          <form
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-review-word-title"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const nextText = editText.trim();
+              if (!nextText || savingEdit) return;
+              const nextTrans = editTranslation.trim();
+              setSavingEdit(true);
+              try {
+                await updateWordDetails(
+                  editTarget.id,
+                  { text: nextText, translation: nextTrans },
+                  editTarget,
+                );
+                setWordOverrides((prev) => ({
+                  ...prev,
+                  [editTarget.id]: { text: nextText, translation: nextTrans },
+                }));
+                setEditTarget(null);
+              } finally {
+                setSavingEdit(false);
+              }
+            }}
+            className="w-full max-w-sm grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl"
+          >
+            <h3 id="edit-review-word-title" className="text-xl font-bold text-ink">
+              Edit word
+            </h3>
+            <div className="grid gap-3">
+              <label className="grid gap-1 text-xs font-semibold text-muted">
+                <span>Word</span>
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  className="field text-sm font-semibold text-ink"
+                />
+              </label>
+              <label className="grid gap-1 text-xs font-semibold text-muted">
+                <span>Meaning / Translation</span>
+                <input
+                  type="text"
+                  value={editTranslation}
+                  onChange={(e) => setEditTranslation(e.target.value)}
+                  className="field text-sm text-ink"
+                />
+              </label>
+            </div>
+            <div className="flex justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                disabled={savingEdit}
+                onClick={() => setEditTarget(null)}
+                className="btn btn-quiet cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingEdit || !editText.trim()}
+                className="btn btn-primary font-bold cursor-pointer disabled:opacity-50"
+              >
+                {savingEdit ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {deleteTarget ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deletingWord) setDeleteTarget(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !deletingWord) setDeleteTarget(null);
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-quick-review-word-title"
+            className="w-full max-w-sm grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl"
+          >
+            <div>
+              <h3 id="delete-quick-review-word-title" className="text-xl font-bold text-ink">
+                Delete &ldquo;{deleteTarget.text}&rdquo;?
+              </h3>
+              <p className="text-xs sm:text-sm text-muted mt-1">
+                This permanently removes the word from your saved vocabulary and skips to the next word.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                autoFocus
+                disabled={deletingWord}
+                onClick={() => setDeleteTarget(null)}
+                className="btn btn-quiet cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingWord}
+                onClick={async () => {
+                  if (deletingWord) return;
+                  setDeletingWord(true);
+                  try {
+                    await deleteWord(deleteTarget.id);
+                    await deleteWordByText(deleteTarget.text, deleteTarget.src_lang).catch(
+                      () => {},
+                    );
+                    setDeletedIds((prev) => new Set(prev).add(deleteTarget.id));
+                    setDeleteTarget(null);
+                  } finally {
+                    setDeletingWord(false);
+                  }
+                }}
+                className="btn btn-bad font-bold cursor-pointer"
+              >
+                {deletingWord ? "Deleting…" : "Yes, delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

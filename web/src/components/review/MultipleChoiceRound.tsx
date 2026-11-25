@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { canSpeak, speak } from "@/lib/speech";
 import type { Word } from "@/lib/schemas";
-import { SpeakerIcon } from "@/components/Icons";
+import { SpeakerIcon, TrashIcon } from "@/components/Icons";
 
 function splitTranslations(raw: string): string[] {
   return raw
@@ -75,10 +75,14 @@ function buildOptions(target: Word, allWords: Word[]): string[] {
 export function MultipleChoiceRound({
   words,
   allWords,
+  onEditWord,
+  onDeleteWord,
   onComplete,
 }: {
   words: Word[];
   allWords: Word[];
+  onEditWord?: (word: Word) => void;
+  onDeleteWord?: (word: Word) => void;
   onComplete: (results: Record<string, boolean>) => void;
 }) {
   const [index, setIndex] = useState(0);
@@ -132,24 +136,55 @@ export function MultipleChoiceRound({
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2.5">
-        <h2 dir="auto" className="text-2xl sm:text-3xl font-extrabold text-ink break-words">
-          {current.text}
-        </h2>
-        {canSpeak() ? (
-          <button
-            type="button"
-            onClick={() => speak(current.text, current.src_lang || "en")}
-            aria-label={`Pronounce ${current.text}`}
-            className="btn btn-quiet w-10 h-10 min-h-10 p-0 rounded-full flex items-center justify-center cursor-pointer"
-          >
-            <SpeakerIcon size={17} />
-          </button>
-        ) : null}
-        {current.part_of_speech ? (
-          <span className="rounded-full border border-line bg-black/[0.03] dark:bg-white/[0.05] px-2.5 py-0.5 text-xs font-semibold text-muted capitalize">
-            {current.part_of_speech}
-          </span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+          <h2 dir="auto" className="text-2xl sm:text-3xl font-extrabold text-ink break-words">
+            {current.text}
+          </h2>
+          {canSpeak() ? (
+            <button
+              type="button"
+              onClick={() => speak(current.text, current.src_lang || "en")}
+              aria-label={`Pronounce ${current.text}`}
+              className="btn btn-quiet w-10 h-10 min-h-10 p-0 rounded-full flex items-center justify-center cursor-pointer"
+            >
+              <SpeakerIcon size={17} />
+            </button>
+          ) : null}
+          {current.part_of_speech ? (
+            <span className="rounded-full border border-line bg-black/[0.03] dark:bg-white/[0.05] px-2.5 py-0.5 text-xs font-semibold text-muted capitalize">
+              {current.part_of_speech}
+            </span>
+          ) : null}
+        </div>
+        {onEditWord || onDeleteWord ? (
+          <div className="flex items-center gap-1 shrink-0">
+            {onEditWord ? (
+              <button
+                type="button"
+                onClick={() => onEditWord(current)}
+                aria-label={`Edit ${current.text}`}
+                className="btn btn-quiet min-h-9 px-2.5 py-1 text-xs font-semibold text-muted hover:text-ink rounded-full inline-flex items-center gap-1 cursor-pointer"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+                <span>Edit</span>
+              </button>
+            ) : null}
+            {onDeleteWord ? (
+              <button
+                type="button"
+                onClick={() => onDeleteWord(current)}
+                aria-label={`Delete ${current.text}`}
+                className="btn btn-quiet min-h-9 px-2.5 py-1 text-xs font-semibold text-muted hover:text-bad hover:bg-bad/10 rounded-full inline-flex items-center gap-1 cursor-pointer"
+              >
+                <TrashIcon size={13} />
+                <span>Delete</span>
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
 

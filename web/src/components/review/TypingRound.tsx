@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { canSpeak, speak } from "@/lib/speech";
 import type { Word } from "@/lib/schemas";
-import { SpeakerIcon } from "@/components/Icons";
+import { SpeakerIcon, TrashIcon } from "@/components/Icons";
 
 function normalizeTyped(value: string): string {
   return value
@@ -35,11 +35,15 @@ export function TypingRound({
   words,
   allowSimpleTypos,
   onToggleTypos,
+  onEditWord,
+  onDeleteWord,
   onComplete,
 }: {
   words: Word[];
   allowSimpleTypos: boolean;
   onToggleTypos: (next: boolean) => void;
+  onEditWord?: (word: Word) => void;
+  onDeleteWord?: (word: Word) => void;
   onComplete: (results: Record<string, boolean>) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -115,17 +119,40 @@ export function TypingRound({
         <p dir="auto" className="text-lg sm:text-2xl font-bold text-ink break-words">
           {current.translation}
         </p>
-        {canSpeak() ? (
-          <button
-            type="button"
-            onClick={() => speak(current.text, current.src_lang || "en")}
-            aria-label="Play pronunciation"
-            className="btn min-h-10 px-3.5 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shrink-0"
-          >
-            <SpeakerIcon size={16} />
-            <span>Listen</span>
-          </button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+          {canSpeak() ? (
+            <button
+              type="button"
+              onClick={() => speak(current.text, current.src_lang || "en")}
+              aria-label="Play pronunciation"
+              className="btn min-h-10 px-3.5 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <SpeakerIcon size={16} />
+              <span>Listen</span>
+            </button>
+          ) : null}
+          {onEditWord ? (
+            <button
+              type="button"
+              onClick={() => onEditWord(current)}
+              aria-label={`Edit ${current.text}`}
+              className="btn btn-quiet min-h-9 px-2.5 py-1 text-xs font-semibold text-muted hover:text-ink rounded-full inline-flex items-center gap-1 cursor-pointer"
+            >
+              <span>Edit</span>
+            </button>
+          ) : null}
+          {onDeleteWord ? (
+            <button
+              type="button"
+              onClick={() => onDeleteWord(current)}
+              aria-label={`Delete ${current.text}`}
+              className="btn btn-quiet min-h-9 px-2.5 py-1 text-xs font-semibold text-muted hover:text-bad hover:bg-bad/10 rounded-full inline-flex items-center gap-1 cursor-pointer"
+            >
+              <TrashIcon size={13} />
+              <span>Delete</span>
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="grid gap-3">
