@@ -83,6 +83,12 @@ export function TypingRound({
     setResults(nextResults);
   };
 
+  const handleDontKnow = () => {
+    if (checked !== "idle") return;
+    setChecked("wrong");
+    setResults((prev) => ({ ...prev, [current.id]: false }));
+  };
+
   const handleNext = () => {
     if (index + 1 >= words.length) {
       onComplete(results);
@@ -170,13 +176,22 @@ export function TypingRound({
         />
 
         {checked === "idle" ? (
-          <button
-            type="submit"
-            disabled={!typed.trim()}
-            className="btn btn-primary min-h-12 text-sm sm:text-base font-bold cursor-pointer disabled:opacity-50"
-          >
-            Check
-          </button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={handleDontKnow}
+              className="btn btn-quiet min-h-11 px-4 text-xs sm:text-sm font-semibold text-muted hover:text-ink cursor-pointer"
+            >
+              I don&apos;t know
+            </button>
+            <button
+              type="submit"
+              disabled={!typed.trim()}
+              className="btn btn-primary flex-1 sm:flex-initial min-h-12 px-6 text-sm sm:text-base font-bold cursor-pointer disabled:opacity-50"
+            >
+              Check
+            </button>
+          </div>
         ) : (
           <div
             role="status"

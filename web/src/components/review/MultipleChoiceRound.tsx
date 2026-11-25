@@ -125,6 +125,22 @@ export function MultipleChoiceRound({
     }, 650);
   };
 
+  const handleDontKnow = () => {
+    if (selected !== null) return;
+    setSelected("__dont_know__");
+    const nextResults = { ...results, [current.id]: false };
+    setResults(nextResults);
+
+    window.setTimeout(() => {
+      if (index + 1 >= words.length) {
+        onComplete(nextResults);
+      } else {
+        setSelected(null);
+        setIndex((i) => i + 1);
+      }
+    }, 900);
+  };
+
   return (
     <section className="apple-card p-5 sm:p-7 grid gap-5 min-w-0">
       <div className="flex items-center justify-between gap-2 text-xs font-bold text-muted">
@@ -218,6 +234,17 @@ export function MultipleChoiceRound({
             </button>
           );
         })}
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          disabled={selected !== null}
+          onClick={handleDontKnow}
+          className="btn btn-quiet min-h-10 px-4 text-xs sm:text-sm font-semibold text-muted hover:text-ink cursor-pointer disabled:opacity-40"
+        >
+          I don&apos;t know
+        </button>
       </div>
     </section>
   );
