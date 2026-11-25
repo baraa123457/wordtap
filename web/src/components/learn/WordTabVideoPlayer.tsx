@@ -46,7 +46,7 @@ declare global {
       Player: new (
         element: HTMLElement | string,
         options: {
-          videoId: string;
+          videoId?: string;
           width?: string | number;
           height?: string | number;
           playerVars?: Record<string, string | number>;
@@ -64,7 +64,7 @@ declare global {
 
 let ytIframeApiPromise: Promise<void> | null = null;
 
-function loadOfficialYouTubeIframeApi(): Promise<void> {
+export function loadOfficialYouTubeIframeApi(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (window.YT?.Player) return Promise.resolve();
   if (ytIframeApiPromise) return ytIframeApiPromise;

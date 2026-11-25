@@ -13,6 +13,7 @@ import { maskWordInSentence } from "@/lib/placeholder";
 import { isNonEnglishVideoTitle } from "@/lib/video/video-language-filter";
 import {
   formatClipTime,
+  loadOfficialYouTubeIframeApi,
   WordTabVideoPlayer,
   type WordTabPlaybackSpeed,
   type WordTabVideoPlayerHandle,
@@ -40,6 +41,14 @@ export function ContextualLearningStage({
   onComplete: (result: Stage2CompletionResult) => void;
 }) {
   const playerRef = useRef<WordTabVideoPlayerHandle>(null);
+  const ytIframeRef = useRef<HTMLIFrameElement>(null);
+  const ytPlayerRef = useRef<{
+    getCurrentTime?: () => number;
+    seekTo?: (seconds: number, allowSeekAhead?: boolean) => void;
+    playVideo?: () => void;
+    pauseVideo?: () => void;
+    destroy?: () => void;
+  } | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -154,6 +163,58 @@ export function ContextualLearningStage({
   useEffect(() => {
     setVideoIndex((idx) => (videos.length === 0 ? 0 : idx % videos.length));
   }, [videos.length]);
+
+  useEffect(() => {
+    if (!activeClip || activeClip.mediaType === "direct_video") return;
+
+    let active = true;
+    let timePoll: number | null = null;
+    setCurrentTimeSec(Math.max(0, Math.floor(activeClip.timestampSeconds)));
+
+    const stopPoll = () => {
+      if (timePoll !== null) {
+        window.clearInterval(timePoll);
+        timePoll = null;
+      }
+    };
+
+    void loadOfficialYouTubeIframeApi()
+      .then(() => {
+        if (!active || !ytIframeRef.current || !window.YT?.Player) return;
+        ytPlayerRef.current = new window.YT.Player(ytIframeRef.current, {
+          events: {
+            onStateChange: (e: { data: number }) => {
+              if (!active) return;
+              if (e.data === 1) {
+                stopPoll();
+                timePoll = window.setInterval(() => {
+                  const t = ytPlayerRef.current?.getCurrentTime?.();
+                  if (typeof t === "number" && Number.isFinite(t)) {
+                    setCurrentTimeSec(t);
+                  }
+                }, 100);
+              } else {
+                stopPoll();
+              }
+            },
+          },
+        });
+      })
+      .catch(() => {
+        // Native iframe still plays even if JS API fails
+      });
+
+    return () => {
+      active = false;
+      stopPoll();
+      try {
+        ytPlayerRef.current?.destroy?.();
+      } catch {
+        // ignore
+      }
+      ytPlayerRef.current = null;
+    };
+  }, [activeClip, ytReplayKey]);
 
   const handleSolved = useCallback(
     (details: { hiddenWord: string; attempts: number; passedFirstTry: boolean }) => {
@@ -277,6 +338,7 @@ export function ContextualLearningStage({
           <div className="flex flex-col gap-3 w-full min-w-0 max-w-full">
             <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-line bg-black shadow-sm">
               <iframe
+                ref={ytIframeRef}
                 key={`${activeClip.id}-${ytReplayKey}`}
                 title="Contextual pronunciation video clip"
                 className="h-full w-full"
@@ -285,7 +347,11 @@ export function ContextualLearningStage({
                   activeClip.endSeconds > activeClip.timestampSeconds
                     ? Math.ceil(activeClip.endSeconds)
                     : Math.max(0, Math.floor(activeClip.timestampSeconds)) + 12
-                }&cc_load_policy=0&rel=0&modestbranding=1${ytReplayKey > 0 ? "&autoplay=1" : ""}`}
+                }&cc_load_policy=0&rel=0&modestbranding=1&enablejsapi=1${
+                  typeof window !== "undefined"
+                    ? `&origin=${encodeURIComponent(window.location.origin)}`
+                    : ""
+                }${ytReplayKey > 0 ? "&autoplay=1" : ""}`}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
