@@ -182,11 +182,11 @@
       .alt-chip{border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.08);color:#d1d5f0;border-radius:999px;padding:2px 8px;font-size:11.5px;font-family:"Readex Pro",system-ui,sans-serif;cursor:pointer;transition:all .12s ease;outline:none;user-select:none}
       .alt-chip:hover{border-color:#facc3b;color:#ffffff;background:rgba(250,204,59,0.2);transform:scale(1.04)}
       .alt-chip.active{border-color:#facc3b;background:#facc3b;color:#12152e;font-weight:700}
-      .saved{margin-top:6px;font-size:11px;font-weight:600;color:#facc3b;display:none}
+      .saved{margin-top:6px;font-size:11px;font-weight:600;color:#4ade80;display:none}
       .saved[data-warn="true"]{color:#fbbf24}
       .save-btn{background:#facc3b;color:#12152e;border:1px solid #d4a311;cursor:pointer;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:700;display:none;align-items:center;gap:4px;margin-top:8px;box-shadow:0 1px 3px rgba(0,0,0,0.2), 0 2px 6px rgba(250,204,59,0.3);transition:background .1s,transform .1s}
       .save-btn:hover{background:#ffe270;transform:scale(1.03)}
-      .save-btn.saved{background:rgba(250,204,59,.16);color:#facc3b;border:1px solid rgba(250,204,59,.38);cursor:default;transform:none;box-shadow:none}
+      .save-btn.saved{background:rgba(34,197,94,.16);color:#4ade80;border:1px solid rgba(34,197,94,.38);cursor:default;transform:none;box-shadow:none}
       .x{position:absolute;top:6px;right:6px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#959cc2;border-radius:5px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);font-size:14px;line-height:1;transition:all .12s}
       .x:hover{color:#ffffff;background:rgba(239,68,68,0.3);border-color:rgba(239,68,68,0.5);transform:scale(1.1)}
     </style>

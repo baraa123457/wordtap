@@ -617,9 +617,9 @@
     .save-btn:hover { background: #ffe270; transform: scale(1.03); }
     .save-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
     .save-btn.saved {
-      background: rgba(250, 204, 59, 0.16) !important;
-      color: #facc3b !important;
-      border: 1px solid rgba(250, 204, 59, 0.38) !important;
+      background: rgba(34, 197, 94, 0.16) !important;
+      color: #4ade80 !important;
+      border: 1px solid rgba(34, 197, 94, 0.38) !important;
       cursor: default !important;
       opacity: 1 !important;
       transform: none !important;
@@ -691,7 +691,7 @@
 
     .status {
       font-size: 10.5px;
-      color: #facc3b;
+      color: #4ade80;
       display: none;
       word-break: break-word;
     }
@@ -1141,9 +1141,9 @@
       saveBtn.classList.add("saved");
       saveBtn.disabled = true;
       saveBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg>Saved`;
-      saveBtn.style.background = "rgba(250, 204, 59, 0.16)";
-      saveBtn.style.color = "#facc3b";
-      saveBtn.style.borderColor = "rgba(250, 204, 59, 0.38)";
+      saveBtn.style.background = "rgba(34, 197, 94, 0.16)";
+      saveBtn.style.color = "#4ade80";
+      saveBtn.style.borderColor = "rgba(34, 197, 94, 0.38)";
       saveBtn.style.cursor = "default";
       saveBtn.title = "Already saved in your words";
     } else {
