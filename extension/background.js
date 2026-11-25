@@ -4,14 +4,15 @@ import { CONFIG, getWebsiteUrl } from "./config.js";
 // ---------------------------------------------------------------------------
 // Translation & TTS
 // ---------------------------------------------------------------------------
+const CACHE_VERSION = "v2|";
 const cache = new Map();
 const ttsCache = new Map();
 
-// Initialize persistent translation cache from chrome.storage.local
+// Initialize persistent translation cache from chrome.storage.local (versioned to purge stale spellcheck entries)
 chrome.storage.local.get({ tr_cache: {} }).then(({ tr_cache }) => {
   if (tr_cache && typeof tr_cache === "object") {
     for (const [k, v] of Object.entries(tr_cache)) {
-      if (k && v && typeof v === "object") cache.set(k, v);
+      if (k && k.startsWith(CACHE_VERSION) && v && typeof v === "object") cache.set(k, v);
     }
   }
 }).catch(() => {});
@@ -161,7 +162,7 @@ async function translate(text, target, srcLang = "auto", context = "", requested
     else if (/[\uac00-\ud7af]/.test(c)) sl = "ko";
   }
 
-  const key = provider + "|" + sl + "|" + target + "|" + text.toLowerCase();
+  const key = CACHE_VERSION + provider + "|" + sl + "|" + target + "|" + text.toLowerCase();
   if (cache.has(key)) return cache.get(key);
 
   // -------------------------------------------------------------------------
@@ -1054,6 +1055,8 @@ if (chrome.contextMenus?.onClicked) {
 }
 
 chrome.runtime.onInstalled?.addListener(() => {
+  cache.clear();
+  chrome.storage.local.remove("tr_cache").catch(() => {});
   setupContextMenus();
   flush(true).then(pullCloudWords).catch(() => {});
 });
