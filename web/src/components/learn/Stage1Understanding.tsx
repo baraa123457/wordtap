@@ -246,9 +246,9 @@ export function Stage1Understanding({
   return (
     <section aria-labelledby="stage1-heading" className="apple-card w-full max-w-full p-4 sm:p-8 flex flex-col gap-5 sm:gap-6 min-w-0">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1.5 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2.5 min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-xs font-bold text-ink">
               Stage 1 · Understanding
             </span>
@@ -270,6 +270,38 @@ export function Stage1Understanding({
               );
             })() : null}
           </div>
+
+          {/* Action controls: Always pinned top-right */}
+          {onMarkEasy || onDeleteWord ? (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {onMarkEasy ? (
+                <button
+                  type="button"
+                  onClick={() => onMarkEasy(word)}
+                  title="Already know this word — skip to Multiple-Choice Review"
+                  aria-label={`Mark ${word.text} as easy`}
+                  className="btn btn-quiet min-h-10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/20 inline-flex items-center gap-1 rounded-full cursor-pointer"
+                >
+                  <span>✓ Easy</span>
+                </button>
+              ) : null}
+              {onDeleteWord ? (
+                <button
+                  type="button"
+                  onClick={() => onDeleteWord(word)}
+                  title={`Delete "${word.text}" from your words`}
+                  aria-label={`Delete ${word.text}`}
+                  className="btn btn-quiet min-h-10 px-3 py-1.5 text-xs font-semibold text-muted hover:text-bad hover:bg-bad/10 inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <TrashIcon size={14} />
+                  <span>Delete</span>
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="space-y-1.5 min-w-0">
           <div className="flex flex-wrap items-center gap-2.5 pt-1">
             <h2
               id="stage1-heading"
@@ -363,35 +395,6 @@ export function Stage1Understanding({
             <p className="text-xs sm:text-sm text-muted font-mono">{question.pronunciation}</p>
           ) : null}
         </div>
-
-        {/* Action controls: Easy & Delete Word */}
-        {onMarkEasy || onDeleteWord ? (
-          <div className="flex items-center gap-1.5 shrink-0">
-            {onMarkEasy ? (
-              <button
-                type="button"
-                onClick={() => onMarkEasy(word)}
-                title="Already know this word — skip to Multiple-Choice Review"
-                aria-label={`Mark ${word.text} as easy`}
-                className="btn btn-quiet min-h-10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/20 inline-flex items-center gap-1 rounded-full cursor-pointer"
-              >
-                <span>✓ Easy</span>
-              </button>
-            ) : null}
-            {onDeleteWord ? (
-              <button
-                type="button"
-                onClick={() => onDeleteWord(word)}
-                title={`Delete "${word.text}" from your words`}
-                aria-label={`Delete ${word.text}`}
-                className="btn btn-quiet min-h-10 px-3 py-1.5 text-xs font-semibold text-muted hover:text-bad hover:bg-bad/10 inline-flex items-center gap-1.5 cursor-pointer"
-              >
-                <TrashIcon size={14} />
-                <span>Delete</span>
-              </button>
-            ) : null}
-          </div>
-        ) : null}
       </div>
 
       {/* Saved subtitle context preview */}
