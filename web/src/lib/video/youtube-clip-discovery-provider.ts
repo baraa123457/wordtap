@@ -14,7 +14,7 @@ import type {
   VerifiedVideoExample,
 } from "./types";
 
-const MAX_CLIPS_PER_WORD = 3;
+const MAX_CLIPS_PER_WORD = 5;
 const MAX_CLIP_DURATION_SEC = 12;
 const MAX_VIDEO_DURATION_SEC = 25 * 60; // Skip videos > 25 min to conserve transcript quota
 const CLIP_PADDING_SEC = 1;
@@ -185,7 +185,8 @@ export class YouTubeWordClipProvider implements IVideoDiscoveryProvider {
 
     // Step 1: Check Supabase `word_clips` cache before using any external API quota
     const cachedClips = await this.readCachedClips(normalizedWord, query.wordId ?? null, maxResults);
-    if (cachedClips.length > 0) {
+    const minDesired = Math.min(4, maxResults);
+    if (cachedClips.length >= minDesired) {
       return cachedClips;
     }
 
@@ -193,19 +194,19 @@ export class YouTubeWordClipProvider implements IVideoDiscoveryProvider {
     const ytKey = process.env.YOUTUBE_API_KEY?.trim();
     const supadataKey = process.env.SUPADATA_API_KEY?.trim();
     if (!ytKey || !supadataKey) {
-      return [];
+      return cachedClips;
     }
 
     try {
       const candidates = await this.searchYouTubeCandidates(normalizedWord, langCode, ytKey);
-      if (candidates.length === 0) return [];
+      if (candidates.length === 0) return cachedClips;
 
       const durations = await this.fetchVideoDurations(
         candidates.map((c) => c.videoId),
         ytKey,
       );
 
-      const triedVideoIds = new Set<string>();
+      const triedVideoIds = new Set<string>(cachedClips.map((c) => c.youtubeVideoId));
       const discovered: VerifiedVideoExample[] = [];
       const rowsToCache: Array<{
         word: string;
@@ -217,7 +218,7 @@ export class YouTubeWordClipProvider implements IVideoDiscoveryProvider {
       }> = [];
 
       for (const candidate of candidates) {
-        if (discovered.length >= maxResults) break;
+        if (cachedClips.length + discovered.length >= maxResults) break;
         if (triedVideoIds.has(candidate.videoId)) continue;
         triedVideoIds.add(candidate.videoId);
 
@@ -292,9 +293,10 @@ export class YouTubeWordClipProvider implements IVideoDiscoveryProvider {
         await this.persistClips(rowsToCache);
       }
 
-      return discovered.sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0));
+      const sortedFresh = discovered.sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0));
+      return [...cachedClips, ...sortedFresh].slice(0, maxResults);
     } catch {
-      return [];
+      return cachedClips;
     }
   }
 
@@ -359,7 +361,7 @@ export class YouTubeWordClipProvider implements IVideoDiscoveryProvider {
       const searchUrl =
         `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video` +
         `&videoCaption=closedCaption&videoEmbeddable=true&safeSearch=strict` +
-        `&relevanceLanguage=${encodeURIComponent(langCode)}&maxResults=5` +
+        `&relevanceLanguage=${encodeURIComponent(langCode)}&maxResults=10` +
         `&q=${encodeURIComponent(word)}` +
         `&key=${encodeURIComponent(ytKey)}`;
 
