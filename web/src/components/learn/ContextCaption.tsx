@@ -148,14 +148,7 @@ export function ContextCaption({
 
   const renderMissingBlank = (speechState: WordSpeechState, key?: string) => {
     const cleanTyped = typedAnswer.replace(/\s+/g, "");
-    let displayContent: string;
-    if (cleanTyped.length > 0) {
-      const remaining = Math.max(0, masked.letterCount - cleanTyped.length);
-      displayContent = `${cleanTyped}${".".repeat(remaining)}`;
-    } else {
-      displayContent = hint || masked.placeholder;
-    }
-
+    const targetChars = masked.hiddenWord;
     const focusRing = isTypingFocused ? " ring-2 ring-amber-500/80 shadow-sm" : "";
 
     return (
@@ -169,7 +162,34 @@ export function ContextCaption({
         title="Click to type the missing word"
         className={`${targetBlankClassForState(speechState)} cursor-text hover:bg-subtitle/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-subtitle${focusRing}`}
       >
-        {displayContent}
+        {cleanTyped.length > 0 ? (
+          <>
+            {Array.from(cleanTyped).map((ch, idx) => {
+              const expected = targetChars[idx];
+              const isCharCorrect =
+                typeof expected === "string" && ch.toLowerCase() === expected.toLowerCase();
+              return (
+                <span
+                  key={idx}
+                  className={
+                    isCharCorrect
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : "text-red-600 dark:text-red-400 underline decoration-red-500/70"
+                  }
+                >
+                  {ch}
+                </span>
+              );
+            })}
+            {cleanTyped.length < masked.letterCount ? (
+              <span className="opacity-55">
+                {".".repeat(masked.letterCount - cleanTyped.length)}
+              </span>
+            ) : null}
+          </>
+        ) : (
+          hint || masked.placeholder
+        )}
       </button>
     );
   };
