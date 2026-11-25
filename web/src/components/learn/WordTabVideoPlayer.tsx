@@ -643,7 +643,8 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                   key={currentMediaUrl}
                   src={currentMediaUrl}
                   crossOrigin="anonymous"
-                  preload="metadata"
+                  preload={autoPlayOnChange ? "auto" : "metadata"}
+                  autoPlay={autoPlayOnChange}
                   playsInline
                   onClick={togglePlayInternal}
                   onLoadStart={() => {
@@ -653,6 +654,10 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                   onLoadedData={() => {
                     setFrameReady(true);
                     setBuffering(false);
+                    if (autoPlayOnChange && autoPlayedClipRef.current !== clip.id) {
+                      autoPlayedClipRef.current = clip.id;
+                      playInternal();
+                    }
                   }}
                   onCanPlay={() => {
                     setFrameReady(true);
