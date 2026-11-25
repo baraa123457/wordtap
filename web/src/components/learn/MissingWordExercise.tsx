@@ -180,7 +180,7 @@ export function MissingWordExercise({
       />
 
       {state !== "correct" ? (
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2.5">
+        <form onSubmit={handleSubmit} className="flex flex-wrap items-center justify-between gap-2.5">
           <input
             ref={inputRef}
             type="text"
@@ -196,11 +196,15 @@ export function MissingWordExercise({
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
-            placeholder={`Type the ${masked.letterCount}-letter word…`}
-            aria-label="Type the missing word"
-            className="field flex-1 text-base font-semibold"
+            aria-label={`Type the ${masked.letterCount}-letter missing word`}
+            className="sr-only"
           />
-          <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted">
+            {isInputFocused
+              ? "Typing inline — press Enter or Submit"
+              : "Click the highlighted blank above to type"}
+          </span>
+          <div className="flex flex-wrap items-center gap-2 ml-auto">
             {!isVideoMode && canSpeak() ? (
               <button
                 type="button"
