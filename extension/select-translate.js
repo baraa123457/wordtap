@@ -1536,7 +1536,7 @@
   });
 
   function isIgnoredElement(target) {
-    if (!target) return false;
+    if (!target || typeof target.closest !== "function") return false;
     return !!(
       target.closest("input, textarea, [contenteditable='true'], [contenteditable='']") ||
       target.closest(SUBTITLE_SELECTOR)
