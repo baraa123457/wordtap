@@ -1152,6 +1152,7 @@ function SpacedRepetitionReviewSession({
             <Stage1Understanding
               key={`rev-s1-${current.word.id}`}
               word={current.word}
+              continueLabel="Continue →"
               onDeleteWord={(w) => setDeleteTarget(w)}
               onComplete={(res) => {
                 setLastAnswer(res.selectedAnswer);

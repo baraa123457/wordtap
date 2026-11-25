@@ -17,6 +17,7 @@ export function Stage1Understanding({
   onComplete,
   onDeleteWord,
   onMarkEasy,
+  continueLabel = "Continue to Real Videos →",
 }: {
   word: Word;
   onComplete: (result: {
@@ -28,6 +29,7 @@ export function Stage1Understanding({
   }) => void;
   onDeleteWord?: (word: Word) => void;
   onMarkEasy?: (word: Word) => void;
+  continueLabel?: string;
 }) {
   const [question, setQuestion] = useState<UnderstandingQuestion | null>(null);
   const [loading, setLoading] = useState(true);
@@ -527,7 +529,7 @@ export function Stage1Understanding({
               }
               className="btn btn-primary w-full sm:w-auto min-h-11 px-6 text-sm sm:text-base font-bold cursor-pointer"
             >
-              Continue to Real Videos →
+              {continueLabel}
             </button>
           </div>
         </div>
