@@ -256,6 +256,10 @@ export function ContextualLearningStage({
                 stopPoll();
               }
             },
+            onError: () => {
+              if (!active) return;
+              handleUnavailableClip(activeClip);
+            },
           },
         });
       })
@@ -273,7 +277,7 @@ export function ContextualLearningStage({
       }
       ytPlayerRef.current = null;
     };
-  }, [activeClip, ytReplayKey]);
+  }, [activeClip, ytReplayKey, handleUnavailableClip]);
 
   const handleSolved = useCallback(
     (details: { hiddenWord: string; attempts: number; passedFirstTry: boolean }) => {
@@ -402,7 +406,12 @@ export function ContextualLearningStage({
                 key={`${activeClip.id}-${ytReplayKey}`}
                 title="Contextual pronunciation video clip"
                 className="h-full w-full"
-                src={`https://www.youtube.com/embed/${activeClip.youtubeVideoId}?start=${Math.max(0, Math.floor(activeClip.timestampSeconds))}&cc_load_policy=0&rel=0&modestbranding=1&enablejsapi=1${
+                src={`https://www.youtube.com/embed/${activeClip.youtubeVideoId}?start=${Math.max(0, Math.floor(activeClip.timestampSeconds))}${
+                  typeof activeClip.endSeconds === "number" &&
+                  activeClip.endSeconds > activeClip.timestampSeconds
+                    ? `&end=${Math.ceil(activeClip.endSeconds)}`
+                    : ""
+                }&cc_load_policy=0&rel=0&modestbranding=1&enablejsapi=1${
                   typeof window !== "undefined"
                     ? `&origin=${encodeURIComponent(window.location.origin)}`
                     : ""
@@ -428,24 +437,34 @@ export function ContextualLearningStage({
                     : ""}
                 </span>
               </div>
-              {videos.length > 1 ? (
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={handlePrevVideo}
-                    className="btn min-h-9 border border-line bg-surface px-3 text-xs font-semibold text-ink hover:bg-black/[0.04] dark:hover:bg-white/[0.06] cursor-pointer"
-                  >
-                    ← Prev
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNextVideo}
-                    className="btn min-h-9 border border-line bg-surface px-3 text-xs font-semibold text-ink hover:bg-black/[0.04] dark:hover:bg-white/[0.06] cursor-pointer"
-                  >
-                    Next clip →
-                  </button>
-                </div>
-              ) : null}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {videos.length > 1 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handlePrevVideo}
+                      className="btn min-h-9 border border-line bg-surface px-3 text-xs font-semibold text-ink hover:bg-black/[0.04] dark:hover:bg-white/[0.06] cursor-pointer"
+                    >
+                      ← Prev
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNextVideo}
+                      className="btn min-h-9 border border-line bg-surface px-3 text-xs font-semibold text-ink hover:bg-black/[0.04] dark:hover:bg-white/[0.06] cursor-pointer"
+                    >
+                      Next clip →
+                    </button>
+                  </>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => handleUnavailableClip(activeClip)}
+                  className="btn btn-quiet min-h-9 px-2.5 text-xs font-semibold text-muted hover:text-bad cursor-pointer"
+                  title="Report broken or mismatched clip"
+                >
+                  Report clip
+                </button>
+              </div>
             </div>
           </div>
         )

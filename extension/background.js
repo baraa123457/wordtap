@@ -878,6 +878,28 @@ function isValidWordToSave(text) {
   return true;
 }
 
+async function postUserWordClip(wordText, clip, token) {
+  if (!clip || !clip.video_id || !token) return;
+  try {
+    await fetch("https://wordtap.vercel.app/api/learn/word-clips", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        word: wordText,
+        video_id: clip.video_id,
+        start_sec: clip.start_sec,
+        end_sec: clip.end_sec,
+        sentence: clip.sentence,
+      }),
+    });
+  } catch {
+    // Best-effort community clip cache
+  }
+}
+
 /** Called after every save. Reports where the word ended up. */
 async function saveWord(entry) {
   if (!entry || !entry.text || !isValidWordToSave(entry.text)) {
@@ -893,6 +915,11 @@ async function saveWord(entry) {
     };
   }
   await saveLocal(entry);
+  if (entry.clip && configured()) {
+    getToken()
+      .then((tok) => postUserWordClip(entry.text, entry.clip, tok))
+      .catch(() => {});
+  }
   if (!configured()) return { ok: true, cloud: "local" };
   try {
     await flush();

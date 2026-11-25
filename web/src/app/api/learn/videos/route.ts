@@ -193,6 +193,28 @@ export async function PATCH(req: Request) {
       );
     }
     await videoRepository.markUnavailable(parsed.data.youtubeVideoId, req);
+
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    if (supabaseUrl && serviceKey && /^[A-Za-z0-9_-]{11}$/.test(parsed.data.youtubeVideoId)) {
+      const adminClient = createClient(supabaseUrl, serviceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { data: existing } = await adminClient
+        .from("word_clips")
+        .select("id, report_count")
+        .eq("video_id", parsed.data.youtubeVideoId);
+      if (Array.isArray(existing) && existing.length > 0) {
+        await Promise.all(
+          existing.map((row) =>
+            adminClient
+              .from("word_clips")
+              .update({ report_count: ((row.report_count as number) || 0) + 1 })
+              .eq("id", row.id),
+          ),
+        );
+      }
+    }
+
     return NextResponse.json({ ok: true }, { headers: corsHeaders });
   } catch {
     return NextResponse.json({ error: "Invalid request payload." }, { status: 400, headers: corsHeaders });

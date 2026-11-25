@@ -332,6 +332,7 @@ export class YouTubeWordClipProvider implements IVideoDiscoveryProvider {
         .from("word_clips")
         .select("id, word, video_id, start_sec, end_sec, sentence, source, created_at")
         .ilike("word", normalizedWord)
+        .lt("report_count", 2)
         .order("created_at", { ascending: false })
         .limit(limit);
 

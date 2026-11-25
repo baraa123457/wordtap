@@ -1090,17 +1090,21 @@
             ? `"${fullLine.trim()}" — ${document.title}`
             : document.title;
 
+        const ytClip = buildYouTubeClipPayload(fullLine ? fullLine.trim() : "");
         const entry = {
           text,
           translation: res.text,
           lang: target,
           src: finalSrc,
           pos: res.pos || null,
-          page: location.href,
+          page: ytClip
+            ? `https://www.youtube.com/watch?v=${ytClip.video_id}&t=${ytClip.start_sec}s`
+            : location.href,
           title: titleContext,
           sentence: fullLine ? fullLine.trim() : "",
           source: "subtitle",
           saved: Boolean(willSave),
+          ...(ytClip ? { clip: ytClip } : {}),
         };
         currentPendingEntry = entry;
 
@@ -1296,6 +1300,149 @@
     }
   }
 
+  // ---------- YouTube Caption Timing Capture (No Transcript API) ----------
+  const ytCaptionTiming = {
+    videoId: "",
+    text: "",
+    startSec: 0,
+    endSec: 0,
+  };
+  let ytCaptionObserver = null;
+  let ytObservedVideo = null;
+
+  function extractYouTubeVideoIdFromLocation() {
+    try {
+      const h = location.hostname.toLowerCase();
+      if (!h.includes("youtube.com")) return "";
+      const u = new URL(location.href);
+      const v = u.searchParams.get("v");
+      if (v && /^[A-Za-z0-9_-]{11}$/.test(v)) return v;
+      const m = u.pathname.match(/^\/(?:shorts|embed|live)\/([A-Za-z0-9_-]{11})/);
+      return m ? m[1] : "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function readCurrentYouTubeCaptionText(container) {
+    if (!container) return "";
+    const segs = container.querySelectorAll(".ytp-caption-segment");
+    const raw =
+      segs.length > 0
+        ? Array.from(segs)
+            .map((s) => s.textContent || "")
+            .join(" ")
+        : container.textContent || "";
+    return raw.replace(/\s+/g, " ").trim();
+  }
+
+  function updateYouTubeCaptionTiming(container) {
+    const videoId = extractYouTubeVideoIdFromLocation();
+    const video = document.querySelector("video");
+    if (!videoId || !video) return;
+
+    const nowSec = Number.isFinite(video.currentTime) ? video.currentTime : 0;
+    const text = readCurrentYouTubeCaptionText(container);
+
+    if (!text) {
+      if (ytCaptionTiming.text) {
+        ytCaptionTiming.endSec = nowSec;
+      }
+      return;
+    }
+
+    const sameVideo = ytCaptionTiming.videoId === videoId;
+    const prevText = ytCaptionTiming.text;
+    // Handle auto-generated captions that append word-by-word or scroll lines
+    const isExtensionOfCurrent =
+      sameVideo &&
+      prevText &&
+      (text.startsWith(prevText) || prevText.startsWith(text) || text.includes(prevText.slice(-18)));
+
+    if (!sameVideo || !prevText || !isExtensionOfCurrent) {
+      ytCaptionTiming.videoId = videoId;
+      ytCaptionTiming.startSec = nowSec;
+    }
+    ytCaptionTiming.text = text;
+    ytCaptionTiming.endSec = nowSec;
+  }
+
+  function buildYouTubeClipPayload(sentence) {
+    if (getStreamingPlatform() !== "youtube") return null;
+    const videoId = extractYouTubeVideoIdFromLocation();
+    if (!videoId || !sentence || sentence.length < 3) return null;
+
+    const video = document.querySelector("video");
+    const nowSec = video && Number.isFinite(video.currentTime) ? video.currentTime : 0;
+    const rawStart =
+      ytCaptionTiming.videoId === videoId && ytCaptionTiming.text
+        ? ytCaptionTiming.startSec
+        : Math.max(0, nowSec - 2);
+    const rawEnd =
+      ytCaptionTiming.videoId === videoId && ytCaptionTiming.endSec > rawStart
+        ? ytCaptionTiming.endSec
+        : nowSec;
+
+    const startSec = Math.max(0, Math.floor(rawStart - 1));
+    const endSec = Math.ceil(Math.max(rawStart + 1, rawEnd) + 1);
+    const duration = endSec - startSec;
+    if (duration < 1 || duration > 12) return null;
+
+    return {
+      video_id: videoId,
+      start_sec: startSec,
+      end_sec: endSec,
+      sentence: sentence.slice(0, 300),
+    };
+  }
+
+  function attachYouTubeCaptionObserver() {
+    if (ytCaptionObserver) {
+      ytCaptionObserver.disconnect();
+      ytCaptionObserver = null;
+    }
+    const videoId = extractYouTubeVideoIdFromLocation();
+    if (!videoId) {
+      ytCaptionTiming.videoId = "";
+      ytCaptionTiming.text = "";
+      return;
+    }
+    const container = document.querySelector(".ytp-caption-window-container");
+    const video = document.querySelector("video");
+    if (video && video !== ytObservedVideo) {
+      ytObservedVideo = video;
+      video.addEventListener("seeked", () => {
+        ytCaptionTiming.startSec = video.currentTime || 0;
+        ytCaptionTiming.endSec = video.currentTime || 0;
+      });
+    }
+    if (!container) return;
+
+    ytCaptionObserver = new MutationObserver(() => {
+      updateYouTubeCaptionTiming(container);
+    });
+    ytCaptionObserver.observe(container, { childList: true, subtree: true, characterData: true });
+    updateYouTubeCaptionTiming(container);
+  }
+
+  if (getStreamingPlatform() === "youtube") {
+    attachYouTubeCaptionObserver();
+    window.addEventListener("yt-navigate-finish", () => {
+      setTimeout(attachYouTubeCaptionObserver, 400);
+    });
+    window.addEventListener("popstate", () => {
+      setTimeout(attachYouTubeCaptionObserver, 400);
+    });
+    window.addEventListener("beforeunload", () => {
+      if (ytCaptionObserver) ytCaptionObserver.disconnect();
+    });
+  }
+
   // Periodic health check every 12 seconds during active playback
-  setInterval(runSubtitleHealthCheck, 12000);
+  setInterval(() => {
+    runSubtitleHealthCheck();
+    if (getStreamingPlatform() === "youtube" && !ytCaptionObserver) {
+      attachYouTubeCaptionObserver();
+    }
+  }, 12000);
 })();
