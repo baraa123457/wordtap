@@ -96,7 +96,7 @@ export function ContextualLearningStage({
     setTotalAttempts(0);
     setLastTypedAnswer(word.text);
 
-    fetchContextualVideos(word)
+    fetchContextualVideos(word, { maxResults: 1 })
       .then((res) => {
         if (!active) return;
         const validVideos = (res.videos || []).filter(
@@ -107,14 +107,46 @@ export function ContextualLearningStage({
         if (validVideos[0]) {
           setCurrentTimeSec(validVideos[0].timestampSeconds);
         }
+        setLoading(false);
+
+        // Background fetch for more YouTube + Wikimedia clips without blocking the 1st clip
+        if (validVideos.length < 5) {
+          void fetchContextualVideos(word, { maxResults: 8 })
+            .then((moreRes) => {
+              if (!active) return;
+              const moreValid = (moreRes.videos || []).filter(
+                (v) => !isNonEnglishVideoTitle(v.videoTitle, v.channelName),
+              );
+              if (moreValid.length === 0) return;
+
+              setVideos((prev) => {
+                const seen = new Set(prev.map((p) => p.youtubeVideoId));
+                const extras = moreValid.filter((m) => !seen.has(m.youtubeVideoId));
+                return extras.length > 0 ? [...prev, ...extras] : prev;
+              });
+              setDiscovery((prev) => ({
+                ...moreRes,
+                videos:
+                  prev && prev.videos.length > 0
+                    ? [
+                        ...prev.videos,
+                        ...moreValid.filter(
+                          (m) => !prev.videos.some((p) => p.youtubeVideoId === m.youtubeVideoId),
+                        ),
+                      ]
+                    : moreValid,
+              }));
+            })
+            .catch(() => {
+              // Keep the initial clip(s) if background expansion fails
+            });
+        }
       })
       .catch((err) => {
         if (active) {
           setError(err instanceof Error ? err.message : "Could not search verified videos.");
+          setLoading(false);
         }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
       });
 
     return () => {

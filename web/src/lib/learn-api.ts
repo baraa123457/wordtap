@@ -95,7 +95,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 export async function fetchContextualVideos(
   word: Word,
-  options?: { refresh?: boolean },
+  options?: { refresh?: boolean; maxResults?: number },
 ): Promise<VideoDiscoveryResponse> {
   const params = new URLSearchParams({
     word: word.text,
@@ -106,6 +106,9 @@ export async function fetchContextualVideos(
   if (word.sentence) params.set("sentence", word.sentence);
   if (word.source_title) params.set("sourceTitle", word.source_title);
   if (options?.refresh) params.set("refresh", "1");
+  if (typeof options?.maxResults === "number") {
+    params.set("maxResults", String(options.maxResults));
+  }
 
   const headers = await getAuthHeaders();
   const res = await fetch(`/api/learn/videos?${params.toString()}`, { headers });

@@ -951,10 +951,16 @@ export class VideoDiscoveryService {
     for (const provider of this.providers) {
       if (!provider.isConfigured()) continue;
       const isWikimedia = provider.name === "wikimedia_commons";
+      if (maxResults === 1 && collected.length >= 1) break;
       if (!isWikimedia && collected.length >= maxResults) continue;
 
       const remaining = Math.max(0, maxResults - collected.length);
-      const providerLimit = isWikimedia ? Math.max(2, Math.min(3, remaining || 2)) : remaining;
+      const providerLimit =
+        maxResults === 1
+          ? 1
+          : isWikimedia
+          ? Math.max(2, Math.min(3, remaining || 2))
+          : remaining;
 
       providersAttempted.push(provider.name);
       const found = await provider.discover({

@@ -55,6 +55,10 @@ export async function GET(req: Request) {
   }
 
   const { word, wordId, lang, sourceUrl, sentence, sourceTitle, refresh } = parsed.data;
+  const maxResultsRaw = Number(url.searchParams.get("maxResults") || "8");
+  const maxResults = Number.isFinite(maxResultsRaw)
+    ? Math.min(Math.max(1, Math.floor(maxResultsRaw)), 10)
+    : 8;
   const wordNormalized = word.toLowerCase();
   const providersConfigured = discoveryService.getProviderCapabilities();
   const missingEnvVars = discoveryService.getMissingEnvVars();
@@ -62,7 +66,7 @@ export async function GET(req: Request) {
   // 1. Check persistent video library (in-memory cache -> PostgreSQL vocabulary_video_examples)
   if (refresh !== "1") {
     const cached = await videoRepository.findByWord(wordNormalized, req);
-    if (cached.clips.length > 0) {
+    if (cached.clips.length > 0 && (maxResults === 1 || cached.clips.length >= 4)) {
       const payload: VideoDiscoveryResponse = {
         word,
         videos: cached.clips,
@@ -87,7 +91,7 @@ export async function GET(req: Request) {
     word,
     wordId: wordId || null,
     lang,
-    maxResults: 8,
+    maxResults,
     sourceUrl,
     savedSentence: sentence,
     sourceTitle,
