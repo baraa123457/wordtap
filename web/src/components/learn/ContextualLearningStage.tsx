@@ -397,12 +397,7 @@ export function ContextualLearningStage({
                 key={`${activeClip.id}-${ytReplayKey}`}
                 title="Contextual pronunciation video clip"
                 className="h-full w-full"
-                src={`https://www.youtube.com/embed/${activeClip.youtubeVideoId}?start=${Math.max(0, Math.floor(activeClip.timestampSeconds))}&end=${
-                  typeof activeClip.endSeconds === "number" &&
-                  activeClip.endSeconds > activeClip.timestampSeconds
-                    ? Math.ceil(activeClip.endSeconds)
-                    : Math.max(0, Math.floor(activeClip.timestampSeconds)) + 12
-                }&cc_load_policy=0&rel=0&modestbranding=1&enablejsapi=1${
+                src={`https://www.youtube.com/embed/${activeClip.youtubeVideoId}?start=${Math.max(0, Math.floor(activeClip.timestampSeconds))}&cc_load_policy=0&rel=0&modestbranding=1&enablejsapi=1${
                   typeof window !== "undefined"
                     ? `&origin=${encodeURIComponent(window.location.origin)}`
                     : ""
