@@ -32,6 +32,8 @@ import {
 } from "@/lib/learning-session-manager";
 import type { Word } from "@/lib/schemas";
 import { CheckIcon, CloseIcon, SparklesIcon, TrashIcon } from "@/components/Icons";
+import { MatchView } from "@/components/practice/MatchView";
+import type { MatchQuestion } from "@/lib/session";
 import { Stage1Understanding } from "./Stage1Understanding";
 import { Stage2ContextualVideo } from "./Stage2ContextualVideo";
 import { Stage3CreateSentence } from "./Stage3CreateSentence";
@@ -833,6 +835,8 @@ function SpacedRepetitionReviewSession({
   );
 
   const [index, setIndex] = useState(0);
+  const [reviewMode, setReviewMode] = useState<"choice" | "match" | "full">("choice");
+  const [matchBatchStart, setMatchBatchStart] = useState(0);
   const [phase, setPhase] = useState<"exercise" | "rate">("exercise");
   const [lastAnswer, setLastAnswer] = useState("");
   const [lastPassed, setLastPassed] = useState(true);
@@ -840,6 +844,25 @@ function SpacedRepetitionReviewSession({
   const [saving, setSaving] = useState(false);
   const [xp, setXp] = useState(0);
   const [doneItems, setDoneItems] = useState<Array<{ word: string; nextLabel: string; status: string }>>([]);
+
+  const matchPairsSource = useMemo(() => {
+    const valid = queue.filter((item) => item.word.translation?.trim());
+    return valid.slice(matchBatchStart, matchBatchStart + 5);
+  }, [queue, matchBatchStart]);
+
+  const matchQuestion: MatchQuestion | null = useMemo(() => {
+    if (matchPairsSource.length < 2) return null;
+    return {
+      type: "match",
+      id: `rev-match-${matchBatchStart}`,
+      pairs: matchPairsSource.map((item) => ({
+        wordId: item.word.id,
+        word: item.word.text,
+        translation: item.word.translation,
+        lang: item.word.src_lang || "en",
+      })),
+    };
+  }, [matchPairsSource, matchBatchStart]);
 
   const handleConfirmDeleteReviewWord = async () => {
     if (!deleteTarget || deletingWord) return;
@@ -939,9 +962,52 @@ function SpacedRepetitionReviewSession({
     );
   }
 
-  const exStage = current.reviewExerciseStage;
+  const exStage = reviewMode === "choice" ? 1 : current.reviewExerciseStage;
   const exType: ExerciseType =
     exStage === 1 ? "understanding" : exStage === 2 ? "contextual_video" : "create_sentence";
+
+  const handleCompleteMatchBatch = async (mistakes: string[]) => {
+    if (saving || matchPairsSource.length === 0) return;
+    setSaving(true);
+    try {
+      const mistakeSet = new Set(mistakes);
+      let earned = 0;
+      const summaryBatch: Array<{ word: string; nextLabel: string; status: string }> = [];
+
+      for (const item of matchPairsSource) {
+        const passed = !mistakeSet.has(item.word.id);
+        const rating: FsrsRating = passed ? 3 : 1;
+        const schedule = scheduleFsrsReview(cardStateFromWord(item.word), rating);
+        await persistSpacedReviewRemote({
+          wordId: item.word.id,
+          exerciseType: "understanding",
+          answer: item.word.translation || item.word.text,
+          result: passed,
+          rating,
+          schedule,
+        });
+        earned += passed ? 15 : 5;
+        summaryBatch.push({
+          word: item.word.text,
+          nextLabel: formatIntervalLabel(schedule.intervalDays),
+          status: schedule.learningStatus,
+        });
+      }
+
+      setXp((prev) => prev + earned);
+      recordPractice(earned, localDateString()).catch(() => {});
+      setDoneItems((prev) => [...prev, ...summaryBatch]);
+
+      const nextStart = matchBatchStart + 5;
+      if (nextStart >= queue.filter((item) => item.word.translation?.trim()).length) {
+        setIndex(queue.length);
+      } else {
+        setMatchBatchStart(nextStart);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleRate = async (rating: FsrsRating, schedule: FsrsScheduleResult) => {
     if (saving) return;
@@ -1019,8 +1085,64 @@ function SpacedRepetitionReviewSession({
         </button>
       </header>
 
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {(
+          [
+            { id: "choice", label: "Multiple Choice" },
+            { id: "match", label: "Link Words" },
+            { id: "full", label: "Full Stages" },
+          ] as const
+        ).map((tab) => {
+          const active = reviewMode === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setReviewMode(tab.id);
+                setPhase("exercise");
+              }}
+              className={`rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                active
+                  ? "border-subtitle bg-subtitle/25 text-ink"
+                  : "border-line bg-surface text-muted hover:text-ink"
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       <main className="flex-1 min-w-0">
-        {phase === "exercise" ? (
+        {reviewMode === "match" ? (
+          matchQuestion ? (
+            <MatchView
+              key={matchQuestion.id}
+              q={matchQuestion}
+              onDeleteWord={(wId) => {
+                const target = queue.find((item) => item.word.id === wId)?.word;
+                if (target) setDeleteTarget(target);
+              }}
+              onComplete={(mistakes) => void handleCompleteMatchBatch(mistakes)}
+            />
+          ) : (
+            <div className="apple-card p-6 text-center grid gap-3">
+              <p className="text-sm font-semibold text-ink">
+                Need at least 2 words with translations to play Link Words.
+              </p>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setReviewMode("choice")}
+                  className="btn btn-primary px-5 text-xs font-bold cursor-pointer"
+                >
+                  Switch to Multiple Choice
+                </button>
+              </div>
+            </div>
+          )
+        ) : phase === "exercise" ? (
           exStage === 1 ? (
             <Stage1Understanding
               key={`rev-s1-${current.word.id}`}
