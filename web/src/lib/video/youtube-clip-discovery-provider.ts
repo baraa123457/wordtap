@@ -91,6 +91,18 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function isSpoilerDefinitionTitle(title: string): boolean {
+  const lower = title.toLowerCase();
+  return (
+    /\bwhat does\b.+\bmean\b/.test(lower) ||
+    /\bmeaning of\b/.test(lower) ||
+    /\bdefinition of\b/.test(lower) ||
+    /\bhow to pronounce\b/.test(lower) ||
+    /\bpronunciation of\b/.test(lower) ||
+    /\bword of the day\b/.test(lower)
+  );
+}
+
 function toVerifiedExample(
   row: {
     id: string;
@@ -209,7 +221,10 @@ export class YouTubeWordClipProvider implements IVideoDiscoveryProvider {
         if (triedVideoIds.has(candidate.videoId)) continue;
         triedVideoIds.add(candidate.videoId);
 
-        if (isNonEnglishVideoTitle(candidate.title, candidate.channelName)) {
+        if (
+          isNonEnglishVideoTitle(candidate.title, candidate.channelName) ||
+          isSpoilerDefinitionTitle(candidate.title)
+        ) {
           continue;
         }
 

@@ -410,6 +410,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
               onReady: (e) => {
                 if (!active) return;
                 setBuffering(false);
+                setFrameReady(true);
                 notifyReady(true);
                 try {
                   e.target.setPlaybackRate(speedRef.current);
@@ -425,9 +426,11 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                 } else if (e.data === 1) {
                   // YT.PlayerState.PLAYING
                   setBuffering(false);
+                  setFrameReady(true);
                   notifyPlaying(true);
                 } else {
                   setBuffering(false);
+                  setFrameReady(true);
                   notifyPlaying(false);
                 }
               },
