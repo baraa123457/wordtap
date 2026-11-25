@@ -16,6 +16,7 @@ export function Stage1Understanding({
   word,
   onComplete,
   onDeleteWord,
+  onMarkEasy,
 }: {
   word: Word;
   onComplete: (result: {
@@ -26,6 +27,7 @@ export function Stage1Understanding({
     partOfSpeech: string;
   }) => void;
   onDeleteWord?: (word: Word) => void;
+  onMarkEasy?: (word: Word) => void;
 }) {
   const [question, setQuestion] = useState<UnderstandingQuestion | null>(null);
   const [loading, setLoading] = useState(true);
@@ -362,19 +364,32 @@ export function Stage1Understanding({
           ) : null}
         </div>
 
-        {/* Action controls: Delete Word */}
-        {onDeleteWord ? (
-          <div className="flex items-center shrink-0">
-            <button
-              type="button"
-              onClick={() => onDeleteWord(word)}
-              title={`Delete "${word.text}" from your words`}
-              aria-label={`Delete ${word.text}`}
-              className="btn btn-quiet min-h-10 px-3 py-1.5 text-xs font-semibold text-muted hover:text-bad hover:bg-bad/10 inline-flex items-center gap-1.5 cursor-pointer"
-            >
-              <TrashIcon size={14} />
-              <span>Delete</span>
-            </button>
+        {/* Action controls: Easy & Delete Word */}
+        {onMarkEasy || onDeleteWord ? (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onMarkEasy ? (
+              <button
+                type="button"
+                onClick={() => onMarkEasy(word)}
+                title="Already know this word — skip to Multiple-Choice Review"
+                aria-label={`Mark ${word.text} as easy`}
+                className="btn btn-quiet min-h-10 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/20 inline-flex items-center gap-1 rounded-full cursor-pointer"
+              >
+                <span>✓ Easy</span>
+              </button>
+            ) : null}
+            {onDeleteWord ? (
+              <button
+                type="button"
+                onClick={() => onDeleteWord(word)}
+                title={`Delete "${word.text}" from your words`}
+                aria-label={`Delete ${word.text}`}
+                className="btn btn-quiet min-h-10 px-3 py-1.5 text-xs font-semibold text-muted hover:text-bad hover:bg-bad/10 inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <TrashIcon size={14} />
+                <span>Delete</span>
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

@@ -8,7 +8,9 @@ import { deleteWord, deleteWordByText, recordPractice, updateWordDetails } from 
 import { trackEvent } from "@/lib/analytics";
 import { localDateString } from "@/lib/dates";
 import {
+  cardStateFromWord,
   formatIntervalLabel,
+  scheduleFsrsReview,
   type FsrsRating,
   type FsrsScheduleResult,
 } from "@/lib/fsrs";
@@ -558,6 +560,9 @@ function SequentialInitialLearningSession({
             key={`seq-s1-${activeWord.id}`}
             word={activeWord}
             onDeleteWord={(w) => setDeleteTarget(w)}
+            onMarkEasy={(w) =>
+              void handleStage4CompleteWord(4, scheduleFsrsReview(cardStateFromWord(w), 4))
+            }
             onComplete={(res) =>
               void handleStageAdvance(
                 1,
