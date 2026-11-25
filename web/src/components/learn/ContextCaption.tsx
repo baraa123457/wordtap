@@ -69,6 +69,9 @@ export function ContextCaption({
   captionCues,
   currentTimeSec,
   label,
+  typedAnswer = "",
+  isTypingFocused = false,
+  onBlankClick,
   onWordLookupOpen,
 }: {
   masked: MaskedSentence;
@@ -83,6 +86,9 @@ export function ContextCaption({
   captionCues?: CaptionCue[];
   currentTimeSec?: number;
   label: string;
+  typedAnswer?: string;
+  isTypingFocused?: boolean;
+  onBlankClick?: () => void;
   onWordLookupOpen?: () => void;
 }) {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
@@ -131,6 +137,34 @@ export function ContextCaption({
     if (!maskedCue) return active.text;
     return `${maskedCue.before}${maskedCue.placeholder}${maskedCue.after}`;
   }, [captionCues, currentTimeSec, revealed, targetWord, timedLayout]);
+
+  const renderMissingBlank = (speechState: WordSpeechState, key?: string) => {
+    const cleanTyped = typedAnswer.replace(/\s+/g, "");
+    let displayContent: string;
+    if (cleanTyped.length > 0) {
+      const remaining = Math.max(0, masked.letterCount - cleanTyped.length);
+      displayContent = `${cleanTyped}${".".repeat(remaining)}`;
+    } else {
+      displayContent = hint || masked.placeholder;
+    }
+
+    const focusRing = isTypingFocused ? " ring-2 ring-amber-500/80 shadow-sm" : "";
+
+    return (
+      <button
+        key={key}
+        type="button"
+        onClick={onBlankClick}
+        data-testid="stage2-missing-placeholder"
+        data-speech-state={speechState}
+        aria-label={`Type the ${masked.letterCount}-letter missing word`}
+        title="Click to type the missing word"
+        className={`${targetBlankClassForState(speechState)} cursor-text hover:bg-subtitle/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-subtitle${focusRing}`}
+      >
+        {displayContent}
+      </button>
+    );
+  };
 
   const renderClickableToken = (
     key: string,
@@ -207,15 +241,7 @@ export function ContextCaption({
                   {masked.hiddenWord}
                 </mark>
               ) : (
-                <span
-                  key={tok.id}
-                  data-testid="stage2-missing-placeholder"
-                  data-speech-state={speechState}
-                  aria-label={`${masked.letterCount} missing letters`}
-                  className={targetBlankClassForState(speechState)}
-                >
-                  {hint || masked.placeholder}
-                </span>
+                renderMissingBlank(speechState, tok.id)
               );
             }
 
@@ -235,13 +261,7 @@ export function ContextCaption({
                 {masked.hiddenWord}
               </mark>
             ) : (
-              <span
-                data-testid="stage2-missing-placeholder"
-                aria-label={`${masked.letterCount} missing letters`}
-                className="inline-block max-w-full break-all rounded-lg border-b-2 border-subtitle bg-subtitle/10 px-2 py-0.5 font-mono font-bold tracking-[0.12em] sm:tracking-[0.2em] text-ink"
-              >
-                {hint || masked.placeholder}
-              </span>
+              renderMissingBlank("idle")
             )}
             {fallbackAfterTokens.map((tok) =>
               tok.isSpace ? (

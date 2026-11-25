@@ -8,6 +8,7 @@ import {
   type MaskedSentence,
 } from "@/lib/placeholder";
 import { canSpeak, speak } from "@/lib/speech";
+import { playKeyClickSound } from "@/lib/typing-sound";
 import { LightbulbIcon, SpeakerIcon } from "@/components/Icons";
 import type { CaptionCue } from "@/lib/video/types";
 import { ContextCaption } from "./ContextCaption";
@@ -55,6 +56,7 @@ export function MissingWordExercise({
   const [hintClicks, setHintClicks] = useState(0);
   const [totalSubmits, setTotalSubmits] = useState(0);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const [state, setState] = useState<"answering" | "wrong" | "correct">("answering");
 
   const hintLevel = wrongAttempts + hintClicks;
@@ -139,6 +141,7 @@ export function MissingWordExercise({
     } else {
       setWrongAttempts((a) => a + 1);
       setState("wrong");
+      playKeyClickSound("error");
       inputRef.current?.focus();
     }
   };
@@ -160,6 +163,12 @@ export function MissingWordExercise({
         hint={hint}
         captionCues={captionCues}
         currentTimeSec={currentTimeSec}
+        typedAnswer={answer}
+        isTypingFocused={isInputFocused}
+        onBlankClick={() => {
+          playKeyClickSound("key");
+          inputRef.current?.focus();
+        }}
         onWordLookupOpen={onWordLookupOpen}
         label={
           hasSubmitted
@@ -176,8 +185,12 @@ export function MissingWordExercise({
             ref={inputRef}
             type="text"
             value={answer}
+            onFocus={() => setIsInputFocused(true)}
+            onBlur={() => setIsInputFocused(false)}
             onChange={(e) => {
-              setAnswer(e.target.value);
+              const nextVal = e.target.value;
+              playKeyClickSound(nextVal.length < answer.length ? "backspace" : "key");
+              setAnswer(nextVal);
               if (state === "wrong") setState("answering");
             }}
             autoCapitalize="none"
