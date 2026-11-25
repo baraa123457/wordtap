@@ -269,9 +269,9 @@ export function Stage1Understanding({
             <h2
               id="stage1-heading"
               dir="auto"
-              className="text-2xl sm:text-4xl font-extrabold tracking-tight text-ink uppercase break-words"
+              className="text-2xl sm:text-4xl font-extrabold tracking-tight text-ink break-words"
             >
-              {word.text}
+              {word.text === word.text.toUpperCase() ? word.text.toLowerCase() : word.text}
             </h2>
             {canSpeak() ? (
               <button
