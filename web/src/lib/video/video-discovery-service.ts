@@ -943,26 +943,32 @@ export class VideoDiscoveryService {
     videos: VerifiedVideoExample[];
     providersAttempted: string[];
   }> {
-    const maxResults = Math.min(query.maxResults ?? 6, 10);
+    const maxResults = Math.min(query.maxResults ?? 8, 10);
     const providersAttempted: string[] = [];
     const collected: VerifiedVideoExample[] = [];
     const seenVideoIds = new Set<string>();
 
     for (const provider of this.providers) {
       if (!provider.isConfigured()) continue;
-      if (collected.length >= maxResults) break;
+      const isWikimedia = provider.name === "wikimedia_commons";
+      if (!isWikimedia && collected.length >= maxResults) continue;
+
+      const remaining = Math.max(0, maxResults - collected.length);
+      const providerLimit = isWikimedia ? Math.max(2, Math.min(3, remaining || 2)) : remaining;
 
       providersAttempted.push(provider.name);
       const found = await provider.discover({
         ...query,
-        maxResults: maxResults - collected.length,
+        maxResults: providerLimit,
       });
 
+      let addedForProvider = 0;
       for (const clip of found) {
         if (seenVideoIds.has(clip.youtubeVideoId)) continue;
         seenVideoIds.add(clip.youtubeVideoId);
         collected.push(clip);
-        if (collected.length >= maxResults) break;
+        addedForProvider++;
+        if (addedForProvider >= providerLimit) break;
       }
     }
 

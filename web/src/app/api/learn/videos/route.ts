@@ -87,7 +87,7 @@ export async function GET(req: Request) {
     word,
     wordId: wordId || null,
     lang,
-    maxResults: 6,
+    maxResults: 8,
     sourceUrl,
     savedSentence: sentence,
     sourceTitle,
