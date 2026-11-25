@@ -8,6 +8,7 @@ import {
   WORD_COLUMNS_LEGACY,
   WORD_COLUMNS_V2,
   WORD_COLUMNS_V3,
+  WORD_COLUMNS_V4,
   statsSchema,
   wordsSchema,
   type Stats,
@@ -102,10 +103,17 @@ export async function fetchWords(): Promise<Word[]> {
   const supabase = getSupabase();
   // Supabase returns at most 1000 rows per request, so read the table in pages.
   // (Without this, users with more than 1000 words silently lose the oldest ones.)
-  const v3 = await selectAllWords(supabase, WORD_COLUMNS_V3);
+  const v4 = await selectAllWords(supabase, WORD_COLUMNS_V4);
 
-  let rows: unknown = v3.data;
-  let error = v3.error;
+  let rows: unknown = v4.data;
+  let error = v4.error;
+
+  // Fallback gracefully if migration 018 hasn't been applied yet
+  if (error && /column|does not exist|schema cache/i.test(error.message)) {
+    const v3 = await selectAllWords(supabase, WORD_COLUMNS_V3);
+    rows = v3.data;
+    error = v3.error;
+  }
 
   // Fallback gracefully if migration 011 hasn't been applied yet
   if (error && /column|does not exist|schema cache/i.test(error.message)) {
@@ -316,6 +324,63 @@ export async function syncUserStreak(
 
 export async function setDailyGoal(goal: number): Promise<void> {
   const { error } = await getSupabase().rpc("set_daily_goal", { p_goal: goal });
+  if (error) throw new Error(error.message);
+}
+
+export async function setWordEasy(id: string, isEasy: boolean): Promise<void> {
+  const supabase = getSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Please sign in to update words.");
+
+  const { error } = await supabase
+    .from("words")
+    .update({ is_easy: isEasy })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) throw new Error(error.message);
+}
+
+export type ReviewBatchUpdate = {
+  word: Word;
+  review_box: number;
+  next_review_at: string;
+  correct_streak: number;
+  last_reviewed_at: string;
+  lapses: number;
+  passed: boolean;
+};
+
+/** Persists all reviewed words in a single batched Supabase upsert under user RLS. */
+export async function batchUpdateReviewResults(updates: ReviewBatchUpdate[]): Promise<void> {
+  if (updates.length === 0) return;
+  const supabase = getSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Please sign in to save review progress.");
+
+  const rows = updates.map((u) => ({
+    id: u.word.id,
+    user_id: user.id,
+    text: u.word.text,
+    translation: u.word.translation,
+    src_lang: u.word.src_lang,
+    target_lang: u.word.target_lang,
+    review_box: u.review_box,
+    next_review_at: u.next_review_at,
+    correct_streak: u.correct_streak,
+    last_reviewed_at: u.last_reviewed_at,
+    lapses: u.lapses,
+    times_seen: (u.word.times_seen || 0) + 1,
+    correct_count: (u.word.correct_count || 0) + (u.passed ? 1 : 0),
+    wrong_count: (u.word.wrong_count || 0) + (u.passed ? 0 : 1),
+    last_practiced: u.last_reviewed_at,
+  }));
+
+  const { error } = await supabase.from("words").upsert(rows, { onConflict: "id" });
   if (error) throw new Error(error.message);
 }
 

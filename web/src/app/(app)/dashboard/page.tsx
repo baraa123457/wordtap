@@ -13,6 +13,7 @@ import { trackEvent } from "@/lib/analytics";
 import { effectiveStats, localDateString } from "@/lib/dates";
 import { formatDueIn, isDue } from "@/lib/format";
 import { deriveWordLearningStatus } from "@/lib/fsrs";
+import { countDueForReview } from "@/lib/review-scheduler";
 import { fetchRecentReviewHistory, type ReviewHistoryRow } from "@/lib/learn-api";
 import { getStoredSettings, saveStoredSettings } from "@/lib/settings";
 import type { Stats, Word } from "@/lib/schemas";
@@ -220,6 +221,7 @@ export default function DashboardPage() {
   const dailyReviewsGoal = stats.daily_reviews_goal ?? storedSettings.dailyReviewsGoal ?? 20;
 
   const dueCount = words.filter((w) => isDue(w.next_review, now)).length;
+  const reviewDueCount = countDueForReview(words, now);
   const statusCounts = { new: 0, learning: 0, review: 0, mastered: 0 };
   for (const w of words) {
     const st = deriveWordLearningStatus(w);
@@ -381,7 +383,18 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="w-full sm:w-auto shrink-0 flex items-center justify-start sm:justify-end">
+          <div className="w-full sm:w-auto shrink-0 flex flex-wrap items-center justify-start sm:justify-end gap-2">
+            {words.length > 0 ? (
+              <Link
+                href="/review"
+                className="btn w-full sm:w-auto text-center justify-center min-h-11 px-4 text-sm font-bold border border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 inline-flex items-center gap-2 transition-all"
+              >
+                <span>Review</span>
+                <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] font-extrabold tabular-nums">
+                  {reviewDueCount} due today
+                </span>
+              </Link>
+            ) : null}
             <Link
               href={words.length === 0 ? "/extension" : "/practice"}
               className="btn btn-primary w-full sm:w-auto text-center justify-center min-h-11 px-6 text-sm sm:text-base font-bold shadow-md sm:hover:scale-[1.02] active:scale-95 transition-all"

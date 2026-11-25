@@ -7,6 +7,7 @@ import {
   bulkDeleteWords,
   deleteWord,
   deleteWordByText,
+  setWordEasy,
   fetchWords,
   updateWordDetails,
   updateWordLanguage,
@@ -1053,7 +1054,7 @@ export default function WordsPage() {
                       </button>
                     </span>
                   ) : (
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                       <Link
                         href={`/practice?wordId=${encodeURIComponent(w.id)}`}
                         className="btn btn-primary min-h-11 px-3.5 py-1 text-[length:var(--text-control)] font-bold rounded-lg transition-all cursor-pointer"
@@ -1061,6 +1062,39 @@ export default function WordsPage() {
                       >
                         Learn
                       </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextEasy = !w.is_easy;
+                          if (words) {
+                            setData(
+                              words.map((item) =>
+                                item.id === w.id ? { ...item, is_easy: nextEasy } : item,
+                              ),
+                            );
+                          }
+                          void setWordEasy(w.id, nextEasy).catch((err) => {
+                            if (words) {
+                              setData(words);
+                            }
+                            setActionError(
+                              err instanceof Error ? err.message : "Could not update easy status.",
+                            );
+                          });
+                        }}
+                        title={
+                          w.is_easy
+                            ? "Unmark Easy (return to normal practice)"
+                            : "Mark as Easy (study via Quick Review)"
+                        }
+                        className={`btn min-h-11 px-3 py-1 text-[length:var(--text-control)] font-semibold rounded-lg transition-all cursor-pointer ${
+                          w.is_easy
+                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/35 hover:bg-emerald-500/25"
+                            : "btn-quiet text-muted hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-500/10"
+                        }`}
+                      >
+                        {w.is_easy ? "✓ Easy" : "Easy"}
+                      </button>
                       <button
                         type="button"
                         className={`btn min-h-11 px-3.5 py-1 text-[length:var(--text-control)] font-medium rounded-lg transition-all cursor-pointer ${

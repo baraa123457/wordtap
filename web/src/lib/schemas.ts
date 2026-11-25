@@ -27,6 +27,12 @@ export const wordSchema = z.object({
   last_rating: z.number().nullable().optional(),
   initial_learning_completed: z.boolean().nullable().optional(),
   stage_answers: z.record(z.string(), z.unknown()).nullable().optional(),
+  review_box: z.number().nullable().optional(),
+  next_review_at: z.string().nullable().optional(),
+  correct_streak: z.number().nullable().optional(),
+  last_reviewed_at: z.string().nullable().optional(),
+  lapses: z.number().nullable().optional(),
+  is_easy: z.boolean().nullable().optional(),
   times_seen: z.number(),
   box: z.number(),
   next_review: z.string(),
@@ -72,6 +78,8 @@ export const WORD_COLUMNS = `${WORD_COLUMNS_LEGACY},sentence`;
 export const WORD_COLUMNS_V2 = `${WORD_COLUMNS},definition,pronunciation,part_of_speech,learning_status,current_stage,completed_stages,attempts_count,fsrs_stability,fsrs_difficulty,fsrs_reps,fsrs_lapses,interval_days,last_rating`;
 
 export const WORD_COLUMNS_V3 = `${WORD_COLUMNS_V2},initial_learning_completed,stage_answers`;
+
+export const WORD_COLUMNS_V4 = `${WORD_COLUMNS_V3},review_box,next_review_at,correct_streak,last_reviewed_at,lapses,is_easy`;
 
 export const STATS_COLUMNS =
   "xp,streak,best_streak,last_practice_date,today_xp,daily_goal";

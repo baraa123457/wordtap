@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { deleteWord, deleteWordByText, recordPractice, updateWordDetails } from "@/lib/api";
+import { deleteWord, deleteWordByText, recordPractice, setWordEasy, updateWordDetails } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
 import { localDateString } from "@/lib/dates";
 import {
@@ -567,9 +567,10 @@ function SequentialInitialLearningSession({
             key={`seq-s1-${activeWord.id}`}
             word={activeWord}
             onDeleteWord={(w) => setDeleteTarget(w)}
-            onMarkEasy={(w) =>
-              void handleStage4CompleteWord(4, scheduleFsrsReview(cardStateFromWord(w), 4), true)
-            }
+            onMarkEasy={(w) => {
+              void setWordEasy(w.id, true).catch(() => {});
+              void handleStage4CompleteWord(4, scheduleFsrsReview(cardStateFromWord(w), 4), true);
+            }}
             onComplete={(res) =>
               void handleStageAdvance(
                 1,
