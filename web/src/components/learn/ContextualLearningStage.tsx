@@ -47,6 +47,8 @@ export function ContextualLearningStage({
     seekTo?: (seconds: number, allowSeekAhead?: boolean) => void;
     playVideo?: () => void;
     pauseVideo?: () => void;
+    unloadModule?: (module: string) => void;
+    setOption?: (module: string, option: string, value: unknown) => void;
     destroy?: () => void;
   } | null>(null);
 
@@ -178,13 +180,29 @@ export function ContextualLearningStage({
       }
     };
 
+    const disableCaptions = (player: typeof ytPlayerRef.current) => {
+      try {
+        player?.unloadModule?.("captions");
+        player?.unloadModule?.("cc");
+        player?.setOption?.("captions", "track", {});
+        player?.setOption?.("cc", "track", {});
+      } catch {
+        // ignore
+      }
+    };
+
     void loadOfficialYouTubeIframeApi()
       .then(() => {
         if (!active || !ytIframeRef.current || !window.YT?.Player) return;
         ytPlayerRef.current = new window.YT.Player(ytIframeRef.current, {
           events: {
+            onReady: () => {
+              if (!active) return;
+              disableCaptions(ytPlayerRef.current);
+            },
             onStateChange: (e: { data: number }) => {
               if (!active) return;
+              disableCaptions(ytPlayerRef.current);
               if (e.data === 1) {
                 stopPoll();
                 timePoll = window.setInterval(() => {
