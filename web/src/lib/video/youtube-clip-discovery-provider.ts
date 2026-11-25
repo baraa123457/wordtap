@@ -345,7 +345,7 @@ export class YouTubeWordClipProvider implements IVideoDiscoveryProvider {
         `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video` +
         `&videoCaption=closedCaption&videoEmbeddable=true&safeSearch=strict` +
         `&relevanceLanguage=${encodeURIComponent(langCode)}&maxResults=5` +
-        `&q=${encodeURIComponent(`${word} english explained OR interview`)}` +
+        `&q=${encodeURIComponent(word)}` +
         `&key=${encodeURIComponent(ytKey)}`;
 
       const res = await fetch(searchUrl, { signal: AbortSignal.timeout(7000) });
