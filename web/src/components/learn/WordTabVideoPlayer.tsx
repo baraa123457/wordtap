@@ -395,6 +395,9 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
             height: "100%",
             playerVars: {
               start: clip.timestampSeconds,
+              ...(typeof clip.endSeconds === "number" && clip.endSeconds > clip.timestampSeconds
+                ? { end: clip.endSeconds }
+                : {}),
               autoplay: 0,
               rel: 0,
               modestbranding: 1,

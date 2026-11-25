@@ -145,7 +145,7 @@ export function VideoExampleNavigation({
           aria-label="Next video example"
           className="btn min-h-10 px-3 text-xs font-semibold cursor-pointer disabled:opacity-40"
         >
-          Next →
+          Next clip →
         </button>
         {onSkipWrongAudio ? (
           <button

@@ -54,6 +54,7 @@ export function MissingWordExercise({
   const [wrongAttempts, setWrongAttempts] = useState(0);
   const [hintClicks, setHintClicks] = useState(0);
   const [totalSubmits, setTotalSubmits] = useState(0);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [state, setState] = useState<"answering" | "wrong" | "correct">("answering");
 
   const hintLevel = wrongAttempts + hintClicks;
@@ -125,6 +126,7 @@ export function MissingWordExercise({
 
     const nextSubmits = totalSubmits + 1;
     setTotalSubmits(nextSubmits);
+    setHasSubmitted(true);
 
     const ok = validateMissingWordAnswer(answer, masked.hiddenWord, targetWord);
     if (ok) {
@@ -154,13 +156,13 @@ export function MissingWordExercise({
         targetLang={targetLang}
         sourceTitle={sourceTitle}
         sourceUrl={sourceUrl}
-        revealed={state === "correct"}
+        revealed={hasSubmitted}
         hint={hint}
         captionCues={captionCues}
         currentTimeSec={currentTimeSec}
         onWordLookupOpen={onWordLookupOpen}
         label={
-          state === "correct"
+          hasSubmitted
             ? isVideoMode
               ? "Verified video caption (target word highlighted):"
               : "Complete context sentence (target word highlighted):"
@@ -438,7 +440,7 @@ export function MissingWordExercise({
                 onClick={onNextExample}
                 className="btn min-h-10 px-3.5 text-xs sm:text-sm font-semibold cursor-pointer"
               >
-                {isVideoMode ? "Next video →" : "Another example →"}
+                {isVideoMode ? "Next clip →" : "Another example →"}
               </button>
             ) : null}
             <button

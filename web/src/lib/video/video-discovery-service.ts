@@ -20,6 +20,7 @@ import {
   scoreContextCandidate,
   verifyYouTubeOembed,
 } from "./transcript-provider";
+import { YouTubeWordClipProvider } from "./youtube-clip-discovery-provider";
 import type {
   CaptionCue,
   DiscoveryQuery,
@@ -893,10 +894,10 @@ export class VideoDiscoveryService {
   constructor(providers?: IVideoDiscoveryProvider[], transcriptProvider?: CompositeTranscriptProvider) {
     this.transcriptProvider = transcriptProvider ?? new CompositeTranscriptProvider();
     this.providers = providers ?? [
+      new UserSavedSubtitleProvider(),
+      new YouTubeWordClipProvider(),
       new YouGlishRestDiscoveryProvider(),
       new FilmotDiscoveryProvider(),
-      new YouTubeDataDiscoveryProvider(this.transcriptProvider),
-      new UserSavedSubtitleProvider(),
       new WikimediaCommonsVideoProvider(),
     ];
   }

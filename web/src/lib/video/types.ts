@@ -28,6 +28,7 @@ export type VerifiedVideoExample = {
   license?: string;
   source: VideoDiscoverySource;
   timestampSeconds: number;
+  endSeconds?: number;
   verifiedTranscript: string;
   contextSentence: string;
   targetWordPosition: number;
