@@ -354,7 +354,11 @@ function SequentialInitialLearningSession({
     }
   };
 
-  const handleStage4CompleteWord = async (rating: FsrsRating, schedule: FsrsScheduleResult) => {
+  const handleStage4CompleteWord = async (
+    rating: FsrsRating,
+    schedule: FsrsScheduleResult,
+    markEasy = false,
+  ) => {
     if (lockRef.current) return;
     lockRef.current = true;
     setSavingStage(true);
@@ -364,6 +368,7 @@ function SequentialInitialLearningSession({
       const next = transitionCompleteWord(session, {
         wordId: activeWord.id,
         xpDelta,
+        markEasy,
       });
 
       awardXp(xpDelta);
@@ -563,7 +568,7 @@ function SequentialInitialLearningSession({
             word={activeWord}
             onDeleteWord={(w) => setDeleteTarget(w)}
             onMarkEasy={(w) =>
-              void handleStage4CompleteWord(4, scheduleFsrsReview(cardStateFromWord(w), 4))
+              void handleStage4CompleteWord(4, scheduleFsrsReview(cardStateFromWord(w), 4), true)
             }
             onComplete={(res) =>
               void handleStageAdvance(

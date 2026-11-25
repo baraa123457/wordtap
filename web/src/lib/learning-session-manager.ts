@@ -593,6 +593,7 @@ export function transitionCompleteWord(
   params: {
     wordId: string;
     xpDelta?: number;
+    markEasy?: boolean;
   },
   store: KeyValueStore | null = getDefaultStore(),
 ): LearningSessionState {
@@ -604,18 +605,29 @@ export function transitionCompleteWord(
       `Strict sequence violation: active word is ${session.currentWordId}, cannot complete ${params.wordId}.`,
     );
   }
-  if (session.currentStage !== 4) {
+  if (!params.markEasy && session.currentStage !== 4) {
     throw new Error(
       `Strict sequence violation: word must reach Stage 4 before completion (currently Stage ${session.currentStage}).`,
     );
   }
 
-  const prevProg = session.wordProgress[params.wordId];
+  const prevProg = session.wordProgress[params.wordId] || {
+    wordId: params.wordId,
+    currentStage: 1 as LearningStage,
+    completedStages: [],
+    attempts: 0,
+    answers: {},
+    definition: "",
+    pronunciation: "",
+    partOfSpeech: "",
+    userSentence: "",
+    completed: false,
+  };
   const hasAllRequired =
-    prevProg &&
-    prevProg.completedStages.includes(1) &&
-    prevProg.completedStages.includes(2) &&
-    prevProg.completedStages.includes(3);
+    params.markEasy ||
+    (prevProg.completedStages.includes(1) &&
+      prevProg.completedStages.includes(2) &&
+      prevProg.completedStages.includes(3));
 
   if (!hasAllRequired) {
     throw new Error(
@@ -624,7 +636,9 @@ export function transitionCompleteWord(
   }
 
   const nowIso = new Date().toISOString();
-  const completedStages = normalizeCompletedStages([...prevProg.completedStages, 4]);
+  const completedStages = normalizeCompletedStages(
+    params.markEasy ? [1, 2, 3, 4] : [...prevProg.completedStages, 4],
+  );
   const updatedProg: WordStageProgress = {
     ...prevProg,
     currentStage: 4,
