@@ -217,32 +217,36 @@ export class YouTubeWordClipProvider implements IVideoDiscoveryProvider {
         source: string;
       }> = [];
 
-      for (const candidate of candidates) {
-        if (cachedClips.length + discovered.length >= maxResults) break;
-        if (triedVideoIds.has(candidate.videoId)) continue;
+      const eligible = candidates.filter((candidate) => {
+        if (triedVideoIds.has(candidate.videoId)) return false;
         triedVideoIds.add(candidate.videoId);
-
         if (
           isNonEnglishVideoTitle(candidate.title, candidate.channelName) ||
           isSpoilerDefinitionTitle(candidate.title)
         ) {
-          continue;
+          return false;
         }
-
         const durationSec = durations.get(candidate.videoId);
         if (typeof durationSec === "number" && durationSec > MAX_VIDEO_DURATION_SEC) {
-          continue;
+          return false;
         }
+        return true;
+      });
 
+      const processCandidate = async (candidate: {
+        videoId: string;
+        title: string;
+        channelName: string;
+      }) => {
         const segments = await this.fetchSupadataSegments(candidate.videoId, langCode, supadataKey);
-        if (!segments || segments.length === 0) continue;
+        if (!segments || segments.length === 0) return null;
 
         const match = this.findBestClipInSegments(segments, normalizedWord);
-        if (!match) continue;
+        if (!match) return null;
 
         const oembed = await verifyYouTubeOembed(candidate.videoId);
-        if (!oembed) continue;
-        if (isNonEnglishVideoTitle(oembed.title, oembed.authorName)) continue;
+        if (!oembed) return null;
+        if (isNonEnglishVideoTitle(oembed.title, oembed.authorName)) return null;
 
         const qualityScore = scoreContextCandidate({
           sentence: match.sentence,
@@ -276,17 +280,32 @@ export class YouTubeWordClipProvider implements IVideoDiscoveryProvider {
           },
         );
 
-        if (!example) continue;
+        if (!example) return null;
 
-        discovered.push(example);
-        rowsToCache.push({
-          word: normalizedWord,
-          video_id: candidate.videoId,
-          start_sec: match.startSec,
-          end_sec: match.endSec,
-          sentence: match.sentence,
-          source: "youtube_supadata",
-        });
+        return {
+          example,
+          row: {
+            word: normalizedWord,
+            video_id: candidate.videoId,
+            start_sec: match.startSec,
+            end_sec: match.endSec,
+            sentence: match.sentence,
+            source: "youtube_supadata",
+          },
+        };
+      };
+
+      const batchSize = 3;
+      for (let i = 0; i < eligible.length; i += batchSize) {
+        if (cachedClips.length + discovered.length >= maxResults) break;
+        const batch = eligible.slice(i, i + batchSize);
+        const settled = await Promise.all(batch.map((c) => processCandidate(c)));
+        for (const item of settled) {
+          if (!item) continue;
+          discovered.push(item.example);
+          rowsToCache.push(item.row);
+          if (cachedClips.length + discovered.length >= maxResults) break;
+        }
       }
 
       if (rowsToCache.length > 0) {

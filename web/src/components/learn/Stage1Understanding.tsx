@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Word } from "@/lib/schemas";
 import {
+  fetchContextualVideos,
   fetchUnderstandingQuestion,
   type UnderstandingQuestion,
 } from "@/lib/learn-api";
@@ -160,6 +161,8 @@ export function Stage1Understanding({
 
   useEffect(() => {
     void load();
+    // Warm up Stage 2's 1st video clip in the background while the learner answers Stage 1
+    void fetchContextualVideos(word, { maxResults: 1 }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [word.id]);
 
