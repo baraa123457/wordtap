@@ -960,7 +960,7 @@ export default function WordsPage() {
               return (
                 <li
                   key={w.id}
-                  className={`grid gap-2 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_14rem] lg:items-center lg:gap-6 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors ${
+                  className={`grid gap-3 px-4 py-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)_auto] lg:items-center lg:gap-5 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors ${
                     isChecked ? "bg-subtitle/10" : ""
                   }`}
                 >
@@ -1014,7 +1014,7 @@ export default function WordsPage() {
                     </button>
                   ) : null}
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 overflow-hidden">
                   <p className="break-words text-lg">
                     <bdi>{w.translation}</bdi>
                   </p>
@@ -1024,7 +1024,7 @@ export default function WordsPage() {
                     {w.times_seen > 1 ? ` · tapped ${w.times_seen} times` : ""}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-3 lg:justify-end">
+                <div className="flex flex-wrap items-center justify-between gap-2.5 lg:flex-col lg:items-end lg:gap-2 min-w-0">
                   <span className="grid justify-items-start gap-1 text-sm text-muted lg:justify-items-end">
                     <MasteryDots box={w.box} />
                     <span>
