@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCorsHeaders, guardApiRequestShared, handleCorsPreflight } from "@/lib/api-guard";
@@ -84,7 +85,7 @@ const DISTRACTOR_POOL: Record<string, string[]> = {
 function shuffle<T>(arr: T[]): T[] {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = randomInt(i + 1);
     [copy[i], copy[j]] = [copy[j]!, copy[i]!];
   }
   return copy;
@@ -429,7 +430,12 @@ Rules:
 
     const resolvedPos = (dict?.partOfSpeech || partOfSpeech || "adjective").toLowerCase();
     const resolvedPron = dict?.pronunciation || "";
-    const distractors = pickDistractors(resolvedPos, resolvedDefinition, word);
+    const rawDistractors = pickDistractors(resolvedPos, resolvedDefinition, word);
+    const defStartsWithTo = /^to\s+/i.test(resolvedDefinition);
+    const distractors =
+      resolvedPos.includes("verb") && !defStartsWithTo
+        ? rawDistractors.map((d) => capitalizeSentence(d.replace(/^to\s+/i, "")))
+        : rawDistractors;
 
     const rawOptions = shuffle([
       { text: resolvedDefinition, isCorrect: true },

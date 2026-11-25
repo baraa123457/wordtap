@@ -132,7 +132,25 @@ export function Stage1Understanding({
     setStatus("answering");
     try {
       const q = await fetchUnderstandingQuestion(word);
-      setQuestion(q);
+      const ids: Array<"A" | "B" | "C" | "D"> = ["A", "B", "C", "D"];
+      const tagged = q.options.map((opt) => ({
+        text: opt.text,
+        isCorrect: opt.id === q.correctOptionId,
+      }));
+      for (let i = tagged.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [tagged[i], tagged[j]] = [tagged[j]!, tagged[i]!];
+      }
+      const shuffledOptions = tagged.map((item, idx) => ({
+        id: ids[idx] ?? "A",
+        text: item.text,
+      }));
+      const newCorrectIdx = tagged.findIndex((item) => item.isCorrect);
+      setQuestion({
+        ...q,
+        options: shuffledOptions,
+        correctOptionId: ids[newCorrectIdx] ?? q.correctOptionId,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load meaning question.");
     } finally {
