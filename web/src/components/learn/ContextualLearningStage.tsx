@@ -109,7 +109,9 @@ export function ContextualLearningStage({
         if (validVideos[0]) {
           setCurrentTimeSec(validVideos[0].timestampSeconds);
         }
-        setLoading(false);
+        if (validVideos.length > 0) {
+          setLoading(false);
+        }
 
         // Background fetch for more YouTube + Wikimedia clips without blocking the 1st clip
         if (validVideos.length < 5) {
@@ -119,28 +121,31 @@ export function ContextualLearningStage({
               const moreValid = (moreRes.videos || []).filter(
                 (v) => !isNonEnglishVideoTitle(v.videoTitle, v.channelName),
               );
-              if (moreValid.length === 0) return;
-
-              setVideos((prev) => {
-                const seen = new Set(prev.map((p) => p.youtubeVideoId));
-                const extras = moreValid.filter((m) => !seen.has(m.youtubeVideoId));
-                return extras.length > 0 ? [...prev, ...extras] : prev;
-              });
-              setDiscovery((prev) => ({
-                ...moreRes,
-                videos:
-                  prev && prev.videos.length > 0
-                    ? [
-                        ...prev.videos,
-                        ...moreValid.filter(
-                          (m) => !prev.videos.some((p) => p.youtubeVideoId === m.youtubeVideoId),
-                        ),
-                      ]
-                    : moreValid,
-              }));
+              if (moreValid.length > 0) {
+                setVideos((prev) => {
+                  const seen = new Set(prev.map((p) => p.youtubeVideoId));
+                  const extras = moreValid.filter((m) => !seen.has(m.youtubeVideoId));
+                  return extras.length > 0 ? [...prev, ...extras] : prev;
+                });
+                setDiscovery((prev) => ({
+                  ...moreRes,
+                  videos:
+                    prev && prev.videos.length > 0
+                      ? [
+                          ...prev.videos,
+                          ...moreValid.filter(
+                            (m) => !prev.videos.some((p) => p.youtubeVideoId === m.youtubeVideoId),
+                          ),
+                        ]
+                      : moreValid,
+                }));
+              }
             })
             .catch(() => {
               // Keep the initial clip(s) if background expansion fails
+            })
+            .finally(() => {
+              if (active) setLoading(false);
             });
         }
       })

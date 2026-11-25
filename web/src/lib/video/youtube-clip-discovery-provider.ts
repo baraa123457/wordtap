@@ -295,7 +295,7 @@ export class YouTubeWordClipProvider implements IVideoDiscoveryProvider {
         };
       };
 
-      const batchSize = 3;
+      const batchSize = 2;
       for (let i = 0; i < eligible.length; i += batchSize) {
         if (cachedClips.length + discovered.length >= maxResults) break;
         const batch = eligible.slice(i, i + batchSize);
@@ -448,10 +448,17 @@ export class YouTubeWordClipProvider implements IVideoDiscoveryProvider {
         `https://api.supadata.ai/v1/youtube/transcript` +
         `?videoId=${encodeURIComponent(videoId)}&lang=${encodeURIComponent(langCode)}`;
 
-      const res = await fetch(url, {
+      let res = await fetch(url, {
         headers: { "x-api-key": supadataKey },
         signal: AbortSignal.timeout(7000),
       });
+      if (res.status === 429) {
+        await new Promise((r) => setTimeout(r, 1100));
+        res = await fetch(url, {
+          headers: { "x-api-key": supadataKey },
+          signal: AbortSignal.timeout(7000),
+        });
+      }
       if (!res.ok) return null;
 
       const data = (await res.json()) as SupadataTranscriptResponse;
