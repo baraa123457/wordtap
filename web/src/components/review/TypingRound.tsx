@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { canSpeak, speak } from "@/lib/speech";
+import { playKeyClickSound } from "@/lib/typing-sound";
 import type { Word } from "@/lib/schemas";
 import { SpeakerIcon, TrashIcon } from "@/components/Icons";
 
@@ -49,6 +50,7 @@ export function TypingRound({
   const inputRef = useRef<HTMLInputElement>(null);
   const [index, setIndex] = useState(0);
   const [typed, setTyped] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
   const [checked, setChecked] = useState<"idle" | "correct" | "wrong">("idle");
   const [results, setResults] = useState<Record<string, boolean>>({});
 
@@ -78,6 +80,7 @@ export function TypingRound({
       allowSimpleTypos && cleanTarget.length >= 4 && levenshtein(cleanTyped, cleanTarget) <= 1;
     const ok = isExact || isNearTypo;
 
+    if (!ok) playKeyClickSound("error");
     setChecked(ok ? "correct" : "wrong");
     const nextResults = { ...results, [current.id]: ok };
     setResults(nextResults);
@@ -167,13 +170,75 @@ export function TypingRound({
           type="text"
           value={typed}
           disabled={checked !== "idle"}
-          onChange={(e) => setTyped(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onChange={(e) => {
+            const nextVal = e.target.value;
+            playKeyClickSound(nextVal.length < typed.length ? "backspace" : "key");
+            setTyped(nextVal);
+          }}
           placeholder="Type the word…"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          className="field min-h-12 text-base font-semibold"
+          aria-label="Type the word"
+          className="sr-only"
         />
+
+        {(() => {
+          const cleanTarget = normalizeTyped(current.text);
+          const typedChars = Array.from(typed);
+          const remainingCount = Math.max(0, cleanTarget.length - typedChars.length);
+          return (
+            <button
+              type="button"
+              disabled={checked !== "idle"}
+              onClick={() => {
+                playKeyClickSound("key");
+                inputRef.current?.focus();
+              }}
+              title="Click to type the word"
+              className={`w-full min-h-14 rounded-2xl border-b-2 border-subtitle bg-subtitle/10 px-4 py-3 text-center font-mono text-lg sm:text-2xl font-bold tracking-[0.18em] text-ink cursor-text transition-all break-all ${
+                isFocused ? "ring-2 ring-amber-500/80 shadow-sm" : "hover:bg-subtitle/20"
+              }`}
+            >
+              {typedChars.length > 0 ? (
+                <>
+                  {typedChars.map((ch, idx) => {
+                    const expected = cleanTarget[idx];
+                    const isCharCorrect =
+                      typeof expected === "string" && ch.toLowerCase() === expected.toLowerCase();
+                    return (
+                      <span
+                        key={idx}
+                        className={
+                          isCharCorrect
+                            ? "text-emerald-700 dark:text-emerald-400"
+                            : "text-red-600 dark:text-red-400 underline decoration-red-500/70"
+                        }
+                      >
+                        {ch === " " ? "\u00A0" : ch}
+                      </span>
+                    );
+                  })}
+                  {remainingCount > 0 ? (
+                    <span className="opacity-50">
+                      {Array.from(cleanTarget.slice(typedChars.length))
+                        .map((c) => (c === " " ? "\u00A0" : "·"))
+                        .join("")}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="opacity-70">
+                  {Array.from(cleanTarget)
+                    .map((c) => (c === " " ? "\u00A0" : "·"))
+                    .join("")}
+                </span>
+              )}
+            </button>
+          );
+        })()}
 
         {checked === "idle" ? (
           <div className="flex flex-wrap items-center justify-between gap-2">
