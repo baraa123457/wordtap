@@ -393,6 +393,32 @@ async function refreshAccount() {
   renderAccount(await send({ type: "auth:status" }));
 }
 
+// Google Sign In
+if ($("googleSignInBtn")) {
+  $("googleSignInBtn").addEventListener("click", async () => {
+    const btn = $("googleSignInBtn");
+    const label = btn.querySelector("span");
+    btn.disabled = true;
+    if (label) label.textContent = "Signing in with Google…";
+    if ($("authError")) $("authError").hidden = true;
+
+    const res = await send({ type: "auth:signInGoogle" });
+
+    btn.disabled = false;
+    if (label) label.textContent = "Continue with Google";
+    if (!res || !res.ok) {
+      if ($("authError")) {
+        $("authError").textContent = (res && res.error) || "Google sign-in failed. Please try again.";
+        $("authError").hidden = false;
+      }
+      return;
+    }
+    renderAccount(res);
+    loadWords();
+    showHomeView();
+  });
+}
+
 // Sign In Form Submission
 if ($("signInForm")) {
   $("signInForm").addEventListener("submit", async (e) => {

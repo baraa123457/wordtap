@@ -3,7 +3,7 @@
   "name": "WordTap: Subtitle Click Translator",
   "version": "2.2.1",
   "description": "Click any word in video subtitles, select text on any site, or capture screen OCR to translate and save to WordTap.",
-  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus", "identity"],
   "icons": {
     "16":  "icon16.png",
     "32":  "icon32.png",

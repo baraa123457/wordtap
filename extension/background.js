@@ -636,9 +636,7 @@ async function getToken(force = false) {
   return refreshing;
 }
 
-async function signIn(email, password) {
-  if (!configured()) throw new Error("The extension is not connected to a Supabase project yet (see config.js).");
-  const data = await request("/auth/v1/token?grant_type=password", { body: { email, password } });
+async function finalizeSignIn(data) {
   const session = await storeSession(data);
 
   // Words saved while signed in as someone else belong to that account, not this one.
@@ -655,6 +653,68 @@ async function signIn(email, password) {
     // Offline right after signing in: the queue is kept and retried later.
   }
   return { ok: true, ...(await status()) };
+}
+
+async function signIn(email, password) {
+  if (!configured()) throw new Error("The extension is not connected to a Supabase project yet (see config.js).");
+  const data = await request("/auth/v1/token?grant_type=password", { body: { email, password } });
+  return finalizeSignIn(data);
+}
+
+async function signInWithGoogle() {
+  if (!configured()) throw new Error("The extension is not connected to a Supabase project yet (see config.js).");
+  if (!chrome.identity || typeof chrome.identity.launchWebAuthFlow !== "function") {
+    throw new Error("Google sign-in is unavailable in this browser.");
+  }
+
+  const redirectTo = chrome.identity.getRedirectURL();
+  const authUrl =
+    `${CONFIG.SUPABASE_URL}/auth/v1/authorize?provider=google` +
+    `&redirect_to=${encodeURIComponent(redirectTo)}`;
+
+  const responseUrl = await new Promise((resolve, reject) => {
+    chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, (cbUrl) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message || "Google sign-in was cancelled."));
+        return;
+      }
+      if (!cbUrl) {
+        reject(new Error("Google sign-in was cancelled."));
+        return;
+      }
+      resolve(cbUrl);
+    });
+  });
+
+  const parsed = new URL(responseUrl);
+  const hashParams = new URLSearchParams(parsed.hash ? parsed.hash.slice(1) : "");
+  const queryParams = parsed.searchParams;
+  const oauthError =
+    hashParams.get("error_description") ||
+    queryParams.get("error_description") ||
+    hashParams.get("error") ||
+    queryParams.get("error");
+  if (oauthError) {
+    throw new Error(oauthError);
+  }
+
+  const accessToken = hashParams.get("access_token");
+  const refreshToken = hashParams.get("refresh_token");
+  const expiresIn = Number(hashParams.get("expires_in") || "3600");
+  const expiresAt = Number(hashParams.get("expires_at") || "0") || undefined;
+
+  if (!accessToken || !refreshToken) {
+    throw new Error("Could not complete Google sign-in. Make sure the extension redirect URL is allowed in Supabase.");
+  }
+
+  const user = await request("/auth/v1/user", { token: accessToken });
+  return finalizeSignIn({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    expires_in: expiresIn,
+    expires_at: expiresAt,
+    user,
+  });
 }
 
 async function signOut() {
@@ -1576,6 +1636,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return reply(status().then((s) => ({ ok: true, ...s })));
     case "auth:signIn":
       return reply(signIn(msg.email, msg.password));
+    case "auth:signInGoogle":
+      return reply(signInWithGoogle());
     case "auth:signOut":
       return reply(signOut());
     case "sync":
