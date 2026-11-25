@@ -978,7 +978,16 @@ export class VideoDiscoveryService {
       }
     }
 
-    collected.sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0));
+    collected.sort((a, b) => {
+      const rank = (source: VerifiedVideoExample["source"]) => {
+        if (source === "user_subtitle") return 0;
+        if (source === "wikimedia_commons") return 2;
+        return 1;
+      };
+      const rankDiff = rank(a.source) - rank(b.source);
+      if (rankDiff !== 0) return rankDiff;
+      return (b.qualityScore ?? 0) - (a.qualityScore ?? 0);
+    });
     return { videos: collected.slice(0, maxResults), providersAttempted };
   }
 }
