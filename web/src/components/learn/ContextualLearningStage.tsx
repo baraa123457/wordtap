@@ -12,6 +12,7 @@ import {
 import { maskWordInSentence } from "@/lib/placeholder";
 import { isNonEnglishVideoTitle } from "@/lib/video/video-language-filter";
 import {
+  formatClipTime,
   WordTabVideoPlayer,
   type WordTabPlaybackSpeed,
   type WordTabVideoPlayerHandle,
@@ -53,6 +54,7 @@ export function ContextualLearningStage({
   const [playbackSpeed, setPlaybackSpeed] = useState<WordTabPlaybackSpeed>(1);
   const [videoQuality, setVideoQuality] = useState<WordTabVideoQuality>(() => getSavedVideoQuality());
   const [currentTimeSec, setCurrentTimeSec] = useState<number>(0);
+  const [ytReplayKey, setYtReplayKey] = useState(0);
 
   const handleQualityChange = useCallback((q: WordTabVideoQuality) => {
     setVideoQuality(q);
@@ -236,40 +238,96 @@ export function ContextualLearningStage({
         </p>
       ) : null}
 
-      {/* VIDEO: Custom WordTap YouTube Player + Navigation (when verified videos exist) */}
+      {/* VIDEO: Direct YouTube iframe for YouTube clips; WordTabVideoPlayer only for direct_video (Wikimedia) */}
       {activeClip ? (
-        <div className="flex flex-col gap-3 w-full min-w-0 max-w-full">
-          <WordTabVideoPlayer
-            ref={playerRef}
-            clip={activeClip}
-            total={videos.length}
-            speed={playbackSpeed}
-            quality={videoQuality}
-            onQualityChange={handleQualityChange}
-            onReadyChange={setPlayerReady}
-            onPlayingChange={setPlayerPlaying}
-            onTimeUpdate={setCurrentTimeSec}
-            onUnavailable={handleUnavailableClip}
-            onSkipNext={handleNextVideo}
-          />
-          <VideoExampleNavigation
-            index={videoIndex}
-            total={videos.length}
-            timestampSeconds={activeClip.timestampSeconds}
-            ready={playerReady}
-            playing={playerPlaying}
-            speed={playbackSpeed}
-            quality={videoQuality}
-            onTogglePlay={() => playerRef.current?.togglePlay()}
-            onReplay={() => playerRef.current?.replay()}
-            onRewind={() => playerRef.current?.rewind(3)}
-            onSpeedChange={setPlaybackSpeed}
-            onQualityChange={handleQualityChange}
-            onPrev={handlePrevVideo}
-            onNext={handleNextVideo}
-            onSkipWrongAudio={() => activeClip && handleUnavailableClip(activeClip)}
-          />
-        </div>
+        activeClip.mediaType === "direct_video" ? (
+          <div className="flex flex-col gap-3 w-full min-w-0 max-w-full">
+            <WordTabVideoPlayer
+              ref={playerRef}
+              clip={activeClip}
+              total={videos.length}
+              speed={playbackSpeed}
+              quality={videoQuality}
+              onQualityChange={handleQualityChange}
+              onReadyChange={setPlayerReady}
+              onPlayingChange={setPlayerPlaying}
+              onTimeUpdate={setCurrentTimeSec}
+              onUnavailable={handleUnavailableClip}
+              onSkipNext={handleNextVideo}
+            />
+            <VideoExampleNavigation
+              index={videoIndex}
+              total={videos.length}
+              timestampSeconds={activeClip.timestampSeconds}
+              ready={playerReady}
+              playing={playerPlaying}
+              speed={playbackSpeed}
+              quality={videoQuality}
+              onTogglePlay={() => playerRef.current?.togglePlay()}
+              onReplay={() => playerRef.current?.replay()}
+              onRewind={() => playerRef.current?.rewind(3)}
+              onSpeedChange={setPlaybackSpeed}
+              onQualityChange={handleQualityChange}
+              onPrev={handlePrevVideo}
+              onNext={handleNextVideo}
+              onSkipWrongAudio={() => activeClip && handleUnavailableClip(activeClip)}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 w-full min-w-0 max-w-full">
+            <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-line bg-black shadow-sm">
+              <iframe
+                key={`${activeClip.id}-${ytReplayKey}`}
+                title="Contextual pronunciation video clip"
+                className="h-full w-full"
+                src={`https://www.youtube.com/embed/${activeClip.youtubeVideoId}?start=${Math.max(0, Math.floor(activeClip.timestampSeconds))}&end=${
+                  typeof activeClip.endSeconds === "number" &&
+                  activeClip.endSeconds > activeClip.timestampSeconds
+                    ? Math.ceil(activeClip.endSeconds)
+                    : Math.max(0, Math.floor(activeClip.timestampSeconds)) + 12
+                }&cc_load_policy=0&rel=0&modestbranding=1${ytReplayKey > 0 ? "&autoplay=1" : ""}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-3 py-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setYtReplayKey((k) => k + 1)}
+                  className="btn btn-primary min-h-9 px-3.5 text-xs font-bold cursor-pointer"
+                >
+                  Replay clip
+                </button>
+                <span className="text-xs text-muted tabular-nums">
+                  {formatClipTime(activeClip.timestampSeconds)}
+                  {typeof activeClip.endSeconds === "number" &&
+                  activeClip.endSeconds > activeClip.timestampSeconds
+                    ? ` – ${formatClipTime(activeClip.endSeconds)}`
+                    : ""}
+                </span>
+              </div>
+              {videos.length > 1 ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handlePrevVideo}
+                    className="btn min-h-9 border border-line bg-surface px-3 text-xs font-semibold text-ink hover:bg-black/[0.04] dark:hover:bg-white/[0.06] cursor-pointer"
+                  >
+                    ← Prev
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextVideo}
+                    className="btn min-h-9 border border-line bg-surface px-3 text-xs font-semibold text-ink hover:bg-black/[0.04] dark:hover:bg-white/[0.06] cursor-pointer"
+                  >
+                    Next clip →
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )
       ) : (
         /* FALLBACK (Section 5): Smooth, clearly labeled text & audio fallback — never feels broken */
         <div
@@ -318,8 +376,20 @@ export function ContextualLearningStage({
           currentTimeSec={activeClip ? currentTimeSec : undefined}
           isVideoMode={Boolean(activeClip)}
           hasMoreExamples={activeClip ? videos.length > 1 : fallbackList.length > 1}
-          onWordLookupOpen={activeClip ? () => playerRef.current?.pause() : undefined}
-          onReplay={activeClip ? () => playerRef.current?.replay() : undefined}
+          onWordLookupOpen={
+            activeClip?.mediaType === "direct_video" ? () => playerRef.current?.pause() : undefined
+          }
+          onReplay={
+            activeClip
+              ? () => {
+                  if (activeClip.mediaType === "direct_video") {
+                    playerRef.current?.replay();
+                  } else {
+                    setYtReplayKey((k) => k + 1);
+                  }
+                }
+              : undefined
+          }
           onNextExample={activeClip ? handleNextVideo : handleNextFallback}
           onSolved={handleSolved}
           onContinue={() => finishStage(Boolean(activeClip))}
