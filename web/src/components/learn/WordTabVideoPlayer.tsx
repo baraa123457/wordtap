@@ -147,6 +147,7 @@ type WordTabVideoPlayerProps = {
   total: number;
   speed: WordTabPlaybackSpeed;
   quality?: WordTabVideoQuality;
+  autoPlayOnChange?: boolean;
   onQualityChange?: (quality: WordTabVideoQuality) => void;
   onReadyChange?: (ready: boolean) => void;
   onPlayingChange?: (playing: boolean) => void;
@@ -162,6 +163,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
       total,
       speed,
       quality = "auto",
+      autoPlayOnChange = false,
       onQualityChange,
       onReadyChange,
       onPlayingChange,
@@ -175,6 +177,7 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
     const ytMountRef = useRef<HTMLDivElement>(null);
     const ytPlayerRef = useRef<YTPlayerInstance | null>(null);
     const htmlVideoRef = useRef<HTMLVideoElement | null>(null);
+    const autoPlayedClipRef = useRef<string | null>(null);
 
     const [showQualityMenu, setShowQualityMenu] = useState(false);
 
@@ -654,6 +657,10 @@ export const WordTabVideoPlayer = forwardRef<WordTabVideoPlayerHandle, WordTabVi
                   onCanPlay={() => {
                     setFrameReady(true);
                     setBuffering(false);
+                    if (autoPlayOnChange && autoPlayedClipRef.current !== clip.id) {
+                      autoPlayedClipRef.current = clip.id;
+                      playInternal();
+                    }
                   }}
                   onCanPlayThrough={() => {
                     setFrameReady(true);

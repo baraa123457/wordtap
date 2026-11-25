@@ -66,6 +66,7 @@ export function ContextualLearningStage({
   const [videoQuality, setVideoQuality] = useState<WordTabVideoQuality>(() => getSavedVideoQuality());
   const [currentTimeSec, setCurrentTimeSec] = useState<number>(0);
   const [ytReplayKey, setYtReplayKey] = useState(0);
+  const [autoPlayNextClip, setAutoPlayNextClip] = useState(false);
 
   const handleQualityChange = useCallback((q: WordTabVideoQuality) => {
     setVideoQuality(q);
@@ -95,6 +96,7 @@ export function ContextualLearningStage({
     setFirstTryPassed(true);
     setTotalAttempts(0);
     setLastTypedAnswer(word.text);
+    setAutoPlayNextClip(false);
 
     fetchContextualVideos(word, { maxResults: 1 })
       .then((res) => {
@@ -172,12 +174,14 @@ export function ContextualLearningStage({
 
   const handlePrevVideo = useCallback(() => {
     if (videos.length <= 1) return;
+    setAutoPlayNextClip(true);
     setVideoIndex((i) => (i - 1 + videos.length) % videos.length);
     setSolvedCurrent(false);
   }, [videos.length]);
 
   const handleNextVideo = useCallback(() => {
     if (videos.length <= 1) return;
+    setAutoPlayNextClip(true);
     setVideoIndex((i) => (i + 1) % videos.length);
     setSolvedCurrent(false);
   }, [videos.length]);
@@ -359,6 +363,7 @@ export function ContextualLearningStage({
               total={videos.length}
               speed={playbackSpeed}
               quality={videoQuality}
+              autoPlayOnChange={autoPlayNextClip}
               onQualityChange={handleQualityChange}
               onReadyChange={setPlayerReady}
               onPlayingChange={setPlayerPlaying}
@@ -401,7 +406,7 @@ export function ContextualLearningStage({
                   typeof window !== "undefined"
                     ? `&origin=${encodeURIComponent(window.location.origin)}`
                     : ""
-                }${ytReplayKey > 0 ? "&autoplay=1" : ""}`}
+                }${autoPlayNextClip || ytReplayKey > 0 ? "&autoplay=1" : ""}`}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
