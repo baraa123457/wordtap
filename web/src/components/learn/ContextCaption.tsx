@@ -41,7 +41,13 @@ function targetBlankClassForState(state: WordSpeechState): string {
   }
 }
 
-function revealedTargetClassForState(state: WordSpeechState): string {
+function revealedTargetClassForState(state: WordSpeechState, isCorrect = false): string {
+  if (isCorrect) {
+    if (state === "speaking") {
+      return "rounded-lg bg-emerald-500 px-2 py-0.5 font-extrabold text-white ring-2 ring-emerald-400/70 shadow-sm transition-all duration-75";
+    }
+    return "rounded-lg bg-emerald-500/20 px-2 py-0.5 font-extrabold text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-500/40 transition-all duration-100";
+  }
   if (state === "speaking") {
     return "rounded-lg bg-subtitle px-2 py-0.5 font-extrabold text-subtitle-ink ring-2 ring-amber-500/70 shadow-sm transition-all duration-75";
   }
@@ -65,6 +71,7 @@ export function ContextCaption({
   sourceTitle,
   sourceUrl,
   revealed,
+  isCorrect = false,
   hint,
   captionCues,
   currentTimeSec,
@@ -82,6 +89,7 @@ export function ContextCaption({
   sourceTitle?: string;
   sourceUrl?: string;
   revealed: boolean;
+  isCorrect?: boolean;
   hint: string | null;
   captionCues?: CaptionCue[];
   currentTimeSec?: number;
@@ -236,7 +244,7 @@ export function ContextCaption({
                 <mark
                   key={tok.id}
                   data-speech-state={speechState}
-                  className={revealedTargetClassForState(speechState)}
+                  className={revealedTargetClassForState(speechState, isCorrect)}
                 >
                   {masked.hiddenWord}
                 </mark>
@@ -257,7 +265,7 @@ export function ContextCaption({
               ),
             )}
             {revealed ? (
-              <mark className="rounded-lg bg-subtitle/40 px-2 py-0.5 font-extrabold text-ink">
+              <mark className={revealedTargetClassForState("idle", isCorrect)}>
                 {masked.hiddenWord}
               </mark>
             ) : (

@@ -160,6 +160,7 @@ export function MissingWordExercise({
         sourceTitle={sourceTitle}
         sourceUrl={sourceUrl}
         revealed={hasSubmitted}
+        isCorrect={state === "correct"}
         hint={hint}
         captionCues={captionCues}
         currentTimeSec={currentTimeSec}
@@ -335,7 +336,7 @@ export function MissingWordExercise({
                     }
                     className={`flex flex-col items-center justify-center min-w-[30px] h-9 px-1.5 rounded-lg border text-center transition-all cursor-pointer ${
                       lf.status === "correct"
-                        ? "bg-ok/15 text-ok border-ok/30 hover:bg-ok/25"
+                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/35 hover:bg-emerald-500/25"
                         : "bg-bad/20 text-bad border-bad ring-2 ring-bad/20 hover:bg-bad/30"
                     }`}
                   >
@@ -387,7 +388,7 @@ export function MissingWordExercise({
                   key={i}
                   className={`flex flex-col items-center justify-center min-w-[28px] h-8 px-1 rounded-md border text-center ${
                     lf.status === "correct"
-                      ? "bg-ok/15 text-ok border-ok/30"
+                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/35"
                       : "bg-bad/25 text-bad border-bad font-extrabold"
                   }`}
                 >
@@ -427,10 +428,10 @@ export function MissingWordExercise({
       {state === "correct" ? (
         <div
           role="status"
-          className="rounded-2xl border border-ok/30 bg-ok/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-150"
+          className="rounded-2xl border border-emerald-500/35 bg-emerald-500/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-150"
         >
           <div>
-            <p className="text-sm font-bold text-ok">
+            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
               Spot on! &ldquo;{masked.hiddenWord}&rdquo; fits naturally here.
             </p>
             <p className="text-xs text-muted mt-0.5">
