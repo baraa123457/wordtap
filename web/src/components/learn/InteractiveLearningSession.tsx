@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { deleteWord, deleteWordByText, recordPractice } from "@/lib/api";
+import { deleteWord, deleteWordByText, recordPractice, updateWordDetails } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
 import { localDateString } from "@/lib/dates";
 import {
@@ -110,9 +110,20 @@ function SequentialInitialLearningSession({
   const { state: authState } = useAuth();
   const userId = authState.status === "signed-in" ? authState.user.id : "demo";
 
-  const wordsById = useMemo(() => new Map(words.map((w) => [w.id, w])), [words]);
+  const [wordOverrides, setWordOverrides] = useState<Record<string, Partial<Word>>>({});
+  const wordsById = useMemo(
+    () =>
+      new Map(
+        words.map((w) => [w.id, wordOverrides[w.id] ? { ...w, ...wordOverrides[w.id] } : w]),
+      ),
+    [words, wordOverrides],
+  );
   const [session, setSession] = useState<LearningSessionState | null>(null);
   const [initializing, setInitializing] = useState(true);
+  const [editTarget, setEditTarget] = useState<Word | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editTranslation, setEditTranslation] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
   const [savingStage, setSavingStage] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Word | null>(null);
@@ -464,16 +475,35 @@ function SequentialInitialLearningSession({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setDeleteTarget(activeWord)}
-          title={`Delete "${activeWord.text}" from My Words`}
-          aria-label={`Delete ${activeWord.text}`}
-          className="btn btn-quiet min-h-10 px-2.5 sm:px-3 py-1 text-xs font-semibold text-muted hover:text-bad hover:bg-bad/10 inline-flex items-center gap-1.5 rounded-full cursor-pointer shrink-0"
-        >
-          <TrashIcon size={15} />
-          <span className="hidden sm:inline">Delete word</span>
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setEditTarget(activeWord);
+              setEditText(activeWord.text);
+              setEditTranslation(activeWord.translation || "");
+            }}
+            title={`Edit "${activeWord.text}"`}
+            aria-label={`Edit ${activeWord.text}`}
+            className="btn btn-quiet min-h-10 px-2.5 sm:px-3 py-1 text-xs font-semibold text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 inline-flex items-center gap-1.5 rounded-full cursor-pointer shrink-0"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+            <span className="hidden sm:inline">Edit</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteTarget(activeWord)}
+            title={`Delete "${activeWord.text}" from My Words`}
+            aria-label={`Delete ${activeWord.text}`}
+            className="btn btn-quiet min-h-10 px-2.5 sm:px-3 py-1 text-xs font-semibold text-muted hover:text-bad hover:bg-bad/10 inline-flex items-center gap-1.5 rounded-full cursor-pointer shrink-0"
+          >
+            <TrashIcon size={15} />
+            <span className="hidden sm:inline">Delete word</span>
+          </button>
+        </div>
       </header>
 
       {/* Resumed Progress Indicator */}
@@ -583,6 +613,91 @@ function SequentialInitialLearningSession({
           />
         )}
       </main>
+
+      {/* Edit Word Modal */}
+      {editTarget ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !savingEdit) setEditTarget(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !savingEdit) setEditTarget(null);
+          }}
+        >
+          <form
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-learn-word-title"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const nextText = editText.trim();
+              if (!nextText || savingEdit) return;
+              const nextTrans = editTranslation.trim();
+              setSavingEdit(true);
+              try {
+                await updateWordDetails(
+                  editTarget.id,
+                  { text: nextText, translation: nextTrans },
+                  editTarget,
+                );
+                setWordOverrides((prev) => ({
+                  ...prev,
+                  [editTarget.id]: { text: nextText, translation: nextTrans },
+                }));
+                setEditTarget(null);
+                onReload();
+              } finally {
+                setSavingEdit(false);
+              }
+            }}
+            className="w-full max-w-sm grid gap-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl"
+          >
+            <h3 id="edit-learn-word-title" className="text-xl font-bold text-ink">
+              Edit word
+            </h3>
+            <div className="grid gap-3">
+              <label className="grid gap-1 text-xs font-semibold text-muted">
+                <span>Word</span>
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  className="field text-sm font-semibold text-ink"
+                />
+              </label>
+              <label className="grid gap-1 text-xs font-semibold text-muted">
+                <span>Meaning / Translation</span>
+                <input
+                  type="text"
+                  value={editTranslation}
+                  onChange={(e) => setEditTranslation(e.target.value)}
+                  className="field text-sm text-ink"
+                />
+              </label>
+            </div>
+            <div className="flex justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                disabled={savingEdit}
+                onClick={() => setEditTarget(null)}
+                className="btn btn-quiet cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingEdit || !editText.trim()}
+                className="btn btn-primary font-bold cursor-pointer disabled:opacity-50"
+              >
+                {savingEdit ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
 
       {/* Delete Word Confirmation Modal */}
       {deleteTarget ? (
