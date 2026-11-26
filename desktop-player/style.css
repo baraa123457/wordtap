@@ -1671,7 +1671,8 @@ body {
   transition: height 140ms var(--apple-ease);
 }
 
-.scrubber-container:hover .scrubber-track {
+.scrubber-container:hover .scrubber-track,
+.scrubber-container.scrubbing .scrubber-track {
   height: 6px;
 }
 
@@ -1699,7 +1700,8 @@ body {
   transition: transform 120ms var(--apple-ease);
 }
 
-.scrubber-container:hover .scrubber-thumb {
+.scrubber-container:hover .scrubber-thumb,
+.scrubber-container.scrubbing .scrubber-thumb {
   transform: translate(-50%, -50%) scale(1.15);
 }
 

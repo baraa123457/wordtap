@@ -4115,15 +4115,27 @@
     // Scrubber Seeking
     function seekFromEvent(e) {
       const rect = scrubberContainer.getBoundingClientRect();
+      if (!rect.width) return;
       const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const pct = pos * 100;
+      scrubberPlayed.style.width = `${pct}%`;
+      scrubberThumb.style.left = `${pct}%`;
+
       if (video.duration) {
         const targetTime = pos * video.duration;
+        currentTimeEl.textContent = formatTime(targetTime);
+        timeTooltip.style.left = `${pos * rect.width}px`;
+        timeTooltip.textContent = formatTime(targetTime);
+        timeTooltip.style.opacity = '1';
         video.currentTime = targetTime;
       }
     }
 
     scrubberContainer.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
       isScrubbing = true;
+      scrubberContainer.classList.add('scrubbing');
       seekFromEvent(e);
     });
 
@@ -4133,9 +4145,15 @@
       }
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', (e) => {
       if (isScrubbing) {
         isScrubbing = false;
+        scrubberContainer.classList.remove('scrubbing');
+        const rect = scrubberContainer.getBoundingClientRect();
+        const overScrubber = e && e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+        if (!overScrubber) {
+          timeTooltip.style.opacity = '0';
+        }
         if (isAudioTranscoded && currentFilePath) {
           startLiveAudioStream(video.currentTime);
         }
@@ -4145,7 +4163,7 @@
 
     // Scrubber Tooltip Hover
     scrubberContainer.addEventListener('mousemove', (e) => {
-      if (!video.duration) return;
+      if (isScrubbing || !video.duration) return;
       const rect = scrubberContainer.getBoundingClientRect();
       const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       const previewTime = pos * video.duration;
@@ -4155,7 +4173,9 @@
     });
 
     scrubberContainer.addEventListener('mouseleave', () => {
-      timeTooltip.style.opacity = '0';
+      if (!isScrubbing) {
+        timeTooltip.style.opacity = '0';
+      }
     });
 
     // Replay Line (S key or button)
