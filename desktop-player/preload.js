@@ -43,5 +43,6 @@ contextBridge.exposeInMainWorld('WordTapAPI', {
   signInWithGoogle: () => ipcRenderer.invoke('auth:sign-in-google'),
   importSessionKey: (key) => ipcRenderer.invoke('auth:import-session-key', key),
   onAuthSession: (callback) => ipcRenderer.on('app:auth-session', (_event, session) => callback(session)),
-  onPowerSuspendChange: (callback) => ipcRenderer.on('app:power-state', (_event, suspended) => callback(suspended))
+  onPowerSuspendChange: (callback) => ipcRenderer.on('app:power-state', (_event, suspended) => callback(suspended)),
+  quitApp: () => ipcRenderer.invoke('app:quit')
 });

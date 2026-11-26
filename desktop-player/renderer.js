@@ -2679,6 +2679,7 @@
   // Video Load Handler - GUARANTEED AUDIO & DOLBY/DTS TRANSCODING
   async function playVideoFile(fileUrl, fileName, subContent = null, filePath = null, initSubDelay = 0, savedTime = 0, subPath = null) {
     currentMediaTitle = fileName;
+    document.title = fileName ? `${fileName} - WordTap Player` : 'WordTap Player';
     currentFilePath = filePath;
     currentSubPath = subPath || null;
     isAudioTranscoded = false;
@@ -3795,13 +3796,238 @@
       showToast('Stop (Sync reset to 0ms)');
     });
 
+    // YouTube-Style Hold-to-2x Speed on Left Mouse Press & Hold
+    const videoWrapper = document.getElementById('video-wrapper');
+    const holdSpeedBadge = document.getElementById('hold-speed-badge');
+    const vlcContextMenu = document.getElementById('vlc-context-menu');
+    const ctxPlayIcon = document.getElementById('ctx-play-icon');
+    const ctxPlayLabel = document.getElementById('ctx-play-label');
+    const ctxMuteLabel = document.getElementById('ctx-mute-label');
+    const ctxFsLabel = document.getElementById('ctx-fs-label');
+    const ctxSubToggleLabel = document.getElementById('ctx-sub-toggle-label');
+
+    let holdSpeedTimer = null;
+    let isHoldSpeedActive = false;
+    let preHoldSpeed = 1.0;
+    let suppressNextVideoClick = false;
+
+    const endHoldSpeed = () => {
+      if (holdSpeedTimer) {
+        clearTimeout(holdSpeedTimer);
+        holdSpeedTimer = null;
+      }
+      if (isHoldSpeedActive) {
+        isHoldSpeedActive = false;
+        video.playbackRate = preHoldSpeed;
+        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+          compatibleAudio.playbackRate = preHoldSpeed;
+        }
+        if (holdSpeedBadge) holdSpeedBadge.classList.remove('visible');
+        suppressNextVideoClick = true;
+        setTimeout(() => { suppressNextVideoClick = false; }, 120);
+      }
+    };
+
+    video.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      if (wordPopover && wordPopover.classList.contains('visible')) return;
+      if (vlcContextMenu && vlcContextMenu.classList.contains('open')) return;
+      if (!video.src || video.paused) return;
+
+      if (holdSpeedTimer) clearTimeout(holdSpeedTimer);
+      holdSpeedTimer = setTimeout(() => {
+        holdSpeedTimer = null;
+        if (video.paused) return;
+        preHoldSpeed = video.playbackRate || 1.0;
+        isHoldSpeedActive = true;
+        video.playbackRate = 2.0;
+        if (isAudioTranscoded && compatibleAudio && compatibleAudio.src) {
+          compatibleAudio.playbackRate = 2.0;
+        }
+        if (holdSpeedBadge) holdSpeedBadge.classList.add('visible');
+      }, 240);
+    });
+
+    video.addEventListener('mouseup', endHoldSpeed);
+    video.addEventListener('mouseleave', endHoldSpeed);
+    video.addEventListener('dblclick', endHoldSpeed);
+    window.addEventListener('blur', endHoldSpeed);
+
     video.addEventListener('click', () => {
+      if (vlcContextMenu && vlcContextMenu.classList.contains('open')) {
+        closeVlcContextMenu();
+        return;
+      }
+      if (suppressNextVideoClick) {
+        suppressNextVideoClick = false;
+        return;
+      }
       if (wordPopover.classList.contains('visible')) {
         closePopover(false);
       } else {
         togglePlay();
       }
     });
+
+    // VLC-Style Right-Click Context Menu
+    function closeVlcContextMenu() {
+      if (!vlcContextMenu) return;
+      vlcContextMenu.classList.remove('open');
+      vlcContextMenu.setAttribute('aria-hidden', 'true');
+    }
+
+    function updateVlcContextMenuState() {
+      if (!vlcContextMenu) return;
+      const isPaused = video.paused;
+      if (ctxPlayLabel) ctxPlayLabel.textContent = isPaused ? 'Play' : 'Pause';
+      if (ctxPlayIcon) {
+        ctxPlayIcon.innerHTML = isPaused
+          ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>'
+          : '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+      }
+      if (ctxMuteLabel) ctxMuteLabel.textContent = userMuted ? 'Unmute' : 'Mute';
+      if (ctxFsLabel) ctxFsLabel.textContent = appContainer.classList.contains('is-fullscreen') ? 'Exit Fullscreen' : 'Fullscreen';
+      if (ctxSubToggleLabel) ctxSubToggleLabel.textContent = subtitlesVisible ? 'Hide Subtitles' : 'Show Subtitles';
+
+      const curSpeed = Number(video.playbackRate || 1);
+      vlcContextMenu.querySelectorAll('.ctx-check[data-ctx-speed]').forEach(el => {
+        const s = Number(el.getAttribute('data-ctx-speed'));
+        el.classList.toggle('active', Math.abs(curSpeed - s) < 0.05);
+      });
+      vlcContextMenu.querySelectorAll('.ctx-check[data-ctx-aspect]').forEach(el => {
+        const a = el.getAttribute('data-ctx-aspect');
+        el.classList.toggle('active', a === currentAspectVal);
+      });
+    }
+
+    if (videoWrapper && vlcContextMenu) {
+      videoWrapper.addEventListener('contextmenu', (e) => {
+        if (e.target && e.target.closest && e.target.closest('#word-popover')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        endHoldSpeed();
+        closeAllMenus();
+        updateVlcContextMenuState();
+
+        vlcContextMenu.classList.add('open');
+        vlcContextMenu.setAttribute('aria-hidden', 'false');
+
+        const menuRect = vlcContextMenu.getBoundingClientRect();
+        const pad = 8;
+        let left = e.clientX;
+        let top = e.clientY;
+        if (left + menuRect.width > window.innerWidth - pad) {
+          left = Math.max(pad, window.innerWidth - menuRect.width - pad);
+        }
+        if (top + menuRect.height > window.innerHeight - pad) {
+          top = Math.max(pad, window.innerHeight - menuRect.height - pad);
+        }
+        vlcContextMenu.style.left = `${left}px`;
+        vlcContextMenu.style.top = `${top}px`;
+
+        vlcContextMenu.querySelectorAll('.ctx-has-sub').forEach(subWrap => {
+          subWrap.classList.remove('flip-left', 'flip-up');
+          const sub = subWrap.querySelector('.ctx-submenu');
+          if (!sub) return;
+          const wrapRect = subWrap.getBoundingClientRect();
+          if (wrapRect.right + 220 > window.innerWidth - pad) {
+            subWrap.classList.add('flip-left');
+          }
+          if (wrapRect.top + 230 > window.innerHeight - pad) {
+            subWrap.classList.add('flip-up');
+          }
+        });
+      });
+
+      vlcContextMenu.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.ctx-item[data-ctx-action]');
+        if (!btn) return;
+        e.stopPropagation();
+        const action = btn.getAttribute('data-ctx-action');
+        closeVlcContextMenu();
+
+        switch (action) {
+          case 'play-pause': togglePlay(); break;
+          case 'stop':
+            video.pause();
+            video.currentTime = 0;
+            subtitleDelayMs = 0;
+            audioDelayMs = 0;
+            updateSyncDelayUI();
+            if (isAudioTranscoded && compatibleAudio) {
+              compatibleAudio.pause();
+              compatibleAudio.currentTime = 0;
+            }
+            showToast('Stop (Sync reset to 0ms)');
+            break;
+          case 'prev':
+            video.currentTime = Math.max(0, video.currentTime - 5);
+            showToast('-00:05');
+            break;
+          case 'next':
+            video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
+            showToast('+00:05');
+            break;
+          case 'mute': toggleMute(); break;
+          case 'vol-up': adjustVolume(0.05); break;
+          case 'vol-down': adjustVolume(-0.05); break;
+          case 'audio-fix':
+            if (!currentFilePath) showToast('Please open a media file first');
+            else transcodeAndAttachAudio(currentFilePath);
+            break;
+          case 'audio-delay-plus': adjustAudioDelay(50); break;
+          case 'audio-delay-minus': adjustAudioDelay(-50); break;
+          case 'fullscreen': toggleFullscreen(); break;
+          case 'aspect-cycle': cycleAspectRatio(); break;
+          case 'aspect-auto': setAspectRatio('auto', 'Default (Auto)'); break;
+          case 'aspect-16-9': setAspectRatio('16/9', '16:9 (Widescreen)'); break;
+          case 'aspect-4-3': setAspectRatio('4/3', '4:3 (Standard TV)'); break;
+          case 'aspect-16-10': setAspectRatio('16/10', '16:10'); break;
+          case 'aspect-235': setAspectRatio('2.35/1', '2.35:1 (Cinema)'); break;
+          case 'aspect-1-1': setAspectRatio('1/1', '1:1 (Square)'); break;
+          case 'aspect-fill': setAspectRatio('fill', 'Fill Window'); break;
+          case 'add-sub': {
+            const res = await window.WordTapAPI.openSubtitleFile();
+            if (res && res.content) loadSubtitles(res.content, `Loaded ${res.fileName}`, res.filePath, false);
+            break;
+          }
+          case 'sub-vlsub': openVLsubModal(); break;
+          case 'toggle-sub':
+            subtitlesVisible = !subtitlesVisible;
+            btnToggleSub.classList.toggle('active', subtitlesVisible);
+            renderSubtitle(currentCue);
+            showToast(subtitlesVisible ? 'Subtitles: Enabled' : 'Subtitles: Disabled');
+            break;
+          case 'sub-style': openSubtitleStyleModal(); break;
+          case 'sub-delay-plus': adjustSubtitleDelay(100); break;
+          case 'sub-delay-minus': adjustSubtitleDelay(-100); break;
+          case 'speed-075': setPlaybackSpeed(0.75, true); break;
+          case 'speed-100': setPlaybackSpeed(1.0, true); break;
+          case 'speed-125': setPlaybackSpeed(1.25, true); break;
+          case 'speed-150': setPlaybackSpeed(1.5, true); break;
+          case 'speed-200': setPlaybackSpeed(2.0, true); break;
+          case 'replay': replayCurrentLine(); break;
+          case 'theme-toggle': toggleTheme(); break;
+          case 'saved-words': openSavedWordsModal(); break;
+          case 'options': if (accountModal) accountModal.classList.add('open'); break;
+          case 'open-file': {
+            const res = await window.WordTapAPI.openVideoFile();
+            if (res) playVideoFile(res.fileUrl, res.fileName, res.subContent, res.filePath);
+            break;
+          }
+          case 'quit':
+            if (window.WordTapAPI && window.WordTapAPI.quitApp) window.WordTapAPI.quitApp();
+            break;
+        }
+      });
+
+      document.addEventListener('mousedown', (e) => {
+        if (vlcContextMenu.classList.contains('open') && !vlcContextMenu.contains(e.target)) {
+          closeVlcContextMenu();
+        }
+      });
+      window.addEventListener('blur', closeVlcContextMenu);
+    }
 
     video.addEventListener('play', () => {
       iconPlay.style.display = 'none';
@@ -4191,6 +4417,18 @@
           if (res) playVideoFile(res.fileUrl, res.fileName, res.subContent, res.filePath);
         });
         return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyQ') {
+        e.preventDefault();
+        if (window.WordTapAPI && window.WordTapAPI.quitApp) {
+          window.WordTapAPI.quitApp();
+        }
+        return;
+      }
+
+      if (e.code === 'Escape' && typeof closeVlcContextMenu === 'function') {
+        closeVlcContextMenu();
       }
 
       if (e.altKey && (e.code === 'KeyS' || e.code === 'KeyF')) {

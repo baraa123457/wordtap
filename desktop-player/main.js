@@ -1014,6 +1014,10 @@ ipcMain.handle('auth:import-session-key', async (_event, keyString) => {
   }
 });
 
+ipcMain.handle('app:quit', async () => {
+  app.quit();
+});
+
 // IPC: Native Fullscreen Window Management
 ipcMain.handle('window:toggle-fullscreen', async () => {
   if (!mainWindow) return false;

@@ -405,6 +405,15 @@
         </div>
       </div>
 
+      <!-- YouTube-style Hold-to-2x Speed Pill -->
+      <div id="hold-speed-badge" aria-hidden="true">
+        <span>2x</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="3 5 12 12 3 19 3 5"></polygon>
+          <polygon points="12 5 21 12 12 19 12 5"></polygon>
+        </svg>
+      </div>
+
       <!-- Subtitles Display -->
       <div id="subtitle-container"></div>
 
@@ -1085,6 +1094,270 @@
           </button>
         </div>
       </div>
+    </div>
+    <!-- VLC-style Right-Click Context Menu -->
+    <div id="vlc-context-menu" role="menu" aria-hidden="true">
+      <button type="button" class="ctx-item" data-ctx-action="play-pause" id="ctx-play-pause">
+        <span class="ctx-icon" id="ctx-play-icon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+        </span>
+        <span class="ctx-label" id="ctx-play-label">Pause</span>
+        <span class="ctx-shortcut">Space</span>
+      </button>
+      <button type="button" class="ctx-item" data-ctx-action="stop">
+        <span class="ctx-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="1.5"></rect></svg>
+        </span>
+        <span class="ctx-label">Stop</span>
+      </button>
+      <button type="button" class="ctx-item" data-ctx-action="prev">
+        <span class="ctx-icon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><rect x="5" y="5" width="2.5" height="14"></rect></svg>
+        </span>
+        <span class="ctx-label">Previous (-5s)</span>
+        <span class="ctx-shortcut">Left</span>
+      </button>
+      <button type="button" class="ctx-item" data-ctx-action="next">
+        <span class="ctx-icon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><rect x="16.5" y="5" width="2.5" height="14"></rect></svg>
+        </span>
+        <span class="ctx-label">Next (+5s)</span>
+        <span class="ctx-shortcut">Right</span>
+      </button>
+
+      <div class="ctx-sep"></div>
+
+      <!-- Audio Submenu -->
+      <div class="ctx-has-sub">
+        <div class="ctx-item">
+          <span class="ctx-icon"></span>
+          <span class="ctx-label">Audio</span>
+          <span class="ctx-arrow">▸</span>
+        </div>
+        <div class="ctx-submenu">
+          <button type="button" class="ctx-item" data-ctx-action="mute">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label" id="ctx-mute-label">Mute</span>
+            <span class="ctx-shortcut">M</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="vol-up">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Increase Volume</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="vol-down">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Decrease Volume</span>
+          </button>
+          <div class="ctx-sep"></div>
+          <button type="button" class="ctx-item" data-ctx-action="audio-fix">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Fix Audio Codec (AC3/DTS)</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="audio-delay-plus">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Audio Delay +50ms</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="audio-delay-minus">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Audio Delay -50ms</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Video Submenu -->
+      <div class="ctx-has-sub">
+        <div class="ctx-item">
+          <span class="ctx-icon"></span>
+          <span class="ctx-label">Video</span>
+          <span class="ctx-arrow">▸</span>
+        </div>
+        <div class="ctx-submenu">
+          <button type="button" class="ctx-item" data-ctx-action="fullscreen">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label" id="ctx-fs-label">Fullscreen</span>
+            <span class="ctx-shortcut">F</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="aspect-cycle">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Cycle Aspect Ratio</span>
+            <span class="ctx-shortcut">A</span>
+          </button>
+          <div class="ctx-sep"></div>
+          <button type="button" class="ctx-item" data-ctx-action="aspect-auto">
+            <span class="ctx-icon ctx-check" data-ctx-aspect="auto"></span>
+            <span class="ctx-label">Default (Auto)</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="aspect-16-9">
+            <span class="ctx-icon ctx-check" data-ctx-aspect="16/9"></span>
+            <span class="ctx-label">16:9 (Widescreen)</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="aspect-4-3">
+            <span class="ctx-icon ctx-check" data-ctx-aspect="4/3"></span>
+            <span class="ctx-label">4:3 (Standard TV)</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="aspect-16-10">
+            <span class="ctx-icon ctx-check" data-ctx-aspect="16/10"></span>
+            <span class="ctx-label">16:10</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="aspect-235">
+            <span class="ctx-icon ctx-check" data-ctx-aspect="2.35/1"></span>
+            <span class="ctx-label">2.35:1 (Cinema)</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="aspect-1-1">
+            <span class="ctx-icon ctx-check" data-ctx-aspect="1/1"></span>
+            <span class="ctx-label">1:1 (Square)</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="aspect-fill">
+            <span class="ctx-icon ctx-check" data-ctx-aspect="fill"></span>
+            <span class="ctx-label">Fill Window</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Subtitle Submenu -->
+      <div class="ctx-has-sub">
+        <div class="ctx-item">
+          <span class="ctx-icon"></span>
+          <span class="ctx-label">Subtitle</span>
+          <span class="ctx-arrow">▸</span>
+        </div>
+        <div class="ctx-submenu">
+          <button type="button" class="ctx-item" data-ctx-action="add-sub">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Add Subtitle File...</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="sub-vlsub">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">VLsub Search Subtitles</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="toggle-sub">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label" id="ctx-sub-toggle-label">Hide Subtitles</span>
+            <span class="ctx-shortcut">V</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="sub-style">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Customize Fonts &amp; Size...</span>
+          </button>
+          <div class="ctx-sep"></div>
+          <button type="button" class="ctx-item" data-ctx-action="sub-delay-plus">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Sync +100ms</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="sub-delay-minus">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Sync -100ms</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Playback Submenu -->
+      <div class="ctx-has-sub">
+        <div class="ctx-item">
+          <span class="ctx-icon"></span>
+          <span class="ctx-label">Playback</span>
+          <span class="ctx-arrow">▸</span>
+        </div>
+        <div class="ctx-submenu">
+          <button type="button" class="ctx-item" data-ctx-action="speed-075">
+            <span class="ctx-icon ctx-check" data-ctx-speed="0.75"></span>
+            <span class="ctx-label">0.75x</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="speed-100">
+            <span class="ctx-icon ctx-check" data-ctx-speed="1"></span>
+            <span class="ctx-label">1.0x (Normal)</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="speed-125">
+            <span class="ctx-icon ctx-check" data-ctx-speed="1.25"></span>
+            <span class="ctx-label">1.25x</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="speed-150">
+            <span class="ctx-icon ctx-check" data-ctx-speed="1.5"></span>
+            <span class="ctx-label">1.5x</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="speed-200">
+            <span class="ctx-icon ctx-check" data-ctx-speed="2"></span>
+            <span class="ctx-label">2.0x</span>
+          </button>
+          <div class="ctx-sep"></div>
+          <button type="button" class="ctx-item" data-ctx-action="replay">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Replay Current Line</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="ctx-sep"></div>
+
+      <!-- View Submenu -->
+      <div class="ctx-has-sub">
+        <div class="ctx-item">
+          <span class="ctx-icon"></span>
+          <span class="ctx-label">View</span>
+          <span class="ctx-arrow">▸</span>
+        </div>
+        <div class="ctx-submenu">
+          <button type="button" class="ctx-item" data-ctx-action="theme-toggle">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Toggle Light / Dark Theme</span>
+            <span class="ctx-shortcut">T</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="fullscreen">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Fullscreen</span>
+            <span class="ctx-shortcut">F</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tools Submenu -->
+      <div class="ctx-has-sub">
+        <div class="ctx-item">
+          <span class="ctx-icon"></span>
+          <span class="ctx-label">Tools</span>
+          <span class="ctx-arrow">▸</span>
+        </div>
+        <div class="ctx-submenu">
+          <button type="button" class="ctx-item" data-ctx-action="saved-words">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Saved Video Words</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="options">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Options &amp; Account</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Open Media Submenu -->
+      <div class="ctx-has-sub">
+        <div class="ctx-item">
+          <span class="ctx-icon"></span>
+          <span class="ctx-label">Open Media</span>
+          <span class="ctx-arrow">▸</span>
+        </div>
+        <div class="ctx-submenu">
+          <button type="button" class="ctx-item" data-ctx-action="open-file">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Open File...</span>
+            <span class="ctx-shortcut">Ctrl+O</span>
+          </button>
+          <button type="button" class="ctx-item" data-ctx-action="add-sub">
+            <span class="ctx-icon"></span>
+            <span class="ctx-label">Open Subtitle File...</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="ctx-sep"></div>
+
+      <button type="button" class="ctx-item" data-ctx-action="quit">
+        <span class="ctx-icon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        </span>
+        <span class="ctx-label">Quit</span>
+        <span class="ctx-shortcut">Ctrl+Q</span>
+      </button>
     </div>
   </div>
 

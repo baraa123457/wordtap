@@ -3717,3 +3717,205 @@ body.light-theme .auth-divider span {
   outline: 2px solid var(--subtitle) !important;
   outline-offset: 2px !important;
 }
+
+/* ==========================================================================
+   YouTube-Style Hold-to-2x Speed Pill
+   ========================================================================== */
+#hold-speed-badge {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-6px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(11, 13, 30, 0.86);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(250, 204, 59, 0.35);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 45;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+#hold-speed-badge svg {
+  color: var(--wt-gold);
+}
+
+#hold-speed-badge.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ==========================================================================
+   VLC-Style Right-Click Context Menu
+   ========================================================================== */
+#vlc-context-menu {
+  position: fixed;
+  z-index: 9500;
+  min-width: 215px;
+  padding: 5px;
+  border-radius: 10px;
+  background: rgba(20, 23, 49, 0.96);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.58);
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+  user-select: none;
+}
+
+#vlc-context-menu.open {
+  display: flex;
+}
+
+.ctx-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.ctx-item:hover,
+.ctx-has-sub:hover > .ctx-item {
+  background: rgba(250, 204, 59, 0.16);
+  color: #ffffff;
+}
+
+.ctx-icon {
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.ctx-item:hover .ctx-icon {
+  color: var(--wt-gold);
+}
+
+.ctx-check.active::before {
+  content: "✓";
+  color: var(--wt-gold);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.ctx-label {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.ctx-shortcut {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: 14px;
+}
+
+.ctx-arrow {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 10px;
+}
+
+.ctx-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ctx-has-sub {
+  position: relative;
+}
+
+.ctx-submenu {
+  position: absolute;
+  top: -5px;
+  left: calc(100% + 2px);
+  min-width: 210px;
+  padding: 5px;
+  border-radius: 10px;
+  background: rgba(20, 23, 49, 0.98);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6);
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+  z-index: 9510;
+}
+
+.ctx-has-sub:hover > .ctx-submenu {
+  display: flex;
+}
+
+.ctx-has-sub.flip-left > .ctx-submenu {
+  left: auto;
+  right: calc(100% + 2px);
+}
+
+.ctx-has-sub.flip-up > .ctx-submenu {
+  top: auto;
+  bottom: -5px;
+}
+
+/* Light Theme for VLC Context Menu */
+body.light-theme #vlc-context-menu,
+body.light-theme .ctx-submenu {
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(30, 37, 80, 0.14);
+  box-shadow: 0 12px 32px rgba(20, 24, 58, 0.16);
+}
+
+body.light-theme .ctx-item {
+  color: #12152e;
+}
+
+body.light-theme .ctx-item:hover,
+body.light-theme .ctx-has-sub:hover > .ctx-item {
+  background: rgba(250, 204, 59, 0.22);
+  color: #12152e;
+}
+
+body.light-theme .ctx-icon,
+body.light-theme .ctx-arrow {
+  color: #5e658a;
+}
+
+body.light-theme .ctx-item:hover .ctx-icon,
+body.light-theme .ctx-check.active::before {
+  color: #b45309;
+}
+
+body.light-theme .ctx-shortcut {
+  color: #878ea8;
+}
+
+body.light-theme .ctx-sep {
+  background: rgba(30, 37, 80, 0.1);
+}
