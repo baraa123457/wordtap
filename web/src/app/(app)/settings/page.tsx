@@ -11,6 +11,7 @@ import { getStoredSettings, saveStoredSettings, type UserSettings, type Practice
 import { canSpeak, speak } from "@/lib/speech";
 import { DownloadIcon, SpeakerIcon } from "@/components/Icons";
 import { SegmentedControl } from "@/components/SegmentedControl";
+import { SelectMenu } from "@/components/SelectMenu";
 
 const GOALS = [10, 20, 50, 100] as const;
 
@@ -470,18 +471,19 @@ export default function SettingsPage() {
             <div className="font-semibold text-ink">Words per practice session</div>
             <div className="text-xs sm:text-sm text-muted">Number of words to review in each study round.</div>
           </div>
-          <select
-            aria-label="Words per practice session"
-            value={settings.sessionSize}
-            onChange={(e) => update({ sessionSize: Number(e.target.value) })}
-            className="field w-full sm:w-44"
-          >
-            <option value={5}>5 words (Quick)</option>
-            <option value={8}>8 words (Default)</option>
-            <option value={10}>10 words</option>
-            <option value={15}>15 words</option>
-            <option value={20}>20 words (Deep focus)</option>
-          </select>
+          <SelectMenu
+            ariaLabel="Words per practice session"
+            value={String(settings.sessionSize)}
+            onChange={(val) => update({ sessionSize: Number(val) })}
+            className="w-full sm:w-52"
+            options={[
+              { value: "5", label: "5 words (Quick)" },
+              { value: "8", label: "8 words (Default)" },
+              { value: "10", label: "10 words" },
+              { value: "15", label: "15 words" },
+              { value: "20", label: "20 words (Deep focus)" },
+            ]}
+          />
         </div>
 
         {/* Daily XP Goal */}
@@ -489,7 +491,11 @@ export default function SettingsPage() {
           <div>
             <div className="font-semibold text-ink">Daily XP goal</div>
             <div className="text-xs sm:text-sm text-muted">Target XP to complete each day to maintain your streak.</div>
-            {goalMessage ? <div className="text-xs font-semibold text-ok mt-1">{goalMessage}</div> : null}
+            {goalSaving ? (
+              <div className="text-xs font-semibold text-muted mt-1">Saving…</div>
+            ) : goalMessage ? (
+              <div className="text-xs font-semibold text-ok mt-1">{goalMessage}</div>
+            ) : null}
           </div>
           <div className="py-0.5 max-w-full min-w-0">
             <SegmentedControl
@@ -886,18 +892,13 @@ export default function SettingsPage() {
             <div className="font-semibold text-ink">Default translation language</div>
             <div className="text-xs sm:text-sm text-muted">The language you want words translated into.</div>
           </div>
-          <select
-            aria-label="Default translation language"
+          <SelectMenu
+            ariaLabel="Default translation language"
             value={settings.targetLang}
-            onChange={(e) => update({ targetLang: e.target.value })}
-            className="field w-full sm:w-56"
-          >
-            {TARGET_LANGS.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.label}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => update({ targetLang: val })}
+            className="w-full sm:w-56"
+            options={TARGET_LANGS.map((l) => ({ value: l.code, label: l.label }))}
+          />
         </div>
       </section>
 
@@ -998,21 +999,22 @@ export default function SettingsPage() {
             <div className="font-semibold text-ink">Pronunciation speed</div>
             <div className="text-xs sm:text-sm text-muted">Adjust the playback rate for spoken words.</div>
           </div>
-          <select
-            aria-label="Pronunciation speed"
-            value={settings.speechRate}
-            onChange={(e) => {
-              const r = Number(e.target.value);
+          <SelectMenu
+            ariaLabel="Pronunciation speed"
+            value={String(settings.speechRate)}
+            onChange={(val) => {
+              const r = Number(val);
               update({ speechRate: r });
               speak("Pronunciation speed updated", "en-US", { rate: r });
             }}
-            className="field w-full sm:w-44"
-          >
-            <option value={0.8}>0.8x (Slow)</option>
-            <option value={0.92}>0.92x (Soft & Natural)</option>
-            <option value={1.0}>1.0x (Normal)</option>
-            <option value={1.15}>1.15x (Fast)</option>
-          </select>
+            className="w-full sm:w-52"
+            options={[
+              { value: "0.8", label: "0.8x (Slow)" },
+              { value: "0.92", label: "0.92x (Soft & Natural)" },
+              { value: "1", label: "1.0x (Normal)" },
+              { value: "1.15", label: "1.15x (Fast)" },
+            ]}
+          />
         </div>
 
         {/* Specific Voice Lock (Optional Override) */}
@@ -1024,28 +1026,24 @@ export default function SettingsPage() {
                 Pin your preferred system voice so it never changes automatically.
               </div>
             </div>
-            <select
-              aria-label="Lock specific browser voice"
+            <SelectMenu
+              ariaLabel="Lock specific browser voice"
               value={settings.voiceURI || ""}
-              onChange={(e) => {
-                const uri = e.target.value;
+              onChange={(uri) => {
                 update({ voiceURI: uri });
                 if (uri) {
                   speak("Voice locked to this speaker", "en-US", { voiceURI: uri });
                 }
               }}
-              className="field w-full sm:w-72 max-w-full text-base sm:text-sm"
-            >
-              <option value="">Consistent Best Match for Language &amp; Gender (Recommended)</option>
-              {availableVoices
-                .slice()
-                .sort((a, b) => (a.lang || "").localeCompare(b.lang || "") || a.name.localeCompare(b.name))
-                .map((v) => (
-                  <option key={v.voiceURI} value={v.voiceURI}>
-                    {v.name} ({v.lang})
-                  </option>
-                ))}
-            </select>
+              className="w-full sm:w-72 max-w-full"
+              options={[
+                { value: "", label: "Consistent Best Match (Recommended)" },
+                ...availableVoices
+                  .slice()
+                  .sort((a, b) => (a.lang || "").localeCompare(b.lang || "") || a.name.localeCompare(b.name))
+                  .map((v) => ({ value: v.voiceURI, label: `${v.name} (${v.lang})` })),
+              ]}
+            />
           </div>
         ) : null}
       </section>
