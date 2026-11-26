@@ -145,6 +145,7 @@
   const btnAccountGoogle = document.getElementById('btn-account-google');
   const accountGoogleText = document.getElementById('account-google-text');
   const btnAccountPasteKey = document.getElementById('btn-account-paste-key');
+  const btnAuthReconnect = document.getElementById('btn-auth-reconnect');
   const btnAuthSignout = document.getElementById('btn-auth-signout');
   const btnOpenWeb = document.getElementById('btn-open-web');
 
@@ -2076,6 +2077,9 @@
           accountSyncIcon.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
         }
       }
+      if (btnAuthReconnect) {
+        btnAuthReconnect.style.display = status.state === 'connected' ? 'none' : 'inline-flex';
+      }
     } else {
       accountLabel.textContent = 'WordTap Sync';
       accountLoggedOutView.style.display = 'block';
@@ -3903,6 +3907,50 @@
         } finally {
           btnAccountGoogle.disabled = false;
           if (accountGoogleText) accountGoogleText.textContent = 'Continue with Google';
+        }
+      });
+    }
+    if (btnAuthReconnect) {
+      btnAuthReconnect.addEventListener('click', async () => {
+        btnAuthReconnect.disabled = true;
+        btnAuthReconnect.textContent = 'Reconnecting...';
+        try {
+          const state = await checkConnectionHealth(true);
+          if (state === 'connected') {
+            showToast('Reconnected to WordTap Cloud');
+            syncSettingsFromCloud(true);
+            pushPendingOfflineWords();
+            return;
+          }
+          if (connectionIssue === 'auth_expired') {
+            if (window.WordTapAPI && window.WordTapAPI.signInWithGoogle) {
+              try {
+                const session = await window.WordTapAPI.signInWithGoogle();
+                if (session && session.access_token) {
+                  userSession = session;
+                  connectionIssue = null;
+                  if (window.WordTapAPI.saveConfig) {
+                    await window.WordTapAPI.saveConfig({ session: userSession });
+                  }
+                  updateAccountUI();
+                  showToast(`Reconnected as ${userSession.email}`);
+                  syncSettingsFromCloud(true);
+                  pushPendingOfflineWords();
+                  return;
+                }
+              } catch {
+                // Fall back to showing login view
+              }
+            }
+            accountLoggedInView.style.display = 'none';
+            accountLoggedOutView.style.display = 'block';
+            showToast('Please sign in again to reconnect');
+          } else {
+            showToast('Still offline — check your internet connection');
+          }
+        } finally {
+          btnAuthReconnect.disabled = false;
+          btnAuthReconnect.textContent = 'Reconnect';
         }
       });
     }

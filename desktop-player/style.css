@@ -608,6 +608,17 @@ body.light-theme .account-sync-subtitle.status-disconnected {
   color: #dc2626 !important;
 }
 
+body.light-theme .btn-account-reconnect-subtle {
+  background: #fef9c3 !important;
+  border: 1px solid rgba(202, 138, 4, 0.45) !important;
+  color: #854d0e !important;
+}
+
+body.light-theme .btn-account-reconnect-subtle:hover {
+  background: #fef08a !important;
+  border-color: rgba(202, 138, 4, 0.65) !important;
+}
+
 body.light-theme .btn-account-signout-subtle {
   background: #ffffff !important;
   border: 1px solid rgba(30, 37, 80, 0.14) !important;
@@ -2688,6 +2699,36 @@ body.light-theme .vlsub-window::-webkit-scrollbar-thumb:hover {
 
 .account-sync-subtitle.status-disconnected {
   color: #f87171;
+}
+
+.account-identity-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-account-reconnect-subtle {
+  background: rgba(250, 204, 59, 0.16);
+  border: 1px solid rgba(250, 204, 59, 0.45);
+  color: #facc3b;
+  padding: 6px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 140ms ease;
+  flex-shrink: 0;
+}
+
+.btn-account-reconnect-subtle:hover {
+  background: rgba(250, 204, 59, 0.28);
+  border-color: rgba(250, 204, 59, 0.65);
+}
+
+.btn-account-reconnect-subtle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn-account-signout-subtle {
