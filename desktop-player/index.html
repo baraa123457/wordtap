@@ -788,21 +788,26 @@
             <div class="account-identity-left">
               <div class="account-avatar-wrap">
                 <div class="account-avatar" id="account-user-avatar">B</div>
-                <div class="account-avatar-dot" title="Active"></div>
+                <div class="account-avatar-dot status-disconnected" id="account-avatar-dot" title="Disconnected"></div>
               </div>
               <div class="account-identity-info">
                 <div class="account-user-email" id="account-user-email">user@example.com</div>
-                <div class="account-sync-subtitle">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <div class="account-sync-subtitle status-disconnected" id="account-sync-subtitle">
+                  <svg id="account-sync-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
-                  <span>Synced to WordTap Cloud</span>
+                  <span id="account-sync-text">Synced to WordTap Cloud</span>
                 </div>
               </div>
             </div>
-            <button type="button" class="btn-account-signout-subtle" id="btn-auth-signout" title="Sign out of account">
-              <span>Sign Out</span>
-            </button>
+            <div class="account-identity-actions">
+              <button type="button" class="btn-account-suspend-subtle" id="btn-auth-suspend" title="Temporarily suspend cloud sync">
+                <span>Suspend</span>
+              </button>
+              <button type="button" class="btn-account-signout-subtle" id="btn-auth-signout" title="Sign out of account">
+                <span>Sign Out</span>
+              </button>
+            </div>
           </div>
 
           <!-- Single Focused Primary CTA Button -->

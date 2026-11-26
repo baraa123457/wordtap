@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell, powerMonitor } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -429,6 +429,17 @@ function createWindow() {
 app.whenReady().then(() => {
   startAudioServer();
   createWindow();
+
+  const sendPowerSuspendState = (suspended) => {
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
+      mainWindow.webContents.send('app:power-state', suspended);
+    }
+  };
+
+  powerMonitor.on('suspend', () => sendPowerSuspendState(true));
+  powerMonitor.on('lock-screen', () => sendPowerSuspendState(true));
+  powerMonitor.on('resume', () => sendPowerSuspendState(false));
+  powerMonitor.on('unlock-screen', () => sendPowerSuspendState(false));
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
