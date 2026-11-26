@@ -508,9 +508,8 @@
   function ensureAudioNodes(forceCreate = false) {
     try {
       // On macOS CoreAudio, avoid hijacking <video>/<audio> through Web Audio API
-      // unless the user explicitly boosts volume > 100% (or nodes were already created).
-      // This prevents AudioContext suspension / CoreAudio routing issues from muting playback.
-      if (isMacPlatform && !forceCreate && !audioContext && userVolume <= 1.0) {
+      // unless the user explicitly boosts volume > 100% during interaction.
+      if (isMacPlatform && !forceCreate && !audioContext) {
         return;
       }
       if (!audioContext) {

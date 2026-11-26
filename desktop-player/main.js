@@ -1417,7 +1417,6 @@ function startAudioServer() {
         '-i', filePath,
         '-vn',
         '-map', `0:a:${safeTrackIndex}?`,
-        '-map', '0:a:0?',
         '-af', voicePreservingFilter,
         '-c:a', 'mp3',
         '-b:a', '192k',
