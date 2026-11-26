@@ -1,4 +1,4 @@
-name: Build Desktop Player Installers (.exe & .msi)
+name: Build Desktop Player Installers (Windows & macOS)
 
 on:
   push:
@@ -7,18 +7,17 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release Tag (e.g. v1.0.0)'
+        description: 'Release Tag (e.g. v1.0.3)'
         required: false
-        default: 'v1.0.0'
+        default: 'v1.0.3'
 
 permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    name: Build & Release Windows Installers
+  build-windows:
+    name: Build Windows Installers (x64)
     runs-on: windows-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -30,13 +29,91 @@ jobs:
 
       - name: Install Desktop Player Dependencies
         working-directory: desktop-player
-        run: |
-          npm install
+        run: npm install
 
-      - name: Build Windows Installers (NSIS .exe, WiX .msi, and Portable .zip)
+      - name: Build Windows Installers (.exe, .msi, .zip)
         working-directory: desktop-player
-        run: |
-          npx electron-builder --win --publish never
+        run: npx electron-builder --win --publish never
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows
+          path: |
+            desktop-player/dist-release/WordTap-Setup-x64.exe
+            desktop-player/dist-release/WordTap-Setup-x64.msi
+            desktop-player/dist-release/WordTap-Setup-x64.zip
+
+  build-mac-arm64:
+    name: Build macOS Installers (Apple Silicon arm64)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Desktop Player Dependencies
+        working-directory: desktop-player
+        run: npm install
+
+      - name: Build macOS arm64 (.dmg & .zip)
+        working-directory: desktop-player
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npx electron-builder --mac --arm64 --publish never
+
+      - name: Upload macOS arm64 Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-mac-arm64
+          path: |
+            desktop-player/dist-release/WordTap-mac-arm64.dmg
+            desktop-player/dist-release/WordTap-mac-arm64.zip
+
+  build-mac-x64:
+    name: Build macOS Installers (Intel x64)
+    runs-on: macos-15-intel
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Desktop Player Dependencies
+        working-directory: desktop-player
+        run: npm install
+
+      - name: Build macOS x64 (.dmg & .zip)
+        working-directory: desktop-player
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npx electron-builder --mac --x64 --publish never
+
+      - name: Upload macOS x64 Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-mac-x64
+          path: |
+            desktop-player/dist-release/WordTap-mac-x64.dmg
+            desktop-player/dist-release/WordTap-mac-x64.zip
+
+  release:
+    name: Publish GitHub Release
+    needs: [build-windows, build-mac-arm64, build-mac-x64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download All Built Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-files
+          merge-multiple: true
 
       - name: Determine Tag Name
         id: tag_info
@@ -47,10 +124,10 @@ jobs:
           elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           else
-            echo "tag=v1.0.0" >> $GITHUB_OUTPUT
+            echo "tag=v1.0.3" >> $GITHUB_OUTPUT
           fi
 
-      - name: Publish GitHub Release with .exe and .msi
+      - name: Publish GitHub Release (Windows + macOS)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag_info.outputs.tag }}
@@ -59,27 +136,20 @@ jobs:
           prerelease: false
           make_latest: true
           body: |
-            ### 🎬 WordTap Desktop Video Player ${{ steps.tag_info.outputs.tag }}
+            ### WordTap Desktop Video Player ${{ steps.tag_info.outputs.tag }}
 
-            Official desktop video player with VLC engine, interactive subtitles, instant dictionary lookups, and offline vocabulary synchronization with WordTap Cloud.
+            Official cross-platform desktop video player with VLC-style controls, interactive subtitles, instant dictionary lookups, and WordTap Cloud vocabulary synchronization.
 
-            #### 📦 Windows Downloads:
+            #### macOS Downloads:
+            - **macOS Apple Silicon M1/M2/M3/M4 (`.dmg`)**: [WordTap-mac-arm64.dmg](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_info.outputs.tag }}/WordTap-mac-arm64.dmg)
+            - **macOS Intel (`.dmg`)**: [WordTap-mac-x64.dmg](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_info.outputs.tag }}/WordTap-mac-x64.dmg)
+            - **macOS Apple Silicon Portable (`.zip`)**: [WordTap-mac-arm64.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_info.outputs.tag }}/WordTap-mac-arm64.zip)
+            - **macOS Intel Portable (`.zip`)**: [WordTap-mac-x64.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_info.outputs.tag }}/WordTap-mac-x64.zip)
+
+            #### Windows Downloads:
             - **Windows Setup Installer (`.exe`)**: [WordTap-Setup-x64.exe](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_info.outputs.tag }}/WordTap-Setup-x64.exe)
             - **Windows MSI Installer (`.msi`)**: [WordTap-Setup-x64.msi](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_info.outputs.tag }}/WordTap-Setup-x64.msi)
-            - **Portable Standalone (`.zip`)**: [WordTap-Setup-x64.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_info.outputs.tag }}/WordTap-Setup-x64.zip)
-
-            #### 🚀 Highlights & Features:
-            - **VLC Core Engine**: Plays MKV, MP4, AVI, WebM, and HEVC 4K/HDR with hardware acceleration.
-            - **VLC Aspect Ratio Control**: Full support for 16:9, 4:3, 16:10, 2.35:1, and automatic DAR container detection (Press `A`).
-            - **Hardware-Direct Audio**: Crystal-clear native audio output with 200% volume amplification.
-            - **Automatic Dolby AC3 / DTS 5.1 Transcoding**: Real-time audio stream transcoding with zero lip-sync drift.
-            - **VLC Speed Bar & Hotkeys**: Fine-tune speed from `0.25x` to `3.0x` with `[` / `]` hotkeys.
-            - **VLsub OpenSubtitles Integration**: Search and auto-download subtitles inside the player.
-            - **Dark & Light Cinema Themes**: Seamlessly toggle between Dark Theater and Daylight mode with the `T` key.
-            - **Offline Storage**: Save words offline during flights and travel; words sync to your web library automatically when online.
-          files: |
-            desktop-player/dist-release/WordTap-Setup-x64.exe
-            desktop-player/dist-release/WordTap-Setup-x64.msi
-            desktop-player/dist-release/WordTap-Setup-x64.zip
+            - **Windows Portable (`.zip`)**: [WordTap-Setup-x64.zip](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_info.outputs.tag }}/WordTap-Setup-x64.zip)
+          files: release-files/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

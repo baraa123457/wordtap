@@ -3801,7 +3801,7 @@
     };
 
     video.addEventListener('mousedown', (e) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || e.ctrlKey) return;
       if (wordPopover && wordPopover.classList.contains('visible')) return;
       if (vlcContextMenu && vlcContextMenu.classList.contains('open')) return;
       if (!video.src || video.paused) return;
@@ -3842,6 +3842,12 @@
     });
 
     // VLC-Style Right-Click Context Menu
+    if (vlcContextMenu && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '')) {
+      vlcContextMenu.querySelectorAll('.ctx-shortcut').forEach(el => {
+        if (el.textContent) el.textContent = el.textContent.replace(/Ctrl\+/g, 'Cmd+');
+      });
+    }
+
     function closeVlcContextMenu() {
       if (!vlcContextMenu) return;
       vlcContextMenu.classList.remove('open');

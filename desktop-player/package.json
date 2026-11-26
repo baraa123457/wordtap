@@ -1,6 +1,6 @@
 {
   "name": "wordtap-player",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "WordTap Desktop Video Player with Interactive Subtitles and Word Sync",
   "main": "main.js",
   "scripts": {
@@ -8,12 +8,14 @@
     "package-win": "electron-packager . \"WordTap-VLC-Player\" --platform=win32 --arch=x64 --icon=icon.ico --out=dist --overwrite",
     "build-dist": "electron-builder --win --publish never",
     "build-exe": "electron-builder --win nsis --publish never",
-    "build-msi": "electron-builder --win msi --publish never"
+    "build-msi": "electron-builder --win msi --publish never",
+    "build:mac": "electron-builder --mac --publish never",
+    "build:mac-arm64": "electron-builder --mac --arm64 --publish never",
+    "build:mac-x64": "electron-builder --mac --x64 --publish never"
   },
   "build": {
     "appId": "com.wordtap.player",
     "productName": "WordTap",
-    "artifactName": "WordTap-Setup-${arch}.${ext}",
     "protocols": [
       {
         "name": "WordTap Protocol",
@@ -21,6 +23,10 @@
           "wordtap"
         ]
       }
+    ],
+    "fileAssociations": [
+      { "ext": ["mp4", "mkv", "webm", "mov", "avi", "m4v", "ts", "flv", "mpg", "mpeg"], "name": "Video File", "role": "Viewer" },
+      { "ext": ["srt", "vtt"], "name": "Subtitle File", "role": "Viewer" }
     ],
     "directories": {
       "output": "dist-release"
@@ -37,7 +43,35 @@
       "!dist-installers/**",
       "!dist-latest/**"
     ],
+    "mac": {
+      "category": "public.app-category.video",
+      "icon": "icon.png",
+      "artifactName": "WordTap-mac-${arch}.${ext}",
+      "darkModeSupport": true,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    },
+    "dmg": {
+      "title": "WordTap Player"
+    },
     "win": {
+      "artifactName": "WordTap-Setup-${arch}.${ext}",
       "target": [
         {
           "target": "nsis",

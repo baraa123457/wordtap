@@ -8,13 +8,18 @@ const LATEST_RELEASE_URL = `https://github.com/${GITHUB_REPO}/releases/latest/do
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const format = (searchParams.get("format") || "exe").toLowerCase();
+  const arch = (searchParams.get("arch") || "arm64").toLowerCase() === "x64" ? "x64" : "arm64";
 
-  const fileName =
-    format === "msi"
-      ? "WordTap-Setup-x64.msi"
-      : format === "zip"
-      ? "WordTap-Setup-x64.zip"
-      : "WordTap-Setup-x64.exe";
+  let fileName = "WordTap-Setup-x64.exe";
+  if (format === "msi") {
+    fileName = "WordTap-Setup-x64.msi";
+  } else if (format === "zip") {
+    fileName = "WordTap-Setup-x64.zip";
+  } else if (format === "dmg") {
+    fileName = `WordTap-mac-${arch}.dmg`;
+  } else if (format === "mac-zip") {
+    fileName = `WordTap-mac-${arch}.zip`;
+  }
 
   // Check if a packaged local binary or installer is present in desktop-player/dist
   try {
@@ -29,7 +34,6 @@ export async function GET(request: NextRequest) {
 
     if (format === "exe" && fs.existsSync(localExePath)) {
       const stat = fs.statSync(localExePath);
-      // Stream local binary if running in local development environment
       const fileStream = fs.createReadStream(localExePath);
       // @ts-expect-error Node stream to Web ReadableStream
       return new NextResponse(fileStream, {

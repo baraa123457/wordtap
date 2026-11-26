@@ -10,6 +10,7 @@ const xmlrpc = require('xmlrpc');
 const zlib = require('zlib');
 
 function resolveFfmpegPath() {
+  const exeName = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
   let resolved = null;
   try {
     resolved = require('@ffmpeg-installer/ffmpeg').path;
@@ -31,17 +32,32 @@ function resolveFfmpegPath() {
   }
 
   const resPath = process.resourcesPath || path.join(__dirname, '..');
-  const candidates = [
-    path.join(resPath, 'app.asar.unpacked', 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
-    path.join(resPath, 'app.asar.unpacked', 'ffmpeg.exe'),
-    path.join(resPath, 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
-    path.join(resPath, 'ffmpeg.exe'),
-    path.join(resPath, 'app', 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
-    path.join(__dirname, 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
-    path.join(__dirname, '..', 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe'),
-    'C:\\ffmpeg\\bin\\ffmpeg.exe',
-    'ffmpeg.exe'
-  ];
+  const platArch = `${process.platform}-${process.arch}`;
+  const platDirs = Array.from(new Set([platArch, 'darwin-arm64', 'darwin-x64', 'win32-x64', 'linux-x64']));
+
+  const candidates = [];
+  for (const dir of platDirs) {
+    const bin = dir.startsWith('win32') ? 'ffmpeg.exe' : 'ffmpeg';
+    candidates.push(
+      path.join(resPath, 'app.asar.unpacked', 'node_modules', '@ffmpeg-installer', dir, bin),
+      path.join(resPath, 'node_modules', '@ffmpeg-installer', dir, bin),
+      path.join(resPath, 'app', 'node_modules', '@ffmpeg-installer', dir, bin),
+      path.join(__dirname, 'node_modules', '@ffmpeg-installer', dir, bin),
+      path.join(__dirname, '..', 'node_modules', '@ffmpeg-installer', dir, bin)
+    );
+  }
+  candidates.push(
+    path.join(resPath, 'app.asar.unpacked', exeName),
+    path.join(resPath, exeName)
+  );
+  if (process.platform === 'darwin') {
+    candidates.push('/opt/homebrew/bin/ffmpeg', '/usr/local/bin/ffmpeg', '/opt/local/bin/ffmpeg');
+  } else if (process.platform === 'win32') {
+    candidates.push('C:\\ffmpeg\\bin\\ffmpeg.exe');
+  } else {
+    candidates.push('/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg');
+  }
+  candidates.push(exeName);
 
   for (const c of candidates) {
     try {
@@ -67,8 +83,66 @@ app.commandLine.appendSwitch('enable-features', 'PlatformHEVCDecoderSupport');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 
-// Remove default OS application menu
-Menu.setApplicationMenu(null);
+function setupApplicationMenu() {
+  if (process.platform !== 'darwin') {
+    Menu.setApplicationMenu(null);
+    return;
+  }
+  const template = [
+    {
+      label: app.name || 'WordTap',
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    },
+    {
+      label: 'File',
+      submenu: [
+        { role: 'close' }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'pasteAndMatchStyle' },
+        { role: 'delete' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        { type: 'separator' },
+        { role: 'front' }
+      ]
+    }
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+setupApplicationMenu();
 
 // Register custom deep link protocol: wordtap://
 try {
@@ -355,6 +429,24 @@ app.on('open-url', (event, url) => {
   handleDeepLinkUrl(url);
 });
 
+// macOS Finder "Open With" & drag-to-Dock handler
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  const payload = prepareFilePayload(filePath);
+  if (!payload) return;
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isLoading()) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send('app:open-file', payload);
+  } else {
+    pendingFilePayload = payload;
+    if (app.isReady() && (!mainWindow || mainWindow.isDestroyed())) {
+      createWindow();
+    }
+  }
+});
+
 function readJsonFile(filePath, defaultValue) {
   try {
     if (fs.existsSync(filePath)) {
@@ -384,7 +476,7 @@ function createWindow() {
     minWidth: 860,
     minHeight: 580,
     backgroundColor: '#000000',
-    title: 'WordTap VLC Media Player',
+    title: 'WordTap Player',
     autoHideMenuBar: true,
     icon: path.join(__dirname, process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
     webPreferences: {
@@ -397,8 +489,10 @@ function createWindow() {
     }
   });
 
-  mainWindow.setMenuBarVisibility(false);
-  mainWindow.setAutoHideMenuBar(true);
+  if (process.platform !== 'darwin') {
+    mainWindow.setMenuBarVisibility(false);
+    mainWindow.setAutoHideMenuBar(true);
+  }
 
   // Send fullscreen state changes to renderer
   mainWindow.on('enter-full-screen', () => {

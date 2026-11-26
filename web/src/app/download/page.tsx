@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { trackEvent } from "@/lib/analytics";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import {
   WindowsIcon,
+  AppleIcon,
   ChromeIcon,
   DownloadIcon,
   CheckIcon,
@@ -123,6 +124,10 @@ const FAQ_ITEMS = [
     a: "When you tap words while watching a video offline (for example on a flight or train), WordTap saves them to your local encrypted database. As soon as your laptop reconnects to Wi-Fi, your new vocabulary syncs automatically to your web account and flashcard review queue.",
   },
   {
+    q: "Why does macOS say the app cannot be opened or is from an unidentified developer?",
+    a: "Because our macOS build is compiled openly on GitHub Actions CI without a paid Apple Developer notarization certificate. First-time launch: right-click (or Control-click) WordTap.app in Applications and choose Open (or go to System Settings > Privacy & Security > Open Anyway).",
+  },
+  {
     q: "Why does Windows SmartScreen show 'Windows protected your PC'?",
     a: "Because WordTap is a newly released open-source release built directly on GitHub Actions CI. To proceed: click 'More info' and then click 'Run anyway'. All releases are 100% open-source, virus-free, and verifiable on our GitHub repository.",
   },
@@ -138,8 +143,15 @@ const FAQ_ITEMS = [
 
 export default function DownloadPage() {
   const [activeTab, setActiveTab] = useState<"all" | "desktop" | "extension">("all");
+  const [desktopOs, setDesktopOs] = useState<"win" | "mac">("win");
   const [copiedExtensionsUrl, setCopiedExtensionsUrl] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
+
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent)) {
+      setDesktopOs("mac");
+    }
+  }, []);
 
   // Interactive Desktop Player Mockup State
   const [mockSpeed, setMockSpeed] = useState<number>(1.0);
@@ -175,7 +187,7 @@ export default function DownloadPage() {
           </h1>
 
           <p className="text-sm sm:text-base text-muted leading-relaxed max-w-2xl mx-auto">
-            Turn your favorite movies, series, and online videos into real vocabulary fluency. Available as a full-featured Windows desktop video player and a browser extension.
+            Turn your favorite movies, series, and online videos into real vocabulary fluency. Available as a desktop video player for Windows &amp; macOS and as a browser extension.
           </p>
 
           {/* Authentic Apple Segmented Control Tab Switcher */}
@@ -232,18 +244,35 @@ export default function DownloadPage() {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
               <div className="space-y-3.5 max-w-2xl">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-subtitle/20 border border-subtitle/40 text-[length:var(--text-label)] font-bold text-amber-900 dark:text-subtitle">
+                  <button
+                    type="button"
+                    onClick={() => setDesktopOs("mac")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border text-[length:var(--text-label)] font-bold transition-colors cursor-pointer ${
+                      desktopOs === "mac"
+                        ? "bg-subtitle/20 border-subtitle/40 text-amber-900 dark:text-subtitle"
+                        : "bg-black/5 dark:bg-white/10 border-line text-muted hover:text-ink"
+                    }`}
+                  >
+                    <AppleIcon size={12} />
+                    <span>macOS (Apple Silicon &amp; Intel)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDesktopOs("win")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full border text-[length:var(--text-label)] font-bold transition-colors cursor-pointer ${
+                      desktopOs === "win"
+                        ? "bg-subtitle/20 border-subtitle/40 text-amber-900 dark:text-subtitle"
+                        : "bg-black/5 dark:bg-white/10 border-line text-muted hover:text-ink"
+                    }`}
+                  >
                     <WindowsIcon size={12} />
                     <span>Windows 10 / 11 · 64-bit</span>
-                  </span>
+                  </button>
                   <span className="text-[length:var(--text-label)] font-semibold text-muted bg-black/5 dark:bg-white/10 px-2.5 py-0.5 rounded-full border border-line">
-                    v1.0.2 Stable
+                    v1.0.3 Stable
                   </span>
                   <span className="text-[length:var(--text-label)] font-semibold text-ok bg-ok/10 px-2.5 py-0.5 rounded-full border border-ok/20">
                     VLC Core Engine
-                  </span>
-                  <span className="text-[length:var(--text-label)] font-semibold text-muted bg-black/5 dark:bg-white/10 px-2.5 py-0.5 rounded-full border border-line">
-                    ~85 MB
                   </span>
                 </div>
 
@@ -280,38 +309,73 @@ export default function DownloadPage() {
               </div>
 
               {/* Download Buttons Group */}
-              <div className="shrink-0 flex flex-col gap-2.5 w-full sm:w-auto min-w-[260px]">
-                {/* Primary .EXE Setup Button */}
-                <a
-                  href="/api/download/desktop?format=exe"
-                  download="WordTap-Setup.exe"
-                  onClick={() => void trackEvent("desktop_player_download", { format: "exe" })}
-                  className="btn btn-primary min-h-12 px-6 text-sm font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 w-full"
-                >
-                  <WindowsIcon size={18} />
-                  <span>Download Setup (.exe)</span>
-                </a>
+              <div className="shrink-0 flex flex-col gap-2.5 w-full sm:w-auto min-w-[270px]">
+                {desktopOs === "mac" ? (
+                  <>
+                    <a
+                      href="/api/download/desktop?format=dmg&arch=arm64"
+                      download="WordTap-mac-arm64.dmg"
+                      onClick={() => void trackEvent("desktop_player_download", { format: "dmg-arm64" })}
+                      className="btn btn-primary min-h-12 px-6 text-sm font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 w-full"
+                    >
+                      <AppleIcon size={18} />
+                      <span>Download for Mac (Apple Silicon)</span>
+                    </a>
 
-                {/* Secondary .MSI Installer Button */}
-                <a
-                  href="/api/download/desktop?format=msi"
-                  download="WordTap-Setup-x64.msi"
-                  onClick={() => void trackEvent("desktop_player_download", { format: "msi" })}
-                  className="btn btn-quiet min-h-11 px-4 text-[length:var(--text-control)] font-bold border border-line hover:border-subtitle/50 transition-all flex items-center justify-center gap-2 w-full"
-                >
-                  <DownloadIcon size={14} />
-                  <span>Download Windows Installer (.msi)</span>
-                </a>
+                    <a
+                      href="/api/download/desktop?format=dmg&arch=x64"
+                      download="WordTap-mac-x64.dmg"
+                      onClick={() => void trackEvent("desktop_player_download", { format: "dmg-x64" })}
+                      className="btn btn-quiet min-h-11 px-4 text-[length:var(--text-control)] font-bold border border-line hover:border-subtitle/50 transition-all flex items-center justify-center gap-2 w-full"
+                    >
+                      <DownloadIcon size={14} />
+                      <span>Download for Mac — Intel (.dmg)</span>
+                    </a>
 
-                {/* Portable ZIP Option */}
-                <a
-                  href="/api/download/desktop?format=zip"
-                  download="WordTap-Player-win-x64.zip"
-                  onClick={() => void trackEvent("desktop_player_download", { format: "zip" })}
-                  className="text-[length:var(--text-control)] text-muted text-center hover:text-ink underline underline-offset-4 py-1 inline-flex items-center justify-center min-h-11"
-                >
-                  Or download Portable ZIP (No install needed)
-                </a>
+                    <a
+                      href="/api/download/desktop?format=mac-zip&arch=arm64"
+                      download="WordTap-mac-arm64.zip"
+                      onClick={() => void trackEvent("desktop_player_download", { format: "mac-zip" })}
+                      className="text-[length:var(--text-control)] text-muted text-center hover:text-ink underline underline-offset-4 py-1 inline-flex items-center justify-center min-h-11"
+                    >
+                      Or download Portable Mac ZIP (.app)
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    {/* Primary .EXE Setup Button */}
+                    <a
+                      href="/api/download/desktop?format=exe"
+                      download="WordTap-Setup.exe"
+                      onClick={() => void trackEvent("desktop_player_download", { format: "exe" })}
+                      className="btn btn-primary min-h-12 px-6 text-sm font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 w-full"
+                    >
+                      <WindowsIcon size={18} />
+                      <span>Download Setup (.exe)</span>
+                    </a>
+
+                    {/* Secondary .MSI Installer Button */}
+                    <a
+                      href="/api/download/desktop?format=msi"
+                      download="WordTap-Setup-x64.msi"
+                      onClick={() => void trackEvent("desktop_player_download", { format: "msi" })}
+                      className="btn btn-quiet min-h-11 px-4 text-[length:var(--text-control)] font-bold border border-line hover:border-subtitle/50 transition-all flex items-center justify-center gap-2 w-full"
+                    >
+                      <DownloadIcon size={14} />
+                      <span>Download Windows Installer (.msi)</span>
+                    </a>
+
+                    {/* Portable ZIP Option */}
+                    <a
+                      href="/api/download/desktop?format=zip"
+                      download="WordTap-Player-win-x64.zip"
+                      onClick={() => void trackEvent("desktop_player_download", { format: "zip" })}
+                      className="text-[length:var(--text-control)] text-muted text-center hover:text-ink underline underline-offset-4 py-1 inline-flex items-center justify-center min-h-11"
+                    >
+                      Or download Portable ZIP (No install needed)
+                    </a>
+                  </>
+                )}
               </div>
             </div>
 
@@ -598,26 +662,51 @@ export default function DownloadPage() {
             <div className="p-5 rounded-2xl bg-black/5 dark:bg-white/5 border border-line space-y-3">
               <h4 className="text-xs font-bold text-ink flex items-center gap-2">
                 <DownloadIcon size={14} className="text-amber-700 dark:text-subtitle" />
-                <span>Quick Setup Guide (Windows 10 / 11)</span>
+                <span>
+                  {desktopOs === "mac"
+                    ? "Quick Setup Guide (macOS Apple Silicon & Intel)"
+                    : "Quick Setup Guide (Windows 10 / 11)"}
+                </span>
               </h4>
-              <ol className="grid gap-3 text-xs text-muted sm:grid-cols-4">
-                <li className="flex gap-2.5">
-                  <span className="w-6 h-6 rounded-full bg-subtitle/20 text-amber-800 dark:text-subtitle font-bold flex items-center justify-center shrink-0 text-xs">1</span>
-                  <span>Click <strong>Download Setup (.exe)</strong> or <strong>.msi</strong> above.</span>
-                </li>
-                <li className="flex gap-2.5">
-                  <span className="w-6 h-6 rounded-full bg-subtitle/20 text-amber-800 dark:text-subtitle font-bold flex items-center justify-center shrink-0 text-xs">2</span>
-                  <span>Run the installer to launch WordTap VLC Player.</span>
-                </li>
-                <li className="flex gap-2.5">
-                  <span className="w-6 h-6 rounded-full bg-subtitle/20 text-amber-800 dark:text-subtitle font-bold flex items-center justify-center shrink-0 text-xs">3</span>
-                  <span>Sign in with your WordTap account (or use offline).</span>
-                </li>
-                <li className="flex gap-2.5">
-                  <span className="w-6 h-6 rounded-full bg-subtitle/20 text-amber-800 dark:text-subtitle font-bold flex items-center justify-center shrink-0 text-xs">4</span>
-                  <span>Drag &amp; drop any movie file with subtitles and start learning!</span>
-                </li>
-              </ol>
+              {desktopOs === "mac" ? (
+                <ol className="grid gap-3 text-xs text-muted sm:grid-cols-4">
+                  <li className="flex gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-subtitle/20 text-amber-800 dark:text-subtitle font-bold flex items-center justify-center shrink-0 text-xs">1</span>
+                    <span>Download <strong>Apple Silicon (.dmg)</strong> (M1–M4) or <strong>Intel (.dmg)</strong> above.</span>
+                  </li>
+                  <li className="flex gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-subtitle/20 text-amber-800 dark:text-subtitle font-bold flex items-center justify-center shrink-0 text-xs">2</span>
+                    <span>Open the <code>.dmg</code> and drag <strong>WordTap</strong> into <strong>Applications</strong>.</span>
+                  </li>
+                  <li className="flex gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-subtitle/20 text-amber-800 dark:text-subtitle font-bold flex items-center justify-center shrink-0 text-xs">3</span>
+                    <span>First launch: Control-click WordTap in Applications and click <strong>Open</strong>.</span>
+                  </li>
+                  <li className="flex gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-subtitle/20 text-amber-800 dark:text-subtitle font-bold flex items-center justify-center shrink-0 text-xs">4</span>
+                    <span>Drag &amp; drop any movie file with subtitles and start learning!</span>
+                  </li>
+                </ol>
+              ) : (
+                <ol className="grid gap-3 text-xs text-muted sm:grid-cols-4">
+                  <li className="flex gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-subtitle/20 text-amber-800 dark:text-subtitle font-bold flex items-center justify-center shrink-0 text-xs">1</span>
+                    <span>Click <strong>Download Setup (.exe)</strong> or <strong>.msi</strong> above.</span>
+                  </li>
+                  <li className="flex gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-subtitle/20 text-amber-800 dark:text-subtitle font-bold flex items-center justify-center shrink-0 text-xs">2</span>
+                    <span>Run the installer to launch WordTap VLC Player.</span>
+                  </li>
+                  <li className="flex gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-subtitle/20 text-amber-800 dark:text-subtitle font-bold flex items-center justify-center shrink-0 text-xs">3</span>
+                    <span>Sign in with your WordTap account (or use offline).</span>
+                  </li>
+                  <li className="flex gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-subtitle/20 text-amber-800 dark:text-subtitle font-bold flex items-center justify-center shrink-0 text-xs">4</span>
+                    <span>Drag &amp; drop any movie file with subtitles and start learning!</span>
+                  </li>
+                </ol>
+              )}
             </div>
           </section>
         )}
@@ -799,12 +888,19 @@ export default function DownloadPage() {
                   For offline movies, downloaded series, MKV files with multi-track Dolby audio, flights, and home theater learning.
                 </p>
               </div>
-              <div className="pt-2">
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <a
+                  href="/api/download/desktop?format=dmg&arch=arm64"
+                  className="text-xs font-bold text-amber-700 dark:text-subtitle hover:underline flex items-center gap-1"
+                >
+                  <span>macOS (.dmg)</span>
+                  <span>→</span>
+                </a>
                 <a
                   href="/api/download/desktop?format=exe"
                   className="text-xs font-bold text-amber-700 dark:text-subtitle hover:underline flex items-center gap-1"
                 >
-                  <span>Download .exe / .msi</span>
+                  <span>Windows (.exe)</span>
                   <span>→</span>
                 </a>
               </div>
