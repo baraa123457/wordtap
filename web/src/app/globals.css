@@ -14,6 +14,7 @@
  */
 
 :root {
+  color-scheme: light;
   /* WordTap Light Mode: Daylight Cinema */
   --bg: #f2f4fa;
   --surface: #ffffff;
@@ -50,6 +51,7 @@
 /* WordTap Dark Mode: Dark Cinema Theater (Deep Midnight Navy, NOT dead black) */
 html.dark,
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0b0d1e;
   --surface: #141731;
   --surface-elevated: #1b1f42;
@@ -76,6 +78,7 @@ html.dark,
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not(.light) {
+    color-scheme: dark;
     --bg: #0b0d1e;
     --surface: #141731;
     --surface-elevated: #1b1f42;
@@ -780,4 +783,76 @@ html .apple-segmented-container[data-fade-left="true"] {
 }
 html .apple-segmented-container[data-fade-right="true"] {
   --fr: var(--fade-size);
+}
+
+/* ==========================================================================
+   Sleek Custom Scrollbars (Light & Dark Cinema Theater)
+   ========================================================================== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(30, 37, 80, 0.24) transparent;
+}
+
+html.dark *,
+:root[data-theme="dark"] * {
+  scrollbar-color: rgba(149, 156, 194, 0.3) transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not(.light) * {
+    scrollbar-color: rgba(149, 156, 194, 0.3) transparent;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(30, 37, 80, 0.22);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 37, 80, 0.36);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html.dark ::-webkit-scrollbar-thumb,
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(149, 156, 194, 0.28);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover,
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(149, 156, 194, 0.45);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not(.light) ::-webkit-scrollbar-thumb {
+    background: rgba(149, 156, 194, 0.28);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  :root:not([data-theme="light"]):not(.light) ::-webkit-scrollbar-thumb:hover {
+    background: rgba(149, 156, 194, 0.45);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
 }
