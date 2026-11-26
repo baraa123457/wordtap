@@ -1887,7 +1887,8 @@
       p_target_lang: entry.lang || 'ar',
       p_source_title: titleContext,
       p_source_url: 'wordtap-vlc-player',
-      p_times: entry.count || 1
+      p_times: entry.count || 1,
+      p_sentence: sentence
     };
 
     let res;
@@ -2301,6 +2302,130 @@
     }
   }
 
+  async function syncUpdateToSupabase(oldText, updatedEntry) {
+    if (syncSuspended || systemSuspended) return false;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      connectionIssue = 'offline';
+      updateAccountUI();
+      return false;
+    }
+
+    let token = await getValidToken();
+    if (!token) return false;
+
+    const sentence = updatedEntry.sentence || '';
+    const title = updatedEntry.title || '';
+    const titleContext = sentence ? `"${sentence}" — ${title}` : title;
+    const patchPayload = {
+      text: updatedEntry.text,
+      translation: updatedEntry.translation || '',
+      sentence,
+      source_title: titleContext
+    };
+
+    const runPatch = async (authToken) => fetch(
+      `${SUPABASE_URL}/rest/v1/words?text=ilike.${encodeURIComponent(oldText)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation'
+        },
+        body: JSON.stringify(patchPayload)
+      }
+    );
+
+    let res;
+    try {
+      res = await runPatch(token);
+      if (res.status === 401) {
+        token = await getValidToken(true);
+        if (token) res = await runPatch(token);
+      }
+    } catch (err) {
+      connectionIssue = 'offline';
+      updateAccountUI();
+      throw err;
+    }
+
+    if (res && res.ok) {
+      const updatedRows = await res.json().catch(() => []);
+      if (Array.isArray(updatedRows) && updatedRows.length > 0) {
+        if (connectionIssue !== null) {
+          connectionIssue = null;
+          updateAccountUI();
+        }
+        return true;
+      }
+      // Fallback if word didn't exist yet on Supabase or text case changed cleanly
+      if (oldText.toLowerCase() !== updatedEntry.text.toLowerCase()) {
+        await syncDeleteToSupabase(oldText);
+      }
+      return await syncWordToSupabase(updatedEntry);
+    }
+
+    if (res && (res.status === 429 || res.status >= 500)) {
+      connectionIssue = 'suspended';
+      updateAccountUI();
+    } else if (res && (res.status === 401 || res.status === 403)) {
+      connectionIssue = 'auth_expired';
+      updateAccountUI();
+    }
+    return false;
+  }
+
+  async function updateWordEntry(oldText, nextText, nextTranslation, nextSentence) {
+    const prevClean = (oldText || '').trim();
+    const newClean = (nextText || '').trim();
+    const newTrans = (nextTranslation || '').trim();
+    const newSent = (nextSentence || '').trim();
+    if (!prevClean || !newClean || !newTrans) return false;
+
+    const existing = savedWords.find(w => (w.text || '').trim().toLowerCase() === prevClean.toLowerCase());
+    if (!existing) return false;
+
+    const updatedEntry = {
+      ...existing,
+      text: newClean,
+      translation: newTrans,
+      sentence: newSent,
+      synced: false
+    };
+
+    try {
+      if (window.WordTapAPI && window.WordTapAPI.updateSavedWord) {
+        await window.WordTapAPI.updateSavedWord(prevClean, {
+          text: newClean,
+          translation: newTrans,
+          sentence: newSent,
+          synced: false
+        });
+      }
+      await refreshSavedWordsCount();
+
+      if (userSession && !syncSuspended && !systemSuspended && navigator.onLine !== false) {
+        try {
+          const synced = await syncUpdateToSupabase(prevClean, updatedEntry);
+          if (synced && window.WordTapAPI && window.WordTapAPI.updateSavedWord) {
+            await window.WordTapAPI.updateSavedWord(newClean, { synced: true });
+            await refreshSavedWordsCount();
+          }
+        } catch (err) {
+          console.warn('Supabase update sync warning (queued locally):', err);
+        }
+      }
+
+      showToast(`Updated "${newClean}"`);
+      return true;
+    } catch (err) {
+      console.error('Failed to update word:', err);
+      showToast(`Failed to update "${prevClean}"`);
+      return false;
+    }
+  }
+
   async function deleteWordEntry(wordText) {
     if (!wordText) return false;
     const clean = wordText.trim();
@@ -2334,7 +2459,10 @@
   }
 
   // Load Saved Words Modal
+  let editingSavedWordKey = null;
+
   function openSavedWordsModal() {
+    editingSavedWordKey = null;
     renderSavedWordsList();
     if (savedWordsModal) {
       savedWordsModal.classList.add('open');
@@ -2354,26 +2482,143 @@
 
     let html = '';
     for (const w of savedWords) {
-      const text = escapeHtml(w.text || '');
+      const rawText = (w.text || '').trim();
+      const text = escapeHtml(rawText);
       const trans = escapeHtml(w.translation || '');
+      const sentence = escapeHtml(w.sentence || '');
+      const isEditing = editingSavedWordKey && editingSavedWordKey.toLowerCase() === rawText.toLowerCase();
+
       html += `
         <div class="saved-word-row" data-word="${text}">
-          <span class="saved-word-title">${text}</span>
-          <div class="saved-word-right">
-            <span class="saved-word-ar">${trans}</span>
-            <button type="button" class="btn-delete-saved-word" data-word="${text}" title="Delete word" aria-label="Delete ${text}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-              </svg>
-            </button>
+          <div class="saved-word-main">
+            <span class="saved-word-title">${text}</span>
+            <div class="saved-word-right">
+              <span class="saved-word-ar" dir="auto">${trans}</span>
+              <button type="button" class="btn-edit-saved-word${isEditing ? ' active' : ''}" data-word="${text}" title="Edit word" aria-label="Edit ${text}">
+                <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+                </svg>
+              </button>
+              <button type="button" class="btn-delete-saved-word" data-word="${text}" title="Delete word" aria-label="Delete ${text}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+              </button>
+            </div>
           </div>
+          ${isEditing ? `
+          <div class="saved-word-edit-panel">
+            <div class="saved-word-edit-grid">
+              <div class="saved-word-edit-field">
+                <label class="saved-word-edit-label">Word</label>
+                <input type="text" class="saved-word-edit-input js-edit-word" value="${text}" dir="auto" />
+              </div>
+              <div class="saved-word-edit-field">
+                <label class="saved-word-edit-label">Translation</label>
+                <input type="text" class="saved-word-edit-input js-edit-trans" value="${trans}" dir="auto" />
+              </div>
+            </div>
+            <div class="saved-word-edit-field">
+              <label class="saved-word-edit-label">Context Sentence</label>
+              <input type="text" class="saved-word-edit-input js-edit-sentence" value="${sentence}" placeholder="Optional subtitle context" dir="auto" />
+            </div>
+            <div class="saved-word-edit-actions">
+              <button type="button" class="saved-word-edit-cancel">Cancel</button>
+              <button type="button" class="saved-word-edit-save">Save Changes</button>
+            </div>
+          </div>` : ''}
         </div>
       `;
     }
     savedWordsListContainer.innerHTML = html;
+
+    // Focus translation or word input when inline edit opens
+    if (editingSavedWordKey) {
+      const activeInput = savedWordsListContainer.querySelector('.js-edit-trans');
+      if (activeInput) {
+        activeInput.focus();
+        activeInput.select();
+      }
+    }
+
+    // Attach edit toggle handlers
+    savedWordsListContainer.querySelectorAll('.btn-edit-saved-word').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const word = btn.getAttribute('data-word') || '';
+        if (!word) return;
+        editingSavedWordKey = (editingSavedWordKey && editingSavedWordKey.toLowerCase() === word.toLowerCase())
+          ? null
+          : word;
+        renderSavedWordsList();
+      });
+    });
+
+    // Attach inline edit Cancel / Save / keyboard handlers
+    const editPanel = savedWordsListContainer.querySelector('.saved-word-edit-panel');
+    if (editPanel) {
+      const wordInput = editPanel.querySelector('.js-edit-word');
+      const transInput = editPanel.querySelector('.js-edit-trans');
+      const sentenceInput = editPanel.querySelector('.js-edit-sentence');
+      const cancelBtn = editPanel.querySelector('.saved-word-edit-cancel');
+      const saveBtn = editPanel.querySelector('.saved-word-edit-save');
+
+      const syncSaveDisabled = () => {
+        if (saveBtn) {
+          saveBtn.disabled = !wordInput.value.trim() || !transInput.value.trim();
+        }
+      };
+
+      const submitEdit = async () => {
+        if (!editingSavedWordKey) return;
+        const nextWord = wordInput.value.trim();
+        const nextTrans = transInput.value.trim();
+        const nextSent = sentenceInput ? sentenceInput.value.trim() : '';
+        if (!nextWord || !nextTrans) return;
+        if (saveBtn) {
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saving...';
+        }
+        const prevKey = editingSavedWordKey;
+        const ok = await updateWordEntry(prevKey, nextWord, nextTrans, nextSent);
+        if (ok) {
+          editingSavedWordKey = null;
+          renderSavedWordsList();
+        } else if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Changes';
+        }
+      };
+
+      [wordInput, transInput, sentenceInput].forEach(inp => {
+        if (!inp) return;
+        inp.addEventListener('input', syncSaveDisabled);
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            submitEdit();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            editingSavedWordKey = null;
+            renderSavedWordsList();
+          }
+        });
+      });
+
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+          editingSavedWordKey = null;
+          renderSavedWordsList();
+        });
+      }
+      if (saveBtn) {
+        saveBtn.addEventListener('click', submitEdit);
+      }
+    }
 
     // Attach click handlers to delete buttons
     savedWordsListContainer.querySelectorAll('.btn-delete-saved-word').forEach(btn => {
@@ -2381,6 +2626,9 @@
         e.stopPropagation();
         const word = btn.getAttribute('data-word');
         if (!word) return;
+        if (editingSavedWordKey && editingSavedWordKey.toLowerCase() === word.toLowerCase()) {
+          editingSavedWordKey = null;
+        }
         const row = btn.closest('.saved-word-row');
         if (row) {
           row.style.opacity = '0';

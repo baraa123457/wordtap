@@ -633,6 +633,40 @@ ipcMain.handle('storage:save-word', async (_event, wordEntry) => {
   return { ok: true, total: words.length };
 });
 
+ipcMain.handle('storage:update-word', async (_event, { oldText, updates }) => {
+  const words = readJsonFile(SAVED_WORDS_FILE, []);
+  const prevLower = String(oldText || '').trim().toLowerCase();
+  const idx = words.findIndex(w => (w.text || '').trim().toLowerCase() === prevLower);
+  if (idx < 0) return { ok: false };
+
+  const current = words[idx];
+  const nextText = updates && typeof updates.text === 'string' && updates.text.trim()
+    ? updates.text.trim()
+    : current.text;
+  const nextTrans = updates && typeof updates.translation === 'string'
+    ? updates.translation.trim()
+    : current.translation;
+  const nextSentence = updates && typeof updates.sentence === 'string'
+    ? updates.sentence.trim()
+    : (current.sentence || '');
+
+  words[idx] = {
+    ...current,
+    text: nextText,
+    translation: nextTrans,
+    sentence: nextSentence,
+    synced: updates && typeof updates.synced === 'boolean' ? updates.synced : current.synced,
+    lastSeen: Date.now()
+  };
+
+  // Deduplicate if renamed to match another saved word
+  const nextLower = nextText.toLowerCase();
+  const deduped = words.filter((w, i) => i === idx || (w.text || '').trim().toLowerCase() !== nextLower);
+
+  writeJsonFile(SAVED_WORDS_FILE, deduped);
+  return { ok: true, word: words[idx], total: deduped.length };
+});
+
 ipcMain.handle('storage:delete-word', async (_event, wordText) => {
   if (!wordText || typeof wordText !== 'string') return { ok: false, error: 'Invalid word' };
   const target = wordText.trim().toLowerCase();
