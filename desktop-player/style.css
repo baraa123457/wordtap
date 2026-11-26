@@ -590,19 +590,6 @@ body.light-theme .account-sync-subtitle.status-disconnected {
   color: #dc2626 !important;
 }
 
-body.light-theme .btn-account-suspend-subtle {
-  background: #ffffff !important;
-  border: 1px solid rgba(30, 37, 80, 0.14) !important;
-  color: #5e658a !important;
-}
-
-body.light-theme .btn-account-suspend-subtle:hover,
-body.light-theme .btn-account-suspend-subtle.active {
-  background: #fefce8 !important;
-  border-color: rgba(202, 138, 4, 0.35) !important;
-  color: #a16207 !important;
-}
-
 body.light-theme .btn-account-signout-subtle {
   background: #ffffff !important;
   border: 1px solid rgba(30, 37, 80, 0.14) !important;
@@ -2680,38 +2667,6 @@ body.light-theme .vlsub-window::-webkit-scrollbar-thumb:hover {
 
 .account-sync-subtitle.status-disconnected {
   color: #f87171;
-}
-
-.account-identity-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.btn-account-suspend-subtle {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--muted);
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 140ms ease;
-  flex-shrink: 0;
-}
-
-.btn-account-suspend-subtle:hover {
-  background: rgba(250, 204, 59, 0.14);
-  border-color: rgba(250, 204, 59, 0.38);
-  color: #facc3b;
-}
-
-.btn-account-suspend-subtle.active {
-  background: rgba(250, 204, 59, 0.18);
-  border-color: rgba(250, 204, 59, 0.45);
-  color: #facc3b;
 }
 
 .btn-account-signout-subtle {

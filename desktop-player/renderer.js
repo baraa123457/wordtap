@@ -145,7 +145,6 @@
   const btnAccountGoogle = document.getElementById('btn-account-google');
   const accountGoogleText = document.getElementById('account-google-text');
   const btnAccountPasteKey = document.getElementById('btn-account-paste-key');
-  const btnAuthSuspend = document.getElementById('btn-auth-suspend');
   const btnAuthSignout = document.getElementById('btn-auth-signout');
   const btnOpenWeb = document.getElementById('btn-open-web');
 
@@ -200,7 +199,6 @@
   let isScrubbing = false;
   let toastTimer = null;
   let userSession = null;
-  let syncSuspended = false;
   let systemSuspended = false;
   let connectionIssue = null; // null | 'offline' | 'suspended' | 'auth_expired'
   let connectionCheckPromise = null;
@@ -1071,7 +1069,6 @@
 
     try {
       const config = await window.WordTapAPI.getConfig();
-      syncSuspended = Boolean(config && config.syncSuspended);
       if (config && config.session && config.session.access_token) {
         userSession = config.session;
         updateAccountUI();
@@ -1846,7 +1843,7 @@
     await window.WordTapAPI.saveWord(entry);
     await refreshSavedWordsCount();
 
-    if (userSession && !syncSuspended && !systemSuspended && navigator.onLine !== false) {
+    if (userSession && !systemSuspended && navigator.onLine !== false) {
       try {
         const ok = await syncWordToSupabase(entry);
         if (ok) {
@@ -1866,7 +1863,7 @@
   }
 
   async function syncWordToSupabase(entry) {
-    if (syncSuspended || systemSuspended) return false;
+    if (systemSuspended) return false;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       connectionIssue = 'offline';
       updateAccountUI();
@@ -1987,7 +1984,7 @@
         subtitle: 'Session expired — sign in again'
       };
     }
-    if (syncSuspended || systemSuspended || connectionIssue === 'suspended') {
+    if (systemSuspended || connectionIssue === 'suspended') {
       return {
         state: 'suspended',
         title: systemSuspended ? 'Sync suspended (system sleep)' : 'Sync suspended',
@@ -2041,11 +2038,6 @@
           accountSyncIcon.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
         }
       }
-      if (btnAuthSuspend) {
-        btnAuthSuspend.classList.toggle('active', syncSuspended);
-        btnAuthSuspend.innerHTML = syncSuspended ? '<span>Resume</span>' : '<span>Suspend</span>';
-        btnAuthSuspend.title = syncSuspended ? 'Resume cloud sync' : 'Temporarily suspend cloud sync';
-      }
     } else {
       accountLabel.textContent = 'WordTap Sync';
       accountLoggedOutView.style.display = 'block';
@@ -2064,7 +2056,7 @@
       updateAccountUI();
       return 'disconnected';
     }
-    if (syncSuspended || systemSuspended) {
+    if (systemSuspended) {
       updateAccountUI();
       return 'suspended';
     }
@@ -2131,25 +2123,6 @@
     return await connectionCheckPromise;
   }
 
-  async function toggleSyncSuspended() {
-    syncSuspended = !syncSuspended;
-    if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
-      await window.WordTapAPI.saveConfig({ syncSuspended });
-    }
-    if (!syncSuspended) {
-      connectionIssue = null;
-      updateAccountUI();
-      showToast('Cloud sync resumed');
-      const state = await checkConnectionHealth(true);
-      if (state === 'connected') {
-        pushPendingOfflineWords();
-      }
-    } else {
-      updateAccountUI();
-      showToast('Cloud sync suspended');
-    }
-  }
-
   async function handleSignIn() {
     const email = authEmailInput.value.trim();
     const password = authPasswordInput.value;
@@ -2207,7 +2180,7 @@
   }
 
   async function pushPendingOfflineWords() {
-    if (!userSession || syncSuspended || systemSuspended) return;
+    if (!userSession || systemSuspended) return;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       connectionIssue = 'offline';
       updateAccountUI();
@@ -2303,7 +2276,7 @@
   }
 
   async function syncUpdateToSupabase(oldText, updatedEntry) {
-    if (syncSuspended || systemSuspended) return false;
+    if (systemSuspended) return false;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       connectionIssue = 'offline';
       updateAccountUI();
@@ -2405,7 +2378,7 @@
       }
       await refreshSavedWordsCount();
 
-      if (userSession && !syncSuspended && !systemSuspended && navigator.onLine !== false) {
+      if (userSession && !systemSuspended && navigator.onLine !== false) {
         try {
           const synced = await syncUpdateToSupabase(prevClean, updatedEntry);
           if (synced && window.WordTapAPI && window.WordTapAPI.updateSavedWord) {
@@ -3735,7 +3708,6 @@
         }
       });
     }
-    if (btnAuthSuspend) btnAuthSuspend.addEventListener('click', toggleSyncSuspended);
     btnAuthSignout.addEventListener('click', handleSignOut);
     btnOpenWeb.addEventListener('click', () => window.WordTapAPI.openExternal(WEBSITE_URL));
 
@@ -3753,7 +3725,7 @@
       }
     });
     window.addEventListener('focus', () => {
-      if (userSession && !syncSuspended && !systemSuspended) {
+      if (userSession && !systemSuspended) {
         checkConnectionHealth(false);
       }
     });
@@ -3761,7 +3733,7 @@
       window.WordTapAPI.onPowerSuspendChange(async (suspended) => {
         systemSuspended = Boolean(suspended);
         updateAccountUI();
-        if (!systemSuspended && userSession && !syncSuspended) {
+        if (!systemSuspended && userSession) {
           const state = await checkConnectionHealth(true);
           if (state === 'connected') {
             pushPendingOfflineWords();
@@ -3770,7 +3742,7 @@
       });
     }
     setInterval(() => {
-      if (userSession && !syncSuspended && !systemSuspended && navigator.onLine !== false) {
+      if (userSession && !systemSuspended && navigator.onLine !== false) {
         checkConnectionHealth(false);
       }
     }, 30000);
