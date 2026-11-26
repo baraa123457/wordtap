@@ -418,6 +418,20 @@
     }
 
     const ratio = parseAspectRatioNumber(currentAspectVal);
+    const naturalRatio = (video.videoWidth > 0 && video.videoHeight > 0)
+      ? (video.videoWidth / video.videoHeight)
+      : null;
+
+    if (ratio && naturalRatio && Math.abs(ratio - naturalRatio) < 0.02) {
+      video.style.aspectRatio = 'auto';
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.maxWidth = '100%';
+      video.style.maxHeight = '100%';
+      video.style.objectFit = 'contain';
+      return;
+    }
+
     const wrap = video.parentElement;
     if (ratio && wrap && wrap.clientWidth > 0 && wrap.clientHeight > 0) {
       const wrapW = wrap.clientWidth;
