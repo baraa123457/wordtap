@@ -351,6 +351,10 @@
       }
     } catch {}
 
+    if (showToastFeedback && typeof saveCloudSettings === 'function') {
+      saveCloudSettings({ theme: currentTheme });
+    }
+
     if (showToastFeedback) {
       showToast(effective === 'light' ? 'Light Mode Enabled' : 'Dark Mode Enabled');
     }
@@ -677,6 +681,9 @@
     if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
       window.WordTapAPI.saveConfig({ volume: userVolume });
     }
+    if (typeof saveCloudSettings === 'function') {
+      saveCloudSettings({ volume: userVolume });
+    }
     showToast(`Volume: ${Math.round(userVolume * 100)}%`);
   }
 
@@ -688,6 +695,9 @@
     updateVolumeDisplay();
     if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
       window.WordTapAPI.saveConfig({ volume: userVolume });
+    }
+    if (typeof saveCloudSettings === 'function') {
+      saveCloudSettings({ volume: userVolume });
     }
   }
 
@@ -1095,7 +1105,10 @@
         updateAccountUI();
         hideLoginGate();
         checkConnectionHealth(true).then((state) => {
-          if (state === 'connected') pushPendingOfflineWords();
+          if (state === 'connected') {
+            syncSettingsFromCloud(true);
+            pushPendingOfflineWords();
+          }
         });
       } else {
         updateAccountUI();
@@ -1294,15 +1307,19 @@
 
   function saveSubtitleAppearance(showNotification = false) {
     applySubtitleAppearance();
+    const subPatch = {
+      subCustomSize,
+      subFontFamily,
+      subTextColor,
+      subBgStyle,
+      subFontWeight,
+      subBottomOffset
+    };
     if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
-      window.WordTapAPI.saveConfig({
-        subCustomSize,
-        subFontFamily,
-        subTextColor,
-        subBgStyle,
-        subFontWeight,
-        subBottomOffset
-      });
+      window.WordTapAPI.saveConfig(subPatch);
+    }
+    if (typeof saveCloudSettings === 'function') {
+      saveCloudSettings(subPatch);
     }
     if (showNotification) {
       const fontName = getFontDisplayName(subFontFamily);
@@ -2200,8 +2217,165 @@
     showToast('Signed out');
   }
 
+  let pendingCloudSettingsPatch = {};
+  let cloudSettingsDebounceTimer = null;
+  let lastCloudSettingsSyncAt = 0;
+
+  function saveCloudSettings(patch) {
+    if (!patch || typeof patch !== 'object') return;
+    if (!userSession || !userSession.access_token || systemSuspended) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
+    Object.assign(pendingCloudSettingsPatch, patch);
+    if (cloudSettingsDebounceTimer) clearTimeout(cloudSettingsDebounceTimer);
+    cloudSettingsDebounceTimer = setTimeout(async () => {
+      cloudSettingsDebounceTimer = null;
+      const toSend = { ...pendingCloudSettingsPatch };
+      pendingCloudSettingsPatch = {};
+      if (Object.keys(toSend).length === 0) return;
+      try {
+        let token = await getValidToken();
+        if (!token) return;
+        let res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/upsert_user_settings`, {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ p_settings: toSend })
+        });
+        if (res.status === 401) {
+          token = await getValidToken(true);
+          if (token) {
+            await fetch(`${SUPABASE_URL}/rest/v1/rpc/upsert_user_settings`, {
+              method: 'POST',
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ p_settings: toSend })
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Cloud settings save warning:', err);
+      }
+    }, 400);
+  }
+
+  async function syncSettingsFromCloud(force = false) {
+    if (!userSession || !userSession.access_token || systemSuspended) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    const nowMs = Date.now();
+    if (!force && nowMs - lastCloudSettingsSyncAt < 12000) return;
+    lastCloudSettingsSyncAt = nowMs;
+
+    try {
+      let token = await getValidToken();
+      if (!token) return;
+      let res = await fetch(`${SUPABASE_URL}/rest/v1/user_settings?select=settings`, {
+        method: 'GET',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (res.status === 401) {
+        token = await getValidToken(true);
+        if (!token) return;
+        res = await fetch(`${SUPABASE_URL}/rest/v1/user_settings?select=settings`, {
+          method: 'GET',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${token}`
+          }
+        });
+      }
+      if (!res.ok) return;
+      const rows = await res.json().catch(() => []);
+      const cloud = (Array.isArray(rows) && rows[0] && rows[0].settings && typeof rows[0].settings === 'object')
+        ? rows[0].settings
+        : null;
+      if (!cloud) return;
+
+      const localPatch = {};
+      let subChanged = false;
+      let optsChanged = false;
+
+      if (typeof cloud.subCustomSize === 'number' && cloud.subCustomSize >= 14 && cloud.subCustomSize <= 72 && cloud.subCustomSize !== subCustomSize) {
+        subCustomSize = cloud.subCustomSize;
+        localPatch.subCustomSize = subCustomSize;
+        subChanged = true;
+      }
+      if (typeof cloud.subFontFamily === 'string' && cloud.subFontFamily && cloud.subFontFamily !== subFontFamily) {
+        subFontFamily = cloud.subFontFamily;
+        localPatch.subFontFamily = subFontFamily;
+        subChanged = true;
+      }
+      if (typeof cloud.subTextColor === 'string' && cloud.subTextColor && cloud.subTextColor !== subTextColor) {
+        subTextColor = cloud.subTextColor;
+        localPatch.subTextColor = subTextColor;
+        subChanged = true;
+      }
+      if (typeof cloud.subBgStyle === 'string' && ['none', 'translucent', 'solid'].includes(cloud.subBgStyle) && cloud.subBgStyle !== subBgStyle) {
+        subBgStyle = cloud.subBgStyle;
+        localPatch.subBgStyle = subBgStyle;
+        subChanged = true;
+      }
+      if (typeof cloud.subFontWeight === 'string' && ['400', '700'].includes(cloud.subFontWeight) && cloud.subFontWeight !== subFontWeight) {
+        subFontWeight = cloud.subFontWeight;
+        localPatch.subFontWeight = subFontWeight;
+        subChanged = true;
+      }
+      if (typeof cloud.subBottomOffset === 'number' && cloud.subBottomOffset !== subBottomOffset) {
+        subBottomOffset = cloud.subBottomOffset;
+        localPatch.subBottomOffset = subBottomOffset;
+        subChanged = true;
+      }
+      if (typeof cloud.translateSaveMode === 'string' && ['manual', 'subtitles_only', 'auto'].includes(cloud.translateSaveMode) && cloud.translateSaveMode !== translateSaveMode) {
+        translateSaveMode = cloud.translateSaveMode;
+        localPatch.translateSaveMode = translateSaveMode;
+        optsChanged = true;
+      }
+      if (typeof cloud.targetLang === 'string' && cloud.targetLang && cloud.targetLang !== targetLang) {
+        targetLang = cloud.targetLang;
+        localPatch.targetLang = targetLang;
+        optsChanged = true;
+      }
+      if (typeof cloud.pauseOnClick === 'boolean' && cloud.pauseOnClick !== pauseOnClick) {
+        pauseOnClick = cloud.pauseOnClick;
+        localPatch.pauseOnClick = pauseOnClick;
+        optsChanged = true;
+      }
+      if (typeof cloud.theme === 'string' && ['light', 'dark', 'system'].includes(cloud.theme) && cloud.theme !== currentTheme) {
+        applyTheme(cloud.theme, false);
+      }
+      if (typeof cloud.volume === 'number' && cloud.volume > 0.05 && cloud.volume <= 1.5 && Math.abs(cloud.volume - userVolume) > 0.01) {
+        userVolume = cloud.volume;
+        localPatch.volume = userVolume;
+        updateVolumeDisplay();
+      }
+
+      if (subChanged) {
+        applySubtitleAppearance();
+        syncSubStyleModalUI();
+      }
+      if (optsChanged) {
+        syncOptionsUI();
+      }
+      if (Object.keys(localPatch).length > 0 && window.WordTapAPI && window.WordTapAPI.saveConfig) {
+        window.WordTapAPI.saveConfig(localPatch);
+      }
+    } catch (err) {
+      console.warn('Cloud settings pull warning:', err);
+    }
+  }
+
   async function pushPendingOfflineWords() {
     if (!userSession || systemSuspended) return;
+    syncSettingsFromCloud(false);
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       connectionIssue = 'offline';
       updateAccountUI();
@@ -3666,6 +3840,7 @@
       translateSaveMode = mode;
       syncOptionsUI();
       window.WordTapAPI.saveConfig({ translateSaveMode: mode });
+      saveCloudSettings({ translateSaveMode: mode });
     }
 
     if (btnModeManual) btnModeManual.addEventListener('click', () => setSaveMode('manual'));
@@ -3676,6 +3851,7 @@
       optTargetLang.addEventListener('change', (e) => {
         targetLang = e.target.value;
         window.WordTapAPI.saveConfig({ targetLang });
+        saveCloudSettings({ targetLang });
       });
     }
 
@@ -3683,6 +3859,7 @@
       chkPauseOnClick.addEventListener('change', (e) => {
         pauseOnClick = e.target.checked;
         window.WordTapAPI.saveConfig({ pauseOnClick });
+        saveCloudSettings({ pauseOnClick });
       });
     }
 
@@ -3742,12 +3919,14 @@
       updateAccountUI();
       const state = await checkConnectionHealth(true);
       if (state === 'connected') {
+        syncSettingsFromCloud(true);
         pushPendingOfflineWords();
       }
     });
     window.addEventListener('focus', () => {
       if (userSession && !systemSuspended) {
         checkConnectionHealth(false);
+        syncSettingsFromCloud(false);
       }
     });
     if (window.WordTapAPI && window.WordTapAPI.onPowerSuspendChange) {
@@ -3765,6 +3944,7 @@
     setInterval(() => {
       if (userSession && !systemSuspended && navigator.onLine !== false) {
         checkConnectionHealth(false);
+        syncSettingsFromCloud(false);
       }
     }, 30000);
 

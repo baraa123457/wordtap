@@ -649,6 +649,7 @@ async function finalizeSignIn(data) {
   try {
     await flush();
     await pullCloudWords();
+    await pullCloudSettings();
   } catch {
     // Offline right after signing in: the queue is kept and retried later.
   }
@@ -1010,11 +1011,70 @@ async function isWordSavedInDb(rawText) {
   return false;
 }
 
+let applyingCloudSettings = false;
+
+async function pullCloudSettings() {
+  try {
+    const token = await getToken();
+    if (!token || !configured()) return;
+    const rows = await request("/rest/v1/user_settings?select=settings", { token });
+    const cloud = Array.isArray(rows) && rows[0] && rows[0].settings && typeof rows[0].settings === "object"
+      ? rows[0].settings
+      : null;
+    if (!cloud) return;
+
+    const patch = {};
+    if (typeof cloud.targetLang === "string" && cloud.targetLang) {
+      patch.targetLang = cloud.targetLang;
+    }
+    if (typeof cloud.translateSaveMode === "string" && ["manual", "subtitles_only", "auto"].includes(cloud.translateSaveMode)) {
+      patch.translateSaveMode = cloud.translateSaveMode;
+      patch.saveWords = cloud.translateSaveMode === "auto";
+    }
+    if (Object.keys(patch).length > 0) {
+      applyingCloudSettings = true;
+      await chrome.storage.sync.set(patch).catch(() => {});
+      setTimeout(() => { applyingCloudSettings = false; }, 150);
+    }
+  } catch (_) {}
+}
+
+async function pushCloudSettings(patch) {
+  try {
+    if (!patch || typeof patch !== "object" || Object.keys(patch).length === 0) return;
+    const token = await getToken();
+    if (!token || !configured()) return;
+    await request("/rest/v1/rpc/upsert_user_settings", {
+      token,
+      body: { p_settings: patch },
+    });
+  } catch (_) {}
+}
+
+if (chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "sync" || applyingCloudSettings) return;
+    const patch = {};
+    if (changes.targetLang && typeof changes.targetLang.newValue === "string") {
+      patch.targetLang = changes.targetLang.newValue;
+    }
+    if (changes.translateSaveMode && typeof changes.translateSaveMode.newValue === "string") {
+      patch.translateSaveMode = changes.translateSaveMode.newValue;
+    } else if (changes.saveWords && typeof changes.saveWords.newValue === "boolean") {
+      patch.translateSaveMode = changes.saveWords.newValue ? "auto" : "manual";
+    }
+    if (Object.keys(patch).length > 0) {
+      void pushCloudSettings(patch);
+    }
+  });
+}
+
 async function syncNow(forceAll = true) {
   try {
     await flush(forceAll);
     if ((await pendingTotal()) > 0) await flush();
     await pullCloudWords();
+    await pullCloudSettings();
     return { ok: true, ...(await status()) };
   } catch (e) {
     return { ok: false, error: e && e.message ? e.message : "Could not reach WordTap.", ...(await status()) };

@@ -8,6 +8,7 @@ import { fetchStats, fetchWords, setDailyGoal, deleteAccount } from "@/lib/api";
 import { exportWordsToCsv, downloadCsvFile } from "@/lib/export";
 import { exportWordsToAnki, downloadAnkiFile } from "@/lib/anki";
 import { getStoredSettings, saveStoredSettings, type UserSettings, type PracticeMode } from "@/lib/settings";
+import { fetchCloudSettings, saveCloudSettings, type CloudUserSettings } from "@/lib/settings-sync";
 import { canSpeak, speak } from "@/lib/speech";
 import { DownloadIcon, SpeakerIcon } from "@/components/Icons";
 import { SegmentedControl } from "@/components/SegmentedControl";
@@ -50,6 +51,14 @@ export default function SettingsPage() {
   // Data export state
   const [exportBusy, setExportBusy] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
+
+  // Synced Desktop Player Subtitle Appearance state
+  const [subSize, setSubSize] = useState<number>(28);
+  const [subFont, setSubFont] = useState<string>('Arial, "Trebuchet MS", sans-serif');
+  const [subColor, setSubColor] = useState<string>("#FFFFFF");
+  const [subBg, setSubBg] = useState<"none" | "translucent" | "solid">("none");
+  const [subWeight, setSubWeight] = useState<"400" | "700">("700");
+  const [subSyncMessage, setSubSyncMessage] = useState<string | null>(null);
 
   async function handleExportCsv() {
     setExportBusy(true);
@@ -143,9 +152,52 @@ export default function SettingsPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [showDeleteModal, deleteBusy]);
 
+  useEffect(() => {
+    if (authState.status !== "signed-in") return;
+    fetchCloudSettings().then((cloud) => {
+      if (!cloud) return;
+      const localPatch: Partial<UserSettings> = {};
+      if (cloud.theme) localPatch.theme = cloud.theme;
+      if (cloud.targetLang) localPatch.targetLang = cloud.targetLang;
+      if (cloud.translateSaveMode) localPatch.translateSaveMode = cloud.translateSaveMode;
+      if (Object.keys(localPatch).length > 0) {
+        const updated = saveStoredSettings(localPatch);
+        setSettings(updated);
+      }
+      if (typeof cloud.subCustomSize === "number" && cloud.subCustomSize >= 14 && cloud.subCustomSize <= 72) {
+        setSubSize(cloud.subCustomSize);
+      }
+      if (cloud.subFontFamily) setSubFont(cloud.subFontFamily);
+      if (cloud.subTextColor) setSubColor(cloud.subTextColor);
+      if (cloud.subBgStyle) setSubBg(cloud.subBgStyle);
+      if (cloud.subFontWeight) setSubWeight(cloud.subFontWeight);
+    });
+  }, [authState.status]);
+
   function update(partial: Partial<UserSettings>) {
     const updated = saveStoredSettings(partial);
     setSettings(updated);
+    const cloudPatch: CloudUserSettings = {};
+    if (partial.theme !== undefined) cloudPatch.theme = partial.theme;
+    if (partial.targetLang !== undefined) cloudPatch.targetLang = partial.targetLang;
+    if (partial.translateSaveMode !== undefined) cloudPatch.translateSaveMode = partial.translateSaveMode;
+    if (Object.keys(cloudPatch).length > 0) {
+      void saveCloudSettings(cloudPatch);
+    }
+  }
+
+  function updateSubtitlePref(patch: CloudUserSettings) {
+    if (typeof patch.subCustomSize === "number") setSubSize(patch.subCustomSize);
+    if (patch.subFontFamily !== undefined) setSubFont(patch.subFontFamily);
+    if (patch.subTextColor !== undefined) setSubColor(patch.subTextColor);
+    if (patch.subBgStyle !== undefined) setSubBg(patch.subBgStyle);
+    if (patch.subFontWeight !== undefined) setSubWeight(patch.subFontWeight);
+    void saveCloudSettings(patch).then((ok) => {
+      if (ok) {
+        setSubSyncMessage("Saved to your account across all devices.");
+        setTimeout(() => setSubSyncMessage(null), 2500);
+      }
+    });
   }
 
   async function handleGoalChange(g: number) {
@@ -318,6 +370,132 @@ export default function SettingsPage() {
               </button>
             );
           })}
+        </div>
+      </section>
+
+      {/* Synced Desktop Player Subtitle Appearance */}
+      <section className="apple-card p-6 grid gap-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-bold text-ink">Desktop Player Subtitle Style</h2>
+            <p className="text-xs sm:text-sm text-muted">
+              Synced to your WordTap account — changes apply across your Windows and Mac players.
+            </p>
+          </div>
+          {subSyncMessage && (
+            <span className="text-xs font-semibold text-ok">{subSyncMessage}</span>
+          )}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between">
+              <label htmlFor="sync-sub-size" className="text-sm font-semibold text-ink">
+                Font Size
+              </label>
+              <span className="text-xs font-mono font-bold text-subtitle">{subSize} px</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                id="sync-sub-size"
+                type="range"
+                min={14}
+                max={72}
+                value={subSize}
+                onChange={(e) => {
+                  const val = Math.max(14, Math.min(72, Number(e.target.value) || 28));
+                  updateSubtitlePref({ subCustomSize: val });
+                }}
+                className="flex-1 accent-[#facc3b] cursor-pointer"
+              />
+              <input
+                type="number"
+                min={14}
+                max={72}
+                value={subSize}
+                aria-label="Subtitle font size in pixels"
+                onChange={(e) => {
+                  const val = Math.max(14, Math.min(72, Number(e.target.value) || 28));
+                  updateSubtitlePref({ subCustomSize: val });
+                }}
+                className="w-16 rounded-xl border border-line bg-surface px-2.5 py-1.5 text-xs font-mono text-ink text-center"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <span className="text-sm font-semibold text-ink">
+              Font Family
+            </span>
+            <SelectMenu
+              ariaLabel="Subtitle Font Family"
+              value={subFont}
+              onChange={(val) => updateSubtitlePref({ subFontFamily: val })}
+              options={[
+                { value: 'Arial, "Trebuchet MS", sans-serif', label: "Arial (Classic Cinema)" },
+                { value: '"Readex Pro", -apple-system, BlinkMacSystemFont, sans-serif', label: "Readex Pro (Modern)" },
+                { value: 'Verdana, Geneva, sans-serif', label: "Verdana (Wide & Clear)" },
+                { value: 'Georgia, "Times New Roman", serif', label: "Georgia (Editorial Serif)" },
+                { value: '"SF Mono", Consolas, monospace', label: "Monospace" },
+              ]}
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <span className="text-sm font-semibold text-ink">Text Color</span>
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { color: "#FFFFFF", label: "White" },
+                { color: "#FACC3B", label: "Subtitle Yellow" },
+                { color: "#7DD3FC", label: "Sky Blue" },
+                { color: "#86EFAC", label: "Mint Green" },
+              ].map((c) => (
+                <button
+                  key={c.color}
+                  type="button"
+                  title={c.label}
+                  onClick={() => updateSubtitlePref({ subTextColor: c.color })}
+                  className={`w-8 h-8 rounded-full border-2 cursor-pointer transition-transform ${
+                    subColor.toLowerCase() === c.color.toLowerCase()
+                      ? "border-subtitle scale-110 ring-2 ring-subtitle/40"
+                      : "border-line hover:scale-105"
+                  }`}
+                  style={{ backgroundColor: c.color }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <span className="text-sm font-semibold text-ink">Background &amp; Weight</span>
+            <div className="flex flex-wrap gap-2">
+              {(["none", "translucent", "solid"] as const).map((bg) => (
+                <button
+                  key={bg}
+                  type="button"
+                  onClick={() => updateSubtitlePref({ subBgStyle: bg })}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-semibold capitalize cursor-pointer transition-colors ${
+                    subBg === bg
+                      ? "border-subtitle bg-subtitle/15 text-ink"
+                      : "border-line bg-surface text-muted hover:text-ink"
+                  }`}
+                >
+                  {bg}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => updateSubtitlePref({ subFontWeight: subWeight === "700" ? "400" : "700" })}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold cursor-pointer transition-colors ${
+                  subWeight === "700"
+                    ? "border-subtitle bg-subtitle/15 text-ink"
+                    : "border-line bg-surface text-muted hover:text-ink"
+                }`}
+              >
+                {subWeight === "700" ? "Bold (700)" : "Normal (400)"}
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
