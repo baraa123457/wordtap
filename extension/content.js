@@ -739,13 +739,38 @@
     }
   }
 
-  // ---------- Word under the cursor ----------
-  function wordAtPoint(x, y) {
-    const range = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
-    if (!range || range.startContainer.nodeType !== Node.TEXT_NODE) return null;
+  // ---------- Subtitle Pointer-Events & Selectability Safeguard ----------
+  // Ensures subtitle cue segments remain clickable/selectable across macOS & Windows browsers
+  // without blocking normal video clicks on full-screen overlay wrappers.
+  try {
+    const subStyle = document.createElement("style");
+    subStyle.id = "wordtap-subtitle-pointer-style";
+    subStyle.textContent = `
+      .ytp-caption-segment,
+      .caption-visual-line,
+      .player-timedtext-text-container,
+      .player-timedtext-text-container span,
+      .atvwebplayersdk-captions-text,
+      .dss-subtitle-renderer-cue,
+      [data-purpose="captions-cue-text"],
+      [class*="subtitles-cue"],
+      [class*="subtitles-line"],
+      .vjs-text-track-cue,
+      .vjs-text-track-cue div {
+        pointer-events: auto !important;
+        user-select: text !important;
+        -webkit-user-select: text !important;
+        cursor: pointer !important;
+      }
+    `;
+    (document.head || document.documentElement).appendChild(subStyle);
+  } catch (_) {}
 
-    const text = range.startContainer.textContent;
-    let start = range.startOffset;
+  // ---------- Word under the cursor ----------
+  function extractWordFromTextNode(textNode, offset) {
+    const text = textNode.textContent || "";
+    if (!text) return null;
+    let start = Math.max(0, Math.min(offset, text.length));
     let end = start;
     while (start > 0 && WORD_CHAR.test(text[start - 1])) start--;
     while (end < text.length && WORD_CHAR.test(text[end])) end++;
@@ -753,14 +778,123 @@
     return word || null;
   }
 
+  function findWordInElementByRects(rootEl, x, y) {
+    if (!rootEl) return null;
+    const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    let bestWord = null;
+    let bestDist = Infinity;
+    let node;
+
+    while ((node = walker.nextNode())) {
+      const text = node.textContent || "";
+      if (!text.trim()) continue;
+      let i = 0;
+      while (i < text.length) {
+        while (i < text.length && !WORD_CHAR.test(text[i])) i++;
+        if (i >= text.length) break;
+        const start = i;
+        while (i < text.length && WORD_CHAR.test(text[i])) i++;
+        const end = i;
+        const candidate = text.slice(start, end).replace(/^[-'’]+|[-'’]+$/g, "");
+        if (!candidate) continue;
+
+        try {
+          range.setStart(node, start);
+          range.setEnd(node, end);
+          const rects = range.getClientRects();
+          for (const r of rects) {
+            if (x >= r.left - 3 && x <= r.right + 3 && y >= r.top - 3 && y <= r.bottom + 3) {
+              return candidate;
+            }
+            const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+            const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
+            const dist = dx * dx + dy * dy;
+            if (dist < bestDist) {
+              bestDist = dist;
+              bestWord = candidate;
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
+    return bestDist <= 18 * 18 ? bestWord : null;
+  }
+
+  function wordAtPoint(x, y, targetEl) {
+    let node = null;
+    let offset = 0;
+
+    if (document.caretRangeFromPoint) {
+      const range = document.caretRangeFromPoint(x, y);
+      if (range) {
+        node = range.startContainer;
+        offset = range.startOffset;
+      }
+    } else if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(x, y);
+      if (pos) {
+        node = pos.offsetNode;
+        offset = pos.offset;
+      }
+    }
+
+    if (node && node.nodeType === Node.TEXT_NODE) {
+      const direct = extractWordFromTextNode(node, offset);
+      if (direct) return direct;
+    }
+
+    // Fallback for macOS / Retina / element-node caretRangeFromPoint / user-select:none
+    const scope =
+      (node && node.nodeType === Node.ELEMENT_NODE ? node : null) ||
+      targetEl ||
+      null;
+    if (scope) {
+      const byRect = findWordInElementByRects(scope, x, y);
+      if (byRect) return byRect;
+    }
+    if (targetEl && targetEl !== scope) {
+      return findWordInElementByRects(targetEl, x, y);
+    }
+    return null;
+  }
+
+  function findSubtitleTarget(e) {
+    if (e.target && e.target.closest) {
+      const direct = e.target.closest(SUBTITLE_SELECTOR);
+      if (direct) return direct;
+    }
+    if (typeof e.composedPath === "function") {
+      for (const el of e.composedPath()) {
+        if (el && el.nodeType === Node.ELEMENT_NODE && el.matches && el.matches(SUBTITLE_SELECTOR)) {
+          return el;
+        }
+      }
+    }
+    if (typeof document.elementsFromPoint === "function") {
+      const stack = document.elementsFromPoint(e.clientX, e.clientY);
+      for (const el of stack) {
+        if (!el || el === host) continue;
+        const match = el.closest ? el.closest(SUBTITLE_SELECTOR) : null;
+        if (match && (match.textContent || "").trim().length > 0) {
+          return match;
+        }
+      }
+    }
+    return null;
+  }
+
   function lineAtTarget(el) {
-    const cont = el.closest(SUBTITLE_SELECTOR);
+    const cont = el && el.closest ? el.closest(SUBTITLE_SELECTOR) : el;
     if (!cont) return null;
     const seg =
-      el.closest(".caption-visual-line") ||
-      el.closest(".player-timedtext-text-container") ||
-      el.closest('[class*="subtitles-cue"]') ||
-      el.closest('[class*="subtitles-line"]') ||
+      (el.closest && (
+        el.closest(".caption-visual-line") ||
+        el.closest(".player-timedtext-text-container") ||
+        el.closest('[class*="subtitles-cue"]') ||
+        el.closest('[class*="subtitles-line"]')
+      )) ||
       cont;
     return (seg.innerText || seg.textContent || "").replace(/\s+/g, " ").trim();
   }
@@ -773,7 +907,7 @@
     "pointerdown",
     (e) => {
       if (!settings.enabled) return;
-      if (e.target.closest && e.target.closest(SUBTITLE_SELECTOR)) {
+      if (findSubtitleTarget(e)) {
         const v = findActiveVideo();
         wasPlaying = !!(v && !v.paused);
       }
@@ -1027,7 +1161,7 @@
       if (!settings.enabled) return;
       if (e.composedPath().includes(host)) return; // clicks inside our tooltip
 
-      const inSubs = e.target.closest && e.target.closest(SUBTITLE_SELECTOR);
+      const inSubs = findSubtitleTarget(e);
       if (!inSubs) {
         if (tip.style.display === "block") hideTip();
         return;
@@ -1037,8 +1171,8 @@
       e.preventDefault();
       e.stopImmediatePropagation();
 
-      const fullLine = lineAtTarget(e.target) || "";
-      const text = e.shiftKey ? fullLine : wordAtPoint(e.clientX, e.clientY);
+      const fullLine = lineAtTarget(inSubs) || "";
+      const text = e.shiftKey ? fullLine : wordAtPoint(e.clientX, e.clientY, inSubs);
       if (!text) {
         resumeIfNeeded();
         return;
