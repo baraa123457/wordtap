@@ -375,32 +375,78 @@
     { label: 'Fill Window', value: 'fill' }
   ];
   let currentAspectIndex = 0;
+  let currentAspectVal = 'auto';
 
-  function setAspectRatio(aspectVal, label, showMessage = true) {
+  function parseAspectRatioNumber(aspectVal) {
+    if (!aspectVal || aspectVal === 'auto' || aspectVal === 'fill') return null;
+    const parts = String(aspectVal).split('/');
+    if (parts.length !== 2) return null;
+    const w = parseFloat(parts[0]);
+    const h = parseFloat(parts[1]);
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+    return w / h;
+  }
+
+  function applyAspectRatioLayout() {
     if (!video) return;
     video.style.backgroundColor = '#000000';
-    if (aspectVal === 'auto') {
+    if (currentAspectVal === 'auto') {
       video.style.aspectRatio = 'auto';
       video.style.width = '100%';
       video.style.height = '100%';
       video.style.maxWidth = '100%';
       video.style.maxHeight = '100%';
       video.style.objectFit = 'contain';
-    } else if (aspectVal === 'fill') {
+      return;
+    }
+    if (currentAspectVal === 'fill') {
       video.style.aspectRatio = 'auto';
       video.style.width = '100%';
       video.style.height = '100%';
       video.style.maxWidth = '100%';
       video.style.maxHeight = '100%';
       video.style.objectFit = 'cover';
-    } else {
-      video.style.aspectRatio = aspectVal;
-      video.style.width = 'auto';
-      video.style.height = 'auto';
+      return;
+    }
+
+    const ratio = parseAspectRatioNumber(currentAspectVal);
+    const wrap = video.parentElement;
+    if (ratio && wrap && wrap.clientWidth > 0 && wrap.clientHeight > 0) {
+      const wrapW = wrap.clientWidth;
+      const wrapH = wrap.clientHeight;
+      if (wrapW / wrapH > ratio) {
+        video.style.height = `${wrapH}px`;
+        video.style.width = `${Math.round(wrapH * ratio)}px`;
+      } else {
+        video.style.width = `${wrapW}px`;
+        video.style.height = `${Math.round(wrapW / ratio)}px`;
+      }
+      video.style.aspectRatio = 'auto';
       video.style.maxWidth = '100%';
       video.style.maxHeight = '100%';
       video.style.objectFit = 'fill';
+    } else {
+      video.style.aspectRatio = currentAspectVal;
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.maxWidth = '100%';
+      video.style.maxHeight = '100%';
+      video.style.objectFit = 'contain';
     }
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', applyAspectRatioLayout);
+    if (typeof ResizeObserver !== 'undefined' && video && video.parentElement) {
+      const ro = new ResizeObserver(() => applyAspectRatioLayout());
+      ro.observe(video.parentElement);
+    }
+  }
+
+  function setAspectRatio(aspectVal, label, showMessage = true) {
+    if (!video) return;
+    currentAspectVal = aspectVal || 'auto';
+    applyAspectRatioLayout();
     const idx = aspectRatios.findIndex(a => a.value === aspectVal);
     if (idx !== -1) currentAspectIndex = idx;
     if (showMessage) {
@@ -2594,6 +2640,8 @@
       iconFsEnter.style.display = 'block';
       iconFsExit.style.display = 'none';
     }
+    requestAnimationFrame(applyAspectRatioLayout);
+    setTimeout(applyAspectRatioLayout, 150);
   }
 
   async function toggleFullscreen() {
