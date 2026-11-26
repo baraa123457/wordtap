@@ -798,9 +798,12 @@ export default function DecksPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-2 sm:p-4 backdrop-blur-sm overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPracticingDeck(null);
+          }}
         >
-          <div className="relative w-full max-w-4xl max-h-[96vh] overflow-y-auto">
+          <div className="relative w-full max-w-4xl max-h-[94vh] overflow-y-auto rounded-3xl border border-line bg-bg shadow-2xl">
             <InteractiveLearningSession
               words={wordsForPractice}
               onReload={() => setPracticingDeck(null)}
