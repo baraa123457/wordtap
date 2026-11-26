@@ -23,10 +23,16 @@ function resolveFfmpegPath() {
     if (resolved.includes('app.asar')) {
       const unpacked = resolved.replace('app.asar', 'app.asar.unpacked');
       if (fs.existsSync(unpacked)) {
+        if (process.platform !== 'win32') {
+          try { fs.chmodSync(unpacked, 0o755); } catch {}
+        }
         return unpacked;
       }
     }
     if (fs.existsSync(resolved)) {
+      if (process.platform !== 'win32') {
+        try { fs.chmodSync(resolved, 0o755); } catch {}
+      }
       return resolved;
     }
   }
@@ -62,6 +68,9 @@ function resolveFfmpegPath() {
   for (const c of candidates) {
     try {
       if (c && fs.existsSync(c)) {
+        if (process.platform !== 'win32') {
+          try { fs.chmodSync(c, 0o755); } catch {}
+        }
         return c;
       }
     } catch (_) {}

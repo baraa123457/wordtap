@@ -1,6 +1,6 @@
 {
   "name": "wordtap-player",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "WordTap Desktop Video Player with Interactive Subtitles and Word Sync",
   "main": "main.js",
   "scripts": {
@@ -31,6 +31,9 @@
     "directories": {
       "output": "dist-release"
     },
+    "asarUnpack": [
+      "node_modules/@ffmpeg-installer/**"
+    ],
     "files": [
       "main.js",
       "preload.js",

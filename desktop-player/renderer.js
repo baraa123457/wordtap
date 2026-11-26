@@ -503,8 +503,16 @@
   window.addEventListener('pointerdown', () => resumeAudioContext(), { passive: true });
   window.addEventListener('keydown', () => resumeAudioContext(), { passive: true });
 
-  function ensureAudioNodes() {
+  const isMacPlatform = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
+
+  function ensureAudioNodes(forceCreate = false) {
     try {
+      // On macOS CoreAudio, avoid hijacking <video>/<audio> through Web Audio API
+      // unless the user explicitly boosts volume > 100% (or nodes were already created).
+      // This prevents AudioContext suspension / CoreAudio routing issues from muting playback.
+      if (isMacPlatform && !forceCreate && !audioContext && userVolume <= 1.0) {
+        return;
+      }
       if (!audioContext) {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (AudioCtx) {
@@ -648,10 +656,10 @@
   }
 
   function adjustVolume(delta) {
-    ensureAudioNodes();
-    resumeAudioContext();
     userVolume = Math.max(0, Math.min(1.5, Math.round((userVolume + delta) * 100) / 100));
     if (userVolume > 0) userMuted = false;
+    ensureAudioNodes(userVolume > 1.0);
+    resumeAudioContext();
     updateVolumeDisplay();
     if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
       window.WordTapAPI.saveConfig({ volume: userVolume });
@@ -660,10 +668,10 @@
   }
 
   function setVolume(val) {
-    ensureAudioNodes();
-    resumeAudioContext();
     userVolume = Math.max(0, Math.min(1.5, Math.round(val * 100) / 100));
     if (userVolume > 0) userMuted = false;
+    ensureAudioNodes(userVolume > 1.0);
+    resumeAudioContext();
     updateVolumeDisplay();
     if (window.WordTapAPI && window.WordTapAPI.saveConfig) {
       window.WordTapAPI.saveConfig({ volume: userVolume });
