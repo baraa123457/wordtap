@@ -1480,20 +1480,91 @@
     showToast(`Subtitles: ${cues.length} lines loaded`);
   }
 
-  // Interactive Subtitle Rendering on Screen
+  // Interactive Subtitle Rendering on Screen + Ctrl/Cmd-Hold Multi-Word Selection
+  let multiSelectIndices = [];
+  let multiSelectCue = null;
+  let isMultiDragging = false;
+  let multiAnchorIdx = -1;
+  let suppressNextMultiClick = false;
+
+  function applyMultiSelectHighlight() {
+    if (!subtitleContainer) return;
+    const selectedSet = new Set(multiSelectIndices);
+    subtitleContainer.querySelectorAll('.wt-word').forEach(el => {
+      const idx = parseInt(el.dataset.idx, 10);
+      el.classList.toggle('selected-multi', selectedSet.has(idx));
+    });
+  }
+
+  function commitMultiWordSelection() {
+    if (!multiSelectIndices.length || !multiSelectCue || !subtitleContainer) {
+      multiSelectIndices = [];
+      multiSelectCue = null;
+      isMultiDragging = false;
+      multiAnchorIdx = -1;
+      applyMultiSelectHighlight();
+      return;
+    }
+
+    const sorted = Array.from(new Set(multiSelectIndices)).sort((a, b) => a - b);
+    const wordEls = Array.from(subtitleContainer.querySelectorAll('.wt-word'));
+    const chosenEls = sorted.map(i => wordEls[i]).filter(Boolean);
+    const cueToUse = multiSelectCue;
+
+    multiSelectIndices = [];
+    multiSelectCue = null;
+    isMultiDragging = false;
+    multiAnchorIdx = -1;
+    applyMultiSelectHighlight();
+
+    if (chosenEls.length === 0) return;
+    const phrase = chosenEls.map(el => el.dataset.raw || el.textContent || '').join(' ').replace(/\s+/g, ' ').trim();
+    if (!phrase) return;
+    const anchorEl = chosenEls[Math.floor(chosenEls.length / 2)] || chosenEls[0];
+    onWordClick(anchorEl, cueToUse, chosenEls.length > 1 ? phrase : null);
+  }
+
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'Control' || e.key === 'Meta') {
+      if (multiSelectIndices.length > 0) {
+        commitMultiWordSelection();
+      }
+      isMultiDragging = false;
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isMultiDragging) {
+      isMultiDragging = false;
+      suppressNextMultiClick = true;
+      setTimeout(() => { suppressNextMultiClick = false; }, 80);
+    }
+  });
+
+  window.addEventListener('blur', () => {
+    if (multiSelectIndices.length > 0) {
+      commitMultiWordSelection();
+    }
+    isMultiDragging = false;
+  });
+
   function renderSubtitle(cue) {
     if (!subtitlesVisible || !cue) {
       subtitleContainer.innerHTML = '';
+      multiSelectIndices = [];
+      multiSelectCue = null;
       return;
     }
 
     const tokens = cue.text.match(/([a-zA-Z0-9]+(?:'[a-zA-Z0-9]+)?|[^\s\w]+|\s+)/g) || [cue.text];
     
     let html = '<div class="subtitle-line">';
+    let wordIdx = 0;
     for (const tok of tokens) {
       if (/^[a-zA-Z0-9]+(?:'[a-zA-Z0-9]+)?$/.test(tok)) {
         const cleanWord = tok.toLowerCase();
-        html += `<span class="wt-word" data-word="${cleanWord}" data-raw="${tok}">${tok}</span>`;
+        html += `<span class="wt-word" data-idx="${wordIdx}" data-word="${cleanWord}" data-raw="${tok}">${tok}</span>`;
+        wordIdx++;
       } else {
         html += `<span class="wt-punct">${tok}</span>`;
       }
@@ -1504,8 +1575,52 @@
 
     const wordElements = subtitleContainer.querySelectorAll('.wt-word');
     wordElements.forEach(el => {
+      const idx = parseInt(el.dataset.idx, 10);
+
+      el.addEventListener('mousedown', (e) => {
+        if (!(e.ctrlKey || e.metaKey) || e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (multiSelectCue !== cue) {
+          multiSelectIndices = [];
+          multiSelectCue = cue;
+        }
+        isMultiDragging = true;
+        multiAnchorIdx = idx;
+        if (!multiSelectIndices.includes(idx)) {
+          multiSelectIndices.push(idx);
+        }
+        applyMultiSelectHighlight();
+      });
+
+      el.addEventListener('mouseenter', (e) => {
+        if (!isMultiDragging || !(e.ctrlKey || e.metaKey) || multiAnchorIdx < 0) return;
+        const start = Math.min(multiAnchorIdx, idx);
+        const end = Math.max(multiAnchorIdx, idx);
+        const range = [];
+        for (let i = start; i <= end; i++) range.push(i);
+        multiSelectIndices = range;
+        multiSelectCue = cue;
+        applyMultiSelectHighlight();
+      });
+
       el.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (suppressNextMultiClick) {
+          suppressNextMultiClick = false;
+          return;
+        }
+        if (e.ctrlKey || e.metaKey) {
+          if (multiSelectCue !== cue) {
+            multiSelectIndices = [];
+            multiSelectCue = cue;
+          }
+          if (!multiSelectIndices.includes(idx)) {
+            multiSelectIndices.push(idx);
+          }
+          applyMultiSelectHighlight();
+          return;
+        }
         onWordClick(el, cue);
       });
     });
@@ -1585,7 +1700,7 @@
   }
 
   // Word Click Handler - Options Respecting & Extension Match
-  async function onWordClick(element, cue) {
+  async function onWordClick(element, cue, overridePhrase = null) {
     // Film pause behavior: only pause if user enabled "pauseOnClick" (default: false -> film does NOT stop)
     if (pauseOnClick) {
       if (!video.paused) {
@@ -1598,8 +1713,8 @@
       resumeVideoAfterPopover = false;
     }
 
-    const rawWord = element.dataset.raw;
-    const cleanWord = element.dataset.word;
+    const rawWord = overridePhrase ? overridePhrase : element.dataset.raw;
+    const cleanWord = overridePhrase ? overridePhrase.toLowerCase() : element.dataset.word;
     const contextSentence = cue.text;
 
     activeWordData = {
@@ -1608,15 +1723,19 @@
       rawWord: rawWord,
       contextSentence: contextSentence,
       translation: '',
-      pos: 'word'
+      pos: overridePhrase ? 'phrase' : 'word'
     };
 
     popoverWordText.textContent = rawWord;
     popoverWordPos.textContent = '...';
     popoverTranslationAr.textContent = 'جاري الترجمة...';
+    const escapedRaw = rawWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const highlightRegex = overridePhrase
+      ? new RegExp(escapedRaw, 'i')
+      : new RegExp(`\\b(${escapedRaw})\\b`, 'i');
     popoverContextBox.innerHTML = contextSentence.replace(
-      new RegExp(`\\b(${rawWord})\\b`, 'i'),
-      '<strong class="popover-context-keyword">$1</strong>'
+      highlightRegex,
+      '<strong class="popover-context-keyword">$&</strong>'
     );
 
     const isAlreadySaved = savedWords.some(w => (w.text || '').toLowerCase() === cleanWord.toLowerCase());

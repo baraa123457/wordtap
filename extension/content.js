@@ -1154,7 +1154,177 @@
     return "auto";
   }
 
-  // ---------- Click handling ----------
+  // ---------- Multi-word Ctrl/Cmd-hold selection & Click handling ----------
+  let multiWords = [];
+  let multiLine = "";
+  let multiLastX = 0;
+  let multiLastY = 0;
+  let multiPill = null;
+
+  function showMultiPill(x, y, words) {
+    if (!multiPill) {
+      multiPill = document.createElement("div");
+      multiPill.id = "wordtap-multi-pill";
+      Object.assign(multiPill.style, {
+        position: "fixed",
+        zIndex: "2147483647",
+        padding: "5px 10px",
+        borderRadius: "9999px",
+        background: "rgba(20, 23, 49, 0.94)",
+        color: "#ffffff",
+        border: "1px solid rgba(250, 204, 59, 0.55)",
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Readex Pro", system-ui, sans-serif',
+        fontSize: "12px",
+        fontWeight: "600",
+        boxShadow: "0 8px 20px rgba(0,0,0,0.45)",
+        pointerEvents: "none",
+        maxWidth: "320px",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+      });
+      (document.body || document.documentElement).appendChild(multiPill);
+    }
+    const modHint = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || "") ? "Cmd" : "Ctrl";
+    multiPill.innerHTML = `<span style="color:#facc3b;font-weight:700;">${words.join(" ")}</span> <span style="opacity:0.7;font-size:11px;">· Release ${modHint} to translate</span>`;
+    multiPill.style.left = `${Math.max(12, Math.min(window.innerWidth - 260, x - 40))}px`;
+    multiPill.style.top = `${Math.max(12, y - 42)}px`;
+    multiPill.style.display = "block";
+  }
+
+  function hideMultiPill() {
+    if (multiPill) multiPill.style.display = "none";
+  }
+
+  function translateAndShowSubtitleTip(x, y, text, fullLine) {
+    const target = settings.targetLang;
+    const token = ++tipToken;
+    const detectedSrc = resolveSubtitleLanguage(fullLine);
+
+    showTip(x, y, text, "…", false, "", false, detectedSrc !== "auto" ? detectedSrc : undefined);
+
+    safeSendMessage({ type: "translate", text, target, srcLang: detectedSrc, context: fullLine }, (res) => {
+      if (!isContextValid() || token !== tipToken) return;
+      if (!res || !res.ok) {
+        showTip(x, y, text, "Translation failed", false, "", false);
+        return;
+      }
+
+      // Lock in final source language: if subtitle was resolved (e.g. "de"), force it!
+      const finalSrc = (detectedSrc && detectedSrc !== "auto") ? detectedSrc : (res.src || "auto");
+      if (finalSrc && finalSrc !== "auto") {
+        currentVideoSubLang = finalSrc;
+      }
+
+      const willSave =
+        settings.translateSaveMode === "auto" ||
+        settings.translateSaveMode === "subtitles_only" ||
+        (settings.saveWords === true && settings.translateSaveMode !== "manual");
+      showTip(
+        x,
+        y,
+        text,
+        res.text,
+        RTL_LANGS.includes(target),
+        willSave ? "Saving…" : "",
+        false,
+        finalSrc,
+        res.pos,
+        res.alternatives,
+        willSave,
+        res.correction
+      );
+
+      const titleContext =
+        fullLine && fullLine.trim() && fullLine.trim().length > text.length
+          ? `"${fullLine.trim()}" — ${document.title}`
+          : document.title;
+
+      const ytClip = buildYouTubeClipPayload(fullLine ? fullLine.trim() : "");
+      const entry = {
+        text,
+        translation: res.text,
+        lang: target,
+        src: finalSrc,
+        pos: res.pos || null,
+        page: ytClip
+          ? `https://www.youtube.com/watch?v=${ytClip.video_id}&t=${ytClip.start_sec}s`
+          : location.href,
+        title: titleContext,
+        sentence: fullLine ? fullLine.trim() : "",
+        source: "subtitle",
+        saved: Boolean(willSave),
+        ...(ytClip ? { clip: ytClip } : {}),
+      };
+      currentPendingEntry = entry;
+
+      safeSendMessage({ type: "history:add", entry });
+
+      const alreadySaved = isWordSaved(entry.text);
+
+      if (!willSave) {
+        saveBtn.style.display = "inline-flex";
+        if (alreadySaved) {
+          saveBtn.classList.add("saved");
+          saveBtn.textContent = "✓ In your words";
+          saveBtn.title = "Already saved in your words";
+        } else {
+          saveBtn.classList.remove("saved");
+          saveBtn.textContent = "+ Save to My Words";
+          saveBtn.title = "Save to My Words";
+        }
+        safeSendMessage({ type: "word:is-saved", text: entry.text }, (check) => {
+          if (!isContextValid() || token !== tipToken) return;
+          if (check && check.saved) {
+            savedWordsSet.add(normWord(entry.text));
+            saveBtn.classList.add("saved");
+            saveBtn.textContent = "✓ In your words";
+            saveBtn.title = "Already saved in your words";
+          }
+        });
+        return;
+      }
+
+      saveBtn.style.display = "none";
+      if (alreadySaved) {
+        setNote("✓ In your words", false);
+        return;
+      }
+      safeSendMessage({ type: "save", entry }, (saved) => {
+        if (!isContextValid() || token !== tipToken) return;
+        if (!saved || !saved.ok || saved.cloud === "signed-out") {
+          const msg = (saved && saved.error) || "Failed to save · Please sign in";
+          setNote(msg, true);
+          return;
+        }
+        savedWordsSet.add(normWord(entry.text));
+        const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.synced;
+        setNote(note.text, note.warn);
+      });
+    });
+  }
+
+  function flushMultiWords() {
+    if (multiWords.length === 0) return;
+    const phrase = multiWords.join(" ").replace(/\s+/g, " ").trim();
+    const x = multiLastX;
+    const y = multiLastY;
+    const line = multiLine;
+    multiWords = [];
+    multiLine = "";
+    hideMultiPill();
+    if (phrase) {
+      translateAndShowSubtitleTip(x, y, phrase, line);
+    }
+  }
+
+  document.addEventListener("keyup", (e) => {
+    if (e.key === "Control" || e.key === "Meta") {
+      flushMultiWords();
+    }
+  });
+  window.addEventListener("blur", flushMultiWords);
+
   document.addEventListener(
     "click",
     (e) => {
@@ -1172,123 +1342,38 @@
       e.stopImmediatePropagation();
 
       const fullLine = lineAtTarget(inSubs) || "";
-      const text = e.shiftKey ? fullLine : wordAtPoint(e.clientX, e.clientY, inSubs);
+      const draggedText = (window.getSelection && window.getSelection().toString() || "").replace(/\s+/g, " ").trim();
+
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+        if (draggedText && draggedText.includes(" ") && draggedText.length <= 120) {
+          multiWords = [];
+          hideMultiPill();
+          resumeIfNeeded();
+          translateAndShowSubtitleTip(e.clientX, e.clientY, draggedText, fullLine);
+          return;
+        }
+        const clickedWord = wordAtPoint(e.clientX, e.clientY, inSubs);
+        if (clickedWord) {
+          multiWords.push(clickedWord);
+          multiLine = fullLine;
+          multiLastX = e.clientX;
+          multiLastY = e.clientY;
+          showMultiPill(e.clientX, e.clientY, multiWords);
+        }
+        resumeIfNeeded();
+        return;
+      }
+
+      const text = e.shiftKey
+        ? fullLine
+        : (draggedText && draggedText.includes(" ") && draggedText.length <= 120 ? draggedText : wordAtPoint(e.clientX, e.clientY, inSubs));
       if (!text) {
         resumeIfNeeded();
         return;
       }
 
       resumeIfNeeded();
-
-      const target = settings.targetLang;
-      const token = ++tipToken;
-
-      const detectedSrc = resolveSubtitleLanguage(fullLine);
-
-      showTip(e.clientX, e.clientY, text, "…", false, "", false, detectedSrc !== "auto" ? detectedSrc : undefined);
-
-      safeSendMessage({ type: "translate", text, target, srcLang: detectedSrc, context: fullLine }, (res) => {
-        if (!isContextValid() || token !== tipToken) return;
-        if (!res || !res.ok) {
-          showTip(e.clientX, e.clientY, text, "Translation failed", false, "", false);
-          return;
-        }
-
-        // Lock in final source language: if subtitle was resolved (e.g. "de"), force it!
-        const finalSrc = (detectedSrc && detectedSrc !== "auto") ? detectedSrc : (res.src || "auto");
-        if (finalSrc && finalSrc !== "auto") {
-          currentVideoSubLang = finalSrc;
-        }
-
-        const willSave =
-          settings.translateSaveMode === "auto" ||
-          settings.translateSaveMode === "subtitles_only" ||
-          (settings.saveWords === true && settings.translateSaveMode !== "manual");
-        showTip(
-          e.clientX,
-          e.clientY,
-          text,
-          res.text,
-          RTL_LANGS.includes(target),
-          willSave ? "Saving…" : "",
-          false,
-          finalSrc,
-          res.pos,
-          res.alternatives,
-          willSave,
-          res.correction
-        );
-
-        const titleContext =
-          fullLine && fullLine.trim() && fullLine.trim().length > text.length
-            ? `"${fullLine.trim()}" — ${document.title}`
-            : document.title;
-
-        const ytClip = buildYouTubeClipPayload(fullLine ? fullLine.trim() : "");
-        const entry = {
-          text,
-          translation: res.text,
-          lang: target,
-          src: finalSrc,
-          pos: res.pos || null,
-          page: ytClip
-            ? `https://www.youtube.com/watch?v=${ytClip.video_id}&t=${ytClip.start_sec}s`
-            : location.href,
-          title: titleContext,
-          sentence: fullLine ? fullLine.trim() : "",
-          source: "subtitle",
-          saved: Boolean(willSave),
-          ...(ytClip ? { clip: ytClip } : {}),
-        };
-        currentPendingEntry = entry;
-
-        // Always record to translation history
-        safeSendMessage({ type: "history:add", entry });
-
-        const alreadySaved = isWordSaved(entry.text);
-
-        if (!willSave) {
-          // Manual Save Mode: show the Save button!
-          saveBtn.style.display = "inline-flex";
-          if (alreadySaved) {
-            saveBtn.classList.add("saved");
-            saveBtn.textContent = "✓ In your words";
-            saveBtn.title = "Already saved in your words";
-          } else {
-            saveBtn.classList.remove("saved");
-            saveBtn.textContent = "+ Save to My Words";
-            saveBtn.title = "Save to My Words";
-          }
-          safeSendMessage({ type: "word:is-saved", text: entry.text }, (check) => {
-            if (!isContextValid() || token !== tipToken) return;
-            if (check && check.saved) {
-              savedWordsSet.add(normWord(entry.text));
-              saveBtn.classList.add("saved");
-              saveBtn.textContent = "✓ In your words";
-              saveBtn.title = "Already saved in your words";
-            }
-          });
-          return;
-        }
-
-        // Auto Save Mode:
-        saveBtn.style.display = "none";
-        if (alreadySaved) {
-          setNote("✓ In your words", false);
-          return;
-        }
-        safeSendMessage({ type: "save", entry }, (saved) => {
-          if (!isContextValid() || token !== tipToken) return;
-          if (!saved || !saved.ok || saved.cloud === "signed-out") {
-            const msg = (saved && saved.error) || "Failed to save · Please sign in";
-            setNote(msg, true);
-            return;
-          }
-          savedWordsSet.add(normWord(entry.text));
-          const note = SAVE_NOTES[saved.cloud] || SAVE_NOTES.synced;
-          setNote(note.text, note.warn);
-        });
-      });
+      translateAndShowSubtitleTip(e.clientX, e.clientY, text, fullLine);
     },
     true
   );

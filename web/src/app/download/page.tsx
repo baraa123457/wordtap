@@ -269,7 +269,7 @@ export default function DownloadPage() {
                     <span>Windows 10 / 11 · 64-bit</span>
                   </button>
                   <span className="text-[length:var(--text-label)] font-semibold text-muted bg-black/5 dark:bg-white/10 px-2.5 py-0.5 rounded-full border border-line">
-                    v1.0.9 Stable
+                    v1.0.10 Stable
                   </span>
                   <span className="text-[length:var(--text-label)] font-semibold text-ok bg-ok/10 px-2.5 py-0.5 rounded-full border border-ok/20">
                     VLC Core Engine
