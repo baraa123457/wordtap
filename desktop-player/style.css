@@ -270,6 +270,24 @@ body.light-theme #time-tooltip {
   box-shadow: 0 4px 14px rgba(30, 37, 80, 0.12);
 }
 
+body.light-theme #toast {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(30, 37, 80, 0.14);
+  color: #12152e;
+  box-shadow: 0 8px 24px rgba(30, 37, 80, 0.14);
+}
+
+body.light-theme #hold-speed-badge {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(217, 167, 20, 0.55);
+  color: #12152e;
+  box-shadow: 0 6px 20px rgba(30, 37, 80, 0.14);
+}
+
+body.light-theme #hold-speed-badge svg {
+  color: #d97706;
+}
+
 body.light-theme .speed-group {
   background: rgba(30, 37, 80, 0.05);
   border-color: rgba(30, 37, 80, 0.08);
