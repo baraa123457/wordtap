@@ -861,16 +861,16 @@ export default function DecksPage() {
                       </div>
                     ) : null}
 
-                    {/* Per-Word Actions: Practice, Edit, Delete */}
-                    <div className="flex flex-wrap items-center justify-end gap-1.5 pt-0.5">
+                    {/* Per-Word Actions: Practice (Primary), Edit (Quiet), Remove (Destructive Quiet) */}
+                    <div className="flex flex-wrap items-center justify-end gap-1.5 pt-1">
                       <button
                         type="button"
                         disabled={isBusy}
                         onClick={() => handlePracticeSingleWord(w)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-subtitle/40 bg-subtitle/15 px-2.5 py-1 text-xs font-bold text-amber-900 dark:text-subtitle hover:bg-subtitle/25 transition-colors cursor-pointer disabled:opacity-50"
+                        className="btn btn-primary min-h-11 px-3.5 py-1 text-[length:var(--text-control)] font-bold rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50"
                         title={`Practice "${w.text}"`}
                       >
-                        <PlayIcon size={10} />
+                        <PlayIcon size={11} />
                         <span>Practice</span>
                       </button>
                       {isUserWord ? (
@@ -887,14 +887,15 @@ export default function DecksPage() {
                                 setEditWordTranslation(w.translation || "");
                               }
                             }}
-                            className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 ${
+                            className={`btn min-h-11 px-3.5 py-1 text-[length:var(--text-control)] font-medium rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50 ${
                               isEditing
-                                ? "border-subtitle bg-subtitle/15 text-ink"
-                                : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
+                                ? "bg-subtitle text-subtitle-ink font-semibold shadow-xs"
+                                : "btn-quiet text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10"
                             }`}
-                            title={`Edit "${w.text}"`}
+                            title={`Edit “${w.text}”`}
+                            aria-label={`Edit “${w.text}”`}
                           >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <svg className="w-3.5 h-3.5 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                               <path d="M12 20h9" />
                               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
                             </svg>
@@ -904,11 +905,12 @@ export default function DecksPage() {
                             type="button"
                             disabled={isBusy}
                             onClick={() => void handleDeleteInspectWord(w as Word)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-muted hover:text-bad hover:border-bad/40 hover:bg-bad-soft/40 transition-colors cursor-pointer disabled:opacity-50"
-                            title={`Delete "${w.text}"`}
+                            className="btn btn-quiet min-h-11 min-w-11 px-3 py-1 text-[length:var(--text-control)] font-medium text-muted hover:text-bad hover:bg-bad/10 rounded-lg transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                            title={`Remove “${w.text}”`}
+                            aria-label={`Delete “${w.text}”`}
                           >
-                            <TrashIcon size={12} />
-                            <span>Delete</span>
+                            <TrashIcon size={14} />
+                            <span>Remove</span>
                           </button>
                         </>
                       ) : null}
