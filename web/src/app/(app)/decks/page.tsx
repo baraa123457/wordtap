@@ -12,7 +12,7 @@ import {
   groupWordsIntoMediaDecks,
   type MediaDeck,
 } from "@/lib/media-decks";
-import { fetchWords } from "@/lib/api";
+import { deleteWord, fetchWords, updateWordDetails } from "@/lib/api";
 import type { Word } from "@/lib/schemas";
 import { canSpeak, speak } from "@/lib/speech";
 import { InteractiveLearningSession } from "@/components/learn/InteractiveLearningSession";
@@ -32,6 +32,7 @@ import {
   SearchIcon,
   SpeakerIcon,
   SparklesIcon,
+  TrashIcon,
   TvIcon,
   YoutubeIcon,
 } from "@/components/Icons";
@@ -77,6 +78,11 @@ export default function DecksPage() {
   // Inspect modal & practice modal (supports both MediaDeck and CuratedDeck)
   const [inspectingDeck, setInspectingDeck] = useState<CuratedDeck | MediaDeck | null>(null);
   const [practicingDeck, setPracticingDeck] = useState<CuratedDeck | MediaDeck | null>(null);
+  const [editingWordId, setEditingWordId] = useState<string | null>(null);
+  const [editWordText, setEditWordText] = useState("");
+  const [editWordTranslation, setEditWordTranslation] = useState("");
+  const [wordActionBusyId, setWordActionBusyId] = useState<string | null>(null);
+  const [wordActionError, setWordActionError] = useState<string | null>(null);
   const [importingId, setImportingId] = useState<string | null>(null);
   const [importMessage, setImportMessage] = useState<{ id: string; text: string; isError?: boolean } | null>(null);
   const [speakingWord, setSpeakingWord] = useState<string | null>(null);
@@ -180,6 +186,84 @@ export default function DecksPage() {
     }
     return list;
   }, [selectedCategory, searchQuery]);
+
+  function handlePracticeSingleWord(w: Word | CuratedDeck["words"][number]) {
+    if (!inspectingDeck) return;
+    if ("wordCount" in inspectingDeck) {
+      const wordObj = w as Word;
+      const singleDeck: MediaDeck = {
+        ...inspectingDeck,
+        words: [wordObj],
+        wordCount: 1,
+        subtitle: "1 word selected",
+      };
+      setInspectingDeck(null);
+      setPracticingDeck(singleDeck);
+    } else {
+      const curatedWord = w as CuratedDeck["words"][number];
+      const singleCurated: CuratedDeck = {
+        ...inspectingDeck,
+        words: [curatedWord],
+      };
+      setInspectingDeck(null);
+      setPracticingDeck(singleCurated);
+    }
+  }
+
+  async function handleSaveInspectWord(w: Word) {
+    const cleanText = editWordText.trim();
+    const cleanTrans = editWordTranslation.trim();
+    if (!cleanText || !cleanTrans) return;
+    setWordActionBusyId(w.id);
+    setWordActionError(null);
+    try {
+      await updateWordDetails(w.id, { text: cleanText, translation: cleanTrans }, w);
+      setUserWords((prev) =>
+        prev.map((item) =>
+          item.id === w.id ? { ...item, text: cleanText, translation: cleanTrans } : item,
+        ),
+      );
+      setInspectingDeck((prev) => {
+        if (!prev || !("wordCount" in prev)) return prev;
+        return {
+          ...prev,
+          words: prev.words.map((item) =>
+            item.id === w.id ? { ...item, text: cleanText, translation: cleanTrans } : item,
+          ),
+        };
+      });
+      setEditingWordId(null);
+    } catch (e: unknown) {
+      setWordActionError(e instanceof Error ? e.message : "Could not update word.");
+    } finally {
+      setWordActionBusyId(null);
+    }
+  }
+
+  async function handleDeleteInspectWord(w: Word) {
+    setWordActionBusyId(w.id);
+    setWordActionError(null);
+    try {
+      await deleteWord(w.id);
+      setUserWords((prev) => prev.filter((item) => item.id !== w.id));
+      setInspectingDeck((prev) => {
+        if (!prev || !("wordCount" in prev)) return prev;
+        const nextWords = prev.words.filter((item) => item.id !== w.id);
+        if (nextWords.length === 0) return null;
+        return {
+          ...prev,
+          words: nextWords,
+          wordCount: nextWords.length,
+          subtitle: `${nextWords.length} ${nextWords.length === 1 ? "word" : "words"} collected while watching`,
+        };
+      });
+      if (editingWordId === w.id) setEditingWordId(null);
+    } catch (e: unknown) {
+      setWordActionError(e instanceof Error ? e.message : "Could not delete word.");
+    } finally {
+      setWordActionBusyId(null);
+    }
+  }
 
   const handleImport = async (deck: CuratedDeck) => {
     if (authState.status !== "signed-in") {
@@ -724,47 +808,178 @@ export default function DecksPage() {
             </div>
 
             {/* Word List Scrollable */}
+            {wordActionError ? (
+              <div className="mt-3 rounded-xl border border-bad/40 bg-bad-soft px-3 py-2 text-xs text-bad-ink">
+                {wordActionError}
+              </div>
+            ) : null}
             <div className="overflow-y-auto py-4 space-y-3 divide-y divide-line/40 focus:outline-none">
-              {inspectingDeck.words.map((w, idx) => (
-                <div key={idx} className="pt-3.5 first:pt-0 flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-ink text-base tracking-tight">{w.text}</span>
-                      {canSpeak() ? (
-                        <button
-                          type="button"
-                          onClick={() => handleSpeak(w.text, ("src_lang" in w ? (w.src_lang as string) : "en") || "en")}
-                          className={`p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-muted hover:text-ink cursor-pointer transition-colors ${
-                            speakingWord === w.text ? "text-amber-700 dark:text-subtitle bg-subtitle/15" : ""
-                          }`}
-                          title="Listen pronunciation"
-                        >
-                          <SpeakerIcon size={14} />
-                        </button>
-                      ) : null}
-                      {w.part_of_speech ? (
-                        <span className="text-[length:var(--text-label)] font-bold text-amber-800 dark:text-subtitle bg-subtitle/15 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          {w.part_of_speech}
-                        </span>
+              {inspectingDeck.words.map((w, idx) => {
+                const isUserWord = "id" in w && typeof w.id === "string";
+                const wordId = isUserWord ? (w as Word).id : `${idx}`;
+                const isEditing = isUserWord && editingWordId === wordId;
+                const isBusy = isUserWord && wordActionBusyId === wordId;
+
+                return (
+                  <div key={wordId} className="pt-3.5 first:pt-0 flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-extrabold text-ink text-base tracking-tight truncate">{w.text}</span>
+                        {canSpeak() ? (
+                          <button
+                            type="button"
+                            onClick={() => handleSpeak(w.text, ("src_lang" in w ? (w.src_lang as string) : "en") || "en")}
+                            className={`p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-muted hover:text-ink cursor-pointer transition-colors ${
+                              speakingWord === w.text ? "text-amber-700 dark:text-subtitle bg-subtitle/15" : ""
+                            }`}
+                            title="Listen pronunciation"
+                          >
+                            <SpeakerIcon size={14} />
+                          </button>
+                        ) : null}
+                        {w.part_of_speech ? (
+                          <span className="text-[length:var(--text-label)] font-bold text-amber-800 dark:text-subtitle bg-subtitle/15 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                            {w.part_of_speech}
+                          </span>
+                        ) : null}
+                      </div>
+                      <span className="text-sm font-bold text-ink shrink-0" dir="rtl">
+                        {w.translation}
+                      </span>
+                    </div>
+
+                    {w.definition ? (
+                      <p className="text-xs text-muted leading-relaxed">{w.definition}</p>
+                    ) : null}
+
+                    {w.sentence ? (
+                      <div className="text-xs italic text-ink/80 bg-black/[0.02] dark:bg-white/[0.03] p-2.5 rounded-xl border border-line/50 leading-relaxed">
+                        &ldquo;{w.sentence}&rdquo;{" "}
+                        {w.source_title ? (
+                          <span className="text-[length:var(--text-label)] text-muted not-italic font-medium">({w.source_title})</span>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {/* Per-Word Actions: Practice, Edit, Delete */}
+                    <div className="flex flex-wrap items-center justify-end gap-1.5 pt-0.5">
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => handlePracticeSingleWord(w)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-subtitle/40 bg-subtitle/15 px-2.5 py-1 text-xs font-bold text-amber-900 dark:text-subtitle hover:bg-subtitle/25 transition-colors cursor-pointer disabled:opacity-50"
+                        title={`Practice "${w.text}"`}
+                      >
+                        <PlayIcon size={10} />
+                        <span>Practice</span>
+                      </button>
+                      {isUserWord ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => {
+                              if (isEditing) {
+                                setEditingWordId(null);
+                              } else {
+                                setEditingWordId(wordId);
+                                setEditWordText(w.text);
+                                setEditWordTranslation(w.translation || "");
+                              }
+                            }}
+                            className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 ${
+                              isEditing
+                                ? "border-subtitle bg-subtitle/15 text-ink"
+                                : "border-line bg-surface text-muted hover:text-ink hover:border-subtitle/40"
+                            }`}
+                            title={`Edit "${w.text}"`}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M12 20h9" />
+                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                            </svg>
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => void handleDeleteInspectWord(w as Word)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-muted hover:text-bad hover:border-bad/40 hover:bg-bad-soft/40 transition-colors cursor-pointer disabled:opacity-50"
+                            title={`Delete "${w.text}"`}
+                          >
+                            <TrashIcon size={12} />
+                            <span>Delete</span>
+                          </button>
+                        </>
                       ) : null}
                     </div>
-                    <span className="text-sm font-bold text-ink" dir="rtl">
-                      {w.translation}
-                    </span>
+
+                    {/* Inline Edit Form */}
+                    {isEditing ? (
+                      <div className="mt-1 rounded-xl border border-subtitle/40 bg-black/[0.03] dark:bg-white/[0.04] p-3 grid gap-2.5">
+                        <div className="grid gap-2.5 sm:grid-cols-2">
+                          <div>
+                            <label className="block text-[length:var(--text-label)] font-semibold text-muted mb-1">
+                              Word
+                            </label>
+                            <input
+                              type="text"
+                              value={editWordText}
+                              onChange={(e) => setEditWordText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  void handleSaveInspectWord(w as Word);
+                                } else if (e.key === "Escape") {
+                                  setEditingWordId(null);
+                                }
+                              }}
+                              className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-subtitle focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[length:var(--text-label)] font-semibold text-muted mb-1">
+                              Translation
+                            </label>
+                            <input
+                              type="text"
+                              dir="auto"
+                              value={editWordTranslation}
+                              onChange={(e) => setEditWordTranslation(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  void handleSaveInspectWord(w as Word);
+                                } else if (e.key === "Escape") {
+                                  setEditingWordId(null);
+                                }
+                              }}
+                              className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-subtitle focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingWordId(null)}
+                            className="btn btn-quiet px-3 py-1 text-xs font-semibold cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isBusy || !editWordText.trim() || !editWordTranslation.trim()}
+                            onClick={() => void handleSaveInspectWord(w as Word)}
+                            className="btn btn-primary px-3 py-1 text-xs font-bold cursor-pointer disabled:opacity-50"
+                          >
+                            {isBusy ? "Saving..." : "Save"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                  {w.definition ? (
-                    <p className="text-xs text-muted leading-relaxed">{w.definition}</p>
-                  ) : null}
-                  {w.sentence ? (
-                    <div className="text-xs italic text-ink/80 bg-black/[0.02] dark:bg-white/[0.03] p-2.5 rounded-xl border border-line/50 leading-relaxed">
-                      &ldquo;{w.sentence}&rdquo;{" "}
-                      {w.source_title ? (
-                        <span className="text-[length:var(--text-label)] text-muted not-italic font-medium">({w.source_title})</span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Modal Actions */}
@@ -806,7 +1021,10 @@ export default function DecksPage() {
           <div className="relative w-full max-w-4xl max-h-[94vh] overflow-y-auto rounded-3xl border border-line bg-bg shadow-2xl">
             <InteractiveLearningSession
               words={wordsForPractice}
-              onReload={() => setPracticingDeck(null)}
+              onReload={() => {
+                setPracticingDeck(null);
+                fetchWords().then(setUserWords).catch(() => {});
+              }}
             />
           </div>
         </div>
