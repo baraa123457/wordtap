@@ -16,6 +16,7 @@ import { deleteWord, fetchWords, updateWordDetails } from "@/lib/api";
 import type { Word } from "@/lib/schemas";
 import { canSpeak, speak } from "@/lib/speech";
 import { InteractiveLearningSession } from "@/components/learn/InteractiveLearningSession";
+import { ReviewSession } from "@/components/review/ReviewSession";
 import { useAuth } from "@/context/AuthContext";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import {
@@ -75,8 +76,12 @@ export default function DecksPage() {
   const [selectedCategory, setSelectedCategory] = useState<CuratedDeckCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Inspect modal & practice modal (supports both MediaDeck and CuratedDeck)
+  // Inspect modal, practice setup modal & active practice queue
   const [inspectingDeck, setInspectingDeck] = useState<CuratedDeck | MediaDeck | null>(null);
+  const [configuringDeck, setConfiguringDeck] = useState<CuratedDeck | MediaDeck | null>(null);
+  const [primaryMode, setPrimaryMode] = useState<"easy" | "hard">("hard");
+  const [overrideKeys, setOverrideKeys] = useState<Set<string>>(() => new Set());
+  const [practiceQueue, setPracticeQueue] = useState<Array<{ mode: "easy" | "hard"; words: Word[] }>>([]);
   const [practicingDeck, setPracticingDeck] = useState<CuratedDeck | MediaDeck | null>(null);
   const [editingWordId, setEditingWordId] = useState<string | null>(null);
   const [editWordText, setEditWordText] = useState("");
@@ -89,25 +94,29 @@ export default function DecksPage() {
 
   // Lock background scroll when inspecting or practicing modal is open (Apple HIG Modality)
   useEffect(() => {
-    if (inspectingDeck || practicingDeck) {
+    if (inspectingDeck || practicingDeck || configuringDeck || practiceQueue.length > 0) {
       const prevOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       return () => {
         document.body.style.overflow = prevOverflow;
       };
     }
-  }, [inspectingDeck, practicingDeck]);
+  }, [inspectingDeck, practicingDeck, configuringDeck, practiceQueue.length]);
 
   // Handle Escape key to close modal (Apple HIG Keyboard Navigation)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && inspectingDeck) {
-        setInspectingDeck(null);
+      if (e.key === "Escape") {
+        if (configuringDeck) {
+          setConfiguringDeck(null);
+        } else if (inspectingDeck) {
+          setInspectingDeck(null);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [inspectingDeck]);
+  }, [inspectingDeck, configuringDeck]);
 
   // Fetch user words on mount
   useEffect(() => {
@@ -186,6 +195,65 @@ export default function DecksPage() {
     }
     return list;
   }, [selectedCategory, searchQuery]);
+
+  function getDeckWordKey(w: Word | CuratedDeck["words"][number], idx: number) {
+    return "id" in w && typeof w.id === "string" ? w.id : `${w.text}-${idx}`;
+  }
+
+  function openPracticeSetup(deck: CuratedDeck | MediaDeck) {
+    setOverrideKeys(new Set());
+    setConfiguringDeck(deck);
+  }
+
+  function toggleWordOverride(key: string) {
+    setOverrideKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function startConfiguredPractice() {
+    if (!configuringDeck) return;
+    const allWords: Word[] =
+      "wordCount" in configuringDeck
+        ? configuringDeck.words
+        : deckWordsToPracticeWords(configuringDeck);
+
+    const oppositeMode: "easy" | "hard" = primaryMode === "easy" ? "hard" : "easy";
+    const primaryWords: Word[] = [];
+    const oppositeWords: Word[] = [];
+
+    configuringDeck.words.forEach((rawWord, idx) => {
+      const key = getDeckWordKey(rawWord, idx);
+      const practiceWord = allWords[idx];
+      if (!practiceWord) return;
+      if (overrideKeys.has(key)) {
+        oppositeWords.push(practiceWord);
+      } else {
+        primaryWords.push(practiceWord);
+      }
+    });
+
+    const queue: Array<{ mode: "easy" | "hard"; words: Word[] }> = [];
+    if (primaryWords.length > 0) queue.push({ mode: primaryMode, words: primaryWords });
+    if (oppositeWords.length > 0) queue.push({ mode: oppositeMode, words: oppositeWords });
+    if (queue.length === 0) return;
+
+    setConfiguringDeck(null);
+    setPracticeQueue(queue);
+  }
+
+  function advancePracticeQueue() {
+    setPracticeQueue((prev) => {
+      const next = prev.slice(1);
+      if (next.length === 0) {
+        fetchWords().then(setUserWords).catch(() => {});
+      }
+      return next;
+    });
+  }
 
   function handlePracticeSingleWord(w: Word | CuratedDeck["words"][number]) {
     if (!inspectingDeck) return;
@@ -587,7 +655,7 @@ export default function DecksPage() {
 
                   <button
                     type="button"
-                    onClick={() => setPracticingDeck(deck)}
+                    onClick={() => openPracticeSetup(deck)}
                     className="btn btn-primary min-h-11 px-4 text-[length:var(--text-control)] font-bold cursor-pointer inline-flex items-center gap-1.5 ms-auto"
                   >
                     <PlayIcon size={11} />
@@ -740,7 +808,7 @@ export default function DecksPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPracticingDeck(deck)}
+                      onClick={() => openPracticeSetup(deck)}
                       className="btn btn-primary min-h-11 px-4 text-[length:var(--text-control)] font-bold cursor-pointer inline-flex items-center gap-1.5"
                     >
                       <PlayIcon size={11} />
@@ -998,7 +1066,7 @@ export default function DecksPage() {
                 onClick={() => {
                   const target = inspectingDeck;
                   setInspectingDeck(null);
-                  setPracticingDeck(target);
+                  openPracticeSetup(target);
                 }}
                 className="btn btn-primary min-h-11 px-5 text-[length:var(--text-control)] font-bold cursor-pointer inline-flex items-center gap-2"
               >
@@ -1010,7 +1078,239 @@ export default function DecksPage() {
         </div>
       ) : null}
 
-      {/* Quick Interactive Practice Modal */}
+      {/* Practice Mode Picker Modal (Easy vs Hard + Per-Word Override Selection) */}
+      {configuringDeck ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-practice-setup-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setConfiguringDeck(null)}
+        >
+          <div
+            className="apple-card relative flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden p-5 sm:p-7 shadow-2xl border border-line/80 dark:border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-line pb-4">
+              <div className="space-y-1">
+                <h2 id="modal-practice-setup-title" className="text-xl font-extrabold text-ink tracking-tight">
+                  Choose Practice Mode
+                </h2>
+                <p className="text-xs sm:text-sm text-muted">
+                  {configuringDeck.title} · {configuringDeck.words.length}{" "}
+                  {configuringDeck.words.length === 1 ? "word" : "words"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfiguringDeck(null)}
+                className="rounded-full p-2 text-muted hover:bg-black/5 dark:hover:bg-white/10 hover:text-ink cursor-pointer transition-colors"
+                aria-label="Close modal"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            {/* Mode Cards: Easy vs Hard */}
+            <div className="grid gap-3 sm:grid-cols-2 pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setPrimaryMode("easy");
+                  setOverrideKeys(new Set());
+                }}
+                className={`flex flex-col items-start gap-1.5 p-4 rounded-2xl border text-start transition-all cursor-pointer ${
+                  primaryMode === "easy"
+                    ? "border-subtitle bg-subtitle/10 ring-2 ring-subtitle shadow-xs"
+                    : "border-line bg-surface hover:border-subtitle/40"
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-bold text-ink text-sm">Easy (Quick Review)</span>
+                  <span
+                    className={`w-4 h-4 rounded-full border flex items-center justify-center text-[length:var(--text-label)] font-bold ${
+                      primaryMode === "easy" ? "bg-subtitle text-subtitle-ink border-subtitle" : "border-line"
+                    }`}
+                  >
+                    {primaryMode === "easy" ? "✓" : ""}
+                  </span>
+                </div>
+                <p className="text-xs text-muted leading-relaxed">
+                  Fast 3-round quiz: Multiple Choice, Matching, and Typing.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPrimaryMode("hard");
+                  setOverrideKeys(new Set());
+                }}
+                className={`flex flex-col items-start gap-1.5 p-4 rounded-2xl border text-start transition-all cursor-pointer ${
+                  primaryMode === "hard"
+                    ? "border-subtitle bg-subtitle/10 ring-2 ring-subtitle shadow-xs"
+                    : "border-line bg-surface hover:border-subtitle/40"
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-bold text-ink text-sm">Hard (Deep Learning)</span>
+                  <span
+                    className={`w-4 h-4 rounded-full border flex items-center justify-center text-[length:var(--text-label)] font-bold ${
+                      primaryMode === "hard" ? "bg-subtitle text-subtitle-ink border-subtitle" : "border-line"
+                    }`}
+                  >
+                    {primaryMode === "hard" ? "✓" : ""}
+                  </span>
+                </div>
+                <p className="text-xs text-muted leading-relaxed">
+                  Full 4-stage flow: Understanding, Video Context, Your Sentence, and Schedule.
+                </p>
+              </button>
+            </div>
+
+            {/* Per-word Cross-Mode Override Selector */}
+            <div className="pt-4 flex items-center justify-between gap-2">
+              <div className="text-xs font-semibold text-muted">
+                {primaryMode === "easy"
+                  ? "Select any words you want to practice in Hard mode instead:"
+                  : "Select any words you want to practice in Easy mode instead:"}
+              </div>
+              {overrideKeys.size > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setOverrideKeys(new Set())}
+                  className="text-xs font-semibold text-amber-700 dark:text-subtitle hover:underline cursor-pointer shrink-0"
+                >
+                  Reset ({overrideKeys.size})
+                </button>
+              ) : null}
+            </div>
+
+            <div className="mt-2 overflow-y-auto flex-1 divide-y divide-line/40 rounded-2xl border border-line bg-surface/60 px-3">
+              {configuringDeck.words.map((w, idx) => {
+                const key = getDeckWordKey(w, idx);
+                const isOverridden = overrideKeys.has(key);
+                const effectiveMode = isOverridden
+                  ? primaryMode === "easy"
+                    ? "hard"
+                    : "easy"
+                  : primaryMode;
+
+                return (
+                  <label
+                    key={key}
+                    className="flex items-center justify-between gap-3 py-2.5 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={isOverridden}
+                        onChange={() => toggleWordOverride(key)}
+                        className="h-4 w-4 rounded border-line accent-[#facc3b] cursor-pointer shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="font-bold text-ink text-sm truncate">{w.text}</div>
+                        {w.translation ? (
+                          <div className="text-xs text-muted truncate" dir="rtl">
+                            {w.translation}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[length:var(--text-label)] font-bold uppercase tracking-wider shrink-0 ${
+                        effectiveMode === "hard"
+                          ? "bg-subtitle/20 text-amber-900 dark:text-subtitle border border-subtitle/40"
+                          : "bg-black/5 dark:bg-white/10 text-muted border border-line"
+                      }`}
+                    >
+                      {effectiveMode}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 mt-4">
+              <div className="text-xs text-muted">
+                {(() => {
+                  const total = configuringDeck.words.length;
+                  const oppCount = overrideKeys.size;
+                  const primCount = total - oppCount;
+                  if (oppCount === 0) {
+                    return `All ${total} ${total === 1 ? "word" : "words"} in ${primaryMode === "easy" ? "Easy" : "Hard"} mode`;
+                  }
+                  return primaryMode === "easy"
+                    ? `${primCount} Easy · ${oppCount} Hard`
+                    : `${primCount} Hard · ${oppCount} Easy`;
+                })()}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfiguringDeck(null)}
+                  className="btn btn-quiet min-h-11 px-4 text-[length:var(--text-control)] font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={startConfiguredPractice}
+                  className="btn btn-primary min-h-11 px-5 text-[length:var(--text-control)] font-bold cursor-pointer inline-flex items-center gap-2"
+                >
+                  <PlayIcon size={12} />
+                  <span>Start Practice</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Queued Easy / Hard Practice Session Modal */}
+      {practiceQueue.length > 0 ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPracticeQueue([]);
+          }}
+        >
+          <div className="relative w-full max-w-4xl max-h-[94vh] overflow-y-auto rounded-3xl border border-line bg-bg shadow-2xl">
+            {practiceQueue.length > 1 ? (
+              <div className="px-5 pt-4 pb-1 flex items-center justify-between gap-2 text-xs font-semibold text-amber-800 dark:text-subtitle">
+                <span>
+                  Step 1 of {practiceQueue.length}:{" "}
+                  {practiceQueue[0].mode === "easy" ? "Easy (Quick Review)" : "Hard (Deep Learning)"} ·{" "}
+                  {practiceQueue[0].words.length} {practiceQueue[0].words.length === 1 ? "word" : "words"}
+                </span>
+                <span className="text-muted">
+                  Next: {practiceQueue[1].mode === "easy" ? "Easy" : "Hard"} ({practiceQueue[1].words.length})
+                </span>
+              </div>
+            ) : null}
+            {practiceQueue[0].mode === "easy" ? (
+              <ReviewSession
+                key={`easy-${practiceQueue.length}-${practiceQueue[0].words.length}`}
+                words={practiceQueue[0].words}
+                sessionSize={practiceQueue[0].words.length}
+                onReload={advancePracticeQueue}
+              />
+            ) : (
+              <InteractiveLearningSession
+                key={`hard-${practiceQueue.length}-${practiceQueue[0].words.length}`}
+                words={practiceQueue[0].words}
+                onReload={advancePracticeQueue}
+              />
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Quick Interactive Practice Modal (Single-Word Direct) */}
       {practicingDeck ? (
         <div
           role="dialog"
