@@ -704,7 +704,7 @@
 
   // Active Precision Audio-Video Lip-Sync Engine with Auto-Recovery
   function syncAudioWithVideo() {
-    if (!isAudioTranscoded || !compatibleAudio || !compatibleAudio.src || isScrubbing) {
+    if (!isAudioTranscoded || !compatibleAudio || !compatibleAudio.src || isScrubbing || liveAudioResyncing) {
       return;
     }
 
@@ -3075,11 +3075,37 @@
   }
 
   // Real-Time On-Demand Audio Streaming Engine (FFmpeg live MP3 stream with Active Lip-Sync & Voice Protection)
+  let liveStreamSeq = 0;
+  let liveStreamDebounceTimer = null;
+  let liveResyncSafetyTimer = null;
+
+  function scheduleLiveAudioResync(seekTime) {
+    if (!isAudioTranscoded || !currentFilePath) return;
+    liveAudioResyncing = true;
+    audioStreamStartTime = Math.max(0, seekTime);
+    if (compatibleAudio && !compatibleAudio.paused) {
+      try { compatibleAudio.pause(); } catch {}
+    }
+    if (liveStreamDebounceTimer) clearTimeout(liveStreamDebounceTimer);
+    liveStreamDebounceTimer = setTimeout(() => {
+      liveStreamDebounceTimer = null;
+      startLiveAudioStream(audioStreamStartTime, activeAudioTrackIndex);
+    }, 80);
+  }
+
   async function startLiveAudioStream(seekTime = 0, trackIndex = null) {
     if (!currentFilePath || !window.WordTapAPI || !window.WordTapAPI.getAudioStreamUrl) {
       showToast('Please open a media file first');
       return;
     }
+    const seq = ++liveStreamSeq;
+    const wasAlreadyTranscoded = isAudioTranscoded;
+    liveAudioResyncing = true;
+    if (liveResyncSafetyTimer) clearTimeout(liveResyncSafetyTimer);
+    liveResyncSafetyTimer = setTimeout(() => {
+      if (seq === liveStreamSeq) liveAudioResyncing = false;
+    }, 2500);
+
     try {
       ensureAudioNodes();
       resumeAudioContext();
@@ -3091,11 +3117,17 @@
         activeAudioTrackIndex = trackIndex;
       }
 
+      if (compatibleAudio && !compatibleAudio.paused) {
+        try { compatibleAudio.pause(); } catch {}
+      }
+
       const streamUrl = await window.WordTapAPI.getAudioStreamUrl({
         filePath: currentFilePath,
         startTime: targetTime,
         trackIndex: activeAudioTrackIndex
       });
+
+      if (seq !== liveStreamSeq) return;
 
       if (streamUrl) {
         // Video element must stay muted so its unsupported audio track doesn't clash
@@ -3110,12 +3142,21 @@
         compatibleAudio.muted = userMuted;
         updateVolumeDisplay();
 
-        // Hardware-lock event: Align video frame to the audio stream's exact presentation time the instant sound begins!
+        // Hardware-lock event: Align video frame only if drift > 0.35s to avoid repeat-seek stutter
         const onAudioPlaying = () => {
           compatibleAudio.removeEventListener('playing', onAudioPlaying);
+          if (seq !== liveStreamSeq) return;
+          liveAudioResyncing = false;
+          if (liveResyncSafetyTimer) {
+            clearTimeout(liveResyncSafetyTimer);
+            liveResyncSafetyTimer = null;
+          }
           if (isAudioTranscoded) {
             const elapsed = compatibleAudio.currentTime || 0;
-            video.currentTime = Math.max(0, audioStreamStartTime + elapsed + (audioDelayMs / 1000));
+            const expectedVideoTime = Math.max(0, audioStreamStartTime + elapsed + (audioDelayMs / 1000));
+            if (Math.abs(video.currentTime - expectedVideoTime) > 0.35) {
+              video.currentTime = expectedVideoTime;
+            }
             if (video.paused) {
               video.play().catch(() => {});
             }
@@ -3124,10 +3165,12 @@
         compatibleAudio.addEventListener('playing', onAudioPlaying);
 
         compatibleAudio.onerror = (e) => {
+          if (seq !== liveStreamSeq) return;
+          liveAudioResyncing = false;
           console.warn('[WordTap Audio] compatibleAudio error event:', e);
           if (isAudioTranscoded && !video.paused && currentFilePath) {
             setTimeout(() => {
-              if (isAudioTranscoded && !video.paused) {
+              if (seq === liveStreamSeq && isAudioTranscoded && !video.paused) {
                 startLiveAudioStream(video.currentTime, activeAudioTrackIndex);
               }
             }, 600);
@@ -3141,7 +3184,9 @@
             resumeAudioContext();
           });
         }
-        showToast('Audio: Transcode Engine Active (Stereo Downmix)');
+        if (!wasAlreadyTranscoded) {
+          showToast('Audio: Transcode Engine Active (Stereo Downmix)');
+        }
 
         // Start active precision lip-sync loop (100ms interval)
         if (!audioSyncLoop) {
@@ -3149,6 +3194,7 @@
         }
       }
     } catch (err) {
+      if (seq === liveStreamSeq) liveAudioResyncing = false;
       console.error('Live audio stream error:', err);
       showToast('Audio error: ' + err.message);
     }
@@ -4421,11 +4467,11 @@
     });
 
     video.addEventListener('seeked', () => {
-      if (!isScrubbing && isAudioTranscoded && currentFilePath) {
+      if (!isScrubbing && !liveAudioResyncing && isAudioTranscoded && currentFilePath) {
         const audioElapsed = compatibleAudio ? (compatibleAudio.currentTime || 0) : 0;
         const currentAudioTime = audioStreamStartTime + audioElapsed + (audioDelayMs / 1000);
         if (Math.abs(video.currentTime - currentAudioTime) > 0.4) {
-          startLiveAudioStream(video.currentTime);
+          scheduleLiveAudioResync(video.currentTime);
         } else {
           syncAudioWithVideo();
         }
@@ -4867,13 +4913,13 @@
         helpModal.classList.toggle('open');
       } else if (e.code === 'ArrowLeft') {
         const target = Math.max(0, video.currentTime - 5);
+        if (isAudioTranscoded && currentFilePath) scheduleLiveAudioResync(target);
         video.currentTime = target;
-        if (isAudioTranscoded && currentFilePath) startLiveAudioStream(target);
         showToast('-00:05');
       } else if (e.code === 'ArrowRight') {
         const target = Math.min(video.duration || 0, video.currentTime + 5);
+        if (isAudioTranscoded && currentFilePath) scheduleLiveAudioResync(target);
         video.currentTime = target;
-        if (isAudioTranscoded && currentFilePath) startLiveAudioStream(target);
         showToast('+00:05');
       } else if (e.code === 'ArrowUp') {
         adjustVolume(0.05);

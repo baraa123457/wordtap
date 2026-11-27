@@ -1,6 +1,6 @@
 {
   "name": "wordtap-player",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "WordTap Desktop Video Player with Interactive Subtitles and Word Sync",
   "main": "main.js",
   "scripts": {
