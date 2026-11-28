@@ -1320,6 +1320,16 @@ export default function DecksPage() {
                 includeDictation={true}
                 promptMode="translation"
                 onClose={() => setPracticeQueue([])}
+                onPracticeHard={(hardWords) => {
+                  setPracticeQueue((prev) => [
+                    {
+                      mode: "hard",
+                      words: hardWords,
+                      allDeckWords: prev[0]?.allDeckWords,
+                    },
+                    ...prev.slice(1),
+                  ]);
+                }}
                 onReload={advancePracticeQueue}
               />
             ) : (

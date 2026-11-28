@@ -22,6 +22,7 @@ export function ReviewSummary({
   saveError,
   onRetrySave,
   onReviewMore,
+  onPracticeHard,
 }: {
   items: ReviewedWordSummary[];
   xpEarned: number;
@@ -29,6 +30,7 @@ export function ReviewSummary({
   saveError: string | null;
   onRetrySave: () => void;
   onReviewMore: () => void;
+  onPracticeHard?: (hardWords: Word[]) => void;
 }) {
   const rightCount = items.filter((i) => i.schedule.passedAllRounds).length;
   const hardest = items.filter((i) => !i.schedule.passedAllRounds);
@@ -67,10 +69,21 @@ export function ReviewSummary({
       ) : null}
 
       {hardest.length > 0 ? (
-        <div className="rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] p-4 grid gap-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted">
-            Hardest words to revisit soon
-          </p>
+        <div className="rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] p-4 grid gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted">
+              Hardest words to revisit soon
+            </p>
+            {onPracticeHard ? (
+              <button
+                type="button"
+                onClick={() => onPracticeHard(hardest.map((h) => h.word))}
+                className="btn btn-primary min-h-10 px-4 text-xs font-bold cursor-pointer"
+              >
+                Practice {hardest.length} in Hard Mode →
+              </button>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             {hardest.map((h) => (
               <span
@@ -90,9 +103,9 @@ export function ReviewSummary({
             key={word.id}
             className="flex flex-wrap items-center justify-between gap-2 p-3.5 text-sm"
           >
-            <div className="min-w-0">
+            <div className="min-w-0 flex flex-wrap items-baseline gap-2">
               <span className="font-bold text-ink">{word.text}</span>
-              <span dir="auto" className="text-xs text-muted ms-2">
+              <span dir="auto" className="text-xs text-muted">
                 {word.translation}
               </span>
             </div>

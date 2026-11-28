@@ -35,6 +35,7 @@ export function ReviewSession({
   includeDictation = false,
   promptMode = "word",
   onClose,
+  onPracticeHard,
   onReload,
 }: {
   words: Word[];
@@ -44,6 +45,7 @@ export function ReviewSession({
   includeDictation?: boolean;
   promptMode?: "word" | "translation";
   onClose?: () => void;
+  onPracticeHard?: (hardWords: Word[]) => void;
   onReload: () => void;
 }) {
   const router = useRouter();
@@ -315,6 +317,7 @@ export function ReviewSession({
             saving={saving}
             saveError={saveError}
             onRetrySave={() => void persistBatch(pendingUpdates, xpEarned)}
+            onPracticeHard={onPracticeHard}
             onReviewMore={onReload}
           />
         )}
