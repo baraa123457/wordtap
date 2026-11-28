@@ -452,20 +452,18 @@ export function TypingRound({
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2 shrink-0">
-              {checked === "wrong" ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTyped("");
-                    setFeedbackReason("");
-                    setChecked("idle");
-                    window.setTimeout(() => inputRef.current?.focus(), 0);
-                  }}
-                  className="btn min-h-11 px-4 text-sm font-semibold cursor-pointer"
-                >
-                  Try again
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setTyped("");
+                  setFeedbackReason("");
+                  setChecked("idle");
+                  window.setTimeout(() => inputRef.current?.focus(), 0);
+                }}
+                className="btn min-h-11 px-4 text-sm font-semibold cursor-pointer"
+              >
+                Rewrite
+              </button>
               <button
                 type="button"
                 autoFocus
