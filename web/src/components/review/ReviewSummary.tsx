@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import type { NextReviewSchedule } from "@/lib/review-scheduler";
 import type { Word } from "@/lib/schemas";
@@ -34,6 +35,22 @@ export function ReviewSummary({
 }) {
   const rightCount = items.filter((i) => i.schedule.passedAllRounds).length;
   const hardest = items.filter((i) => !i.schedule.passedAllRounds);
+  const [selectedHardIds, setSelectedHardIds] = useState<Set<string>>(
+    () => new Set(hardest.map((h) => h.word.id)),
+  );
+
+  const toggleHardWord = (wordId: string) => {
+    setSelectedHardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(wordId)) next.delete(wordId);
+      else next.add(wordId);
+      return next;
+    });
+  };
+
+  const selectedHardWords = items
+    .filter((i) => selectedHardIds.has(i.word.id))
+    .map((i) => i.word);
 
   return (
     <section className="apple-card p-6 sm:p-8 grid gap-6 min-w-0">
@@ -68,58 +85,99 @@ export function ReviewSummary({
         </div>
       ) : null}
 
-      {hardest.length > 0 ? (
+      {hardest.length > 0 || (onPracticeHard && items.length > 0) ? (
         <div className="rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] p-4 grid gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted">
-              Hardest words to revisit soon
-            </p>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted">
+                {hardest.length > 0 ? "Hardest words to revisit soon" : "Practice in Hard Mode"}
+              </p>
+              {onPracticeHard ? (
+                <p className="text-[11px] text-muted mt-0.5">
+                  Toggle words below to add or remove them from Hard Mode.
+                </p>
+              ) : null}
+            </div>
             {onPracticeHard ? (
               <button
                 type="button"
-                onClick={() => onPracticeHard(hardest.map((h) => h.word))}
-                className="btn btn-primary min-h-10 px-4 text-xs font-bold cursor-pointer"
+                disabled={selectedHardWords.length === 0}
+                onClick={() => onPracticeHard(selectedHardWords)}
+                className="btn btn-primary min-h-10 px-4 text-xs font-bold cursor-pointer disabled:opacity-50"
               >
-                Practice {hardest.length} in Hard Mode →
+                Practice {selectedHardWords.length} in Hard Mode →
               </button>
             ) : null}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {hardest.map((h) => (
-              <span
-                key={h.word.id}
-                className="rounded-full border border-bad/30 bg-bad-soft px-3 py-1 text-xs font-bold text-bad-ink"
-              >
-                {h.word.text}
-              </span>
-            ))}
-          </div>
+          {hardest.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {hardest.map((h) => {
+                const isSelected = selectedHardIds.has(h.word.id);
+                return onPracticeHard ? (
+                  <button
+                    key={h.word.id}
+                    type="button"
+                    onClick={() => toggleHardWord(h.word.id)}
+                    className={`rounded-full border px-3 py-1 text-xs font-bold cursor-pointer transition-colors ${
+                      isSelected
+                        ? "border-bad/30 bg-bad-soft text-bad-ink"
+                        : "border-line bg-surface text-muted line-through opacity-70"
+                    }`}
+                    title={isSelected ? "Click to remove from Hard Mode" : "Click to add to Hard Mode"}
+                  >
+                    {h.word.text} {isSelected ? "×" : "+"}
+                  </button>
+                ) : (
+                  <span
+                    key={h.word.id}
+                    className="rounded-full border border-bad/30 bg-bad-soft px-3 py-1 text-xs font-bold text-bad-ink"
+                  >
+                    {h.word.text}
+                  </span>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
       <ul className="divide-y divide-line/60 rounded-2xl border border-line bg-surface overflow-hidden">
-        {items.map(({ word, schedule }) => (
-          <li
-            key={word.id}
-            className="flex flex-wrap items-center justify-between gap-2 p-3.5 text-sm"
-          >
-            <div className="min-w-0 flex flex-wrap items-baseline gap-2">
-              <span className="font-bold text-ink">{word.text}</span>
-              <span dir="auto" className="text-xs text-muted">
-                {word.translation}
-              </span>
-            </div>
-            <span
-              className={`text-xs font-bold tabular-nums shrink-0 ${
-                schedule.passedAllRounds
-                  ? "text-emerald-700 dark:text-emerald-400"
-                  : "text-bad-ink"
-              }`}
+        {items.map(({ word, schedule }) => {
+          const isSelectedHard = selectedHardIds.has(word.id);
+          return (
+            <li
+              key={word.id}
+              className="flex flex-wrap items-center justify-between gap-2 p-3.5 text-sm"
             >
-              Box {schedule.review_box} · {formatNextDueLabel(schedule.intervalDays)}
-            </span>
-          </li>
-        ))}
+              <div className="min-w-0 flex flex-wrap items-center gap-2.5">
+                {onPracticeHard ? (
+                  <input
+                    type="checkbox"
+                    checked={isSelectedHard}
+                    onChange={() => toggleHardWord(word.id)}
+                    aria-label={`Include ${word.text} in Hard Mode`}
+                    className="accent-subtitle h-4 w-4 cursor-pointer shrink-0"
+                  />
+                ) : null}
+                <div className="min-w-0 flex flex-wrap items-baseline gap-2">
+                  <span className="font-bold text-ink">{word.text}</span>
+                  <span dir="auto" className="text-xs text-muted">
+                    {word.translation}
+                  </span>
+                </div>
+              </div>
+              <span
+                className={`text-xs font-bold tabular-nums shrink-0 ${
+                  schedule.passedAllRounds
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-bad-ink"
+                }`}
+              >
+                Box {schedule.review_box} · {formatNextDueLabel(schedule.intervalDays)}
+              </span>
+            </li>
+          );
+        })}
       </ul>
 
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
