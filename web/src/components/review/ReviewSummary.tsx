@@ -109,33 +109,35 @@ export function ReviewSummary({
               </button>
             ) : null}
           </div>
-          {hardest.length > 0 ? (
+          {(onPracticeHard ? selectedHardWords.length > 0 : hardest.length > 0) ? (
             <div className="flex flex-wrap gap-2">
-              {hardest.map((h) => {
-                const isSelected = selectedHardIds.has(h.word.id);
-                return onPracticeHard ? (
-                  <button
-                    key={h.word.id}
-                    type="button"
-                    onClick={() => toggleHardWord(h.word.id)}
-                    className={`rounded-full border px-3 py-1 text-xs font-bold cursor-pointer transition-colors ${
-                      isSelected
-                        ? "border-bad/30 bg-bad-soft text-bad-ink"
-                        : "border-line bg-surface text-muted line-through opacity-70"
-                    }`}
-                    title={isSelected ? "Click to remove from Hard Mode" : "Click to add to Hard Mode"}
-                  >
-                    {h.word.text} {isSelected ? "×" : "+"}
-                  </button>
-                ) : (
-                  <span
-                    key={h.word.id}
-                    className="rounded-full border border-bad/30 bg-bad-soft px-3 py-1 text-xs font-bold text-bad-ink"
-                  >
-                    {h.word.text}
-                  </span>
-                );
-              })}
+              {onPracticeHard
+                ? selectedHardWords.map((w) => {
+                    const isMissed = hardest.some((h) => h.word.id === w.id);
+                    return (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => toggleHardWord(w.id)}
+                        className={`rounded-full border px-3 py-1 text-xs font-bold cursor-pointer transition-colors ${
+                          isMissed
+                            ? "border-bad/30 bg-bad-soft text-bad-ink"
+                            : "border-subtitle/40 bg-subtitle/15 text-amber-900 dark:text-subtitle"
+                        }`}
+                        title="Click to remove from Hard Mode"
+                      >
+                        {w.text} ×
+                      </button>
+                    );
+                  })
+                : hardest.map((h) => (
+                    <span
+                      key={h.word.id}
+                      className="rounded-full border border-bad/30 bg-bad-soft px-3 py-1 text-xs font-bold text-bad-ink"
+                    >
+                      {h.word.text}
+                    </span>
+                  ))}
             </div>
           ) : null}
         </div>
