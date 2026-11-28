@@ -317,14 +317,29 @@ export function DictationRound({
                 {current.translation}
               </p>
             </div>
-            <button
-              type="button"
-              autoFocus
-              onClick={handleNext}
-              className="btn btn-primary min-h-11 px-5 text-sm font-bold cursor-pointer shrink-0"
-            >
-              {index + 1 >= words.length ? "Continue →" : "Next word →"}
-            </button>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {checked === "wrong" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTyped("");
+                    setChecked("idle");
+                    window.setTimeout(() => inputRef.current?.focus(), 0);
+                  }}
+                  className="btn min-h-11 px-4 text-sm font-semibold cursor-pointer"
+                >
+                  Try again
+                </button>
+              ) : null}
+              <button
+                type="button"
+                autoFocus
+                onClick={handleNext}
+                className="btn btn-primary min-h-11 px-5 text-sm font-bold cursor-pointer"
+              >
+                {index + 1 >= words.length ? "Continue →" : "Next word →"}
+              </button>
+            </div>
           </div>
         )}
       </form>
