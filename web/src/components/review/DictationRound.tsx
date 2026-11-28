@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { canSpeak, speak } from "@/lib/speech";
+import { usePartOfSpeech } from "@/lib/pos-lookup";
 import { playKeyClickSound } from "@/lib/typing-sound";
 import type { Word } from "@/lib/schemas";
 import { SpeakerIcon, TrashIcon } from "@/components/Icons";
@@ -35,6 +36,7 @@ export function DictationRound({
   const [results, setResults] = useState<Record<string, boolean>>({});
 
   const current = words[index];
+  const partOfSpeech = usePartOfSpeech(current);
 
   useEffect(() => {
     if (!current) return;
@@ -123,6 +125,11 @@ export function DictationRound({
           >
             <span>Slow (0.65×)</span>
           </button>
+          {partOfSpeech ? (
+            <span className="rounded-full border border-line bg-black/[0.03] dark:bg-white/[0.05] px-2.5 py-0.5 text-xs font-semibold text-muted capitalize">
+              {partOfSpeech}
+            </span>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 shrink-0">

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { canSpeak, speak } from "@/lib/speech";
+import { usePartOfSpeech } from "@/lib/pos-lookup";
 import type { Word } from "@/lib/schemas";
 import { SpeakerIcon, TrashIcon } from "@/components/Icons";
 
@@ -90,6 +91,7 @@ export function MultipleChoiceRound({
   const [results, setResults] = useState<Record<string, boolean>>({});
 
   const current = words[index];
+  const partOfSpeech = usePartOfSpeech(current);
 
   const options = useMemo(
     () => (current ? buildOptions(current, allWords) : []),
@@ -167,9 +169,9 @@ export function MultipleChoiceRound({
               <SpeakerIcon size={17} />
             </button>
           ) : null}
-          {current.part_of_speech ? (
+          {partOfSpeech ? (
             <span className="rounded-full border border-line bg-black/[0.03] dark:bg-white/[0.05] px-2.5 py-0.5 text-xs font-semibold text-muted capitalize">
-              {current.part_of_speech}
+              {partOfSpeech}
             </span>
           ) : null}
         </div>

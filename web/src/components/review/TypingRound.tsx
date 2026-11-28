@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { canSpeak, speak } from "@/lib/speech";
+import { usePartOfSpeech } from "@/lib/pos-lookup";
 import { playKeyClickSound } from "@/lib/typing-sound";
 import type { Word } from "@/lib/schemas";
 import { SpeakerIcon, TrashIcon } from "@/components/Icons";
@@ -81,6 +82,7 @@ export function TypingRound({
   const [results, setResults] = useState<Record<string, boolean>>({});
 
   const current = words[index];
+  const partOfSpeech = usePartOfSpeech(current);
 
   useEffect(() => {
     if (!current) return;
@@ -210,9 +212,16 @@ export function TypingRound({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] px-4 py-4">
-        <p dir="auto" className="text-lg sm:text-2xl font-bold text-ink break-words">
-          {promptMode === "translation" ? current.text : current.translation}
-        </p>
+        <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+          <p dir="auto" className="text-lg sm:text-2xl font-bold text-ink break-words">
+            {promptMode === "translation" ? current.text : current.translation}
+          </p>
+          {partOfSpeech ? (
+            <span className="rounded-full border border-line bg-black/[0.03] dark:bg-white/[0.05] px-2.5 py-0.5 text-xs font-semibold text-muted capitalize">
+              {partOfSpeech}
+            </span>
+          ) : null}
+        </div>
         <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           {canSpeak() ? (
             <button
