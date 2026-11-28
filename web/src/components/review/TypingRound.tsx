@@ -17,6 +17,13 @@ function normalizeTyped(value: string): string {
     .toLowerCase();
 }
 
+function stripArabicAlPrefix(value: string): string {
+  return value
+    .split(/\s+/)
+    .map((tok) => (tok.startsWith("ال") && tok.length > 3 ? tok.slice(2) : tok))
+    .join(" ");
+}
+
 function getTranslationCandidates(translation: string): string[] {
   const full = normalizeTyped(translation);
   const parts = translation
@@ -67,6 +74,8 @@ export function TypingRound({
   const [typed, setTyped] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [checked, setChecked] = useState<"idle" | "correct" | "wrong">("idle");
+  const [checking, setChecking] = useState(false);
+  const [feedbackReason, setFeedbackReason] = useState("");
   const [results, setResults] = useState<Record<string, boolean>>({});
 
   const current = words[index];
@@ -84,22 +93,53 @@ export function TypingRound({
 
   if (!current) return null;
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (checked !== "idle" || !typed.trim()) return;
+    if (checked !== "idle" || checking || !typed.trim()) return;
 
     const cleanTyped = normalizeTyped(typed);
     let ok = false;
+    let reason = "";
+
     if (promptMode === "translation") {
+      const typedNoAl = stripArabicAlPrefix(cleanTyped);
       const candidates = getTranslationCandidates(current.translation);
       ok = candidates.some((cand) => {
-        if (cleanTyped === cand) return true;
+        const candNoAl = stripArabicAlPrefix(cand);
+        if (cleanTyped === cand || typedNoAl === candNoAl) return true;
         return (
           allowSimpleTypos &&
-          cand.length >= 4 &&
-          levenshtein(cleanTyped, cand) <= 1
+          candNoAl.length >= 4 &&
+          levenshtein(typedNoAl, candNoAl) <= 1
         );
       });
+
+      if (!ok) {
+        setChecking(true);
+        try {
+          const res = await fetch("/api/learn/evaluate-translation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              word: current.text,
+              expectedTranslation: current.translation,
+              userTranslation: typed.trim(),
+              srcLang: current.src_lang || "en",
+              targetLang: current.target_lang || "ar",
+              allowSimpleTypos,
+            }),
+          });
+          if (res.ok) {
+            const data = (await res.json()) as { isCorrect?: boolean; reason?: string };
+            ok = Boolean(data.isCorrect);
+            reason = data.reason || "";
+          }
+        } catch {
+          // Keep local fallback result
+        } finally {
+          setChecking(false);
+        }
+      }
     } else {
       const cleanTarget = normalizeTyped(current.text);
       const isExact = cleanTyped === cleanTarget;
@@ -109,13 +149,15 @@ export function TypingRound({
     }
 
     if (!ok) playKeyClickSound("error");
+    setFeedbackReason(reason);
     setChecked(ok ? "correct" : "wrong");
     const nextResults = { ...results, [current.id]: ok };
     setResults(nextResults);
   };
 
   const handleDontKnow = () => {
-    if (checked !== "idle") return;
+    if (checked !== "idle" || checking) return;
+    setFeedbackReason("");
     setChecked("wrong");
     setResults((prev) => ({ ...prev, [current.id]: false }));
   };
@@ -125,6 +167,7 @@ export function TypingRound({
       onComplete(results);
     } else {
       setTyped("");
+      setFeedbackReason("");
       setChecked("idle");
       setIndex((i) => i + 1);
     }
@@ -297,17 +340,18 @@ export function TypingRound({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
+              disabled={checking}
               onClick={handleDontKnow}
-              className="btn btn-quiet min-h-11 px-4 text-xs sm:text-sm font-semibold text-muted hover:text-ink cursor-pointer"
+              className="btn btn-quiet min-h-11 px-4 text-xs sm:text-sm font-semibold text-muted hover:text-ink cursor-pointer disabled:opacity-50"
             >
               I don&apos;t know
             </button>
             <button
               type="submit"
-              disabled={!typed.trim()}
+              disabled={checking || !typed.trim()}
               className="btn btn-primary flex-1 sm:flex-initial min-h-12 px-6 text-sm sm:text-base font-bold cursor-pointer disabled:opacity-50"
             >
-              Check
+              {checking ? "Checking…" : "Check"}
             </button>
           </div>
         ) : (
@@ -331,6 +375,9 @@ export function TypingRound({
                   ? `Correct! "${promptMode === "translation" ? current.translation : current.text}"`
                   : `${promptMode === "translation" ? "Correct translation" : "Correct word"}: "${promptMode === "translation" ? current.translation : current.text}"`}
               </p>
+              {feedbackReason ? (
+                <p className="text-xs text-muted mt-1">{feedbackReason}</p>
+              ) : null}
             </div>
             <button
               type="button"
