@@ -381,7 +381,28 @@ export async function batchUpdateReviewResults(updates: ReviewBatchUpdate[]): Pr
   }));
 
   const { error } = await supabase.from("words").upsert(rows, { onConflict: "id" });
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (/column|does not exist|schema cache/i.test(error.message)) {
+      const legacyRows = updates.map((u) => ({
+        id: u.word.id,
+        user_id: user.id,
+        text: u.word.text,
+        translation: u.word.translation,
+        src_lang: u.word.src_lang,
+        target_lang: u.word.target_lang,
+        box: u.review_box,
+        next_review: u.next_review_at,
+        times_seen: (u.word.times_seen || 0) + 1,
+        correct_count: (u.word.correct_count || 0) + (u.passed ? 1 : 0),
+        wrong_count: (u.word.wrong_count || 0) + (u.passed ? 0 : 1),
+        last_practiced: u.last_reviewed_at,
+      }));
+      const legacyRes = await supabase.from("words").upsert(legacyRows, { onConflict: "id" });
+      if (legacyRes.error) throw new Error(legacyRes.error.message);
+      return;
+    }
+    throw new Error(error.message);
+  }
 }
 
 export async function updateWordLanguage(id: string, srcLang: string, word?: Word): Promise<void> {

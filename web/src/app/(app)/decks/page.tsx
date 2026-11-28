@@ -81,6 +81,16 @@ export default function DecksPage() {
   const [configuringDeck, setConfiguringDeck] = useState<CuratedDeck | MediaDeck | null>(null);
   const [primaryMode, setPrimaryMode] = useState<"easy" | "hard">("hard");
   const [skipStudiedWords, setSkipStudiedWords] = useState(true);
+  const [localStudiedIds, setLocalStudiedIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = localStorage.getItem("wordtap_decks_studied_ids_v1");
+      const arr = raw ? (JSON.parse(raw) as string[]) : [];
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [overrideKeys, setOverrideKeys] = useState<Set<string>>(() => new Set());
   const [practiceQueue, setPracticeQueue] = useState<
     Array<{ mode: "easy" | "hard"; words: Word[]; allDeckWords?: Word[] }>
@@ -264,15 +274,17 @@ export default function DecksPage() {
   }
 
   function isWordAlreadyStudied(w: Word): boolean {
+    if (localStudiedIds.has(w.id)) return true;
     const hasStudied =
       (w.review_box ?? 0) > 0 ||
+      (w.box ?? 0) > 0 ||
       Boolean(w.initial_learning_completed) ||
       (w.correct_count ?? 0) > 0;
     if (!hasStudied) return false;
     const dueStr = w.next_review_at || w.next_review;
-    if (!dueStr) return false;
+    if (!dueStr) return true;
     const dueMs = Date.parse(dueStr);
-    return Number.isFinite(dueMs) && dueMs > Date.now();
+    return !Number.isFinite(dueMs) || dueMs > Date.now();
   }
 
   function openPracticeSetup(deck: CuratedDeck | MediaDeck) {
@@ -354,6 +366,20 @@ export default function DecksPage() {
   function advancePracticeQueue() {
     fetchWords().then(setUserWords).catch(() => {});
     setPracticeQueue((prev) => {
+      const completed = prev[0]?.words || [];
+      if (completed.length > 0) {
+        setLocalStudiedIds((prevIds) => {
+          const nextIds = new Set(prevIds);
+          for (const w of completed) nextIds.add(w.id);
+          try {
+            localStorage.setItem(
+              "wordtap_decks_studied_ids_v1",
+              JSON.stringify(Array.from(nextIds).slice(-1000)),
+            );
+          } catch {}
+          return nextIds;
+        });
+      }
       const next = prev.slice(1);
       if (next.length === 0) {
         try {
