@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEnterPrimaryAction } from "@/lib/use-enter-primary";
 import { useAuth } from "@/context/AuthContext";
 import { deleteWord, deleteWordByText, recordPractice, setWordEasy, updateWordDetails } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
@@ -75,25 +76,32 @@ export function InteractiveLearningSession({
   mode?: "learn" | "review" | "missed";
   onReload: () => void;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEnterPrimaryAction(containerRef);
+
   if (mode === "review" || mode === "missed") {
     return (
-      <SpacedRepetitionReviewSession
-        words={words}
-        reviewLimit={reviewLimit}
-        missedOnly={mode === "missed"}
-        onReload={onReload}
-      />
+      <div ref={containerRef}>
+        <SpacedRepetitionReviewSession
+          words={words}
+          reviewLimit={reviewLimit}
+          missedOnly={mode === "missed"}
+          onReload={onReload}
+        />
+      </div>
     );
   }
 
   return (
-    <SequentialInitialLearningSession
-      words={words}
-      newLimit={newLimit}
-      focusWordId={focusWordId}
-      langFilter={langFilter}
-      onReload={onReload}
-    />
+    <div ref={containerRef}>
+      <SequentialInitialLearningSession
+        words={words}
+        newLimit={newLimit}
+        focusWordId={focusWordId}
+        langFilter={langFilter}
+        onReload={onReload}
+      />
+    </div>
   );
 }
 

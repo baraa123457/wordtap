@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEnterPrimaryAction } from "@/lib/use-enter-primary";
 import {
   batchUpdateReviewResults,
   deleteWord,
@@ -49,6 +50,8 @@ export function ReviewSession({
   onReload: () => void;
 }) {
   const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEnterPrimaryAction(containerRef);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
   const [wordOverrides, setWordOverrides] = useState<Record<string, Partial<Word>>>({});
   const [editTarget, setEditTarget] = useState<Word | null>(null);
@@ -198,7 +201,7 @@ export function ReviewSession({
           : 100;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-3.5 sm:px-5 pt-safe pb-12">
+    <div ref={containerRef} className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-3.5 sm:px-5 pt-safe pb-12">
       <header className="flex items-center gap-2.5 sm:gap-4 py-3.5 sm:py-5">
         <button
           type="button"
