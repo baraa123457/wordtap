@@ -47,6 +47,28 @@ export function DictationRound({
     }
   }, [current]);
 
+  const handleNext = () => {
+    if (index + 1 >= words.length) {
+      onComplete(results);
+    } else {
+      setTyped("");
+      setChecked("idle");
+      setIndex((i) => i + 1);
+    }
+  };
+
+  useEffect(() => {
+    if (checked === "idle") return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.repeat) {
+        e.preventDefault();
+        handleNext();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
   if (!current) return null;
 
   const cleanTarget = normalizeSpelling(current.text);
@@ -69,16 +91,6 @@ export function DictationRound({
     if (checked !== "idle") return;
     setChecked("wrong");
     setResults((prev) => ({ ...prev, [current.id]: false }));
-  };
-
-  const handleNext = () => {
-    if (index + 1 >= words.length) {
-      onComplete(results);
-    } else {
-      setTyped("");
-      setChecked("idle");
-      setIndex((i) => i + 1);
-    }
   };
 
   return (

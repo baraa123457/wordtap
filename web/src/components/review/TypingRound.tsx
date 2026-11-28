@@ -93,6 +93,29 @@ export function TypingRound({
     }
   }, [current]);
 
+  const handleNext = () => {
+    if (index + 1 >= words.length) {
+      onComplete(results);
+    } else {
+      setTyped("");
+      setFeedbackReason("");
+      setChecked("idle");
+      setIndex((i) => i + 1);
+    }
+  };
+
+  useEffect(() => {
+    if (checked === "idle") return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.repeat) {
+        e.preventDefault();
+        handleNext();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
   if (!current) return null;
 
   const handleSubmit = async (e: FormEvent) => {
@@ -162,17 +185,6 @@ export function TypingRound({
     setFeedbackReason("");
     setChecked("wrong");
     setResults((prev) => ({ ...prev, [current.id]: false }));
-  };
-
-  const handleNext = () => {
-    if (index + 1 >= words.length) {
-      onComplete(results);
-    } else {
-      setTyped("");
-      setFeedbackReason("");
-      setChecked("idle");
-      setIndex((i) => i + 1);
-    }
   };
 
   return (
