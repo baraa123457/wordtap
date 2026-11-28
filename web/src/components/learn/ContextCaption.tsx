@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { maskWordInSentence, type MaskedSentence } from "@/lib/placeholder";
 import {
   buildTimedCaptionLayout,
@@ -101,6 +101,13 @@ export function ContextCaption({
 }) {
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [savedWords, setSavedWords] = useState<Set<string>>(() => new Set());
+  const hoverTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current !== null) window.clearTimeout(hoverTimerRef.current);
+    };
+  }, []);
 
   // Word-by-word karaoke timing layout synced to real SRT / transcript cues
   const timedLayout = useMemo(
@@ -194,6 +201,28 @@ export function ContextCaption({
     );
   };
 
+  const handleWordHover = (rawToken: string) => {
+    const clean = normalizeLookupWord(rawToken);
+    if (!clean || clean.length < 2) return;
+    if (!revealed && clean.toLowerCase() === targetWord.trim().toLowerCase()) return;
+    if (hoverTimerRef.current !== null) window.clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = window.setTimeout(() => {
+      setSelectedWord((prev) => {
+        if (prev?.toLowerCase() !== clean.toLowerCase()) {
+          onWordLookupOpen?.();
+        }
+        return clean;
+      });
+    }, 180);
+  };
+
+  const cancelWordHover = () => {
+    if (hoverTimerRef.current !== null) {
+      window.clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+  };
+
   const renderClickableToken = (
     key: string,
     rawText: string,
@@ -217,8 +246,10 @@ export function ContextCaption({
         key={key}
         type="button"
         onClick={() => handleWordClick(rawText)}
+        onMouseEnter={() => handleWordHover(rawText)}
+        onMouseLeave={cancelWordHover}
         data-speech-state={speechState}
-        title={`Click to translate & save "${clean}"`}
+        title={`Hover or click to translate & save "${clean}"`}
         className={wordClassForState(speechState, isSelected)}
       >
         {rawText}
@@ -232,7 +263,7 @@ export function ContextCaption({
         <span className="text-xs font-semibold text-muted">{label}</span>
         <div className="flex items-center gap-2">
           <span className="hidden sm:inline text-[11px] text-muted">
-            Click any word for meaning
+            Hover or click any word for meaning
           </span>
           <span
             data-testid="stage2-letter-count"
