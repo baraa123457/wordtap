@@ -1317,6 +1317,7 @@ export default function DecksPage() {
                 allDeckWords={practiceQueue[0].allDeckWords}
                 sessionSize={practiceQueue[0].words.length}
                 ignoreEligibility={true}
+                includeDictation={true}
                 promptMode="translation"
                 onClose={() => setPracticeQueue([])}
                 onReload={advancePracticeQueue}

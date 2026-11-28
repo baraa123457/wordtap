@@ -56,6 +56,7 @@ export function TypingRound({
   words,
   allowSimpleTypos,
   promptMode = "word",
+  roundLabel = "Round 3 · Typing Recall",
   onToggleTypos,
   onEditWord,
   onDeleteWord,
@@ -64,6 +65,7 @@ export function TypingRound({
   words: Word[];
   allowSimpleTypos: boolean;
   promptMode?: "word" | "translation";
+  roundLabel?: string;
   onToggleTypos: (next: boolean) => void;
   onEditWord?: (word: Word) => void;
   onDeleteWord?: (word: Word) => void;
@@ -177,7 +179,7 @@ export function TypingRound({
     <section className="apple-card p-5 sm:p-7 grid gap-5 min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-muted">
         <span className="rounded-full bg-subtitle/20 border border-subtitle/30 px-3 py-0.5 text-ink">
-          Round 3 · Typing Recall
+          {roundLabel}
         </span>
         <div className="flex items-center gap-3">
           <label className="inline-flex items-center gap-1.5 text-xs font-medium text-muted cursor-pointer">

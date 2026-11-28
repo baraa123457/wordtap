@@ -21,16 +21,18 @@ import type { Word } from "@/lib/schemas";
 import { CloseIcon } from "@/components/Icons";
 import { MultipleChoiceRound } from "./MultipleChoiceRound";
 import { MatchingRound } from "./MatchingRound";
+import { DictationRound } from "./DictationRound";
 import { TypingRound } from "./TypingRound";
 import { ReviewSummary, type ReviewedWordSummary } from "./ReviewSummary";
 
-type RoundStep = "choice" | "matching" | "typing" | "summary";
+type RoundStep = "choice" | "matching" | "dictation" | "typing" | "summary";
 
 export function ReviewSession({
   words,
   allDeckWords,
   sessionSize = 10,
   ignoreEligibility = false,
+  includeDictation = false,
   promptMode = "word",
   onClose,
   onReload,
@@ -39,6 +41,7 @@ export function ReviewSession({
   allDeckWords?: Word[];
   sessionSize?: number;
   ignoreEligibility?: boolean;
+  includeDictation?: boolean;
   promptMode?: "word" | "translation";
   onClose?: () => void;
   onReload: () => void;
@@ -73,6 +76,7 @@ export function ReviewSession({
   const [round, setRound] = useState<RoundStep>("choice");
   const [round1, setRound1] = useState<Record<string, boolean>>({});
   const [round2, setRound2] = useState<Record<string, boolean>>({});
+  const [roundDictation, setRoundDictation] = useState<Record<string, boolean>>({});
   const [round3, setRound3] = useState<Record<string, boolean>>({});
   const [allowSimpleTypos, setAllowSimpleTypos] = useState(false);
 
@@ -173,8 +177,23 @@ export function ReviewSession({
     );
   }
 
-  const progressPct =
-    round === "choice" ? 15 : round === "matching" ? 50 : round === "typing" ? 80 : 100;
+  const progressPct = includeDictation
+    ? round === "choice"
+      ? 15
+      : round === "matching"
+        ? 40
+        : round === "dictation"
+          ? 65
+          : round === "typing"
+            ? 85
+            : 100
+    : round === "choice"
+      ? 15
+      : round === "matching"
+        ? 50
+        : round === "typing"
+          ? 80
+          : 100;
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-3.5 sm:px-5 pt-safe pb-12">
@@ -234,7 +253,13 @@ export function ReviewSession({
             onDeleteWord={(w) => setDeleteTarget(w)}
             onComplete={(r1) => {
               setRound1(r1);
-              setRound(sessionWords.length >= 2 ? "matching" : "typing");
+              setRound(
+                sessionWords.length >= 2
+                  ? "matching"
+                  : includeDictation
+                    ? "dictation"
+                    : "typing",
+              );
             }}
           />
         ) : round === "matching" ? (
@@ -242,6 +267,20 @@ export function ReviewSession({
             words={sessionWords}
             onComplete={(r2) => {
               setRound2(r2);
+              setRound(includeDictation ? "dictation" : "typing");
+            }}
+          />
+        ) : round === "dictation" ? (
+          <DictationRound
+            words={sessionWords}
+            onEditWord={(w) => {
+              setEditTarget(w);
+              setEditText(w.text);
+              setEditTranslation(w.translation || "");
+            }}
+            onDeleteWord={(w) => setDeleteTarget(w)}
+            onComplete={(rDict) => {
+              setRoundDictation(rDict);
               setRound("typing");
             }}
           />
@@ -250,6 +289,7 @@ export function ReviewSession({
             words={sessionWords}
             allowSimpleTypos={allowSimpleTypos}
             promptMode={promptMode}
+            roundLabel={includeDictation ? "Round 4 · Write Translation" : "Round 3 · Typing Recall"}
             onToggleTypos={setAllowSimpleTypos}
             onEditWord={(w) => {
               setEditTarget(w);
@@ -259,7 +299,13 @@ export function ReviewSession({
             onDeleteWord={(w) => setDeleteTarget(w)}
             onComplete={(r3) => {
               setRound3(r3);
-              finalizeSession(round1, round2, r3, false);
+              const combinedR3: Record<string, boolean> = { ...r3 };
+              if (includeDictation) {
+                for (const w of sessionWords) {
+                  combinedR3[w.id] = (roundDictation[w.id] ?? true) && (r3[w.id] ?? true);
+                }
+              }
+              finalizeSession(round1, round2, combinedR3, false);
             }}
           />
         ) : (
