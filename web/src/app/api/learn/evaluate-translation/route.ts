@@ -26,6 +26,7 @@ function normalizeText(value: string): string {
     .trim()
     .replace(/[\u064B-\u065F\u0670]/g, "")
     .replace(/[أإآ]/g, "ا")
+    .replace(/[ؤئ]/g, "ء")
     .replace(/ى/g, "ي")
     .replace(/ة/g, "ه")
     .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
@@ -84,6 +85,91 @@ function isLocalMatch(
   });
 }
 
+function isFuzzyPhraseMatch(expectedTranslation: string, userTranslation: string): boolean {
+  const userTokens = stripArabicAlPrefix(normalizeText(userTranslation))
+    .split(/\s+/)
+    .filter(Boolean);
+  if (userTokens.length === 0) return false;
+
+  const full = normalizeText(expectedTranslation);
+  const parts = expectedTranslation
+    .split(/[,،;/]+/)
+    .map((p) => normalizeText(p))
+    .filter(Boolean);
+  const candidates = Array.from(new Set(full ? [full, ...parts] : parts));
+
+  for (const cand of candidates) {
+    const candTokens = stripArabicAlPrefix(cand).split(/\s+/).filter(Boolean);
+    if (candTokens.length === 0) continue;
+
+    // Whole-string similarity for close spelling / minor hamza/taa-marbuta variations
+    const userJoined = userTokens.join(" ");
+    const candJoined = candTokens.join(" ");
+    const maxLen = Math.max(userJoined.length, candJoined.length);
+    if (maxLen >= 5) {
+      const dist = levenshtein(userJoined, candJoined);
+      if (dist / maxLen <= 0.22) return true;
+    }
+
+    // Multi-word phrase token overlap (e.g. "منشاء علاج مياه الصرف الصحي" vs "منشأة معالجة مياه الصرف الصحي")
+    if (candTokens.length >= 2 && userTokens.length >= 2) {
+      let matched = 0;
+      for (const ct of candTokens) {
+        const hit = userTokens.some((ut) => {
+          if (ut === ct) return true;
+          const m = Math.max(ut.length, ct.length);
+          return m >= 4 && levenshtein(ut, ct) <= 2;
+        });
+        if (hit) matched++;
+      }
+      if (matched / Math.max(candTokens.length, userTokens.length) >= 0.65) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+async function checkBackTranslationMatch(
+  word: string,
+  userTranslation: string,
+  srcLang: string,
+  targetLang: string,
+): Promise<boolean> {
+  try {
+    const url = new URL("https://translate.googleapis.com/translate_a/single");
+    url.searchParams.set("client", "gtx");
+    url.searchParams.set("sl", targetLang || "auto");
+    url.searchParams.set("tl", srcLang || "en");
+    url.searchParams.set("dt", "t");
+    url.searchParams.set("q", userTranslation);
+
+    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(4000) });
+    if (!res.ok) return false;
+    const data = (await res.json()) as [Array<[string, string]>];
+    const backTranslated = (data?.[0] || []).map((chunk) => chunk?.[0] || "").join(" ").trim();
+    if (!backTranslated) return false;
+
+    const normWord = normalizeText(word);
+    const normBack = normalizeText(backTranslated);
+    if (normWord === normBack) return true;
+
+    const wordTokens = normWord.split(/\s+/).filter((t) => t.length > 2);
+    const backTokens = normBack.split(/\s+/).filter((t) => t.length > 2);
+    if (wordTokens.length === 0 || backTokens.length === 0) return false;
+
+    let overlap = 0;
+    for (const wt of wordTokens) {
+      if (backTokens.some((bt) => bt === wt || (bt.length >= 4 && wt.length >= 4 && levenshtein(bt, wt) <= 1))) {
+        overlap++;
+      }
+    }
+    return overlap / Math.max(wordTokens.length, backTokens.length) >= 0.6;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: Request) {
   const blocked = await guardApiRequestShared(req, "learn-evaluate-translation", 60);
   if (blocked) return blocked;
@@ -115,13 +201,10 @@ export async function POST(req: Request) {
   }
 
   const systemPrompt = [
-    "You are a fair bilingual vocabulary grader.",
-    "Decide whether the learner's typed translation accurately conveys the meaning of the source word.",
-    "Accept valid synonyms in the target language, definite/indefinite forms (e.g. Arabic 'ال' prefix or without it), singular/plural variations, and common dialect/MSA equivalents.",
-    allowSimpleTypos
-      ? "Minor spelling typos (1 character off) should be accepted as correct."
-      : "Reject clearly misspelled words unless it is just standard hamza/taa-marbuta/alef-maqsura variation.",
-    "Reject unrelated meanings, opposites, or random guesses.",
+    "You are a fair, encouraging bilingual vocabulary grader.",
+    "Decide whether the learner's typed translation accurately conveys the meaning of the source word or phrase.",
+    "Accept valid synonyms in the target language (e.g. Arabic علاج vs معالجة), definite/indefinite forms (with or without Arabic 'ال'), singular/plural variations, common hamza/taa-marbuta/spelling variations (e.g. منشاء vs منشأة), and natural phrasing.",
+    "Reject clearly unrelated meanings, opposites, or random guesses.",
     'Return strict JSON: {"isCorrect": boolean, "reason": "brief 1-sentence feedback"}.',
   ].join(" ");
 
@@ -131,19 +214,51 @@ export async function POST(req: Request) {
     `Learner typed (${targetLang}): "${userTranslation}"`,
   ].join("\n");
 
-  const aiResult = await callAiJson<unknown>(systemPrompt, userPrompt, 8_000);
+  const aiResult = await callAiJson<unknown>(systemPrompt, userPrompt, 10_000);
   if (aiResult) {
     const validated = aiEvalSchema.safeParse(aiResult.data);
     if (validated.success) {
+      if (validated.data.isCorrect) {
+        return NextResponse.json(
+          {
+            isCorrect: true,
+            source: aiResult.provider,
+            reason: validated.data.reason,
+          },
+          { status: 200, headers: corsHeaders },
+        );
+      }
+      // If AI rejected, double-check fuzzy phrase match for minor Arabic spelling variants
+      if (isFuzzyPhraseMatch(expectedTranslation, userTranslation)) {
+        return NextResponse.json(
+          {
+            isCorrect: true,
+            source: "fuzzy",
+            reason: "Accepted close spelling / phrasing.",
+          },
+          { status: 200, headers: corsHeaders },
+        );
+      }
       return NextResponse.json(
         {
-          isCorrect: validated.data.isCorrect,
+          isCorrect: false,
           source: aiResult.provider,
           reason: validated.data.reason,
         },
         { status: 200, headers: corsHeaders },
       );
     }
+  }
+
+  // Fallback when AI provider is unavailable: fuzzy phrase similarity + back-translation check
+  if (
+    isFuzzyPhraseMatch(expectedTranslation, userTranslation) ||
+    (await checkBackTranslationMatch(word, userTranslation, srcLang, targetLang))
+  ) {
+    return NextResponse.json(
+      { isCorrect: true, source: "semantic-fallback", reason: "" },
+      { status: 200, headers: corsHeaders },
+    );
   }
 
   return NextResponse.json(
