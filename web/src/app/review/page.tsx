@@ -37,6 +37,7 @@ export default function ReviewPage() {
 function ReviewLoader() {
   const { state, reload } = useLoad(fetchWords);
   const [selectedLang, setSelectedLang] = useState<string | null>(null);
+  const [reviewBatchKey, setReviewBatchKey] = useState(0);
   const [hardPracticeWords, setHardPracticeWords] = useState<Word[] | null>(null);
 
   const eligibleWords = useMemo(() => {
@@ -133,13 +134,17 @@ function ReviewLoader() {
 
   return (
     <ReviewSession
+      key={`review-easy-${reviewBatchKey}-${selectedLang || "all"}`}
       words={filteredWords}
       allDeckWords={filteredWords}
       sessionSize={5}
       includeDictation={true}
       promptMode="translation"
       onPracticeHard={(hardWords) => setHardPracticeWords(hardWords)}
-      onReload={reload}
+      onReload={() => {
+        setReviewBatchKey((k) => k + 1);
+        reload();
+      }}
     />
   );
 }

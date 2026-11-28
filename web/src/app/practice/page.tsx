@@ -63,6 +63,7 @@ function PracticeLoader() {
     urlMode || urlWordId || urlIds || useClassic ? "hard" : null,
   );
   const [hardOverrideWords, setHardOverrideWords] = useState<Word[] | null>(null);
+  const [easyBatchKey, setEasyBatchKey] = useState(0);
   const [trySampleSession, setTrySampleSession] = useState(false);
 
   const words = state.status === "ready" ? state.data.words : null;
@@ -306,7 +307,7 @@ function PracticeLoader() {
   if (practiceDifficulty === "easy") {
     return (
       <ReviewSession
-        key={`practice-easy-${selectedLang || "all"}-${filteredWords.length}`}
+        key={`practice-easy-${easyBatchKey}-${selectedLang || "all"}-${filteredWords.length}`}
         words={filteredWords}
         allDeckWords={filteredWords}
         sessionSize={5}
@@ -314,7 +315,10 @@ function PracticeLoader() {
         includeDictation={true}
         promptMode="translation"
         onPracticeHard={(hardWords) => setHardOverrideWords(hardWords)}
-        onReload={reload}
+        onReload={() => {
+          setEasyBatchKey((k) => k + 1);
+          reload();
+        }}
       />
     );
   }

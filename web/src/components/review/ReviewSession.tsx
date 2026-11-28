@@ -61,15 +61,28 @@ export function ReviewSession({
   const [deleteTarget, setDeleteTarget] = useState<Word | null>(null);
   const [deletingWord, setDeletingWord] = useState(false);
 
-  const initialPicked = useMemo(
-    () =>
-      ignoreEligibility
-        ? words
-            .filter((w) => w.text.trim() && w.translation.trim())
-            .slice(0, Math.max(1, sessionSize))
-        : pickReviewSessionWords(words, sessionSize),
-    [words, sessionSize, ignoreEligibility],
-  );
+  const initialPicked = useMemo(() => {
+    if (!ignoreEligibility) {
+      return pickReviewSessionWords(words, sessionSize);
+    }
+    const nowMs = Date.now();
+    const valid = words.filter((w) => w.text.trim() && w.translation.trim());
+    const dueOrNew: Word[] = [];
+    const studiedLater: Word[] = [];
+    for (const w of valid) {
+      const hasStudied =
+        (w.review_box ?? 0) > 0 ||
+        (w.box ?? 0) > 0 ||
+        Boolean(w.initial_learning_completed) ||
+        (w.correct_count ?? 0) > 0;
+      const dueStr = w.next_review_at || w.next_review;
+      const dueMs = dueStr ? Date.parse(dueStr) : NaN;
+      const isFuture = hasStudied && (!Number.isFinite(dueMs) || dueMs > nowMs);
+      if (isFuture) studiedLater.push(w);
+      else dueOrNew.push(w);
+    }
+    return [...dueOrNew, ...studiedLater].slice(0, Math.max(1, sessionSize));
+  }, [words, sessionSize, ignoreEligibility]);
   const sessionWords = useMemo(
     () =>
       initialPicked
