@@ -9,6 +9,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { ErrorState, LoadingState } from "@/components/StateViews";
 import { InteractiveLearningSession } from "@/components/learn/InteractiveLearningSession";
 import { PracticeSession } from "@/components/practice/PracticeSession";
+import { ReviewSession } from "@/components/review/ReviewSession";
 import { SAMPLE_WORDS } from "@/lib/sampleWords";
 import { getStoredSettings } from "@/lib/settings";
 import { FilmIcon } from "@/components/Icons";
@@ -58,6 +59,10 @@ function PracticeLoader() {
   const useClassic = searchParams.get("classic") === "1" || urlPractice === "dictation";
 
   const [selectedLang, setSelectedLang] = useState<string | null>(urlLang);
+  const [practiceDifficulty, setPracticeDifficulty] = useState<"easy" | "hard" | null>(
+    urlMode || urlWordId || urlIds || useClassic ? "hard" : null,
+  );
+  const [hardOverrideWords, setHardOverrideWords] = useState<Word[] | null>(null);
   const [trySampleSession, setTrySampleSession] = useState(false);
 
   const words = state.status === "ready" ? state.data.words : null;
@@ -244,6 +249,75 @@ function PracticeLoader() {
 
   const sessionMode: "learn" | "review" | "missed" =
     urlMode === "review" || urlMode === "missed" ? urlMode : "learn";
+
+  if (hardOverrideWords && hardOverrideWords.length > 0) {
+    return (
+      <InteractiveLearningSession
+        key={`practice-hard-override-${hardOverrideWords.map((w) => w.id).join(",")}`}
+        words={hardOverrideWords}
+        newLimit={hardOverrideWords.length}
+        langFilter={selectedLang || "all"}
+        mode="learn"
+        onReload={() => {
+          setHardOverrideWords(null);
+          reload();
+        }}
+      />
+    );
+  }
+
+  if (practiceDifficulty === null) {
+    return (
+      <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col justify-center px-3.5 sm:px-4 py-8 sm:py-12 pt-safe pb-safe">
+        <div className="apple-card p-6 sm:p-8 grid gap-5">
+          <div className="space-y-1">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-ink">Choose Practice Mode</h1>
+            <p className="text-xs sm:text-sm text-muted">
+              Pick Easy (5-word quick review) or Hard (4-stage deep learning).
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setPracticeDifficulty("easy")}
+              className="rounded-2xl border border-line bg-surface p-4 text-left transition-all cursor-pointer hover:border-subtitle hover:bg-subtitle/10 grid gap-1.5"
+            >
+              <span className="font-bold text-ink text-base">Easy (Quick Review)</span>
+              <span className="text-xs text-muted leading-relaxed">
+                5 words at a time: Multiple Choice → Connect Words → Listen &amp; Spell → Write Translation. Send any missed words to Hard Mode afterwards.
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPracticeDifficulty("hard")}
+              className="rounded-2xl border border-line bg-surface p-4 text-left transition-all cursor-pointer hover:border-subtitle hover:bg-subtitle/10 grid gap-1.5"
+            >
+              <span className="font-bold text-ink text-base">Hard (Deep Learning)</span>
+              <span className="text-xs text-muted leading-relaxed">
+                Full 4-stage flow: Understanding, Video Context, Your Sentence, and Spaced Repetition.
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (practiceDifficulty === "easy") {
+    return (
+      <ReviewSession
+        key={`practice-easy-${selectedLang || "all"}-${filteredWords.length}`}
+        words={filteredWords}
+        allDeckWords={filteredWords}
+        sessionSize={5}
+        ignoreEligibility={true}
+        includeDictation={true}
+        promptMode="translation"
+        onPracticeHard={(hardWords) => setHardOverrideWords(hardWords)}
+        onReload={reload}
+      />
+    );
+  }
 
   return (
     <InteractiveLearningSession

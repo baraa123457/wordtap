@@ -6,7 +6,9 @@ import { useLoad } from "@/hooks/useLoad";
 import { isReviewEligible } from "@/lib/review-scheduler";
 import { RequireAuth } from "@/components/RequireAuth";
 import { ErrorState, LoadingState } from "@/components/StateViews";
+import { InteractiveLearningSession } from "@/components/learn/InteractiveLearningSession";
 import { ReviewSession } from "@/components/review/ReviewSession";
+import type { Word } from "@/lib/schemas";
 
 const LANG_NAMES: Record<string, string> = {
   en: "English",
@@ -35,6 +37,7 @@ export default function ReviewPage() {
 function ReviewLoader() {
   const { state, reload } = useLoad(fetchWords);
   const [selectedLang, setSelectedLang] = useState<string | null>(null);
+  const [hardPracticeWords, setHardPracticeWords] = useState<Word[] | null>(null);
 
   const eligibleWords = useMemo(() => {
     if (state.status !== "ready") return [];
@@ -75,7 +78,7 @@ function ReviewLoader() {
               Choose language to review
             </h1>
             <p className="text-xs sm:text-sm text-muted">
-              Start your quick 3-round review (Multiple Choice → Link Words → Typing Recall):
+              Start your 5-word Easy review (Multiple Choice → Connect Words → Listen &amp; Spell → Write Translation):
             </p>
           </div>
           <div className="grid gap-2.5">
@@ -113,5 +116,30 @@ function ReviewLoader() {
       ? state.data.filter((w) => (w.src_lang || "auto").toLowerCase() === selectedLang)
       : state.data;
 
-  return <ReviewSession words={filteredWords} onReload={reload} />;
+  if (hardPracticeWords && hardPracticeWords.length > 0) {
+    return (
+      <InteractiveLearningSession
+        key={`review-hard-${hardPracticeWords.map((w) => w.id).join(",")}`}
+        words={hardPracticeWords}
+        newLimit={hardPracticeWords.length}
+        mode="learn"
+        onReload={() => {
+          setHardPracticeWords(null);
+          reload();
+        }}
+      />
+    );
+  }
+
+  return (
+    <ReviewSession
+      words={filteredWords}
+      allDeckWords={filteredWords}
+      sessionSize={5}
+      includeDictation={true}
+      promptMode="translation"
+      onPracticeHard={(hardWords) => setHardPracticeWords(hardWords)}
+      onReload={reload}
+    />
+  );
 }
