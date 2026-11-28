@@ -84,8 +84,10 @@ export default function DecksPage() {
   const [practiceQueue, setPracticeQueue] = useState<
     Array<{ mode: "easy" | "hard"; words: Word[]; allDeckWords?: Word[] }>
   >([]);
+  const [activePracticeDeckId, setActivePracticeDeckId] = useState<string>("");
   const [activePracticeTitle, setActivePracticeTitle] = useState<string>("");
   const [savedPracticeSession, setSavedPracticeSession] = useState<{
+    deckId?: string;
     title: string;
     queue: Array<{ mode: "easy" | "hard"; words: Word[]; allDeckWords?: Word[] }>;
   } | null>(null);
@@ -105,13 +107,22 @@ export default function DecksPage() {
       const raw = localStorage.getItem("wordtap_decks_practice_queue_v1");
       if (!raw) return;
       const parsed = JSON.parse(raw) as {
+        deckId?: string;
         title?: string;
+        allDeckWords?: Word[];
         queue?: Array<{ mode: "easy" | "hard"; words: Word[]; allDeckWords?: Word[] }>;
       };
       if (Array.isArray(parsed.queue) && parsed.queue.length > 0) {
+        const sharedPool = parsed.allDeckWords;
+        const hydratedQueue = parsed.queue.map((item) => ({
+          mode: item.mode,
+          words: item.words,
+          allDeckWords: item.allDeckWords || sharedPool,
+        }));
         setSavedPracticeSession({
+          deckId: parsed.deckId,
           title: parsed.title || "Saved Deck Practice",
-          queue: parsed.queue,
+          queue: hydratedQueue,
         });
       }
     } catch {
@@ -119,21 +130,29 @@ export default function DecksPage() {
     }
   }, []);
 
-  // Persist active practice queue so closing the web never loses progress
+  // Persist active practice queue (compact, without duplicating allDeckWords per step)
   useEffect(() => {
     try {
       if (practiceQueue.length > 0) {
-        const payload = {
+        const sharedPool = practiceQueue[0]?.allDeckWords;
+        const compactQueue = practiceQueue.map(({ mode, words }) => ({ mode, words }));
+        const storagePayload = {
+          deckId: activePracticeDeckId,
+          title: activePracticeTitle || "Deck Practice",
+          allDeckWords: sharedPool,
+          queue: compactQueue,
+        };
+        localStorage.setItem("wordtap_decks_practice_queue_v1", JSON.stringify(storagePayload));
+        setSavedPracticeSession({
+          deckId: activePracticeDeckId,
           title: activePracticeTitle || "Deck Practice",
           queue: practiceQueue,
-        };
-        localStorage.setItem("wordtap_decks_practice_queue_v1", JSON.stringify(payload));
-        setSavedPracticeSession(payload);
+        });
       }
     } catch {
       // ignore storage quota errors
     }
-  }, [practiceQueue, activePracticeTitle]);
+  }, [practiceQueue, activePracticeTitle, activePracticeDeckId]);
 
   // Lock background scroll when inspecting or practicing modal is open (Apple HIG Modality)
   useEffect(() => {
@@ -300,13 +319,14 @@ export default function DecksPage() {
     enqueueSegment(oppositeMode, oppositeWords);
     if (queue.length === 0) return;
 
-    const deckTitle = configuringDeck.title;
-    setActivePracticeTitle(deckTitle);
+    setActivePracticeDeckId(configuringDeck.id);
+    setActivePracticeTitle(configuringDeck.title);
     setConfiguringDeck(null);
     setPracticeQueue(queue);
   }
 
   function advancePracticeQueue() {
+    fetchWords().then(setUserWords).catch(() => {});
     setPracticeQueue((prev) => {
       const next = prev.slice(1);
       if (next.length === 0) {
@@ -314,7 +334,6 @@ export default function DecksPage() {
           localStorage.removeItem("wordtap_decks_practice_queue_v1");
         } catch {}
         setSavedPracticeSession(null);
-        fetchWords().then(setUserWords).catch(() => {});
       }
       return next;
     });
@@ -524,6 +543,7 @@ export default function DecksPage() {
             <button
               type="button"
               onClick={() => {
+                setActivePracticeDeckId(savedPracticeSession.deckId || "");
                 setActivePracticeTitle(savedPracticeSession.title);
                 setPracticeQueue(savedPracticeSession.queue);
               }}
@@ -1215,6 +1235,35 @@ export default function DecksPage() {
                 <CloseIcon />
               </button>
             </div>
+
+            {/* Resume Banner Inside Setup Modal if This Deck Has Unfinished Progress */}
+            {savedPracticeSession &&
+            (savedPracticeSession.deckId === configuringDeck.id ||
+              savedPracticeSession.title === configuringDeck.title) ? (
+              <div className="mt-4 rounded-2xl border border-amber-500/35 bg-amber-500/10 p-3.5 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-ink">
+                    Resume where you left off ({savedPracticeSession.queue.length}{" "}
+                    {savedPracticeSession.queue.length === 1 ? "step" : "steps"} left)
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    Pick up from your saved step, or start a fresh session below.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePracticeDeckId(savedPracticeSession.deckId || configuringDeck.id);
+                    setActivePracticeTitle(savedPracticeSession.title);
+                    setConfiguringDeck(null);
+                    setPracticeQueue(savedPracticeSession.queue);
+                  }}
+                  className="btn btn-primary min-h-10 px-4 text-xs font-bold cursor-pointer shrink-0"
+                >
+                  Resume →
+                </button>
+              </div>
+            ) : null}
 
             {/* Mode Cards: Easy vs Hard */}
             <div className="grid gap-3 sm:grid-cols-2 pt-4">
