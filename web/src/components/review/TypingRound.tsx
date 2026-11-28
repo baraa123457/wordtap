@@ -9,8 +9,21 @@ import { SpeakerIcon, TrashIcon } from "@/components/Icons";
 function normalizeTyped(value: string): string {
   return value
     .trim()
+    .replace(/[\u064B-\u065F\u0670]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
     .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
     .toLowerCase();
+}
+
+function getTranslationCandidates(translation: string): string[] {
+  const full = normalizeTyped(translation);
+  const parts = translation
+    .split(/[,،;/]+/)
+    .map((p) => normalizeTyped(p))
+    .filter(Boolean);
+  return Array.from(new Set(full ? [full, ...parts] : parts));
 }
 
 function levenshtein(a: string, b: string): number {
@@ -35,6 +48,7 @@ function levenshtein(a: string, b: string): number {
 export function TypingRound({
   words,
   allowSimpleTypos,
+  promptMode = "word",
   onToggleTypos,
   onEditWord,
   onDeleteWord,
@@ -42,6 +56,7 @@ export function TypingRound({
 }: {
   words: Word[];
   allowSimpleTypos: boolean;
+  promptMode?: "word" | "translation";
   onToggleTypos: (next: boolean) => void;
   onEditWord?: (word: Word) => void;
   onDeleteWord?: (word: Word) => void;
@@ -74,11 +89,24 @@ export function TypingRound({
     if (checked !== "idle" || !typed.trim()) return;
 
     const cleanTyped = normalizeTyped(typed);
-    const cleanTarget = normalizeTyped(current.text);
-    const isExact = cleanTyped === cleanTarget;
-    const isNearTypo =
-      allowSimpleTypos && cleanTarget.length >= 4 && levenshtein(cleanTyped, cleanTarget) <= 1;
-    const ok = isExact || isNearTypo;
+    let ok = false;
+    if (promptMode === "translation") {
+      const candidates = getTranslationCandidates(current.translation);
+      ok = candidates.some((cand) => {
+        if (cleanTyped === cand) return true;
+        return (
+          allowSimpleTypos &&
+          cand.length >= 4 &&
+          levenshtein(cleanTyped, cand) <= 1
+        );
+      });
+    } else {
+      const cleanTarget = normalizeTyped(current.text);
+      const isExact = cleanTyped === cleanTarget;
+      const isNearTypo =
+        allowSimpleTypos && cleanTarget.length >= 4 && levenshtein(cleanTyped, cleanTarget) <= 1;
+      ok = isExact || isNearTypo;
+    }
 
     if (!ok) playKeyClickSound("error");
     setChecked(ok ? "correct" : "wrong");
@@ -126,7 +154,7 @@ export function TypingRound({
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-black/[0.02] dark:bg-white/[0.03] px-4 py-4">
         <p dir="auto" className="text-lg sm:text-2xl font-bold text-ink break-words">
-          {current.translation}
+          {promptMode === "translation" ? current.text : current.translation}
         </p>
         <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           {canSpeak() ? (
@@ -165,80 +193,105 @@ export function TypingRound({
       </div>
 
       <form onSubmit={handleSubmit} className="grid gap-3">
-        <input
-          ref={inputRef}
-          type="text"
-          value={typed}
-          disabled={checked !== "idle"}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          onChange={(e) => {
-            const nextVal = e.target.value;
-            playKeyClickSound(nextVal.length < typed.length ? "backspace" : "key");
-            setTyped(nextVal);
-          }}
-          placeholder="Type the word…"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          aria-label="Type the word"
-          className="sr-only"
-        />
-
-        {(() => {
-          const cleanTarget = normalizeTyped(current.text);
-          const typedChars = Array.from(typed);
-          const remainingCount = Math.max(0, cleanTarget.length - typedChars.length);
-          return (
-            <button
-              type="button"
+        {promptMode === "translation" ? (
+          <input
+            ref={inputRef}
+            type="text"
+            dir="auto"
+            value={typed}
+            disabled={checked !== "idle"}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            onChange={(e) => {
+              const nextVal = e.target.value;
+              playKeyClickSound(nextVal.length < typed.length ? "backspace" : "key");
+              setTyped(nextVal);
+            }}
+            placeholder="Write the translation…"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            aria-label="Write the translation"
+            className="w-full min-h-14 rounded-2xl border border-line border-b-2 border-b-subtitle bg-subtitle/10 px-4 py-3 text-center text-lg sm:text-xl font-bold text-ink placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-amber-500/80 transition-all"
+          />
+        ) : (
+          <>
+            <input
+              ref={inputRef}
+              type="text"
+              value={typed}
               disabled={checked !== "idle"}
-              onClick={() => {
-                playKeyClickSound("key");
-                inputRef.current?.focus();
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              onChange={(e) => {
+                const nextVal = e.target.value;
+                playKeyClickSound(nextVal.length < typed.length ? "backspace" : "key");
+                setTyped(nextVal);
               }}
-              title="Click to type the word"
-              className={`w-full min-h-14 rounded-2xl border-b-2 border-subtitle bg-subtitle/10 px-4 py-3 text-center font-mono text-lg sm:text-2xl font-bold tracking-[0.18em] text-ink cursor-text transition-all break-all ${
-                isFocused ? "ring-2 ring-amber-500/80 shadow-sm" : "hover:bg-subtitle/20"
-              }`}
-            >
-              {typedChars.length > 0 ? (
-                <>
-                  {typedChars.map((ch, idx) => {
-                    const expected = cleanTarget[idx];
-                    const isCharCorrect =
-                      typeof expected === "string" && ch.toLowerCase() === expected.toLowerCase();
-                    return (
-                      <span
-                        key={idx}
-                        className={
-                          isCharCorrect
-                            ? "text-emerald-700 dark:text-emerald-400"
-                            : "text-red-600 dark:text-red-400 underline decoration-red-500/70"
-                        }
-                      >
-                        {ch === " " ? "\u00A0" : ch}
-                      </span>
-                    );
-                  })}
-                  {remainingCount > 0 ? (
-                    <span className="opacity-50">
-                      {Array.from(cleanTarget.slice(typedChars.length))
+              placeholder="Type the word…"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              aria-label="Type the word"
+              className="sr-only"
+            />
+
+            {(() => {
+              const cleanTarget = normalizeTyped(current.text);
+              const typedChars = Array.from(typed);
+              const remainingCount = Math.max(0, cleanTarget.length - typedChars.length);
+              return (
+                <button
+                  type="button"
+                  disabled={checked !== "idle"}
+                  onClick={() => {
+                    playKeyClickSound("key");
+                    inputRef.current?.focus();
+                  }}
+                  title="Click to type the word"
+                  className={`w-full min-h-14 rounded-2xl border-b-2 border-subtitle bg-subtitle/10 px-4 py-3 text-center font-mono text-lg sm:text-2xl font-bold tracking-[0.18em] text-ink cursor-text transition-all break-all ${
+                    isFocused ? "ring-2 ring-amber-500/80 shadow-sm" : "hover:bg-subtitle/20"
+                  }`}
+                >
+                  {typedChars.length > 0 ? (
+                    <>
+                      {typedChars.map((ch, idx) => {
+                        const expected = cleanTarget[idx];
+                        const isCharCorrect =
+                          typeof expected === "string" && ch.toLowerCase() === expected.toLowerCase();
+                        return (
+                          <span
+                            key={idx}
+                            className={
+                              isCharCorrect
+                                ? "text-emerald-700 dark:text-emerald-400"
+                                : "text-red-600 dark:text-red-400 underline decoration-red-500/70"
+                            }
+                          >
+                            {ch === " " ? "\u00A0" : ch}
+                          </span>
+                        );
+                      })}
+                      {remainingCount > 0 ? (
+                        <span className="opacity-50">
+                          {Array.from(cleanTarget.slice(typedChars.length))
+                            .map((c) => (c === " " ? "\u00A0" : "·"))
+                            .join("")}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    <span className="opacity-70">
+                      {Array.from(cleanTarget)
                         .map((c) => (c === " " ? "\u00A0" : "·"))
                         .join("")}
                     </span>
-                  ) : null}
-                </>
-              ) : (
-                <span className="opacity-70">
-                  {Array.from(cleanTarget)
-                    .map((c) => (c === " " ? "\u00A0" : "·"))
-                    .join("")}
-                </span>
-              )}
-            </button>
-          );
-        })()}
+                  )}
+                </button>
+              );
+            })()}
+          </>
+        )}
 
         {checked === "idle" ? (
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -275,8 +328,8 @@ export function TypingRound({
                 }`}
               >
                 {checked === "correct"
-                  ? `Correct! "${current.text}"`
-                  : `Correct word: "${current.text}"`}
+                  ? `Correct! "${promptMode === "translation" ? current.translation : current.text}"`
+                  : `${promptMode === "translation" ? "Correct translation" : "Correct word"}: "${promptMode === "translation" ? current.translation : current.text}"`}
               </p>
             </div>
             <button

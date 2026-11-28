@@ -81,7 +81,9 @@ export default function DecksPage() {
   const [configuringDeck, setConfiguringDeck] = useState<CuratedDeck | MediaDeck | null>(null);
   const [primaryMode, setPrimaryMode] = useState<"easy" | "hard">("hard");
   const [overrideKeys, setOverrideKeys] = useState<Set<string>>(() => new Set());
-  const [practiceQueue, setPracticeQueue] = useState<Array<{ mode: "easy" | "hard"; words: Word[] }>>([]);
+  const [practiceQueue, setPracticeQueue] = useState<
+    Array<{ mode: "easy" | "hard"; words: Word[]; allDeckWords?: Word[] }>
+  >([]);
   const [practicingDeck, setPracticingDeck] = useState<CuratedDeck | MediaDeck | null>(null);
   const [editingWordId, setEditingWordId] = useState<string | null>(null);
   const [editWordText, setEditWordText] = useState("");
@@ -236,9 +238,25 @@ export default function DecksPage() {
       }
     });
 
-    const queue: Array<{ mode: "easy" | "hard"; words: Word[] }> = [];
-    if (primaryWords.length > 0) queue.push({ mode: primaryMode, words: primaryWords });
-    if (oppositeWords.length > 0) queue.push({ mode: oppositeMode, words: oppositeWords });
+    const queue: Array<{ mode: "easy" | "hard"; words: Word[]; allDeckWords?: Word[] }> = [];
+    const enqueueSegment = (mode: "easy" | "hard", segmentWords: Word[]) => {
+      if (segmentWords.length === 0) return;
+      if (mode === "easy") {
+        // Easy mode runs in 5-word batches: Multiple Choice -> Connect Words -> Write Translation
+        for (let i = 0; i < segmentWords.length; i += 5) {
+          queue.push({
+            mode: "easy",
+            words: segmentWords.slice(i, i + 5),
+            allDeckWords: allWords,
+          });
+        }
+      } else {
+        queue.push({ mode: "hard", words: segmentWords, allDeckWords: allWords });
+      }
+    };
+
+    enqueueSegment(primaryMode, primaryWords);
+    enqueueSegment(oppositeMode, oppositeWords);
     if (queue.length === 0) return;
 
     setConfiguringDeck(null);
@@ -1294,9 +1312,13 @@ export default function DecksPage() {
             ) : null}
             {practiceQueue[0].mode === "easy" ? (
               <ReviewSession
-                key={`easy-${practiceQueue.length}-${practiceQueue[0].words.length}`}
+                key={`easy-${practiceQueue.length}-${practiceQueue[0].words.map((w) => w.id).join(",")}`}
                 words={practiceQueue[0].words}
+                allDeckWords={practiceQueue[0].allDeckWords}
                 sessionSize={practiceQueue[0].words.length}
+                ignoreEligibility={true}
+                promptMode="translation"
+                onClose={() => setPracticeQueue([])}
                 onReload={advancePracticeQueue}
               />
             ) : (

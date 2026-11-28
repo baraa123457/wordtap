@@ -28,11 +28,19 @@ type RoundStep = "choice" | "matching" | "typing" | "summary";
 
 export function ReviewSession({
   words,
+  allDeckWords,
   sessionSize = 10,
+  ignoreEligibility = false,
+  promptMode = "word",
+  onClose,
   onReload,
 }: {
   words: Word[];
+  allDeckWords?: Word[];
   sessionSize?: number;
+  ignoreEligibility?: boolean;
+  promptMode?: "word" | "translation";
+  onClose?: () => void;
   onReload: () => void;
 }) {
   const router = useRouter();
@@ -46,8 +54,13 @@ export function ReviewSession({
   const [deletingWord, setDeletingWord] = useState(false);
 
   const initialPicked = useMemo(
-    () => pickReviewSessionWords(words, sessionSize),
-    [words, sessionSize],
+    () =>
+      ignoreEligibility
+        ? words
+            .filter((w) => w.text.trim() && w.translation.trim())
+            .slice(0, Math.max(1, sessionSize))
+        : pickReviewSessionWords(words, sessionSize),
+    [words, sessionSize, ignoreEligibility],
   );
   const sessionWords = useMemo(
     () =>
@@ -168,8 +181,8 @@ export function ReviewSession({
       <header className="flex items-center gap-2.5 sm:gap-4 py-3.5 sm:py-5">
         <button
           type="button"
-          onClick={() => router.push("/dashboard")}
-          aria-label="Back to dashboard"
+          onClick={() => (onClose ? onClose() : router.push("/dashboard"))}
+          aria-label={onClose ? "Close review" : "Back to dashboard"}
           className="btn btn-quiet w-11 h-11 min-h-11 p-0 flex items-center justify-center rounded-full text-muted hover:text-ink cursor-pointer shrink-0"
         >
           <CloseIcon />
@@ -212,7 +225,7 @@ export function ReviewSession({
         {round === "choice" ? (
           <MultipleChoiceRound
             words={sessionWords}
-            allWords={words}
+            allWords={allDeckWords && allDeckWords.length > 0 ? allDeckWords : words}
             onEditWord={(w) => {
               setEditTarget(w);
               setEditText(w.text);
@@ -236,6 +249,7 @@ export function ReviewSession({
           <TypingRound
             words={sessionWords}
             allowSimpleTypos={allowSimpleTypos}
+            promptMode={promptMode}
             onToggleTypos={setAllowSimpleTypos}
             onEditWord={(w) => {
               setEditTarget(w);
