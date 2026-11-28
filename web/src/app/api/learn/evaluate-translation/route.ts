@@ -168,20 +168,68 @@ async function checkBackTranslationMatch(
       return true;
     }
 
-    // Check English synonym / related-meaning overlap via Datamuse (no API key needed)
-    if ((srcLang || "en") === "en" && wordTokens.length === 1 && backTokens.length <= 3) {
-      const dmUrl = new URL("https://api.datamuse.com/words");
-      dmUrl.searchParams.set("ml", wordTokens[0]!);
-      dmUrl.searchParams.set("max", "40");
-      const dmRes = await fetch(dmUrl.toString(), { signal: AbortSignal.timeout(3500) });
-      if (dmRes.ok) {
-        const related = (await dmRes.json()) as Array<{ word?: string }>;
-        const relatedSet = new Set(
-          related.map((r) => (r.word || "").toLowerCase().trim()).filter(Boolean),
-        );
-        if (backTokens.some((bt) => relatedSet.has(bt))) {
+    // Check English synonym / related-meaning overlap via Datamuse & dictionaryapi.dev (no API key needed)
+    if ((srcLang || "en") === "en" && wordTokens.length === 1 && backTokens.length <= 4) {
+      const [dmRes, dictRes, bdRes] = await Promise.all([
+        fetch(`https://api.datamuse.com/words?ml=${encodeURIComponent(wordTokens[0]!)}&max=40`, {
+          signal: AbortSignal.timeout(3500),
+        }).catch(() => null),
+        fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(wordTokens[0]!)}`, {
+          signal: AbortSignal.timeout(3500),
+        }).catch(() => null),
+        fetch(
+          `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${encodeURIComponent(targetLang || "ar")}&dt=bd&q=${encodeURIComponent(wordTokens[0]!)}`,
+          { signal: AbortSignal.timeout(3500) },
+        ).catch(() => null),
+      ]);
+
+      if (bdRes && bdRes.ok) {
+        const bdData = (await bdRes.json()) as [unknown, Array<[string, string[]]>?];
+        const altTerms = (bdData?.[1] || []).flatMap((group) => group?.[1] || []);
+        const userNorm = stripArabicAlPrefix(normalizeText(userTranslation));
+        if (
+          altTerms.some((alt) => {
+            const altNorm = stripArabicAlPrefix(normalizeText(alt));
+            return altNorm === userNorm || (altNorm.length >= 4 && levenshtein(altNorm, userNorm) <= 1);
+          })
+        ) {
           return true;
         }
+      }
+
+      const relatedSet = new Set<string>();
+      if (dmRes && dmRes.ok) {
+        const related = (await dmRes.json()) as Array<{ word?: string }>;
+        for (const r of related) {
+          const w = (r.word || "").toLowerCase().trim();
+          if (w) relatedSet.add(w);
+        }
+      }
+
+      if (dictRes && dictRes.ok) {
+        const entries = (await dictRes.json()) as Array<{
+          meanings?: Array<{
+            synonyms?: string[];
+            definitions?: Array<{ definition?: string; synonyms?: string[] }>;
+          }>;
+        }>;
+        for (const entry of entries || []) {
+          for (const m of entry.meanings || []) {
+            for (const s of m.synonyms || []) relatedSet.add(s.toLowerCase().trim());
+            for (const d of m.definitions || []) {
+              for (const s of d.synonyms || []) relatedSet.add(s.toLowerCase().trim());
+              for (const tok of (d.definition || "").toLowerCase().split(/[^a-z]+/)) {
+                if (tok.length >= 4) relatedSet.add(tok);
+              }
+            }
+          }
+        }
+      }
+
+      const STOP_EN = new Set(["with", "that", "this", "from", "they", "have", "were", "been", "what", "when", "into", "your", "their"]);
+      const contentBack = backTokens.filter((bt) => bt.length >= 4 && !STOP_EN.has(bt));
+      if (contentBack.some((bt) => relatedSet.has(bt))) {
+        return true;
       }
     }
 
