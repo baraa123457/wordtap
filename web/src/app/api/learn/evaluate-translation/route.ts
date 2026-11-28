@@ -164,7 +164,28 @@ async function checkBackTranslationMatch(
         overlap++;
       }
     }
-    return overlap / Math.max(wordTokens.length, backTokens.length) >= 0.6;
+    if (overlap / Math.max(wordTokens.length, backTokens.length) >= 0.6) {
+      return true;
+    }
+
+    // Check English synonym / related-meaning overlap via Datamuse (no API key needed)
+    if ((srcLang || "en") === "en" && wordTokens.length === 1 && backTokens.length <= 3) {
+      const dmUrl = new URL("https://api.datamuse.com/words");
+      dmUrl.searchParams.set("ml", wordTokens[0]!);
+      dmUrl.searchParams.set("max", "40");
+      const dmRes = await fetch(dmUrl.toString(), { signal: AbortSignal.timeout(3500) });
+      if (dmRes.ok) {
+        const related = (await dmRes.json()) as Array<{ word?: string }>;
+        const relatedSet = new Set(
+          related.map((r) => (r.word || "").toLowerCase().trim()).filter(Boolean),
+        );
+        if (backTokens.some((bt) => relatedSet.has(bt))) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   } catch {
     return false;
   }
