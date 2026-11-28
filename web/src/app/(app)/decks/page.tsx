@@ -80,6 +80,7 @@ export default function DecksPage() {
   const [inspectingDeck, setInspectingDeck] = useState<CuratedDeck | MediaDeck | null>(null);
   const [configuringDeck, setConfiguringDeck] = useState<CuratedDeck | MediaDeck | null>(null);
   const [primaryMode, setPrimaryMode] = useState<"easy" | "hard">("hard");
+  const [skipStudiedWords, setSkipStudiedWords] = useState(true);
   const [overrideKeys, setOverrideKeys] = useState<Set<string>>(() => new Set());
   const [practiceQueue, setPracticeQueue] = useState<
     Array<{ mode: "easy" | "hard"; words: Word[]; allDeckWords?: Word[] }>
@@ -262,8 +263,21 @@ export default function DecksPage() {
     return "id" in w && typeof w.id === "string" ? w.id : `${w.text}-${idx}`;
   }
 
+  function isWordAlreadyStudied(w: Word): boolean {
+    const hasStudied =
+      (w.review_box ?? 0) > 0 ||
+      Boolean(w.initial_learning_completed) ||
+      (w.correct_count ?? 0) > 0;
+    if (!hasStudied) return false;
+    const dueStr = w.next_review_at || w.next_review;
+    if (!dueStr) return false;
+    const dueMs = Date.parse(dueStr);
+    return Number.isFinite(dueMs) && dueMs > Date.now();
+  }
+
   function openPracticeSetup(deck: CuratedDeck | MediaDeck) {
     setOverrideKeys(new Set());
+    setSkipStudiedWords(true);
     setConfiguringDeck(deck);
   }
 
@@ -287,10 +301,22 @@ export default function DecksPage() {
     const primaryWords: Word[] = [];
     const oppositeWords: Word[] = [];
 
+    const isMediaDeck = "wordCount" in configuringDeck;
+    const hasPendingInMedia =
+      isMediaDeck && configuringDeck.words.some((w) => !isWordAlreadyStudied(w));
+
     configuringDeck.words.forEach((rawWord, idx) => {
       const key = getDeckWordKey(rawWord, idx);
       const practiceWord = allWords[idx];
       if (!practiceWord) return;
+      if (
+        isMediaDeck &&
+        skipStudiedWords &&
+        hasPendingInMedia &&
+        isWordAlreadyStudied(practiceWord)
+      ) {
+        return;
+      }
       if (overrideKeys.has(key)) {
         oppositeWords.push(practiceWord);
       } else {
@@ -1322,6 +1348,27 @@ export default function DecksPage() {
               </button>
             </div>
 
+            {/* Skip Already-Studied Toggle (Media Decks) */}
+            {"wordCount" in configuringDeck ? (() => {
+              const studiedCount = configuringDeck.words.filter(isWordAlreadyStudied).length;
+              const pendingCount = configuringDeck.words.length - studiedCount;
+              if (studiedCount === 0 || pendingCount === 0) return null;
+              return (
+                <label className="mt-3 flex items-center gap-2.5 rounded-xl border border-line bg-black/[0.02] dark:bg-white/[0.03] px-3 py-2 text-xs font-semibold text-ink cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={skipStudiedWords}
+                    onChange={(e) => setSkipStudiedWords(e.target.checked)}
+                    className="h-4 w-4 rounded border-line accent-[#facc3b] cursor-pointer shrink-0"
+                  />
+                  <span>
+                    Skip already studied ({studiedCount}) — practice {pendingCount} new/due{" "}
+                    {pendingCount === 1 ? "word" : "words"}
+                  </span>
+                </label>
+              );
+            })() : null}
+
             {/* Per-word Cross-Mode Override Selector */}
             <div className="pt-4 flex items-center justify-between gap-2">
               <div className="text-xs font-semibold text-muted">
@@ -1363,7 +1410,14 @@ export default function DecksPage() {
                         className="h-4 w-4 rounded border-line accent-[#facc3b] cursor-pointer shrink-0"
                       />
                       <div className="min-w-0">
-                        <div className="font-bold text-ink text-sm truncate">{w.text}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-ink text-sm truncate">{w.text}</span>
+                          {"wordCount" in configuringDeck && isWordAlreadyStudied(w as Word) ? (
+                            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 shrink-0">
+                              Studied
+                            </span>
+                          ) : null}
+                        </div>
                         {w.translation ? (
                           <div className="text-xs text-muted truncate" dir="rtl">
                             {w.translation}
