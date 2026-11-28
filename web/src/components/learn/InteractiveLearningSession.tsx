@@ -444,6 +444,16 @@ function SequentialInitialLearningSession({
     }
   };
 
+  const handleSkipWord = () => {
+    if (!activeWord) return;
+    const next = transitionRemoveWord(session, activeWord.id);
+    setSession(next);
+    void upsertRemoteLearningSession(next);
+    if (next.status === "completed") {
+      onReload();
+    }
+  };
+
   const totalSteps = session.wordIds.length * 4;
   const completedSteps = session.completedWordIds.length * 4 + (currentStage - 1);
   const progressPct = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
@@ -485,6 +495,15 @@ function SequentialInitialLearningSession({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={handleSkipWord}
+            title={`Skip "${activeWord.text}" for now`}
+            aria-label={`Skip ${activeWord.text}`}
+            className="btn btn-quiet min-h-10 px-2.5 sm:px-3 py-1 text-xs font-semibold text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 inline-flex items-center gap-1 rounded-full cursor-pointer shrink-0"
+          >
+            <span>Skip →</span>
+          </button>
           <button
             type="button"
             onClick={() => {
