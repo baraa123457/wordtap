@@ -349,7 +349,29 @@ Return ONLY valid JSON with these exact keys:
     const grammarScore = Math.max(30, Math.min(100, 100 - penalty));
     const isCorrect = containsTargetWord && grammarScore >= 75 && !localGrammar.hasStructuralErrors;
 
-    const naturalAlternative = localGrammar.naturalAlternative;
+    let naturalAlternative = localGrammar.naturalAlternative;
+    if (!naturalAlternative && ltMatches && ltMatches.length > 0) {
+      const applicable = ltMatches
+        .filter(
+          (m) =>
+            typeof m.offset === "number" &&
+            typeof m.length === "number" &&
+            Boolean(m.replacements?.[0]?.value),
+        )
+        .sort((a, b) => (b.offset ?? 0) - (a.offset ?? 0));
+      if (applicable.length > 0) {
+        let fixed = normalizedForLt;
+        for (const m of applicable) {
+          const start = m.offset!;
+          const end = start + m.length!;
+          const rep = m.replacements![0]!.value!;
+          fixed = fixed.slice(0, start) + rep + fixed.slice(end);
+        }
+        if (fixed.trim().toLowerCase() !== cleanSentence.trim().toLowerCase()) {
+          naturalAlternative = fixed;
+        }
+      }
+    }
     const naturalnessFeedback = isCorrect
       ? `Nice work! Your sentence uses "${word}" in a complete structure.`
       : localGrammar.naturalnessFeedback ||

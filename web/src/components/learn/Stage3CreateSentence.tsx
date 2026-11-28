@@ -451,9 +451,25 @@ export function Stage3CreateSentence({
             <div className="rounded-xl border border-line bg-surface p-3 grid gap-1.5">
               <p className="text-xs font-bold text-ink">Suggestions to improve:</p>
               <ul className="list-disc ps-5 text-xs sm:text-sm text-muted space-y-1 break-words">
-                {evaluation.grammarCorrections.map((c, idx) => (
-                  <li key={idx}>{c}</li>
-                ))}
+                {evaluation.grammarCorrections.map((c, idx) => {
+                  const match = c.match(/^(.*?):\s*try\s+"([^"]+)"\s+instead of\s+"([^"]+)"\.?$/i);
+                  if (match) {
+                    return (
+                      <li key={idx}>
+                        <span>{match[1]}: try </span>
+                        <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-bold text-emerald-700 dark:text-emerald-400">
+                          {match[2]}
+                        </span>
+                        <span> instead of </span>
+                        <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-red-600 dark:text-red-400 line-through">
+                          {match[3]}
+                        </span>
+                        <span>.</span>
+                      </li>
+                    );
+                  }
+                  return <li key={idx}>{c}</li>;
+                })}
               </ul>
             </div>
           ) : null}
