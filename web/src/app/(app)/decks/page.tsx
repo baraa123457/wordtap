@@ -80,7 +80,6 @@ export default function DecksPage() {
   const [inspectingDeck, setInspectingDeck] = useState<CuratedDeck | MediaDeck | null>(null);
   const [configuringDeck, setConfiguringDeck] = useState<CuratedDeck | MediaDeck | null>(null);
   const [primaryMode, setPrimaryMode] = useState<"easy" | "hard">("hard");
-  const [skipStudiedWords, setSkipStudiedWords] = useState(true);
   const [localStudiedIds, setLocalStudiedIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -289,7 +288,6 @@ export default function DecksPage() {
 
   function openPracticeSetup(deck: CuratedDeck | MediaDeck) {
     setOverrideKeys(new Set());
-    setSkipStudiedWords(true);
     setConfiguringDeck(deck);
   }
 
@@ -323,7 +321,6 @@ export default function DecksPage() {
       if (!practiceWord) return;
       if (
         isMediaDeck &&
-        skipStudiedWords &&
         hasPendingInMedia &&
         isWordAlreadyStudied(practiceWord)
       ) {
@@ -1393,27 +1390,6 @@ export default function DecksPage() {
                 </p>
               </button>
             </div>
-
-            {/* Skip Already-Studied Toggle (Media Decks) */}
-            {"wordCount" in configuringDeck ? (() => {
-              const studiedCount = configuringDeck.words.filter(isWordAlreadyStudied).length;
-              const pendingCount = configuringDeck.words.length - studiedCount;
-              if (studiedCount === 0 || pendingCount === 0) return null;
-              return (
-                <label className="mt-3 flex items-center gap-2.5 rounded-xl border border-line bg-black/[0.02] dark:bg-white/[0.03] px-3 py-2 text-xs font-semibold text-ink cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={skipStudiedWords}
-                    onChange={(e) => setSkipStudiedWords(e.target.checked)}
-                    className="h-4 w-4 rounded border-line accent-[#facc3b] cursor-pointer shrink-0"
-                  />
-                  <span>
-                    Skip already studied ({studiedCount}) — practice {pendingCount} new/due{" "}
-                    {pendingCount === 1 ? "word" : "words"}
-                  </span>
-                </label>
-              );
-            })() : null}
 
             {/* Per-word Cross-Mode Override Selector */}
             <div className="pt-4 flex items-center justify-between gap-2">
