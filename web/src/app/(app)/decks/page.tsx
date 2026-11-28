@@ -1437,11 +1437,6 @@ export default function DecksPage() {
               {configuringDeck.words.map((w, idx) => {
                 const key = getDeckWordKey(w, idx);
                 const isOverridden = overrideKeys.has(key);
-                const effectiveMode = isOverridden
-                  ? primaryMode === "easy"
-                    ? "hard"
-                    : "easy"
-                  : primaryMode;
 
                 const isMediaWord = "wordCount" in configuringDeck && "id" in w;
                 const wordId = isMediaWord ? (w as Word).id : "";
@@ -1475,15 +1470,6 @@ export default function DecksPage() {
                         </div>
                       </label>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[length:var(--text-label)] font-bold uppercase tracking-wider shrink-0 ${
-                            effectiveMode === "hard"
-                              ? "bg-subtitle/20 text-amber-900 dark:text-subtitle border border-subtitle/40"
-                              : "bg-black/5 dark:bg-white/10 text-muted border border-line"
-                          }`}
-                        >
-                          {effectiveMode}
-                        </span>
                         {isMediaWord ? (
                           <>
                             <button
