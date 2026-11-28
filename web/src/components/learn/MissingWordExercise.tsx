@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   analyzeAnswerFaults,
   buildProgressiveHint,
@@ -145,6 +145,18 @@ export function MissingWordExercise({
       inputRef.current?.focus();
     }
   };
+
+  useEffect(() => {
+    if (state !== "correct") return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.repeat) {
+        e.preventDefault();
+        onContinue();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [state, onContinue]);
 
   return (
     <div
