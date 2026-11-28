@@ -79,7 +79,7 @@ export default function DecksPage() {
   // Inspect modal, practice setup modal & active practice queue
   const [inspectingDeck, setInspectingDeck] = useState<CuratedDeck | MediaDeck | null>(null);
   const [configuringDeck, setConfiguringDeck] = useState<CuratedDeck | MediaDeck | null>(null);
-  const [primaryMode, setPrimaryMode] = useState<"easy" | "hard">("hard");
+  const [primaryMode, setPrimaryMode] = useState<"easy" | "hard">("easy");
   const [localStudiedIds, setLocalStudiedIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -287,6 +287,7 @@ export default function DecksPage() {
   }
 
   function openPracticeSetup(deck: CuratedDeck | MediaDeck) {
+    setPrimaryMode("easy");
     setOverrideKeys(new Set());
     setConfiguringDeck(deck);
   }
@@ -1359,7 +1360,7 @@ export default function DecksPage() {
                   </span>
                 </div>
                 <p className="text-xs text-muted leading-relaxed">
-                  Fast 3-round quiz: Multiple Choice, Matching, and Typing.
+                  5 words per batch: Multiple Choice, Connect Words, Listen &amp; Spell, and Write Translation.
                 </p>
               </button>
 
