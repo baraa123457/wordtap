@@ -369,6 +369,8 @@ export async function batchUpdateReviewResults(updates: ReviewBatchUpdate[]): Pr
     translation: u.word.translation,
     src_lang: u.word.src_lang,
     target_lang: u.word.target_lang,
+    box: u.review_box,
+    next_review: u.next_review_at,
     review_box: u.review_box,
     next_review_at: u.next_review_at,
     correct_streak: u.correct_streak,
