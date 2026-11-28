@@ -84,6 +84,11 @@ export default function DecksPage() {
   const [practiceQueue, setPracticeQueue] = useState<
     Array<{ mode: "easy" | "hard"; words: Word[]; allDeckWords?: Word[] }>
   >([]);
+  const [activePracticeTitle, setActivePracticeTitle] = useState<string>("");
+  const [savedPracticeSession, setSavedPracticeSession] = useState<{
+    title: string;
+    queue: Array<{ mode: "easy" | "hard"; words: Word[]; allDeckWords?: Word[] }>;
+  } | null>(null);
   const [practicingDeck, setPracticingDeck] = useState<CuratedDeck | MediaDeck | null>(null);
   const [editingWordId, setEditingWordId] = useState<string | null>(null);
   const [editWordText, setEditWordText] = useState("");
@@ -93,6 +98,42 @@ export default function DecksPage() {
   const [importingId, setImportingId] = useState<string | null>(null);
   const [importMessage, setImportMessage] = useState<{ id: string; text: string; isError?: boolean } | null>(null);
   const [speakingWord, setSpeakingWord] = useState<string | null>(null);
+
+  // Restore any unfinished practice queue on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("wordtap_decks_practice_queue_v1");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        title?: string;
+        queue?: Array<{ mode: "easy" | "hard"; words: Word[]; allDeckWords?: Word[] }>;
+      };
+      if (Array.isArray(parsed.queue) && parsed.queue.length > 0) {
+        setSavedPracticeSession({
+          title: parsed.title || "Saved Deck Practice",
+          queue: parsed.queue,
+        });
+      }
+    } catch {
+      // ignore malformed saved session
+    }
+  }, []);
+
+  // Persist active practice queue so closing the web never loses progress
+  useEffect(() => {
+    try {
+      if (practiceQueue.length > 0) {
+        const payload = {
+          title: activePracticeTitle || "Deck Practice",
+          queue: practiceQueue,
+        };
+        localStorage.setItem("wordtap_decks_practice_queue_v1", JSON.stringify(payload));
+        setSavedPracticeSession(payload);
+      }
+    } catch {
+      // ignore storage quota errors
+    }
+  }, [practiceQueue, activePracticeTitle]);
 
   // Lock background scroll when inspecting or practicing modal is open (Apple HIG Modality)
   useEffect(() => {
@@ -259,6 +300,8 @@ export default function DecksPage() {
     enqueueSegment(oppositeMode, oppositeWords);
     if (queue.length === 0) return;
 
+    const deckTitle = configuringDeck.title;
+    setActivePracticeTitle(deckTitle);
     setConfiguringDeck(null);
     setPracticeQueue(queue);
   }
@@ -267,6 +310,10 @@ export default function DecksPage() {
     setPracticeQueue((prev) => {
       const next = prev.slice(1);
       if (next.length === 0) {
+        try {
+          localStorage.removeItem("wordtap_decks_practice_queue_v1");
+        } catch {}
+        setSavedPracticeSession(null);
         fetchWords().then(setUserWords).catch(() => {});
       }
       return next;
@@ -448,6 +495,45 @@ export default function DecksPage() {
           ]}
         />
       </div>
+
+      {/* Resume Unfinished Practice Banner */}
+      {savedPracticeSession && practiceQueue.length === 0 ? (
+        <div className="rounded-2xl border border-amber-500/35 bg-amber-500/10 px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-ink truncate">
+              Unfinished practice: {savedPracticeSession.title}
+            </p>
+            <p className="text-xs text-muted">
+              {savedPracticeSession.queue.length}{" "}
+              {savedPracticeSession.queue.length === 1 ? "step" : "steps"} remaining — saved automatically.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.removeItem("wordtap_decks_practice_queue_v1");
+                } catch {}
+                setSavedPracticeSession(null);
+              }}
+              className="btn btn-quiet min-h-10 px-3 text-xs font-semibold text-muted hover:text-ink cursor-pointer"
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActivePracticeTitle(savedPracticeSession.title);
+                setPracticeQueue(savedPracticeSession.queue);
+              }}
+              className="btn btn-primary min-h-10 px-4 text-xs font-bold cursor-pointer"
+            >
+              Resume Practice →
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">

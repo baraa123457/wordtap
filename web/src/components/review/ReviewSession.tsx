@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useEnterPrimaryAction } from "@/lib/use-enter-primary";
 import {
@@ -84,6 +84,54 @@ export function ReviewSession({
   const [roundDictation, setRoundDictation] = useState<Record<string, boolean>>({});
   const [round3, setRound3] = useState<Record<string, boolean>>({});
   const [allowSimpleTypos, setAllowSimpleTypos] = useState(false);
+
+  const draftKey = useMemo(
+    () =>
+      sessionWords.length > 0
+        ? `wordtap_review_draft_${sessionWords.map((w) => w.id).join("_")}`
+        : "",
+    [sessionWords],
+  );
+
+  // Restore mid-session round progress if user closed/reloaded the page
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        round?: RoundStep;
+        round1?: Record<string, boolean>;
+        round2?: Record<string, boolean>;
+        roundDictation?: Record<string, boolean>;
+      };
+      if (parsed.round && parsed.round !== "summary" && parsed.round !== "choice") {
+        setRound(parsed.round);
+        if (parsed.round1) setRound1(parsed.round1);
+        if (parsed.round2) setRound2(parsed.round2);
+        if (parsed.roundDictation) setRoundDictation(parsed.roundDictation);
+      }
+    } catch {
+      // ignore invalid draft
+    }
+  }, [draftKey]);
+
+  // Auto-save completed rounds so progress is never lost on tab close
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      if (round === "summary") {
+        localStorage.removeItem(draftKey);
+      } else if (round !== "choice") {
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({ round, round1, round2, roundDictation }),
+        );
+      }
+    } catch {
+      // ignore storage quota errors
+    }
+  }, [draftKey, round, round1, round2, roundDictation]);
 
   const [summaryItems, setSummaryItems] = useState<ReviewedWordSummary[]>([]);
   const [pendingUpdates, setPendingUpdates] = useState<ReviewBatchUpdate[]>([]);
