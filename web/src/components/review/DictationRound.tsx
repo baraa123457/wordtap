@@ -33,7 +33,6 @@ export function DictationRound({
   const [typed, setTyped] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [checked, setChecked] = useState<"idle" | "correct" | "wrong">("idle");
-  const [showMeaningHint, setShowMeaningHint] = useState(false);
   const [results, setResults] = useState<Record<string, boolean>>({});
 
   const current = words[index];
@@ -55,7 +54,6 @@ export function DictationRound({
       onComplete(results);
     } else {
       setTyped("");
-      setShowMeaningHint(false);
       setChecked("idle");
       setIndex((i) => i + 1);
     }
@@ -99,11 +97,6 @@ export function DictationRound({
 
   const handleHint = () => {
     if (checked !== "idle") return;
-    if (!showMeaningHint && current.translation) {
-      setShowMeaningHint(true);
-      inputRef.current?.focus();
-      return;
-    }
     const currentChars = Array.from(typed);
     let prefixLen = 0;
     while (
@@ -185,17 +178,6 @@ export function DictationRound({
       <p className="text-xs text-muted text-center">
         Listen to the word and type the exact spelling without errors.
       </p>
-
-      {showMeaningHint && checked === "idle" ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-center">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-subtitle me-2">
-            Hint:
-          </span>
-          <span dir="auto" className="text-sm font-bold text-ink">
-            {current.translation}
-          </span>
-        </div>
-      ) : null}
 
       <form onSubmit={handleSubmit} className="grid gap-3">
         <input
@@ -281,7 +263,7 @@ export function DictationRound({
                 onClick={handleHint}
                 className="btn btn-quiet min-h-11 px-3.5 text-xs sm:text-sm font-semibold text-amber-700 dark:text-subtitle hover:bg-subtitle/10 cursor-pointer"
               >
-                {!showMeaningHint && current.translation ? "Hint" : "Reveal letter"}
+                Hint (letter)
               </button>
             </div>
             <button
