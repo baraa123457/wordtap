@@ -436,6 +436,15 @@ export default function DecksPage() {
           ),
         };
       });
+      setConfiguringDeck((prev) => {
+        if (!prev || !("wordCount" in prev)) return prev;
+        return {
+          ...prev,
+          words: prev.words.map((item) =>
+            item.id === w.id ? { ...item, text: cleanText, translation: cleanTrans } : item,
+          ),
+        };
+      });
       setEditingWordId(null);
     } catch (e: unknown) {
       setWordActionError(e instanceof Error ? e.message : "Could not update word.");
@@ -451,6 +460,17 @@ export default function DecksPage() {
       await deleteWord(w.id);
       setUserWords((prev) => prev.filter((item) => item.id !== w.id));
       setInspectingDeck((prev) => {
+        if (!prev || !("wordCount" in prev)) return prev;
+        const nextWords = prev.words.filter((item) => item.id !== w.id);
+        if (nextWords.length === 0) return null;
+        return {
+          ...prev,
+          words: nextWords,
+          wordCount: nextWords.length,
+          subtitle: `${nextWords.length} ${nextWords.length === 1 ? "word" : "words"} collected while watching`,
+        };
+      });
+      setConfiguringDeck((prev) => {
         if (!prev || !("wordCount" in prev)) return prev;
         const nextWords = prev.words.filter((item) => item.id !== w.id);
         if (nextWords.length === 0) return null;
@@ -1423,44 +1443,111 @@ export default function DecksPage() {
                     : "easy"
                   : primaryMode;
 
+                const isMediaWord = "wordCount" in configuringDeck && "id" in w;
+                const wordId = isMediaWord ? (w as Word).id : "";
+                const isEditing = isMediaWord && editingWordId === wordId;
+                const isBusy = isMediaWord && wordActionBusyId === wordId;
+
                 return (
-                  <label
-                    key={key}
-                    className="flex items-center justify-between gap-3 py-2.5 cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <input
-                        type="checkbox"
-                        checked={isOverridden}
-                        onChange={() => toggleWordOverride(key)}
-                        className="h-4 w-4 rounded border-line accent-[#facc3b] cursor-pointer shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-ink text-sm truncate">{w.text}</span>
-                          {"wordCount" in configuringDeck && isWordAlreadyStudied(w as Word) ? (
-                            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 shrink-0">
-                              Studied
-                            </span>
+                  <div key={key} className="py-2.5 grid gap-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isOverridden}
+                          onChange={() => toggleWordOverride(key)}
+                          className="h-4 w-4 rounded border-line accent-[#facc3b] cursor-pointer shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-ink text-sm truncate">{w.text}</span>
+                            {isMediaWord && isWordAlreadyStudied(w as Word) ? (
+                              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 shrink-0">
+                                Studied
+                              </span>
+                            ) : null}
+                          </div>
+                          {w.translation ? (
+                            <div className="text-xs text-muted truncate" dir="rtl">
+                              {w.translation}
+                            </div>
                           ) : null}
                         </div>
-                        {w.translation ? (
-                          <div className="text-xs text-muted truncate" dir="rtl">
-                            {w.translation}
-                          </div>
+                      </label>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[length:var(--text-label)] font-bold uppercase tracking-wider shrink-0 ${
+                            effectiveMode === "hard"
+                              ? "bg-subtitle/20 text-amber-900 dark:text-subtitle border border-subtitle/40"
+                              : "bg-black/5 dark:bg-white/10 text-muted border border-line"
+                          }`}
+                        >
+                          {effectiveMode}
+                        </span>
+                        {isMediaWord ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => {
+                                if (isEditing) {
+                                  setEditingWordId(null);
+                                } else {
+                                  setEditingWordId(wordId);
+                                  setEditWordText(w.text);
+                                  setEditWordTranslation(w.translation || "");
+                                  setWordActionError(null);
+                                }
+                              }}
+                              className="btn btn-quiet min-h-8 px-2 text-[11px] font-semibold text-muted hover:text-ink cursor-pointer"
+                            >
+                              {isEditing ? "Cancel" : "Edit"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => void handleDeleteInspectWord(w as Word)}
+                              className="btn btn-quiet min-h-8 px-2 text-[11px] font-semibold text-muted hover:text-bad hover:bg-bad/10 cursor-pointer"
+                            >
+                              {isBusy ? "…" : "Delete"}
+                            </button>
+                          </>
                         ) : null}
                       </div>
                     </div>
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[length:var(--text-label)] font-bold uppercase tracking-wider shrink-0 ${
-                        effectiveMode === "hard"
-                          ? "bg-subtitle/20 text-amber-900 dark:text-subtitle border border-subtitle/40"
-                          : "bg-black/5 dark:bg-white/10 text-muted border border-line"
-                      }`}
-                    >
-                      {effectiveMode}
-                    </span>
-                  </label>
+
+                    {isEditing ? (
+                      <div className="rounded-xl border border-subtitle/40 bg-black/[0.03] dark:bg-white/[0.04] p-2.5 grid gap-2">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <input
+                            type="text"
+                            value={editWordText}
+                            onChange={(e) => setEditWordText(e.target.value)}
+                            placeholder="Word"
+                            className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-subtitle focus:outline-none"
+                          />
+                          <input
+                            type="text"
+                            dir="auto"
+                            value={editWordTranslation}
+                            onChange={(e) => setEditWordTranslation(e.target.value)}
+                            placeholder="Translation"
+                            className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-subtitle focus:outline-none"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            disabled={isBusy || !editWordText.trim() || !editWordTranslation.trim()}
+                            onClick={() => void handleSaveInspectWord(w as Word)}
+                            className="btn btn-primary min-h-8 px-3 text-xs font-bold cursor-pointer disabled:opacity-50"
+                          >
+                            {isBusy ? "Saving…" : "Save"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
