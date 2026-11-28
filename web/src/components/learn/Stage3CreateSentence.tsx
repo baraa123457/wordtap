@@ -43,6 +43,10 @@ function highlightWord(text: string, targetWord: string) {
 
 type DiffToken = { type: "same" | "del" | "add"; text: string };
 
+function normalizeDiffToken(token: string): string {
+  return token.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "").toLowerCase();
+}
+
 function diffSentenceWords(original: string, corrected: string): DiffToken[] {
   const a = original.trim().split(/\s+/).filter(Boolean);
   const b = corrected.trim().split(/\s+/).filter(Boolean);
@@ -52,7 +56,7 @@ function diffSentenceWords(original: string, corrected: string): DiffToken[] {
 
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      if (a[i - 1]!.toLowerCase() === b[j - 1]!.toLowerCase()) {
+      if (normalizeDiffToken(a[i - 1]!) === normalizeDiffToken(b[j - 1]!)) {
         dp[i]![j] = dp[i - 1]![j - 1]! + 1;
       } else {
         dp[i]![j] = Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
@@ -64,7 +68,7 @@ function diffSentenceWords(original: string, corrected: string): DiffToken[] {
   let i = m;
   let j = n;
   while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && a[i - 1]!.toLowerCase() === b[j - 1]!.toLowerCase()) {
+    if (i > 0 && j > 0 && normalizeDiffToken(a[i - 1]!) === normalizeDiffToken(b[j - 1]!)) {
       out.push({ type: "same", text: b[j - 1]! });
       i--;
       j--;
