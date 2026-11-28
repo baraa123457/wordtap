@@ -41,6 +41,44 @@ function highlightWord(text: string, targetWord: string) {
   });
 }
 
+type DiffToken = { type: "same" | "del" | "add"; text: string };
+
+function diffSentenceWords(original: string, corrected: string): DiffToken[] {
+  const a = original.trim().split(/\s+/).filter(Boolean);
+  const b = corrected.trim().split(/\s+/).filter(Boolean);
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array<number>(n + 1).fill(0));
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (a[i - 1]!.toLowerCase() === b[j - 1]!.toLowerCase()) {
+        dp[i]![j] = dp[i - 1]![j - 1]! + 1;
+      } else {
+        dp[i]![j] = Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
+      }
+    }
+  }
+
+  const out: DiffToken[] = [];
+  let i = m;
+  let j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && a[i - 1]!.toLowerCase() === b[j - 1]!.toLowerCase()) {
+      out.push({ type: "same", text: b[j - 1]! });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i]![j - 1]! >= dp[i - 1]![j]!)) {
+      out.push({ type: "add", text: b[j - 1]! });
+      j--;
+    } else {
+      out.push({ type: "del", text: a[i - 1]! });
+      i--;
+    }
+  }
+  return out.reverse();
+}
+
 export function Stage3CreateSentence({
   word,
   definition,
@@ -417,9 +455,43 @@ export function Stage3CreateSentence({
           ) : null}
 
           {evaluation.naturalAlternative ? (
-            <div className="rounded-xl border border-line bg-surface p-3 grid gap-1">
-              <p className="text-xs font-bold text-ink">Even more natural alternative:</p>
-              <p className="text-sm text-ink italic break-words">&ldquo;{evaluation.naturalAlternative}&rdquo;</p>
+            <div className="rounded-xl border border-line bg-surface p-3.5 grid gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-bold text-ink">Changes &amp; natural sentence:</p>
+                <div className="flex items-center gap-2 text-[11px] font-semibold">
+                  <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                    Removed / wrong
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    Added / correct
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm leading-relaxed break-words flex flex-wrap items-baseline gap-1">
+                {diffSentenceWords(sentence, evaluation.naturalAlternative).map((tok, idx) =>
+                  tok.type === "del" ? (
+                    <span
+                      key={idx}
+                      className="rounded bg-red-500/15 px-1.5 py-0.5 text-red-600 dark:text-red-400 line-through"
+                    >
+                      {tok.text}
+                    </span>
+                  ) : tok.type === "add" ? (
+                    <span
+                      key={idx}
+                      className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-bold text-emerald-700 dark:text-emerald-400"
+                    >
+                      {tok.text}
+                    </span>
+                  ) : (
+                    <span key={idx} className="text-ink">
+                      {tok.text}
+                    </span>
+                  ),
+                )}
+              </p>
             </div>
           ) : null}
 

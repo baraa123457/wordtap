@@ -191,6 +191,29 @@ export const UNCOUNTABLE_NOUNS = new Set([
   "glass",
   "plastic",
   "cake",
+  "sewage",
+  "waste",
+  "trash",
+  "garbage",
+  "pollution",
+  "mud",
+  "filth",
+  "dirt",
+  "dust",
+  "smoke",
+  "steam",
+  "electricity",
+  "energy",
+  "evidence",
+  "research",
+  "knowledge",
+  "progress",
+  "traffic",
+  "furniture",
+  "equipment",
+  "luggage",
+  "software",
+  "hardware",
 ]);
 
 export const COMMON_COUNTABLE_NOUNS = new Set([
@@ -368,7 +391,7 @@ export const IDIOMATIC_BARE_PATTERNS = [
 ];
 
 const SCAN_STOPPER_RE =
-  /^(will|shall|can|could|would|should|may|might|must|study|eat|read|write|have|has|had|take|took|make|made|be|been|being|is|are|was|were|see|saw|of|in|on|at|from|to|with|for|about|into|onto|through|without|by|because|and|or|but|if|that|when|while|since|although)$/i;
+  /^(i|you|he|she|we|they|it|will|shall|can|could|would|should|may|might|must|do|does|did|use|used|uses|using|study|eat|read|write|have|has|had|take|took|make|made|be|been|being|is|are|was|were|see|saw|of|in|on|at|from|to|with|for|about|into|onto|through|without|by|because|and|or|but|if|that|when|while|since|although)$/i;
 
 const AUX_AND_MODALS_RE =
   /\b(is|are|was|were|am|be|been|being|have|has|had|having|do|does|did|done|will|would|shall|should|can|could|may|might|must|wanna|gonna|gotta)\b/i;
@@ -476,8 +499,8 @@ export function detectDeterminerIssues(
           precedingPrep = prevClean;
         }
 
-        // Stop scanning back if hitting a verb, clause boundary, or preposition
-        if (SCAN_STOPPER_RE.test(prevClean)) {
+        // Stop scanning back if hitting a verb, pronoun, clause boundary, or preposition
+        if (SCAN_STOPPER_RE.test(prevClean) || COMMON_VERB_RE.test(prevClean)) {
           break;
         }
 
